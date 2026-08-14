@@ -1,0 +1,56 @@
+export const tokens = {
+  colors: {
+    pageBg: '#EDF3F9',
+    surface: '#FFFFFF',
+    rail: '#1B1C1E',
+    textPrimary: '#101114',
+    textSecondary: '#8A9099',
+    divider: '#EEF0F3',
+    accent: '#2F80ED',
+    accentHover: '#256ECC',
+    accentText: '#1D4ED8',
+    accentBg: '#DCEAFA',
+    positive: '#2E9E5B',
+    positiveText: '#0F5132',
+    positiveBg: '#DEF2E5',
+    negative: '#E05252',
+    negativeText: '#991B1B',
+    negativeBg: '#FEE2E2',
+    warningText: '#975A16',
+    warningBg: '#FBF2D6',
+    purpleText: '#6B46C1',
+    purpleBg: '#EDE7FB',
+    fieldBg: '#F4F6F9',
+    tableHover: '#F8FAFC',
+    star: '#F59E0B',
+  },
+  tints: {
+    lavender: '#EDE7FB',
+    mint: '#DEF2E5',
+    butter: '#FBF2D6',
+    sky: '#DCEAFA',
+  },
+  radii: {
+    card: 24,
+    inner: 16,
+    pill: 999,
+    rail: 28,
+  },
+  spacing: {
+    base: 8,
+    cardPadding: 24,
+    cardGap: 20,
+  },
+  typography: {
+    fontFamily:
+      '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    h1: { fontSize: '32px', fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.02em' },
+    h2: { fontSize: '22px', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.02em' },
+    h3: { fontSize: '18px', fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.02em' },
+    body1: { fontSize: '14px', fontWeight: 500, lineHeight: 1.5 },
+    body2: { fontSize: '13px', fontWeight: 500, lineHeight: 1.5 },
+    caption: { fontSize: '12px', fontWeight: 500, lineHeight: 1.45 },
+  },
+} as const;
+
+export type CardTint = keyof typeof tokens.tints;
