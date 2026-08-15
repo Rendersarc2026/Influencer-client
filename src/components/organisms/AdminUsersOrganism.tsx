@@ -239,7 +239,7 @@ export const AdminUsersOrganism: React.FC = () => {
         </Button>
       }
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         {inviteSuccessMsg && (
           <Box
             sx={{
@@ -278,6 +278,7 @@ export const AdminUsersOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={usersLoading}
+          fillHeight
         />
       </Box>
 

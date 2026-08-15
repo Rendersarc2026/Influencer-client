@@ -220,7 +220,7 @@ export const AdminBrandsOrganism: React.FC = () => {
         </Button>
       }
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           searchValue={search}
           onSearchChange={handleSearchChange}
@@ -243,6 +243,7 @@ export const AdminBrandsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={brandsLoading}
+          fillHeight
         />
       </Box>
 

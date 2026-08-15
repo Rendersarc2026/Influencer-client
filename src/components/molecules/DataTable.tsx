@@ -57,6 +57,12 @@ export interface DataTableProps<T> {
   onPageChange?: (newPage: number) => void;
   onRowsPerPageChange?: (newRowsPerPage: number) => void;
   minHeight?: number | string;
+  /**
+   * When true the table Card stretches to fill its flex parent (the page
+   * content column) and the body rows scroll internally.  The header and
+   * pagination bar stay pinned.
+   */
+  fillHeight?: boolean;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -79,6 +85,7 @@ export function DataTable<T extends Record<string, unknown>>({
   onPageChange,
   onRowsPerPageChange,
   minHeight = 420,
+  fillHeight = false,
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [internalPage, setInternalPage] = useState(0);
@@ -290,7 +297,14 @@ export function DataTable<T extends Record<string, unknown>>({
   };
 
   if (loading) {
-    return <LoadingBlock variant="table" rows={5} height={minHeight} className={className} />;
+    return (
+      <LoadingBlock
+        variant="table"
+        rows={5}
+        height={fillHeight ? '100%' : minHeight}
+        className={className}
+      />
+    );
   }
 
   const hasHeader = Boolean(title || subtitle || headerAction);
@@ -299,6 +313,157 @@ export function DataTable<T extends Record<string, unknown>>({
   const emptyRowHeight =
     typeof minHeight === 'number' ? `${Math.max(240, minHeight - 60)}px` : '280px';
 
+  // ─── fillHeight layout ───────────────────────────────────────────────────
+  // Card becomes a flex column that fills its parent. The TableContainer
+  // sits between the (optional) header row and the (optional) pagination bar
+  // and takes all remaining space via flex:1 + overflow:auto so only the
+  // tbody rows scroll while the thead and pagination stay pinned.
+  if (fillHeight) {
+    return (
+      <Card
+        className={className}
+        sx={{
+          padding: `${theme.customSpacing.cardPadding}px`,
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {hasHeader && (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2,
+              flexShrink: 0,
+            }}
+          >
+            <Box>
+              {title && <Typography variant="h2">{title}</Typography>}
+              {subtitle && (
+                <Typography
+                  variant="body2"
+                  sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
+                >
+                  {subtitle}
+                </Typography>
+              )}
+            </Box>
+            {headerAction && <Box sx={{ flexShrink: 0 }}>{headerAction}</Box>}
+          </Box>
+        )}
+
+        {/* Scrollable table body — grows to fill remaining card height */}
+        <TableContainer
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'auto',
+            // Custom scrollbar styling
+            '&::-webkit-scrollbar': { width: 6, height: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: theme.palette.tokens.divider,
+              borderRadius: 3,
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: theme.palette.tokens.textSecondary,
+            },
+          }}
+        >
+          <Table stickyHeader sx={{ minWidth: 600 }}>
+            <TableHead>
+              <TableRow>
+                {columns.map((col) => (
+                  <TableCell
+                    key={col.id}
+                    align={col.align || 'left'}
+                    sx={{
+                      width: col.width,
+                      // stickyHeader uses position:sticky — keep bg consistent
+                      backgroundColor: theme.palette.tokens.surface,
+                    }}
+                  >
+                    {col.header}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    sx={{
+                      p: 0,
+                      border: 'none',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      height: '320px',
+                    }}
+                  >
+                    {emptyState || (
+                      <Box
+                        sx={{
+                          p: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                        }}
+                      >
+                        <EmptyState
+                          title="No records found"
+                          description="There are no items to display right now."
+                        />
+                      </Box>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                displayedRows.map((row, index) => {
+                  const globalIndex = pagination ? page * rowsPerPage + index : index;
+                  return (
+                    <TableRow
+                      key={getRowKey(row, globalIndex)}
+                      onClick={() => onRowClick && onRowClick(row)}
+                      sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                    >
+                      {columns.map((col) => (
+                        <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
+                          {renderCellContent(row, col, globalIndex)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Pinned pagination bar */}
+        {pagination && totalCount > 0 && (
+          <TablePagination
+            rowsPerPageOptions={rowsPerPageOptions}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{ flexShrink: 0, borderTop: `1px solid ${theme.palette.tokens.divider}` }}
+          />
+        )}
+      </Card>
+    );
+  }
+
+  // ─── default (fixed minHeight) layout — unchanged behaviour ─────────────
   return (
     <Card
       className={className}

@@ -109,10 +109,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               sm: `${theme.customSpacing.cardPadding}px`,
             },
             flexGrow: 1,
+            minHeight: 0,          // allows flex child to shrink below content size
             display: 'flex',
             flexDirection: 'column',
             gap: `${theme.customSpacing.cardGap}px`,
             overflowX: 'hidden',
+            overflowY: 'hidden',   // page itself does NOT scroll — tables scroll internally
           }}
         >
           {children}

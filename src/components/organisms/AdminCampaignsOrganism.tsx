@@ -124,7 +124,7 @@ export const AdminCampaignsOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <SectionHeading
           title="All Campaigns"
           subtitle="System-wide campaigns registry"
@@ -155,6 +155,7 @@ export const AdminCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
+          fillHeight
         />
       </Box>
     </DashboardLayout>

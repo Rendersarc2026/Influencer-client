@@ -183,15 +183,26 @@ export function useAdminCampaignInfluencers(
 // 4. Users
 // -------------------------------------------------------------
 
-export function useAdminUsers(params?: UserListQuery) {
-  return useQuery<PaginatedResult<UserResponse>>({
-    queryKey: ['admin', 'users', params],
+/**
+ * Shared by the hook below and by the boot-time prefetch, so the query key and
+ * the fetcher cannot drift apart — a mismatched key would silently turn a
+ * warmed cache entry into a second network request.
+ */
+export function adminUsersQueryOptions(params?: UserListQuery) {
+  return {
+    queryKey: ['admin', 'users', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<UserResponse>>('/admin/users', {
         params,
       });
       return response.data;
     },
+  };
+}
+
+export function useAdminUsers(params?: UserListQuery) {
+  return useQuery<PaginatedResult<UserResponse>>({
+    ...adminUsersQueryOptions(params),
     placeholderData: keepPreviousData,
   });
 }
@@ -247,14 +258,18 @@ export function useAdminResendInvite() {
 // 5. Platform Stats (Ultra-fast pre-aggregated SQL view/function)
 // -------------------------------------------------------------
 
-export function useAdminPlatformStats() {
-  return useQuery<AdminPlatformStatsResponse>({
-    queryKey: ['admin', 'stats'],
+export function adminPlatformStatsQueryOptions() {
+  return {
+    queryKey: ['admin', 'stats'] as const,
     queryFn: async () => {
       const response = await apiClient.get<AdminPlatformStatsResponse>('/admin/stats');
       return response.data;
     },
     staleTime: 30_000,
-  });
+  };
+}
+
+export function useAdminPlatformStats() {
+  return useQuery<AdminPlatformStatsResponse>(adminPlatformStatsQueryOptions());
 }
 
