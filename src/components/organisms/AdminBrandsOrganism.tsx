@@ -27,7 +27,7 @@ import {
   useAdminDeactivateBrand,
 } from '@api';
 import { BrandResponse } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const AdminBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -35,15 +35,29 @@ export const AdminBrandsOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: brands = [], isLoading: brandsLoading } = useAdminBrands();
-  const { data: agencies = [] } = useAdminAgencies();
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [selectedAgencyFilter, setSelectedAgencyFilter] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: brandsData, isLoading: brandsLoading } = useAdminBrands({
+    agencyId: selectedAgencyFilter || undefined,
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const { data: agenciesData } = useAdminAgencies();
+
+  const brands = brandsData?.items || [];
+  const totalBrands = brandsData?.total ?? brands.length;
+  const agencies = agenciesData?.items || [];
 
   const createBrandMutation = useAdminCreateBrand();
   const updateBrandMutation = useAdminUpdateBrand();
   const deactivateBrandMutation = useAdminDeactivateBrand();
 
-  const [search, setSearch] = useState('');
-  const [selectedAgencyFilter, setSelectedAgencyFilter] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
 
@@ -57,13 +71,15 @@ export const AdminBrandsOrganism: React.FC = () => {
     ...agencies.map((a) => ({ value: a.id, label: a.name })),
   ];
 
-  const filteredBrands = brands.filter((b) => {
-    const matchesSearch =
-      b.name.toLowerCase().includes(search.toLowerCase()) ||
-      (b.industry && b.industry.toLowerCase().includes(search.toLowerCase()));
-    const matchesAgency = !selectedAgencyFilter || b.agencyId === selectedAgencyFilter;
-    return matchesSearch && matchesAgency;
-  });
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
+
+  const handleAgencyFilterChange = (val: string) => {
+    setSelectedAgencyFilter(val);
+    setPage(0);
+  };
 
   const handleOpenCreate = () => {
     setBrandToEdit(null);
@@ -193,15 +209,27 @@ export const AdminBrandsOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           searchPlaceholder="Search brands by name or category..."
           selectOptions={agencyFilterOptions}
           selectedOption={selectedAgencyFilter}
-          onSelectChange={setSelectedAgencyFilter}
+          onSelectChange={handleAgencyFilterChange}
           selectLabel="Agency"
         />
 
-        <DataTable<BrandResponse> columns={columns} rows={filteredBrands} loading={brandsLoading} />
+        <DataTable<BrandResponse>
+          columns={columns}
+          rows={brands}
+          totalRows={totalBrands}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
+          loading={brandsLoading}
+        />
       </Box>
 
       {/* Create / Edit Brand Dialog */}

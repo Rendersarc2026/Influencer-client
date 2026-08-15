@@ -22,3 +22,12 @@ export const UpdateAgencySchema = z.object({
   isActive: z.boolean().optional(),
 });
 export type UpdateAgencyRequest = z.infer<typeof UpdateAgencySchema>;
+
+export const AgencyListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().max(100).optional(),
+  isActive: z.coerce.boolean().optional(),
+});
+export type AgencyListQuery = z.infer<typeof AgencyListQuerySchema>;
+

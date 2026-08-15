@@ -29,8 +29,17 @@ export const AgencyHomeOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: campaigns = [], isLoading: campaignsLoading } = useAgencyCampaigns();
-  const { data: brands = [] } = useAgencyBrands();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns({
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+  const { data: brandsData } = useAgencyBrands();
+  const campaigns = campaignsData?.items || [];
+  const campaignsTotal = campaignsData?.total ?? campaigns.length;
+  const brands = brandsData?.items || [];
   const createCampaignMutation = useCreateCampaign();
 
   const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
@@ -216,7 +225,15 @@ export const AgencyHomeOrganism: React.FC = () => {
         />
         <DataTable<CampaignResponse>
           columns={columns}
-          rows={campaigns.slice(0, 5)}
+          rows={campaigns}
+          totalRows={campaignsTotal}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={campaignsLoading}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />

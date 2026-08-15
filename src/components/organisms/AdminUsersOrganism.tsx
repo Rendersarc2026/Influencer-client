@@ -29,7 +29,7 @@ import {
   useAdminResendInvite,
 } from '@api';
 import { UserResponse, RoleCode, CreateUserRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const AdminUsersOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -37,16 +37,31 @@ export const AdminUsersOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: users = [], isLoading: usersLoading } = useAdminUsers();
-  const { data: agencies = [] } = useAdminAgencies();
-  const { data: brands = [] } = useAdminBrands();
+  const [activeRolePill, setActiveRolePill] = useState<string>('ALL');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: usersData, isLoading: usersLoading } = useAdminUsers({
+    roleCode: activeRolePill !== 'ALL' ? activeRolePill : undefined,
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const { data: agenciesData } = useAdminAgencies();
+  const { data: brandsData } = useAdminBrands();
+
+  const users = usersData?.items || [];
+  const totalUsers = usersData?.total ?? users.length;
+  const agencies = agenciesData?.items || [];
+  const brands = brandsData?.items || [];
 
   const createUserMutation = useAdminCreateUser();
   const deactivateUserMutation = useAdminDeactivateUser();
   const resendInviteMutation = useAdminResendInvite();
 
-  const [activeRolePill, setActiveRolePill] = useState<string>('ALL');
-  const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deactivateUserId, setDeactivateUserId] = useState<string | null>(null);
 
@@ -58,24 +73,22 @@ export const AdminUsersOrganism: React.FC = () => {
   const [inviteSuccessMsg, setInviteSuccessMsg] = useState('');
 
   const filterPills = [
-    { id: 'ALL', label: 'All Users', count: users.length },
-    { id: 'ADMIN', label: 'Admin', count: users.filter((u) => u.roleCode === 'ADMIN').length },
-    { id: 'AGENCY', label: 'Agency', count: users.filter((u) => u.roleCode === 'AGENCY').length },
-    { id: 'BRAND', label: 'Brand', count: users.filter((u) => u.roleCode === 'BRAND').length },
-    {
-      id: 'INFLUENCER',
-      label: 'Creator',
-      count: users.filter((u) => u.roleCode === 'INFLUENCER').length,
-    },
+    { id: 'ALL', label: 'All Users' },
+    { id: 'ADMIN', label: 'Admin' },
+    { id: 'AGENCY', label: 'Agency' },
+    { id: 'BRAND', label: 'Brand' },
+    { id: 'INFLUENCER', label: 'Creator' },
   ];
 
-  const filteredUsers = users.filter((u) => {
-    const matchesRole = activeRolePill === 'ALL' || u.roleCode === activeRolePill;
-    const matchesSearch =
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      (u.profile?.fullName && u.profile.fullName.toLowerCase().includes(search.toLowerCase()));
-    return matchesRole && matchesSearch;
-  });
+  const handleRolePillChange = (pillId: string) => {
+    setActiveRolePill(pillId);
+    setPage(0);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
 
   const handleOpenCreate = () => {
     setEmail('');
@@ -228,13 +241,25 @@ export const AdminUsersOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activeRolePill}
-          onPillChange={setActiveRolePill}
+          onPillChange={handleRolePillChange}
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           searchPlaceholder="Search users by name or email..."
         />
 
-        <DataTable<UserResponse> columns={columns} rows={filteredUsers} loading={usersLoading} />
+        <DataTable<UserResponse>
+          columns={columns}
+          rows={users}
+          totalRows={totalUsers}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
+          loading={usersLoading}
+        />
       </Box>
 
       {/* Provision User Dialog */}

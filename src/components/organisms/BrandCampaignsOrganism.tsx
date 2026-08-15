@@ -8,33 +8,44 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { useBrandCampaigns } from '@api';
 import { CampaignResponse } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const BrandCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: campaigns = [], isLoading } = useBrandCampaigns();
-
   const [activePill, setActivePill] = useState('ALL');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: campaignsData, isLoading } = useBrandCampaigns({
+    status: activePill !== 'ALL' ? activePill : undefined,
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const campaigns = campaignsData?.items || [];
+  const totalCampaigns = campaignsData?.total ?? campaigns.length;
 
   const filterPills = [
-    { id: 'ALL', label: 'All Campaigns', count: campaigns.length },
-    { id: 'ACTIVE', label: 'Active', count: campaigns.filter((c) => c.status === 'ACTIVE').length },
-    {
-      id: 'COMPLETED',
-      label: 'Completed',
-      count: campaigns.filter((c) => c.status === 'COMPLETED').length,
-    },
+    { id: 'ALL', label: 'All Campaigns' },
+    { id: 'ACTIVE', label: 'Active' },
+    { id: 'COMPLETED', label: 'Completed' },
   ];
 
-  const filteredCampaigns = campaigns.filter((c) => {
-    const matchesPill = activePill === 'ALL' || c.status === activePill;
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
-    return matchesPill && matchesSearch;
-  });
+  const handlePillChange = (pillId: string) => {
+    setActivePill(pillId);
+    setPage(0);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -97,15 +108,23 @@ export const BrandCampaignsOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
-          onPillChange={setActivePill}
+          onPillChange={handlePillChange}
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           searchPlaceholder="Search campaigns by name..."
         />
 
         <DataTable<CampaignResponse>
           columns={columns}
-          rows={filteredCampaigns}
+          rows={campaigns}
+          totalRows={totalCampaigns}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={isLoading}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />

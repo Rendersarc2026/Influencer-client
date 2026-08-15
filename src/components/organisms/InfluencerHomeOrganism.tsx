@@ -10,29 +10,59 @@ import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { MetricCard, DataTable, DataTableColumn, SubmitRateDialog } from '@molecules';
+import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignments, useSubmitInfluencerRate } from '@api';
 import { InfluencerMapperResponse, SubmitRateRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const InfluencerHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: assignments = [], isLoading } = useInfluencerAssignments();
+  const [activePill, setActivePill] = useState('ALL');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: assignmentsData, isLoading } = useInfluencerAssignments({
+    rateStatus: activePill !== 'ALL' ? activePill : undefined,
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const assignments = assignmentsData?.items || [];
+  const totalAssignments = assignmentsData?.total ?? assignments.length;
+
   const submitRateMutation = useSubmitInfluencerRate();
 
   const [activeRateDialogMapper, setActiveRateDialogMapper] =
     useState<InfluencerMapperResponse | null>(null);
 
-  const pendingRatesCount = (assignments || []).filter(
+  const pendingRatesCount = assignments.filter(
     (a) => a?.rateStatus === 'PENDING_SUBMISSION' || a?.rateStatus === 'REVISION_REQUESTED',
   ).length;
-  const approvedCount = (assignments || []).filter(
-    (a) => a?.rateStatus === 'AGENCY_APPROVED',
-  ).length;
+  const approvedCount = assignments.filter((a) => a?.rateStatus === 'AGENCY_APPROVED').length;
+
+  const filterPills = [
+    { id: 'ALL', label: 'All Briefs' },
+    { id: 'PENDING_SUBMISSION', label: 'Action Required' },
+    { id: 'SUBMITTED', label: 'Under Review' },
+    { id: 'AGENCY_APPROVED', label: 'Approved' },
+  ];
+
+  const handlePillChange = (pillId: string) => {
+    setActivePill(pillId);
+    setPage(0);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
     await submitRateMutation.mutateAsync({ mapperId, data });
@@ -153,15 +183,32 @@ export const InfluencerHomeOrganism: React.FC = () => {
       </Grid>
 
       {/* 2. Assignments Table */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionHeading
           title="Current Campaign Assignments"
           subtitle="Submit your commercial rate and track agency approval status"
         />
 
+        <FilterBar
+          pills={filterPills}
+          activePillId={activePill}
+          onPillChange={handlePillChange}
+          searchValue={search}
+          onSearchChange={handleSearchChange}
+          searchPlaceholder="Search assignments..."
+        />
+
         <DataTable<InfluencerMapperResponse>
           columns={columns}
           rows={assignments}
+          totalRows={totalAssignments}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={isLoading}
           onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
         />

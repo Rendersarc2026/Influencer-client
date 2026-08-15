@@ -10,26 +10,37 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog } from '@molecules';
 import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const AgencyBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: brands = [], isLoading } = useAgencyBrands();
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: brandsData, isLoading } = useAgencyBrands({
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const brands = brandsData?.items || [];
+  const totalBrands = brandsData?.total ?? brands.length;
+
   const createBrandMutation = useCreateBrand();
   const updateBrandMutation = useUpdateBrand();
 
-  const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
 
-  const filteredBrands = brands.filter(
-    (b) =>
-      b.name.toLowerCase().includes(search.toLowerCase()) ||
-      (b.industry && b.industry.toLowerCase().includes(search.toLowerCase())),
-  );
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
 
   const handleOpenCreate = () => {
     setBrandToEdit(null);
@@ -112,11 +123,23 @@ export const AgencyBrandsOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           searchPlaceholder="Search brands by name or industry..."
         />
 
-        <DataTable<BrandResponse> columns={columns} rows={filteredBrands} loading={isLoading} />
+        <DataTable<BrandResponse>
+          columns={columns}
+          rows={brands}
+          totalRows={totalBrands}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
+          loading={isLoading}
+        />
       </Box>
 
       <CreateBrandDialog

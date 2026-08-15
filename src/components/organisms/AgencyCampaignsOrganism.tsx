@@ -9,31 +9,42 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
 import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
 import { CampaignResponse, CreateCampaignRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const AgencyCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: campaigns = [], isLoading: campaignsLoading } = useAgencyCampaigns();
-  const { data: brands = [] } = useAgencyBrands();
-  const createCampaignMutation = useCreateCampaign();
-
   const [activePill, setActivePill] = useState('ALL');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [selectedBrand, setSelectedBrand] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns({
+    status: activePill !== 'ALL' ? activePill : undefined,
+    brandId: selectedBrand || undefined,
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const { data: brandsData } = useAgencyBrands();
+
+  const campaigns = campaignsData?.items || [];
+  const totalCampaigns = campaignsData?.total ?? campaigns.length;
+  const brands = brandsData?.items || [];
+
+  const createCampaignMutation = useCreateCampaign();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const filterPills = [
-    { id: 'ALL', label: 'All Campaigns', count: campaigns.length },
-    { id: 'ACTIVE', label: 'Active', count: campaigns.filter((c) => c.status === 'ACTIVE').length },
-    { id: 'DRAFT', label: 'Draft', count: campaigns.filter((c) => c.status === 'DRAFT').length },
-    {
-      id: 'COMPLETED',
-      label: 'Completed',
-      count: campaigns.filter((c) => c.status === 'COMPLETED').length,
-    },
+    { id: 'ALL', label: 'All Campaigns' },
+    { id: 'ACTIVE', label: 'Active' },
+    { id: 'DRAFT', label: 'Draft' },
+    { id: 'COMPLETED', label: 'Completed' },
   ];
 
   const brandOptions = [
@@ -41,12 +52,20 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     ...brands.map((b) => ({ value: b.id, label: b.name })),
   ];
 
-  const filteredCampaigns = campaigns.filter((c) => {
-    const matchesPill = activePill === 'ALL' || c.status === activePill;
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
-    const matchesBrand = !selectedBrand || c.brandId === selectedBrand;
-    return matchesPill && matchesSearch && matchesBrand;
-  });
+  const handlePillChange = (pillId: string) => {
+    setActivePill(pillId);
+    setPage(0);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
+
+  const handleBrandChange = (val: string) => {
+    setSelectedBrand(val);
+    setPage(0);
+  };
 
   const handleCreateCampaign = async (data: CreateCampaignRequest) => {
     await createCampaignMutation.mutateAsync(data);
@@ -126,19 +145,27 @@ export const AgencyCampaignsOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
-          onPillChange={setActivePill}
+          onPillChange={handlePillChange}
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           searchPlaceholder="Search campaigns..."
           selectOptions={brandOptions}
           selectedOption={selectedBrand}
-          onSelectChange={setSelectedBrand}
+          onSelectChange={handleBrandChange}
           selectLabel="Brand"
         />
 
         <DataTable<CampaignResponse>
           columns={columns}
-          rows={filteredCampaigns}
+          rows={campaigns}
+          totalRows={totalCampaigns}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={campaignsLoading}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />

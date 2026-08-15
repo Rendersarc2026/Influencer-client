@@ -26,6 +26,7 @@ import {
   ConfirmDialog,
 } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
+import { FilterBar } from '@molecules';
 import {
   useAgencyCampaign,
   useAgencyBrands,
@@ -37,7 +38,7 @@ import {
   useRemoveInfluencerFromCampaign,
 } from '@api';
 import { AgencyMapperResponse, RecordMetricRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 import { safeUrl } from '@utils';
 
 export const AgencyCampaignDetailOrganism: React.FC = () => {
@@ -47,9 +48,22 @@ export const AgencyCampaignDetailOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
-  const { data: brands = [] } = useAgencyBrands();
-  const { data: mappers = [], isLoading: mappersLoading } = useCampaignInfluencers(campaignId);
+  const { data: brandsData } = useAgencyBrands();
+  const brands = brandsData?.items || [];
+  const { data: mappersData, isLoading: mappersLoading } = useCampaignInfluencers(campaignId, {
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const mappers = mappersData?.items || [];
+  const totalMappers = mappersData?.total ?? mappers.length;
 
   // Mutations
   const approveRateMutation = useApproveRate(campaignId);
@@ -372,7 +386,7 @@ export const AgencyCampaignDetailOrganism: React.FC = () => {
       </Card>
 
       {/* 2. Assigned Influencers & Rates DataTable */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionHeading
           title="Assigned Influencers & Rate Pipeline"
           subtitle="Submitted rates, agency margin approvals, and brand visibility"
@@ -388,9 +402,26 @@ export const AgencyCampaignDetailOrganism: React.FC = () => {
           }
         />
 
+        <FilterBar
+          searchValue={search}
+          onSearchChange={(val) => {
+            setSearch(val);
+            setPage(0);
+          }}
+          searchPlaceholder="Search influencers or deliverables..."
+        />
+
         <DataTable<AgencyMapperResponse>
           columns={columns}
           rows={mappers}
+          totalRows={totalMappers}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={mappersLoading || campaignLoading}
         />
       </Box>

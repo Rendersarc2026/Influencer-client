@@ -2,16 +2,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   InfluencerMapperResponse,
+  CampaignMapperListQuery,
   SubmitRateRequest,
   UpdateProfileRequest,
   UserResponse,
+  PaginatedResult,
 } from '@contracts';
 
-export function useInfluencerAssignments() {
-  return useQuery<InfluencerMapperResponse[]>({
-    queryKey: ['influencer', 'assignments'],
+export function useInfluencerAssignments(params?: CampaignMapperListQuery) {
+  return useQuery<PaginatedResult<InfluencerMapperResponse>>({
+    queryKey: ['influencer', 'assignments', params],
     queryFn: async () => {
-      const response = await apiClient.get<InfluencerMapperResponse[]>('/influencer/assignments');
+      const response = await apiClient.get<PaginatedResult<InfluencerMapperResponse>>(
+        '/influencer/assignments',
+        { params },
+      );
       return response.data;
     },
   });

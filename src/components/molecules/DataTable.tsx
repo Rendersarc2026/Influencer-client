@@ -51,6 +51,11 @@ export interface DataTableProps<T> {
   pagination?: boolean;
   rowsPerPageOptions?: number[];
   initialRowsPerPage?: number;
+  page?: number;
+  totalRows?: number;
+  rowsPerPage?: number;
+  onPageChange?: (newPage: number) => void;
+  onRowsPerPageChange?: (newRowsPerPage: number) => void;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -67,31 +72,56 @@ export function DataTable<T extends Record<string, unknown>>({
   pagination = true,
   rowsPerPageOptions = [5, 10, 20, 30],
   initialRowsPerPage = 10,
+  page: controlledPage,
+  totalRows,
+  rowsPerPage: controlledRowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
 }: DataTableProps<T>) {
   const theme = useTheme();
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
+  const [internalPage, setInternalPage] = useState(0);
+  const [internalRowsPerPage, setInternalRowsPerPage] = useState(initialRowsPerPage);
+
+  const isControlled = totalRows !== undefined;
+  const page = isControlled && controlledPage !== undefined ? controlledPage : internalPage;
+  const rowsPerPage =
+    isControlled && controlledRowsPerPage !== undefined
+      ? controlledRowsPerPage
+      : internalRowsPerPage;
+  const totalCount = isControlled ? totalRows : rows.length;
 
   useEffect(() => {
-    if (page > 0 && page * rowsPerPage >= rows.length) {
-      setPage(0);
+    if (!isControlled && page > 0 && page * rowsPerPage >= rows.length) {
+      setInternalPage(0);
     }
-  }, [rows.length, page, rowsPerPage]);
+  }, [isControlled, rows.length, page, rowsPerPage]);
 
   const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
+    if (onPageChange) {
+      onPageChange(newPage);
+    }
+    if (!isControlled) {
+      setInternalPage(newPage);
+    }
   };
 
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+    const newLimit = parseInt(event.target.value, 10);
+    if (onRowsPerPageChange) {
+      onRowsPerPageChange(newLimit);
+    }
+    if (!isControlled) {
+      setInternalRowsPerPage(newLimit);
+      setInternalPage(0);
+    }
   };
 
-  const displayedRows = pagination
-    ? rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    : rows;
+  const displayedRows =
+    pagination && !isControlled
+      ? rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+      : rows;
 
   const getRowKey = (row: T, index: number): string | number => {
     if (typeof keyField === 'function') {
@@ -334,11 +364,11 @@ export function DataTable<T extends Record<string, unknown>>({
         </Table>
       </TableContainer>
 
-      {pagination && rows.length > 0 && (
+      {pagination && totalCount > 0 && (
         <TablePagination
           rowsPerPageOptions={rowsPerPageOptions}
           component="div"
-          count={rows.length}
+          count={totalCount}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -21,8 +21,18 @@ export const BrandHomeOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: campaigns = [], isLoading: campaignsLoading } = useBrandCampaigns();
-  const { data: payments = [], isLoading: paymentsLoading } = useBrandPayments();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: campaignsData, isLoading: campaignsLoading } = useBrandCampaigns({
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+  const { data: paymentsData, isLoading: paymentsLoading } = useBrandPayments();
+
+  const campaigns = campaignsData?.items || [];
+  const campaignsTotal = campaignsData?.total ?? campaigns.length;
+  const payments = paymentsData?.items || [];
 
   const activeCampaigns = campaigns.filter((c) => c.status === 'ACTIVE').length;
   const pendingPayments = payments.filter((p) => p.status === 'PENDING_APPROVAL').length;
@@ -152,6 +162,14 @@ export const BrandHomeOrganism: React.FC = () => {
         <DataTable<CampaignResponse>
           columns={columns}
           rows={campaigns}
+          totalRows={campaignsTotal}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={campaignsLoading}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />

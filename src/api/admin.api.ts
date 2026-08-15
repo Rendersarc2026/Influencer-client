@@ -2,25 +2,31 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   AgencyResponse,
+  AgencyListQuery,
   CreateAgencyRequest,
   UpdateAgencyRequest,
   BrandResponse,
+  BrandListQuery,
   CreateBrandRequest,
   UpdateBrandRequest,
   UserResponse,
+  UserListQuery,
   CreateUserRequest,
   UpdateUserRequest,
+  PaginatedResult,
 } from '@contracts';
 
 // -------------------------------------------------------------
 // 1. Agencies
 // -------------------------------------------------------------
 
-export function useAdminAgencies() {
-  return useQuery<AgencyResponse[]>({
-    queryKey: ['admin', 'agencies'],
+export function useAdminAgencies(params?: AgencyListQuery) {
+  return useQuery<PaginatedResult<AgencyResponse>>({
+    queryKey: ['admin', 'agencies', params],
     queryFn: async () => {
-      const response = await apiClient.get<AgencyResponse[]>('/admin/agencies');
+      const response = await apiClient.get<PaginatedResult<AgencyResponse>>('/admin/agencies', {
+        params,
+      });
       return response.data;
     },
   });
@@ -68,11 +74,13 @@ export function useDeactivateAgency() {
 // 2. Brands
 // -------------------------------------------------------------
 
-export function useAdminBrands() {
-  return useQuery<BrandResponse[]>({
-    queryKey: ['admin', 'brands'],
+export function useAdminBrands(params?: BrandListQuery) {
+  return useQuery<PaginatedResult<BrandResponse>>({
+    queryKey: ['admin', 'brands', params],
     queryFn: async () => {
-      const response = await apiClient.get<BrandResponse[]>('/admin/brands');
+      const response = await apiClient.get<PaginatedResult<BrandResponse>>('/admin/brands', {
+        params,
+      });
       return response.data;
     },
   });
@@ -120,11 +128,13 @@ export function useAdminDeactivateBrand() {
 // 3. Users
 // -------------------------------------------------------------
 
-export function useAdminUsers() {
-  return useQuery<UserResponse[]>({
-    queryKey: ['admin', 'users'],
+export function useAdminUsers(params?: UserListQuery) {
+  return useQuery<PaginatedResult<UserResponse>>({
+    queryKey: ['admin', 'users', params],
     queryFn: async () => {
-      const response = await apiClient.get<UserResponse[]>('/admin/users');
+      const response = await apiClient.get<PaginatedResult<UserResponse>>('/admin/users', {
+        params,
+      });
       return response.data;
     },
   });

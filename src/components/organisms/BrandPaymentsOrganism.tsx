@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -6,19 +6,51 @@ import Typography from '@mui/material/Typography';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn } from '@molecules';
+import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { useBrandPayments, useApprovePayment } from '@api';
 import { PaymentResponse } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const BrandPaymentsOrganism: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const { data: payments = [], isLoading } = useBrandPayments();
+  const [activePill, setActivePill] = useState('ALL');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: paymentsData, isLoading } = useBrandPayments({
+    status: activePill !== 'ALL' ? activePill : undefined,
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const payments = paymentsData?.items || [];
+  const totalPayments = paymentsData?.total ?? payments.length;
+
   const approvePaymentMutation = useApprovePayment();
+
+  const filterPills = [
+    { id: 'ALL', label: 'All Payments' },
+    { id: 'PENDING_APPROVAL', label: 'Pending Approval' },
+    { id: 'APPROVED', label: 'Approved' },
+    { id: 'DISBURSED', label: 'Disbursed' },
+  ];
+
+  const handlePillChange = (pillId: string) => {
+    setActivePill(pillId);
+    setPage(0);
+  };
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
 
   const handleApprovePayment = async (paymentId: string) => {
     await approvePaymentMutation.mutateAsync(paymentId);
@@ -91,13 +123,34 @@ export const BrandPaymentsOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionHeading
           title="Deliverable Payments"
           subtitle="Pending creator disbursements verified by your agency"
         />
 
-        <DataTable<PaymentResponse> columns={columns} rows={payments} loading={isLoading} />
+        <FilterBar
+          pills={filterPills}
+          activePillId={activePill}
+          onPillChange={handlePillChange}
+          searchValue={search}
+          onSearchChange={handleSearchChange}
+          searchPlaceholder="Search payments by note or campaign..."
+        />
+
+        <DataTable<PaymentResponse>
+          columns={columns}
+          rows={payments}
+          totalRows={totalPayments}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
+          loading={isLoading}
+        />
       </Box>
     </DashboardLayout>
   );

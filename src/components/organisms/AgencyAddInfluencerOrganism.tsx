@@ -46,7 +46,8 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const { user, logout } = useAuth();
 
   const { data: campaign } = useAgencyCampaign(campaignId);
-  const { data: currentMappers = [] } = useCampaignInfluencers(campaignId);
+  const { data: currentMappersData } = useCampaignInfluencers(campaignId);
+  const currentMappers = currentMappersData?.items || [];
   const addInfluencerMutation = useAddInfluencerToCampaign(campaignId);
 
   const [search, setSearch] = useState('');

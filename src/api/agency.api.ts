@@ -2,28 +2,34 @@ import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/rea
 import { apiClient } from './axios.client';
 import {
   BrandResponse,
+  BrandListQuery,
   CreateBrandRequest,
   UpdateBrandRequest,
   CampaignResponse,
+  CampaignListQuery,
   CreateCampaignRequest,
   UpdateCampaignRequest,
   AgencyMapperResponse,
+  CampaignMapperListQuery,
   AddInfluencerToCampaignRequest,
   ApproveRateRequest,
   RequestRateRevisionRequest,
   RecordMetricRequest,
   MetricResponse,
+  PaginatedResult,
 } from '@contracts';
 
 // -------------------------------------------------------------
 // 1. Brands Queries & Mutations
 // -------------------------------------------------------------
 
-export function useAgencyBrands() {
-  return useQuery<BrandResponse[]>({
-    queryKey: ['agency', 'brands'],
+export function useAgencyBrands(params?: BrandListQuery) {
+  return useQuery<PaginatedResult<BrandResponse>>({
+    queryKey: ['agency', 'brands', params],
     queryFn: async () => {
-      const response = await apiClient.get<BrandResponse[]>('/agency/brands');
+      const response = await apiClient.get<PaginatedResult<BrandResponse>>('/agency/brands', {
+        params,
+      });
       return response.data;
     },
   });
@@ -59,11 +65,13 @@ export function useUpdateBrand() {
 // 2. Campaigns Queries & Mutations
 // -------------------------------------------------------------
 
-export function useAgencyCampaigns() {
-  return useQuery<CampaignResponse[]>({
-    queryKey: ['agency', 'campaigns'],
+export function useAgencyCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    queryKey: ['agency', 'campaigns', params],
     queryFn: async () => {
-      const response = await apiClient.get<CampaignResponse[]>('/agency/campaigns');
+      const response = await apiClient.get<PaginatedResult<CampaignResponse>>('/agency/campaigns', {
+        params,
+      });
       return response.data;
     },
   });
@@ -112,13 +120,17 @@ export function useUpdateCampaign() {
 // 3. Campaign Influencer Mappers & Rates
 // -------------------------------------------------------------
 
-export function useCampaignInfluencers(campaignId: string | undefined) {
-  return useQuery<AgencyMapperResponse[]>({
-    queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
+export function useCampaignInfluencers(
+  campaignId: string | undefined,
+  params?: CampaignMapperListQuery,
+) {
+  return useQuery<PaginatedResult<AgencyMapperResponse>>({
+    queryKey: ['agency', 'campaigns', campaignId, 'influencers', params],
     queryFn: async () => {
       if (!campaignId) throw new Error('Campaign ID required');
-      const response = await apiClient.get<AgencyMapperResponse[]>(
+      const response = await apiClient.get<PaginatedResult<AgencyMapperResponse>>(
         `/agency/campaigns/${campaignId}/influencers`,
+        { params },
       );
       return response.data;
     },

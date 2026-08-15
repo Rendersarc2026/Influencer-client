@@ -103,3 +103,15 @@ export const BrandDecisionRequestSchema = z
     },
   );
 export type BrandDecisionRequest = z.infer<typeof BrandDecisionRequestSchema>;
+
+export const CampaignMapperListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().max(100).optional(),
+  campaignId: z.string().uuid().optional(),
+  influencerId: z.string().uuid().optional(),
+  rateStatus: z.string().optional(),
+  brandStatus: z.string().optional(),
+});
+export type CampaignMapperListQuery = z.infer<typeof CampaignMapperListQuerySchema>;
+

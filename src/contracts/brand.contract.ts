@@ -25,3 +25,13 @@ export const UpdateBrandSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export type UpdateBrandRequest = z.infer<typeof UpdateBrandSchema>;
+
+export const BrandListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().max(100).optional(),
+  agencyId: z.string().uuid().optional(),
+  isActive: z.coerce.boolean().optional(),
+});
+export type BrandListQuery = z.infer<typeof BrandListQuerySchema>;
+

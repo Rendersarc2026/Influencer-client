@@ -36,8 +36,10 @@ export const AgencyReportsOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: campaigns = [], isLoading: campaignsLoading } = useAgencyCampaigns();
-  const { data: brands = [] } = useAgencyBrands();
+  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns();
+  const { data: brandsData } = useAgencyBrands();
+  const campaigns = campaignsData?.items || [];
+  const brands = brandsData?.items || [];
 
   const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
   const { reports, isLoading: reportsLoading } = useCampaignReports(campaignIds);

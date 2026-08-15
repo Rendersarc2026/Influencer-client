@@ -76,3 +76,16 @@ export const AssignUserSchema = z.object({
   brandId: z.string().uuid().nullable().optional(),
 });
 export type AssignUserRequest = z.infer<typeof AssignUserSchema>;
+
+export const UserListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().max(100).optional(),
+  agencyId: z.string().uuid().optional(),
+  brandId: z.string().uuid().optional(),
+  roleCode: z.string().optional(),
+  city: z.string().max(100).optional(),
+  isActive: z.coerce.boolean().optional(),
+});
+export type UserListQuery = z.infer<typeof UserListQuerySchema>;
+

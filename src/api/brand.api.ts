@@ -2,16 +2,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   CampaignResponse,
+  CampaignListQuery,
   BrandMapperResponse,
+  CampaignMapperListQuery,
   BrandDecisionRequest,
   PaymentResponse,
+  PaymentListQuery,
+  PaginatedResult,
 } from '@contracts';
 
-export function useBrandCampaigns() {
-  return useQuery<CampaignResponse[]>({
-    queryKey: ['brand', 'campaigns'],
+export function useBrandCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    queryKey: ['brand', 'campaigns', params],
     queryFn: async () => {
-      const response = await apiClient.get<CampaignResponse[]>('/brand/campaigns');
+      const response = await apiClient.get<PaginatedResult<CampaignResponse>>('/brand/campaigns', {
+        params,
+      });
       return response.data;
     },
   });
@@ -29,13 +35,17 @@ export function useBrandCampaign(campaignId: string | undefined) {
   });
 }
 
-export function useBrandCampaignInfluencers(campaignId: string | undefined) {
-  return useQuery<BrandMapperResponse[]>({
-    queryKey: ['brand', 'campaigns', campaignId, 'influencers'],
+export function useBrandCampaignInfluencers(
+  campaignId: string | undefined,
+  params?: CampaignMapperListQuery,
+) {
+  return useQuery<PaginatedResult<BrandMapperResponse>>({
+    queryKey: ['brand', 'campaigns', campaignId, 'influencers', params],
     queryFn: async () => {
       if (!campaignId) throw new Error('Campaign ID required');
-      const response = await apiClient.get<BrandMapperResponse[]>(
+      const response = await apiClient.get<PaginatedResult<BrandMapperResponse>>(
         `/brand/campaigns/${campaignId}/influencers`,
+        { params },
       );
       return response.data;
     },
@@ -68,11 +78,13 @@ export function useBrandDecision(campaignId?: string) {
   });
 }
 
-export function useBrandPayments() {
-  return useQuery<PaymentResponse[]>({
-    queryKey: ['brand', 'payments'],
+export function useBrandPayments(params?: PaymentListQuery) {
+  return useQuery<PaginatedResult<PaymentResponse>>({
+    queryKey: ['brand', 'payments', params],
     queryFn: async () => {
-      const response = await apiClient.get<PaymentResponse[]>('/brand/payments');
+      const response = await apiClient.get<PaginatedResult<PaymentResponse>>('/brand/payments', {
+        params,
+      });
       return response.data;
     },
   });

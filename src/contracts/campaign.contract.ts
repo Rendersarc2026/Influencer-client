@@ -36,3 +36,14 @@ export const UpdateCampaignSchema = z.object({
   isActive: z.boolean().optional(),
 });
 export type UpdateCampaignRequest = z.infer<typeof UpdateCampaignSchema>;
+
+export const CampaignListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().max(100).optional(),
+  brandId: z.string().uuid().optional(),
+  status: z.string().optional(),
+  isActive: z.coerce.boolean().optional(),
+});
+export type CampaignListQuery = z.infer<typeof CampaignListQuerySchema>;
+

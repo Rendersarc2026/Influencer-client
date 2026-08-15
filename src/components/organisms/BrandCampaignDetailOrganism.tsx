@@ -12,11 +12,11 @@ import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, CommentDialog } from '@molecules';
+import { DataTable, DataTableColumn, CommentDialog, FilterBar } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision } from '@api';
 import { BrandMapperResponse, BrandDecisionRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 import { safeUrl } from '@utils';
 
 export const BrandCampaignDetailOrganism: React.FC = () => {
@@ -26,8 +26,21 @@ export const BrandCampaignDetailOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   const { data: campaign, isLoading: campaignLoading } = useBrandCampaign(campaignId);
-  const { data: mappers = [], isLoading: mappersLoading } = useBrandCampaignInfluencers(campaignId);
+  const { data: mappersData, isLoading: mappersLoading } = useBrandCampaignInfluencers(campaignId, {
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const mappers = mappersData?.items || [];
+  const totalMappers = mappersData?.total ?? mappers.length;
+
   const brandDecisionMutation = useBrandDecision(campaignId);
 
   // Dialog state for Reject / Request Correction
@@ -271,15 +284,32 @@ export const BrandCampaignDetailOrganism: React.FC = () => {
       </Card>
 
       {/* 2. Influencer Table (Rate = Client Rate only) */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionHeading
           title="Creator Deliverables & Commercial Proposals"
           subtitle="Review and authorize proposed creator commercial deliverables"
         />
 
+        <FilterBar
+          searchValue={search}
+          onSearchChange={(val) => {
+            setSearch(val);
+            setPage(0);
+          }}
+          searchPlaceholder="Search creators or deliverables..."
+        />
+
         <DataTable<BrandMapperResponse>
           columns={columns}
           rows={mappers}
+          totalRows={totalMappers}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={mappersLoading || campaignLoading}
         />
       </Box>

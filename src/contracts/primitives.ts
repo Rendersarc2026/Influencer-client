@@ -110,4 +110,27 @@ export const phone = z
 
 /** Cursor / pagination primitives. */
 export const cursor = z.string().uuid().optional();
+export const page = z.coerce.number().int().min(1).optional();
 export const limit = z.coerce.number().int().min(1).max(100).optional();
+export const search = safeText(100, 0).optional();
+
+export const PaginationQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z
+    .string()
+    .max(100)
+    .optional()
+    .transform((v) => (v ? v.trim() : undefined)),
+});
+
+export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+}
+

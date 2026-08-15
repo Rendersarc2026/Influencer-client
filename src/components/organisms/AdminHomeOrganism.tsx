@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -21,12 +21,22 @@ export const AdminHomeOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: agencies = [], isLoading: agenciesLoading } = useAdminAgencies();
-  const { data: brands = [], isLoading: brandsLoading } = useAdminBrands();
-  const { data: users = [], isLoading: usersLoading } = useAdminUsers();
-  const { data: campaigns = [], isLoading: campaignsLoading } = useAgencyCampaigns();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const activeCampaigns = campaigns.filter((c) => c.status === 'ACTIVE').length;
+  const { data: agenciesData, isLoading: agenciesLoading } = useAdminAgencies();
+  const { data: brandsData, isLoading: brandsLoading } = useAdminBrands();
+  const { data: usersData, isLoading: usersLoading } = useAdminUsers({
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns();
+
+  const agenciesTotal = agenciesData?.total ?? (agenciesData?.items || []).length;
+  const brandsTotal = brandsData?.total ?? (brandsData?.items || []).length;
+  const usersTotal = usersData?.total ?? (usersData?.items || []).length;
+  const campaignsTotal = campaignsData?.total ?? (campaignsData?.items || []).length;
+  const users = usersData?.items || [];
 
   const columns: Array<DataTableColumn<UserResponse>> = [
     {
@@ -92,7 +102,7 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="lavender"
             title="Managed Agencies"
-            value={agencies.length}
+            value={agenciesTotal}
             loading={agenciesLoading}
             icon={<BusinessRoundedIcon fontSize="small" />}
             subtitle="Active agency tenants"
@@ -104,7 +114,7 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="mint"
             title="Client Brands"
-            value={brands.length}
+            value={brandsTotal}
             loading={brandsLoading}
             icon={<StorefrontRoundedIcon fontSize="small" />}
             subtitle="Brand accounts"
@@ -116,7 +126,7 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Platform Users"
-            value={users.length}
+            value={usersTotal}
             loading={usersLoading}
             icon={<PeopleRoundedIcon fontSize="small" />}
             subtitle="Across all four roles"
@@ -128,7 +138,7 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="sky"
             title="Active Campaigns"
-            value={activeCampaigns}
+            value={campaignsTotal}
             loading={campaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Live in market"
@@ -154,7 +164,15 @@ export const AdminHomeOrganism: React.FC = () => {
 
         <DataTable<UserResponse>
           columns={columns}
-          rows={users.slice(0, 5)}
+          rows={users}
+          totalRows={usersTotal}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
           loading={usersLoading}
         />
       </Box>

@@ -20,7 +20,7 @@ import { DataTable, DataTableColumn, FilterBar, ConfirmDialog } from '@molecules
 import { SectionHeading } from '@atoms';
 import { useAdminAgencies, useCreateAgency, useUpdateAgency, useDeactivateAgency } from '@api';
 import { AgencyResponse } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useDebounce } from '@hooks';
 
 export const AdminAgenciesOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -28,23 +28,34 @@ export const AdminAgenciesOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: agencies = [], isLoading } = useAdminAgencies();
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { data: agenciesData, isLoading } = useAdminAgencies({
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const agencies = agenciesData?.items || [];
+  const totalAgencies = agenciesData?.total ?? agencies.length;
+
   const createAgencyMutation = useCreateAgency();
   const updateAgencyMutation = useUpdateAgency();
   const deactivateAgencyMutation = useDeactivateAgency();
 
-  const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [agencyToEdit, setAgencyToEdit] = useState<AgencyResponse | null>(null);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [deactivateAgencyId, setDeactivateAgencyId] = useState<string | null>(null);
 
-  const filteredAgencies = agencies.filter(
-    (a) =>
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.slug.toLowerCase().includes(search.toLowerCase()),
-  );
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(0);
+  };
 
   const handleOpenCreate = () => {
     setAgencyToEdit(null);
@@ -158,11 +169,23 @@ export const AdminAgenciesOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           searchPlaceholder="Search agencies by name or slug..."
         />
 
-        <DataTable<AgencyResponse> columns={columns} rows={filteredAgencies} loading={isLoading} />
+        <DataTable<AgencyResponse>
+          columns={columns}
+          rows={agencies}
+          totalRows={totalAgencies}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
+          loading={isLoading}
+        />
       </Box>
 
       {/* Create / Edit Agency Dialog */}
