@@ -336,4 +336,14 @@ export const components: Components<Theme> = {
       },
     },
   },
+  // Speed up the shimmer wave animation — default is 1.6s which feels sluggish
+  MuiSkeleton: {
+    styleOverrides: {
+      root: {
+        '&.MuiSkeleton-wave::after': {
+          animationDuration: '0.9s',
+        },
+      },
+    },
+  },
 };

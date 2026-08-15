@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   AgencyResponse,
@@ -17,6 +17,7 @@ import {
   CampaignListQuery,
   AgencyMapperResponse,
   CampaignMapperListQuery,
+  AdminPlatformStatsResponse,
   PaginatedResult,
 } from '@contracts';
 
@@ -33,6 +34,7 @@ export function useAdminAgencies(params?: AgencyListQuery) {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -87,6 +89,7 @@ export function useAdminBrands(params?: BrandListQuery) {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -141,6 +144,7 @@ export function useAdminCampaigns(params?: CampaignListQuery) {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -171,6 +175,7 @@ export function useAdminCampaignInfluencers(
       return response.data;
     },
     enabled: Boolean(campaignId),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -187,6 +192,7 @@ export function useAdminUsers(params?: UserListQuery) {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -236,3 +242,19 @@ export function useAdminResendInvite() {
     },
   });
 }
+
+// -------------------------------------------------------------
+// 5. Platform Stats (Ultra-fast pre-aggregated SQL view/function)
+// -------------------------------------------------------------
+
+export function useAdminPlatformStats() {
+  return useQuery<AdminPlatformStatsResponse>({
+    queryKey: ['admin', 'stats'],
+    queryFn: async () => {
+      const response = await apiClient.get<AdminPlatformStatsResponse>('/admin/stats');
+      return response.data;
+    },
+    staleTime: 30_000,
+  });
+}
+

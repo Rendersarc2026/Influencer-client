@@ -12,7 +12,7 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useAdminAgencies, useAdminBrands, useAdminUsers, useAdminCampaigns } from '@api';
+import { useAdminPlatformStats, useAdminUsers } from '@api';
 import { UserResponse } from '@contracts';
 import { useAuth } from '@hooks';
 
@@ -24,18 +24,16 @@ export const AdminHomeOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: agenciesData, isLoading: agenciesLoading } = useAdminAgencies();
-  const { data: brandsData, isLoading: brandsLoading } = useAdminBrands();
+  const { data: statsData, isLoading: statsLoading } = useAdminPlatformStats();
   const { data: usersData, isLoading: usersLoading } = useAdminUsers({
     page: page + 1,
     limit: rowsPerPage,
   });
-  const { data: campaignsData, isLoading: campaignsLoading } = useAdminCampaigns();
 
-  const agenciesTotal = agenciesData?.total ?? (agenciesData?.items || []).length;
-  const brandsTotal = brandsData?.total ?? (brandsData?.items || []).length;
-  const usersTotal = usersData?.total ?? (usersData?.items || []).length;
-  const campaignsTotal = campaignsData?.total ?? (campaignsData?.items || []).length;
+  const agenciesTotal = statsData?.activeAgencies ?? 0;
+  const brandsTotal = statsData?.activeBrands ?? 0;
+  const usersTotal = statsData?.activeUsers ?? 0;
+  const campaignsTotal = statsData?.activeCampaigns ?? 0;
   const users = usersData?.items || [];
 
   const columns: Array<DataTableColumn<UserResponse>> = [
@@ -103,7 +101,7 @@ export const AdminHomeOrganism: React.FC = () => {
             tint="lavender"
             title="Managed Agencies"
             value={agenciesTotal}
-            loading={agenciesLoading}
+            loading={statsLoading}
             icon={<BusinessRoundedIcon fontSize="small" />}
             subtitle="Active agency tenants"
             onClick={() => navigate('/admin/agencies')}
@@ -115,7 +113,7 @@ export const AdminHomeOrganism: React.FC = () => {
             tint="mint"
             title="Client Brands"
             value={brandsTotal}
-            loading={brandsLoading}
+            loading={statsLoading}
             icon={<StorefrontRoundedIcon fontSize="small" />}
             subtitle="Brand accounts"
             onClick={() => navigate('/admin/brands')}
@@ -127,7 +125,7 @@ export const AdminHomeOrganism: React.FC = () => {
             tint="butter"
             title="Platform Users"
             value={usersTotal}
-            loading={usersLoading}
+            loading={statsLoading}
             icon={<PeopleRoundedIcon fontSize="small" />}
             subtitle="Across all four roles"
             onClick={() => navigate('/admin/users')}
@@ -139,7 +137,7 @@ export const AdminHomeOrganism: React.FC = () => {
             tint="sky"
             title="Active Campaigns"
             value={campaignsTotal}
-            loading={campaignsLoading}
+            loading={statsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Live in market"
             onClick={() => navigate('/admin/campaigns')}
