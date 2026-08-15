@@ -30,6 +30,14 @@ const AdminAgenciesPage = lazy(() =>
 const AdminBrandsPage = lazy(() =>
   import('../pages/AdminBrandsPage').then((m) => ({ default: m.AdminBrandsPage })),
 );
+const AdminCampaignsPage = lazy(() =>
+  import('../pages/AdminCampaignsPage').then((m) => ({ default: m.AdminCampaignsPage })),
+);
+const AdminCampaignDetailPage = lazy(() =>
+  import('../pages/AdminCampaignDetailPage').then((m) => ({
+    default: m.AdminCampaignDetailPage,
+  })),
+);
 const AdminUsersPage = lazy(() =>
   import('../pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })),
 );
@@ -99,6 +107,8 @@ const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
     () => import('../pages/AdminHome'),
     () => import('../pages/AdminAgenciesPage'),
     () => import('../pages/AdminBrandsPage'),
+    () => import('../pages/AdminCampaignsPage'),
+    () => import('../pages/AdminCampaignDetailPage'),
     () => import('../pages/AdminUsersPage'),
   ],
   AGENCY: [
@@ -213,6 +223,20 @@ const router = createBrowserRouter([
     path: '/admin/brands',
     element: (
       <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminBrandsPage)}</ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/campaigns',
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminCampaignsPage)}</ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/campaigns/:id',
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']}>
+        {withBoundary(AdminCampaignDetailPage)}
+      </ProtectedRoute>
     ),
   },
   {

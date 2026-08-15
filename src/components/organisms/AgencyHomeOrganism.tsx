@@ -21,13 +21,14 @@ import {
 import { SectionHeading } from '@atoms';
 import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign, useCampaignReports } from '@api';
 import { CampaignResponse, CreateCampaignRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { formatCurrency } from '@utils';
 
 export const AgencyHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -74,8 +75,14 @@ export const AgencyHomeOrganism: React.FC = () => {
   );
 
   const handleCreateCampaign = async (data: CreateCampaignRequest) => {
-    await createCampaignMutation.mutateAsync(data);
-    setCreateCampaignOpen(false);
+    try {
+      await createCampaignMutation.mutateAsync(data);
+      showSuccess('Campaign created successfully.');
+      setCreateCampaignOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.');
+    }
   };
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [

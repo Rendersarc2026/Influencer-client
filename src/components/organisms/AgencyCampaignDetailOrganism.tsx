@@ -38,15 +38,23 @@ import {
   useRemoveInfluencerFromCampaign,
 } from '@api';
 import { AgencyMapperResponse, RecordMetricRequest } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 import { safeUrl } from '@utils';
 
-export const AgencyCampaignDetailOrganism: React.FC = () => {
+interface AgencyCampaignDetailOrganismProps {
+  campaignId?: string;
+}
+
+export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganismProps> = ({
+  campaignId: propCampaignId,
+}) => {
   const theme = useTheme();
-  const { id: campaignId } = useParams<{ id: string }>();
+  const { id: routeCampaignId = '' } = useParams<{ id: string }>();
+  const campaignId = propCampaignId || routeCampaignId;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -84,36 +92,66 @@ export const AgencyCampaignDetailOrganism: React.FC = () => {
 
   // 1. Handle Approve Rate (sends { mapperId, margin } only)
   const handleApproveRate = async (mapperId: string, margin: number) => {
-    await approveRateMutation.mutateAsync({ mapperId, margin });
-    setApproveDialogMapper(null);
+    try {
+      await approveRateMutation.mutateAsync({ mapperId, margin });
+      showSuccess('Influencer rate approved and margin recorded.');
+      setApproveDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve rate.');
+    }
   };
 
   // 2. Handle Request Rate Revision (sends { comment } only)
   const handleRequestRevision = async (comment: string) => {
     if (!revisionDialogMapper) return;
-    await requestRevisionMutation.mutateAsync({
-      mapperId: revisionDialogMapper.id,
-      comment,
-    });
-    setRevisionDialogMapper(null);
+    try {
+      await requestRevisionMutation.mutateAsync({
+        mapperId: revisionDialogMapper.id,
+        comment,
+      });
+      showSuccess('Revision request sent to influencer.');
+      setRevisionDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to request revision.');
+    }
   };
 
   // 3. Handle Submit to Brand Review
   const handleSubmitForBrandReview = async (mapperId: string) => {
-    await submitBrandReviewMutation.mutateAsync(mapperId);
+    try {
+      await submitBrandReviewMutation.mutateAsync(mapperId);
+      showSuccess('Submitted to brand for review.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit for brand review.');
+    }
   };
 
   // 4. Handle Record Metric
   const handleRecordMetric = async (mapperId: string, data: RecordMetricRequest) => {
-    await recordMetricMutation.mutateAsync({ mapperId, data });
-    setMetricsDialogMapper(null);
+    try {
+      await recordMetricMutation.mutateAsync({ mapperId, data });
+      showSuccess('Deliverable metrics recorded successfully.');
+      setMetricsDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to record metrics.');
+    }
   };
 
   // 5. Handle Remove Influencer
   const handleRemoveInfluencer = async () => {
     if (!deleteDialogMapper) return;
-    await removeInfluencerMutation.mutateAsync(deleteDialogMapper.id);
-    setDeleteDialogMapper(null);
+    try {
+      await removeInfluencerMutation.mutateAsync(deleteDialogMapper.id);
+      showSuccess('Influencer removed from campaign.');
+      setDeleteDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.');
+    }
   };
 
   const columns: Array<DataTableColumn<AgencyMapperResponse>> = [

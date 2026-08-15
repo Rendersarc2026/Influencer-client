@@ -16,15 +16,23 @@ import { DataTable, DataTableColumn, CommentDialog, FilterBar } from '@molecules
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision } from '@api';
 import { BrandMapperResponse, BrandDecisionRequest } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 import { safeUrl } from '@utils';
 
-export const BrandCampaignDetailOrganism: React.FC = () => {
+interface BrandCampaignDetailOrganismProps {
+  campaignId?: string;
+}
+
+export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismProps> = ({
+  campaignId: propCampaignId,
+}) => {
   const theme = useTheme();
-  const { id: campaignId = '' } = useParams<{ id: string }>();
+  const { id: routeCampaignId = '' } = useParams<{ id: string }>();
+  const campaignId = propCampaignId || routeCampaignId;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -57,7 +65,13 @@ export const BrandCampaignDetailOrganism: React.FC = () => {
     const decision: BrandDecisionRequest = {
       action: 'APPROVE',
     };
-    await brandDecisionMutation.mutateAsync({ mapperId, decision });
+    try {
+      await brandDecisionMutation.mutateAsync({ mapperId, decision });
+      showSuccess('Creator commercial proposal approved.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve proposal.');
+    }
   };
 
   // 2. Reject Action (opens dialog)
@@ -89,11 +103,21 @@ export const BrandCampaignDetailOrganism: React.FC = () => {
       action: activeDialog.action,
       comment: comment.trim(),
     };
-    await brandDecisionMutation.mutateAsync({
-      mapperId: activeDialog.mapperId,
-      decision,
-    });
-    setActiveDialog(null);
+    try {
+      await brandDecisionMutation.mutateAsync({
+        mapperId: activeDialog.mapperId,
+        decision,
+      });
+      showSuccess(
+        activeDialog.action === 'REJECT'
+          ? 'Creator proposal rejected.'
+          : 'Correction request sent to agency.',
+      );
+      setActiveDialog(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit decision.');
+    }
   };
 
   const columns: Array<DataTableColumn<BrandMapperResponse>> = [

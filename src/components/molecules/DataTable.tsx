@@ -56,6 +56,7 @@ export interface DataTableProps<T> {
   rowsPerPage?: number;
   onPageChange?: (newPage: number) => void;
   onRowsPerPageChange?: (newRowsPerPage: number) => void;
+  minHeight?: number | string;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -77,6 +78,7 @@ export function DataTable<T extends Record<string, unknown>>({
   rowsPerPage: controlledRowsPerPage,
   onPageChange,
   onRowsPerPageChange,
+  minHeight = 420,
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [internalPage, setInternalPage] = useState(0);
@@ -288,10 +290,14 @@ export function DataTable<T extends Record<string, unknown>>({
   };
 
   if (loading) {
-    return <LoadingBlock variant="table" rows={5} className={className} />;
+    return <LoadingBlock variant="table" rows={5} height={minHeight} className={className} />;
   }
 
   const hasHeader = Boolean(title || subtitle || headerAction);
+  const minTableContainerHeight =
+    typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
+  const emptyRowHeight =
+    typeof minHeight === 'number' ? `${Math.max(240, minHeight - 60)}px` : '280px';
 
   return (
     <Card
@@ -315,8 +321,15 @@ export function DataTable<T extends Record<string, unknown>>({
         </Box>
       )}
 
-      <TableContainer>
-        <Table>
+      <TableContainer
+        sx={{
+          minHeight: minTableContainerHeight,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+        }}
+      >
+        <Table sx={{ minWidth: 600 }}>
           <TableHead>
             <TableRow>
               {columns.map((col) => (
@@ -328,10 +341,27 @@ export function DataTable<T extends Record<string, unknown>>({
           </TableHead>
           <TableBody>
             {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} sx={{ p: 0, border: 'none' }}>
+              <TableRow sx={{ height: emptyRowHeight }}>
+                <TableCell
+                  colSpan={columns.length}
+                  sx={{
+                    p: 0,
+                    border: 'none',
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    height: emptyRowHeight,
+                  }}
+                >
                   {emptyState || (
-                    <Box sx={{ p: 4 }}>
+                    <Box
+                      sx={{
+                        p: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                      }}
+                    >
                       <EmptyState
                         title="No records found"
                         description="There are no items to display right now."

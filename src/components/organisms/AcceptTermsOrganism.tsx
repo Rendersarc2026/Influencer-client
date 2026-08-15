@@ -8,13 +8,14 @@ import CircularProgress from '@mui/material/CircularProgress';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const AcceptTermsOrganism: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { acceptTerms, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
@@ -24,6 +25,7 @@ export const AcceptTermsOrganism: React.FC = () => {
       setLoading(true);
       setError('');
       const authResult = await acceptTerms();
+      showSuccess('Platform terms accepted successfully.');
       if (!authResult.profileComplete) {
         navigate('/complete-profile', { replace: true });
       } else {
@@ -31,11 +33,12 @@ export const AcceptTermsOrganism: React.FC = () => {
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(
+      const msg =
         errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to accept terms. Please try again.',
-      );
+        errorObj?.message ||
+        'Failed to accept terms. Please try again.';
+      setError(msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }

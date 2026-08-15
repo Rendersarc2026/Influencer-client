@@ -15,7 +15,7 @@ import { SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignment, useSubmitInfluencerRate } from '@api';
 import { SubmitRateRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 
 export const InfluencerAssignmentDetailOrganism: React.FC = () => {
   const theme = useTheme();
@@ -23,15 +23,22 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const { data: assignment, isLoading } = useInfluencerAssignment(assignmentId);
-  const submitRateMutation = useSubmitInfluencerRate(assignmentId);
+  const submitRateMutation = useSubmitInfluencerRate();
 
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
-    await submitRateMutation.mutateAsync({ mapperId, data });
-    setRateDialogOpen(false);
+    try {
+      await submitRateMutation.mutateAsync({ mapperId, data });
+      showSuccess('Commercial quote submitted for agency review.');
+      setRateDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit quote.');
+    }
   };
 
   const isRateSubmitted = Boolean(assignment?.influencerRate);

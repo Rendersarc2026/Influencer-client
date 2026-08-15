@@ -14,14 +14,15 @@ import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } f
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignments, useSubmitInfluencerRate } from '@api';
 import { InfluencerMapperResponse, SubmitRateRequest } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 
 export const InfluencerHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
-  const [activePill, setActivePill] = useState('ALL');
+  const [activePill, setActivePill] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(0);
@@ -65,8 +66,14 @@ export const InfluencerHomeOrganism: React.FC = () => {
   };
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
-    await submitRateMutation.mutateAsync({ mapperId, data });
-    setActiveRateDialogMapper(null);
+    try {
+      await submitRateMutation.mutateAsync({ mapperId, data });
+      showSuccess('Commercial quote submitted for agency review.');
+      setActiveRateDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit quote.');
+    }
   };
 
   const columns: Array<DataTableColumn<InfluencerMapperResponse>> = [

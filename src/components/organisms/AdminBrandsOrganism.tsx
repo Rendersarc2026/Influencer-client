@@ -27,13 +27,14 @@ import {
   useAdminDeactivateBrand,
 } from '@api';
 import { BrandResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 
 export const AdminBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -101,29 +102,42 @@ export const AdminBrandsOrganism: React.FC = () => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    if (brandToEdit) {
-      await updateBrandMutation.mutateAsync({
-        id: brandToEdit.id,
-        data: {
+    try {
+      if (brandToEdit) {
+        await updateBrandMutation.mutateAsync({
+          id: brandToEdit.id,
+          data: {
+            name: name.trim(),
+            industry: industry.trim() || undefined,
+            agencyId: agencyId || undefined,
+          },
+        });
+        showSuccess('Brand updated successfully.');
+      } else {
+        await createBrandMutation.mutateAsync({
           name: name.trim(),
           industry: industry.trim() || undefined,
           agencyId: agencyId || undefined,
-        },
-      });
-    } else {
-      await createBrandMutation.mutateAsync({
-        name: name.trim(),
-        industry: industry.trim() || undefined,
-        agencyId: agencyId || undefined,
-      });
+        });
+        showSuccess('Brand created successfully.');
+      }
+      setDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to save brand.');
     }
-    setDialogOpen(false);
   };
 
   const handleConfirmDeactivate = async () => {
     if (!deactivateBrandId) return;
-    await deactivateBrandMutation.mutateAsync(deactivateBrandId);
-    setDeactivateBrandId(null);
+    try {
+      await deactivateBrandMutation.mutateAsync(deactivateBrandId);
+      showSuccess('Brand deactivated successfully.');
+      setDeactivateBrandId(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate brand.');
+    }
   };
 
   const columns: Array<DataTableColumn<BrandResponse>> = [

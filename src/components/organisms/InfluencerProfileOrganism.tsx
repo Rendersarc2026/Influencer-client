@@ -13,13 +13,14 @@ import { navConfig } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
 import { useUpdateInfluencerProfile } from '@api';
 import { UpdateProfileSchema, UpdateProfileRequest } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 
 export const InfluencerProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
   const updateProfileMutation = useUpdateInfluencerProfile();
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
@@ -73,9 +74,15 @@ export const InfluencerProfileOrganism: React.FC = () => {
       return;
     }
 
-    await updateProfileMutation.mutateAsync(payload);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    try {
+      await updateProfileMutation.mutateAsync(payload);
+      showSuccess('Profile updated successfully.');
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to update profile.');
+    }
   };
 
   return (

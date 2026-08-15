@@ -2,6 +2,8 @@ export * from './StyleGuide';
 export * from './AdminHome';
 export * from './AdminAgenciesPage';
 export * from './AdminBrandsPage';
+export * from './AdminCampaignsPage';
+export * from './AdminCampaignDetailPage';
 export * from './AdminUsersPage';
 export * from './AgencyHome';
 export * from './AgencyBrandsPage';

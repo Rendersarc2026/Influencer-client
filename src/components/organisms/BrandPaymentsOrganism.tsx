@@ -10,20 +10,21 @@ import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { useBrandPayments, useApprovePayment } from '@api';
 import { PaymentResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 
 export const BrandPaymentsOrganism: React.FC = () => {
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
-  const [activePill, setActivePill] = useState('ALL');
+  const [activePill, setActivePill] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: paymentsData, isLoading } = useBrandPayments({
+  const { data: paymentsData, isLoading: paymentsLoading } = useBrandPayments({
     status: activePill !== 'ALL' ? activePill : undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
@@ -35,7 +36,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
 
   const approvePaymentMutation = useApprovePayment();
 
-  const filterPills = [
+  const statusPills = [
     { id: 'ALL', label: 'All Payments' },
     { id: 'PENDING_APPROVAL', label: 'Pending Approval' },
     { id: 'APPROVED', label: 'Approved' },
@@ -53,7 +54,13 @@ export const BrandPaymentsOrganism: React.FC = () => {
   };
 
   const handleApprovePayment = async (paymentId: string) => {
-    await approvePaymentMutation.mutateAsync(paymentId);
+    try {
+      await approvePaymentMutation.mutateAsync(paymentId);
+      showSuccess('Deliverable payment authorized successfully.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to authorize payment.');
+    }
   };
 
   const columns: Array<DataTableColumn<PaymentResponse>> = [
@@ -130,7 +137,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
         />
 
         <FilterBar
-          pills={filterPills}
+          pills={statusPills}
           activePillId={activePill}
           onPillChange={handlePillChange}
           searchValue={search}
@@ -149,7 +156,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
             setRowsPerPage(limit);
             setPage(0);
           }}
-          loading={isLoading}
+          loading={paymentsLoading}
         />
       </Box>
     </DashboardLayout>

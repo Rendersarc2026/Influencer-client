@@ -17,8 +17,9 @@ import { navConfig } from '@routes/navConfig';
 import { FilterBar } from '@molecules';
 import { SectionHeading, EmptyState } from '@atoms';
 import { useAgencyCampaign, useCampaignInfluencers, useAddInfluencerToCampaign } from '@api';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { safeImageUrl } from '@utils';
+import { AgencyMapperResponse } from '@contracts';
 
 interface AvailableCreator {
   id: string;
@@ -29,13 +30,6 @@ interface AvailableCreator {
   avatarUrl?: string;
 }
 
-/**
- * Creators available to assign.
- *
- * This was a hardcoded directory of invented creators whose ids matched no rows,
- * so assigning one always failed. The API has no agency-facing creator directory
- * endpoint yet; when it exists, fetch it here and the cards below work unchanged.
- */
 const availableCreators: AvailableCreator[] = [];
 
 export const AgencyAddInfluencerOrganism: React.FC = () => {
@@ -44,10 +38,11 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const { data: campaign } = useAgencyCampaign(campaignId);
   const { data: currentMappersData } = useCampaignInfluencers(campaignId);
-  const currentMappers = currentMappersData?.items || [];
+  const currentMappers: AgencyMapperResponse[] = currentMappersData?.items || [];
   const addInfluencerMutation = useAddInfluencerToCampaign(campaignId);
 
   const [search, setSearch] = useState('');
@@ -69,11 +64,17 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
   const handleAddCreator = async (creatorId: string) => {
     const deliverables = deliverablesMap[creatorId] || '1x Instagram Reel + 2x Stories';
-    await addInfluencerMutation.mutateAsync({
-      influencerId: creatorId,
-      deliverables,
-    });
-    setAddedIds((prev) => new Set([...prev, creatorId]));
+    try {
+      await addInfluencerMutation.mutateAsync({
+        influencerId: creatorId,
+        deliverables,
+      });
+      showSuccess('Influencer assigned to campaign roster.');
+      setAddedIds((prev) => new Set([...prev, creatorId]));
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign influencer.');
+    }
   };
 
   return (

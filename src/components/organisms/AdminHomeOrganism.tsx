@@ -12,7 +12,7 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useAdminAgencies, useAdminBrands, useAdminUsers, useAgencyCampaigns } from '@api';
+import { useAdminAgencies, useAdminBrands, useAdminUsers, useAdminCampaigns } from '@api';
 import { UserResponse } from '@contracts';
 import { useAuth } from '@hooks';
 
@@ -30,7 +30,7 @@ export const AdminHomeOrganism: React.FC = () => {
     page: page + 1,
     limit: rowsPerPage,
   });
-  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns();
+  const { data: campaignsData, isLoading: campaignsLoading } = useAdminCampaigns();
 
   const agenciesTotal = agenciesData?.total ?? (agenciesData?.items || []).length;
   const brandsTotal = brandsData?.total ?? (brandsData?.items || []).length;
@@ -142,6 +142,7 @@ export const AdminHomeOrganism: React.FC = () => {
             loading={campaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Live in market"
+            onClick={() => navigate('/admin/campaigns')}
           />
         </Grid>
       </Grid>

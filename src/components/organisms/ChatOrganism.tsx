@@ -28,7 +28,7 @@ import {
   useMarkChatAsRead,
 } from '@api';
 import { ChatResponse, MessageResponse } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { safeUrl } from '@utils';
 
 export const ChatOrganism: React.FC = () => {
@@ -37,6 +37,7 @@ export const ChatOrganism: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, roleCode, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const { data: chats = [], isLoading: chatsLoading } = useChats();
 
@@ -94,20 +95,37 @@ export const ChatOrganism: React.FC = () => {
     setAttachmentInput('');
     setShowAttachmentField(false);
 
-    await sendMessageMutation.mutateAsync(payload);
+    try {
+      await sendMessageMutation.mutateAsync(payload);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to send message.');
+    }
   };
 
   const handleEditConfirm = async (newBody: string) => {
     if (!messageToEdit) return;
-    await editMessageMutation.mutateAsync({
-      messageId: messageToEdit.id,
-      data: { body: newBody },
-    });
-    setMessageToEdit(null);
+    try {
+      await editMessageMutation.mutateAsync({
+        messageId: messageToEdit.id,
+        data: { body: newBody },
+      });
+      showSuccess('Message edited.');
+      setMessageToEdit(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to edit message.');
+    }
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    await deleteMessageMutation.mutateAsync(messageId);
+    try {
+      await deleteMessageMutation.mutateAsync(messageId);
+      showSuccess('Message deleted.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to delete message.');
+    }
   };
 
   const getChatPartnerName = (chat: ChatResponse) => {

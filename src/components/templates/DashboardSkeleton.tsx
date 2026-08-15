@@ -27,13 +27,13 @@ export const DashboardSkeleton: React.FC = () => {
           top: 16,
           bottom: 16,
           left: 16,
-          width: 72,
+          width: 240,
           backgroundColor: theme.palette.tokens.rail,
           borderRadius: `${theme.customRadii.rail}px`,
           display: { xs: 'none', md: 'flex' },
           flexDirection: 'column',
-          alignItems: 'center',
-          padding: '16px 0',
+          alignItems: 'stretch',
+          padding: '20px 14px',
           gap: 2,
           zIndex: 1200,
         }}
@@ -41,26 +41,52 @@ export const DashboardSkeleton: React.FC = () => {
         {/* Star Logo */}
         <Box
           sx={{
-            width: 44,
-            height: 44,
-            borderRadius: `${theme.customRadii.inner}px`,
-            backgroundColor: theme.palette.tints.butter,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: 1.25,
+            px: 0.5,
+            justifyContent: 'flex-start',
           }}
         >
-          <StarRoundedIcon sx={{ fontSize: '24px', color: theme.palette.tokens.rail }} />
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: `${theme.customRadii.inner}px`,
+              backgroundColor: theme.palette.tints.butter,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <StarRoundedIcon sx={{ fontSize: '20px', color: theme.palette.tokens.rail }} />
+          </Box>
+          <Skeleton
+            animation="wave"
+            variant="text"
+            width={110}
+            height={24}
+            sx={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
+          />
         </Box>
 
-        {/* Shimmering Navigation Icon Circles */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+        {/* Shimmering Navigation Item Placeholders */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+            mt: 1,
+            alignItems: 'stretch',
+          }}
+        >
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton
               key={i}
               animation="wave"
               variant="rounded"
-              width={44}
+              width="100%"
               height={44}
               sx={{
                 borderRadius: `${theme.customRadii.inner}px`,
@@ -80,11 +106,11 @@ export const DashboardSkeleton: React.FC = () => {
           borderRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
           border: `1px solid ${theme.palette.tokens.divider}`,
           minHeight: { xs: 'calc(100vh - 88px)', md: 'calc(100vh - 32px)' },
-          marginLeft: { xs: 0, md: '92px' },
+          marginLeft: { xs: 0, md: '260px' },
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          width: { xs: '100%', md: 'calc(100% - 92px)' },
+          width: { xs: '100%', md: 'calc(100% - 260px)' },
         }}
       >
         {/* TopBar Shimmer */}

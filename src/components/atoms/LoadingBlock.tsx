@@ -80,7 +80,13 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
 
   if (variant === 'table') {
     return (
-      <Card className={className} sx={{ padding: `${theme.customSpacing.cardPadding}px` }}>
+      <Card
+        className={className}
+        sx={{
+          padding: `${theme.customSpacing.cardPadding}px`,
+          minHeight: height || 420,
+        }}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
           <Skeleton animation="wave" variant="text" width={160} height={32} />
           <Skeleton

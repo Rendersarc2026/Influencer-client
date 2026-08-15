@@ -2,20 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
-import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
-import { CampaignResponse, CreateCampaignRequest } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { DataTable, DataTableColumn, FilterBar } from '@molecules';
+import { SectionHeading } from '@atoms';
+import { useAdminCampaigns, useAdminBrands } from '@api';
+import { CampaignResponse } from '@contracts';
+import { useAuth, useDebounce } from '@hooks';
 
-export const AgencyCampaignsOrganism: React.FC = () => {
+export const AdminCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { showSuccess, showError } = useToast();
 
   const [activePill, setActivePill] = useState<string>('ALL');
   const [search, setSearch] = useState('');
@@ -24,7 +23,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns({
+  const { data: campaignsData, isLoading: campaignsLoading } = useAdminCampaigns({
     status: activePill !== 'ALL' ? activePill : undefined,
     brandId: selectedBrand || undefined,
     search: debouncedSearch.trim() || undefined,
@@ -32,14 +31,11 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
-  const { data: brandsData } = useAgencyBrands();
+  const { data: brandsData } = useAdminBrands();
 
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
   const brands = brandsData?.items || [];
-
-  const createCampaignMutation = useCreateCampaign();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const filterPills = [
     { id: 'ALL', label: 'All Campaigns' },
@@ -68,17 +64,6 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     setPage(0);
   };
 
-  const handleCreateCampaign = async (data: CreateCampaignRequest) => {
-    try {
-      await createCampaignMutation.mutateAsync(data);
-      showSuccess('Campaign created successfully.');
-      setCreateDialogOpen(false);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.');
-    }
-  };
-
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
       id: 'name',
@@ -87,7 +72,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
       accessor: 'name',
       subAccessor: (row) => {
         const brand = brands.find((b) => b.id === row.brandId);
-        return brand ? brand.name : 'Client Brand';
+        return brand ? brand.name : 'Platform Brand';
       },
     },
     {
@@ -116,7 +101,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
         <Button
           variant="outlined"
           size="small"
-          onClick={() => navigate(`/agency/campaigns/${row.id}`)}
+          onClick={() => navigate(`/admin/campaigns/${row.id}`)}
           endIcon={<ArrowForwardRoundedIcon fontSize="small" />}
         >
           View Details
@@ -127,39 +112,35 @@ export const AgencyCampaignsOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Campaigns"
-      subtitle="Client brand campaigns, creator assignments, and rate approval pipeline"
-      navItems={navConfig.AGENCY}
+      title="Platform Campaigns"
+      subtitle="Overview of all campaigns, creator rosters, and deliverables across platform brands"
+      navItems={navConfig.ADMIN}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Agency Manager',
+        name: user?.profile?.fullName || 'Super Administrator',
         email: user?.email,
-        roleCode: 'AGENCY',
+        roleCode: 'ADMIN',
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
-      rightAction={
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon fontSize="small" />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          New Campaign
-        </Button>
-      }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        <SectionHeading
+          title="All Campaigns"
+          subtitle="System-wide campaigns registry"
+        />
+
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
           onPillChange={handlePillChange}
           searchValue={search}
           onSearchChange={handleSearchChange}
-          searchPlaceholder="Search campaigns..."
+          searchPlaceholder="Search campaigns by name..."
           selectOptions={brandOptions}
           selectedOption={selectedBrand}
           onSelectChange={handleBrandChange}
-          selectLabel="Brand"
+          selectLabel="Filter by Brand"
         />
 
         <DataTable<CampaignResponse>
@@ -174,17 +155,8 @@ export const AgencyCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
-          onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>
-
-      <CreateCampaignDialog
-        open={createDialogOpen}
-        brands={brands}
-        loading={createCampaignMutation.isPending}
-        onSubmit={handleCreateCampaign}
-        onClose={() => setCreateDialogOpen(false)}
-      />
     </DashboardLayout>
   );
 };

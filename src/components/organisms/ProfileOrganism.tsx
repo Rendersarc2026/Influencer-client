@@ -15,7 +15,7 @@ import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
 import { apiClient } from '@api';
 import { UpdateProfileSchema, UpdateProfileRequest, UserResponse } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export const ProfileOrganism: React.FC = () => {
@@ -23,6 +23,7 @@ export const ProfileOrganism: React.FC = () => {
   const theme = useTheme();
   const location = useLocation();
   const { user, roleCode, logout, refetchUser } = useAuth();
+  const { showSuccess, showError } = useToast();
   const queryClient = useQueryClient();
 
   const isInfluencer = roleCode === 'INFLUENCER';
@@ -63,14 +64,16 @@ export const ProfileOrganism: React.FC = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       await refetchUser();
+      showSuccess('Profile updated successfully.');
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3500);
     },
     onError: (err: unknown) => {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setErrorMsg(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to update profile.',
-      );
+      const msg =
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to update profile.';
+      setErrorMsg(msg);
+      showError(msg);
     },
   });
 

@@ -81,11 +81,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           borderRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
           border: `1px solid ${theme.palette.tokens.divider}`,
           minHeight: { xs: 'calc(100vh - 88px)', md: 'calc(100vh - 32px)' },
-          marginLeft: { xs: 0, md: '92px' },
+          marginLeft: { xs: 0, md: '260px' },
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          width: { xs: '100%', md: 'calc(100% - 92px)' },
+          width: { xs: '100%', md: 'calc(100% - 260px)' },
         }}
       >
         {/* TopBar on surface */}

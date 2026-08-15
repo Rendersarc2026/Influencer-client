@@ -4,6 +4,8 @@ export * from './StyleGuideOrganism';
 export * from './AdminHomeOrganism';
 export * from './AdminAgenciesOrganism';
 export * from './AdminBrandsOrganism';
+export * from './AdminCampaignsOrganism';
+export * from './AdminCampaignDetailOrganism';
 export * from './AdminUsersOrganism';
 export * from './AgencyHomeOrganism';
 export * from './AgencyBrandsOrganism';

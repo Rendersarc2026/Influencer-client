@@ -10,13 +10,14 @@ import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
 import { UpdateProfileSchema } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const CompleteProfileOrganism: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user, roleCode, completeProfile, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const isInfluencer = roleCode === 'INFLUENCER';
@@ -69,12 +70,14 @@ export const CompleteProfileOrganism: React.FC = () => {
     try {
       setLoading(true);
       const authResult = await completeProfile(payload);
+      showSuccess('Profile updated successfully.');
       navigate(getRoleDashboardPath(authResult.roleCode), { replace: true });
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to complete profile.',
-      );
+      const msg =
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to complete profile.';
+      setError(msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }

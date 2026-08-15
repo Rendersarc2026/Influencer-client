@@ -1,4 +1,5 @@
-import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   BrandResponse,
@@ -74,6 +75,9 @@ export function useAgencyCampaigns(params?: CampaignListQuery) {
       });
       return response.data;
     },
+    // Paging keeps the previous page on screen while the next one loads, rather
+    // than tearing the table down to a skeleton on every page change.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -310,30 +314,50 @@ export function useCampaignReport(campaignId: string | undefined) {
 }
 
 /**
- * Fetches the aggregate report for several campaigns at once.
+ * Fetches the aggregate report for several campaigns in a single request.
  *
- * The API exposes aggregates per campaign, so a portfolio view needs one request
- * per campaign. `useQueries` shares the cache with `useCampaignReport`, so a row
- * already loaded on a detail screen is not refetched here.
+ * This used to issue one request per campaign, which put a full page of
+ * round trips between the dashboard and its first painted number. The server
+ * now accepts the whole id set at once, so the screen waits on one response
+ * regardless of how many campaigns are on the page.
+ *
+ * Each report is also written into the per-campaign cache key that
+ * `useCampaignReport` reads, so opening a campaign detail screen renders from
+ * cache instead of refetching what the dashboard already has.
  */
 export function useCampaignReports(campaignIds: Array<string>) {
-  const queries = useQueries({
-    queries: campaignIds.map((campaignId) => ({
-      queryKey: ['agency', 'reports', 'campaigns', campaignId],
-      queryFn: async () => {
-        const response = await apiClient.get<CampaignReportResponse>(
-          `/agency/reports/campaigns/${campaignId}`,
-        );
-        return response.data;
-      },
-      staleTime: 1000 * 60,
-    })),
+  const queryClient = useQueryClient();
+
+  // Sorted so that the same set of campaigns in a different order is one cache
+  // entry rather than two.
+  const key = useMemo(() => [...campaignIds].sort(), [campaignIds]);
+
+  const query = useQuery<CampaignReportResponse[]>({
+    queryKey: ['agency', 'reports', 'campaigns', 'batch', key],
+    queryFn: async () => {
+      const response = await apiClient.get<CampaignReportResponse[]>('/agency/reports/campaigns', {
+        params: { ids: key.join(',') },
+      });
+      return response.data;
+    },
+    enabled: key.length > 0,
+    staleTime: 1000 * 60,
+    placeholderData: keepPreviousData,
   });
 
+  const reports = useMemo(() => query.data ?? [], [query.data]);
+
+  useEffect(() => {
+    for (const report of reports) {
+      if (!report?.campaign?.id) continue;
+      queryClient.setQueryData(['agency', 'reports', 'campaigns', report.campaign.id], report);
+    }
+  }, [reports, queryClient]);
+
   return {
-    reports: queries.map((q) => q.data).filter((d): d is CampaignReportResponse => d !== undefined),
-    isLoading: queries.some((q) => q.isLoading),
-    isError: queries.some((q) => q.isError),
+    reports,
+    isLoading: key.length > 0 && query.isPending,
+    isError: query.isError,
   };
 }
 

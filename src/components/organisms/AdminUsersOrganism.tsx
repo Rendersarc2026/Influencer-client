@@ -29,13 +29,14 @@ import {
   useAdminResendInvite,
 } from '@api';
 import { UserResponse, RoleCode, CreateUserRequest } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 
 export const AdminUsersOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [activeRolePill, setActiveRolePill] = useState<string>('ALL');
   const [search, setSearch] = useState('');
@@ -110,20 +111,38 @@ export const AdminUsersOrganism: React.FC = () => {
       brandId: roleCode === 'BRAND' ? orgId || undefined : undefined,
     };
 
-    await createUserMutation.mutateAsync(payload);
-    setDialogOpen(false);
+    try {
+      await createUserMutation.mutateAsync(payload);
+      showSuccess(`User account invited successfully (${email.trim()}).`);
+      setDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to create user.');
+    }
   };
 
   const handleResendInvite = async (userEmail: string) => {
-    await resendInviteMutation.mutateAsync(userEmail);
-    setInviteSuccessMsg(`Login invite code resent to ${userEmail}`);
-    setTimeout(() => setInviteSuccessMsg(''), 4000);
+    try {
+      await resendInviteMutation.mutateAsync(userEmail);
+      showSuccess(`Login invite code resent to ${userEmail}`);
+      setInviteSuccessMsg(`Login invite code resent to ${userEmail}`);
+      setTimeout(() => setInviteSuccessMsg(''), 4000);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to resend invite code.');
+    }
   };
 
   const handleConfirmDeactivate = async () => {
     if (!deactivateUserId) return;
-    await deactivateUserMutation.mutateAsync(deactivateUserId);
-    setDeactivateUserId(null);
+    try {
+      await deactivateUserMutation.mutateAsync(deactivateUserId);
+      showSuccess('User account deactivated successfully.');
+      setDeactivateUserId(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate user.');
+    }
   };
 
   const columns: Array<DataTableColumn<UserResponse>> = [

@@ -12,18 +12,20 @@ import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { RequestOtpRequestSchema, VerifyOtpRequestSchema } from '@contracts';
-import { useAuth } from '@hooks';
+import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const LoginOrganism: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { requestOtp, verifyOtp } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   // Step state: 1 = email, 2 = otp
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [isEmailBlocked, setIsEmailBlocked] = useState(false);
 
   // OTP boxes state (6 digits)
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
@@ -60,18 +62,28 @@ export const LoginOrganism: React.FC = () => {
     try {
       setLoading(true);
       await requestOtp(email.trim());
+      showSuccess(`Verification code sent to ${email.trim()}`);
       setStep(2);
       setCountdown(60);
       setOtp(['', '', '', '', '', '']);
       setOtpError('');
       setAttemptsRemaining(null);
+      setIsEmailBlocked(false);
     } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const errorObj = err as {
+        response?: { data?: { message?: string; code?: string } };
+        message?: string;
+      };
+      const data = errorObj?.response?.data;
       const msg =
-        errorObj?.response?.data?.message ||
+        data?.message ||
         errorObj?.message ||
         'No active account found with this email address. Please check your email or contact support.';
       setEmailError(msg);
+      showError(msg);
+      if (data?.code === 'ACCOUNT_LOCKED' || msg.toLowerCase().includes('blocked for 30 minutes')) {
+        setIsEmailBlocked(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,19 +91,29 @@ export const LoginOrganism: React.FC = () => {
 
   // Resend OTP handler
   const handleResendOtp = async () => {
-    if (countdown > 0 || loading) return;
+    if (countdown > 0 || loading || isEmailBlocked) return;
     try {
       setLoading(true);
       setOtpError('');
       await requestOtp(email.trim());
+      showSuccess(`New verification code sent to ${email.trim()}`);
       setCountdown(60);
       setOtp(['', '', '', '', '', '']);
       setAttemptsRemaining(null);
     } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const errorObj = err as {
+        response?: { data?: { message?: string; code?: string } };
+        message?: string;
+      };
+      const data = errorObj?.response?.data;
       const msg =
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to resend login code.';
+        data?.message || errorObj?.message || 'Failed to resend login code.';
       setOtpError(msg);
+      showError(msg);
+      if (data?.code === 'ACCOUNT_LOCKED' || msg.toLowerCase().includes('blocked for 30 minutes')) {
+        setIsEmailBlocked(true);
+        setAttemptsRemaining(0);
+      }
     } finally {
       setLoading(false);
     }
@@ -149,6 +171,7 @@ export const LoginOrganism: React.FC = () => {
     try {
       setLoading(true);
       const authResult = await verifyOtp(email.trim(), fullCode);
+      showSuccess('Login successful! Welcome back.');
       if (!authResult.termsAccepted) {
         navigate('/accept-terms', { replace: true });
       } else if (!authResult.profileComplete) {
@@ -158,14 +181,17 @@ export const LoginOrganism: React.FC = () => {
       }
     } catch (err: unknown) {
       const errorObj = err as {
-        response?: { data?: { message?: string; attemptsRemaining?: number } };
+        response?: { data?: { message?: string; attemptsRemaining?: number; code?: string } };
         message?: string;
       };
       const data = errorObj?.response?.data;
       const msg =
         data?.message || errorObj?.message || 'Invalid or expired code. Please try again.';
       setOtpError(msg);
-      if (typeof data?.attemptsRemaining === 'number') {
+      showError(msg);
+      if (data?.code === 'ACCOUNT_LOCKED') {
+        setAttemptsRemaining(0);
+      } else if (typeof data?.attemptsRemaining === 'number') {
         setAttemptsRemaining(data.attemptsRemaining);
       }
     } finally {
@@ -235,6 +261,7 @@ export const LoginOrganism: React.FC = () => {
                 onChange={(e) => {
                   setEmail(e.target.value);
                   if (emailError) setEmailError('');
+                  if (isEmailBlocked) setIsEmailBlocked(false);
                 }}
                 error={Boolean(emailError)}
                 fullWidth
@@ -270,10 +297,16 @@ export const LoginOrganism: React.FC = () => {
                 type="submit"
                 variant="contained"
                 fullWidth
-                disabled={loading || !email.trim()}
+                disabled={loading || !email.trim() || isEmailBlocked}
                 sx={{ height: 48, fontSize: '15px', mt: 0.5 }}
               >
-                {loading ? <CircularProgress size={22} color="inherit" /> : 'Send Login Code'}
+                {loading ? (
+                  <CircularProgress size={22} color="inherit" />
+                ) : isEmailBlocked ? (
+                  'Email Blocked (30 min)'
+                ) : (
+                  'Send Login Code'
+                )}
               </Button>
             </Box>
           </form>
@@ -318,7 +351,7 @@ export const LoginOrganism: React.FC = () => {
                     handleOtpChange(idx, e.target.value)
                   }
                   onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(idx, e)}
-                  disabled={loading}
+                  disabled={loading || isEmailBlocked || attemptsRemaining === 0}
                   autoFocus={idx === 0}
                   sx={{
                     width: '48px',
@@ -366,10 +399,16 @@ export const LoginOrganism: React.FC = () => {
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading || otp.some((d) => !d)}
+              disabled={loading || otp.some((d) => !d) || isEmailBlocked || attemptsRemaining === 0}
               sx={{ height: 48, fontSize: '15px', mb: 2 }}
             >
-              {loading ? <CircularProgress size={22} color="inherit" /> : 'Verify & Continue'}
+              {loading ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : isEmailBlocked || attemptsRemaining === 0 ? (
+                'Account Locked (30 min)'
+              ) : (
+                'Verify & Continue'
+              )}
             </Button>
 
             {/* Resend countdown and Back action */}
@@ -397,7 +436,7 @@ export const LoginOrganism: React.FC = () => {
                   variant="text"
                   size="small"
                   onClick={handleResendOtp}
-                  disabled={loading}
+                  disabled={loading || isEmailBlocked || attemptsRemaining === 0}
                   startIcon={<MailOutlineRoundedIcon fontSize="small" />}
                   sx={{ color: theme.palette.tokens.accent, fontWeight: 600 }}
                 >
@@ -411,6 +450,7 @@ export const LoginOrganism: React.FC = () => {
                 onClick={() => {
                   setStep(1);
                   setOtpError('');
+                  setIsEmailBlocked(false);
                 }}
                 disabled={loading}
                 startIcon={<ArrowBackRoundedIcon fontSize="small" />}

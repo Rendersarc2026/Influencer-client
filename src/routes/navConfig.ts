@@ -13,6 +13,7 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
     { id: 'admin-dashboard', label: 'Dashboard', path: '/admin', iconName: 'Dashboard' },
     { id: 'admin-agencies', label: 'Agencies', path: '/admin/agencies', iconName: 'Business' },
     { id: 'admin-brands', label: 'Brands', path: '/admin/brands', iconName: 'Storefront' },
+    { id: 'admin-campaigns', label: 'Campaigns', path: '/admin/campaigns', iconName: 'Campaign' },
     { id: 'admin-users', label: 'Users', path: '/admin/users', iconName: 'People' },
   ],
   AGENCY: [

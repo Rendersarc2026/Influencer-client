@@ -31,7 +31,12 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         open={open}
         autoHideDuration={4000}
         onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{
+          top: { xs: 16, sm: 24 },
+          right: { xs: 16, sm: 24 },
+          zIndex: 9999,
+        }}
       >
         <Alert
           onClose={handleClose}
@@ -41,13 +46,15 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             borderRadius: `${theme.customRadii.inner}px`,
             fontWeight: 600,
             fontSize: '14px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
             backgroundColor:
               severity === 'success'
                 ? theme.palette.tokens.positive
                 : severity === 'error'
                   ? theme.palette.tokens.negative
                   : undefined,
+            color: '#FFFFFF',
+            alignItems: 'center',
           }}
         >
           {message}

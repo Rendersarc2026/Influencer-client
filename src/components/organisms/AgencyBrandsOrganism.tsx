@@ -10,12 +10,13 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog } from '@molecules';
 import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 
 export const AgencyBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -56,12 +57,19 @@ export const AgencyBrandsOrganism: React.FC = () => {
     data: CreateBrandRequest | UpdateBrandRequest,
     brandId?: string,
   ) => {
-    if (brandId) {
-      await updateBrandMutation.mutateAsync({ id: brandId, data });
-    } else {
-      await createBrandMutation.mutateAsync(data as CreateBrandRequest);
+    try {
+      if (brandId) {
+        await updateBrandMutation.mutateAsync({ id: brandId, data });
+        showSuccess('Brand updated successfully.');
+      } else {
+        await createBrandMutation.mutateAsync(data as CreateBrandRequest);
+        showSuccess('Brand created successfully.');
+      }
+      setDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to save brand.');
     }
-    setDialogOpen(false);
   };
 
   const columns: Array<DataTableColumn<BrandResponse>> = [

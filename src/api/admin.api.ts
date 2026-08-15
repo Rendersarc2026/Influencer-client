@@ -13,6 +13,10 @@ import {
   UserListQuery,
   CreateUserRequest,
   UpdateUserRequest,
+  CampaignResponse,
+  CampaignListQuery,
+  AgencyMapperResponse,
+  CampaignMapperListQuery,
   PaginatedResult,
 } from '@contracts';
 
@@ -125,7 +129,53 @@ export function useAdminDeactivateBrand() {
 }
 
 // -------------------------------------------------------------
-// 3. Users
+// 3. Campaigns
+// -------------------------------------------------------------
+
+export function useAdminCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    queryKey: ['admin', 'campaigns', params],
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<CampaignResponse>>('/admin/campaigns', {
+        params,
+      });
+      return response.data;
+    },
+  });
+}
+
+export function useAdminCampaign(id: string | undefined) {
+  return useQuery<CampaignResponse>({
+    queryKey: ['admin', 'campaigns', id],
+    queryFn: async () => {
+      if (!id) throw new Error('Campaign ID required');
+      const response = await apiClient.get<CampaignResponse>(`/admin/campaigns/${id}`);
+      return response.data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useAdminCampaignInfluencers(
+  campaignId: string | undefined,
+  params?: CampaignMapperListQuery,
+) {
+  return useQuery<PaginatedResult<AgencyMapperResponse>>({
+    queryKey: ['admin', 'campaigns', campaignId, 'influencers', params],
+    queryFn: async () => {
+      if (!campaignId) throw new Error('Campaign ID required');
+      const response = await apiClient.get<PaginatedResult<AgencyMapperResponse>>(
+        `/admin/campaigns/${campaignId}/influencers`,
+        { params },
+      );
+      return response.data;
+    },
+    enabled: Boolean(campaignId),
+  });
+}
+
+// -------------------------------------------------------------
+// 4. Users
 // -------------------------------------------------------------
 
 export function useAdminUsers(params?: UserListQuery) {

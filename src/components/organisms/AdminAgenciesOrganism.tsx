@@ -20,13 +20,14 @@ import { DataTable, DataTableColumn, FilterBar, ConfirmDialog } from '@molecules
 import { SectionHeading } from '@atoms';
 import { useAdminAgencies, useCreateAgency, useUpdateAgency, useDeactivateAgency } from '@api';
 import { AgencyResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useToast } from '@hooks';
 
 export const AdminAgenciesOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -75,24 +76,37 @@ export const AdminAgenciesOrganism: React.FC = () => {
     e.preventDefault();
     if (!name.trim() || !slug.trim()) return;
 
-    if (agencyToEdit) {
-      await updateAgencyMutation.mutateAsync({
-        id: agencyToEdit.id,
-        data: { name: name.trim(), slug: slug.trim() },
-      });
-    } else {
-      await createAgencyMutation.mutateAsync({
-        name: name.trim(),
-        slug: slug.trim(),
-      });
+    try {
+      if (agencyToEdit) {
+        await updateAgencyMutation.mutateAsync({
+          id: agencyToEdit.id,
+          data: { name: name.trim(), slug: slug.trim() },
+        });
+        showSuccess('Agency updated successfully.');
+      } else {
+        await createAgencyMutation.mutateAsync({
+          name: name.trim(),
+          slug: slug.trim(),
+        });
+        showSuccess('Agency created successfully.');
+      }
+      setDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to save agency.');
     }
-    setDialogOpen(false);
   };
 
   const handleConfirmDeactivate = async () => {
     if (!deactivateAgencyId) return;
-    await deactivateAgencyMutation.mutateAsync(deactivateAgencyId);
-    setDeactivateAgencyId(null);
+    try {
+      await deactivateAgencyMutation.mutateAsync(deactivateAgencyId);
+      showSuccess('Agency deactivated successfully.');
+      setDeactivateAgencyId(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate agency.');
+    }
   };
 
   const columns: Array<DataTableColumn<AgencyResponse>> = [
