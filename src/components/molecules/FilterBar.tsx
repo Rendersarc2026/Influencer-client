@@ -38,7 +38,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onPillChange,
   searchValue,
   onSearchChange,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = 'Search',
   selectOptions = [],
   selectedOption,
   onSelectChange,

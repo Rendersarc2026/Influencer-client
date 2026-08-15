@@ -124,6 +124,12 @@ export const StatusChip: React.FC<StatusChipProps> = ({ status, size = 'small', 
           bg: theme.palette.tokens.fieldBg,
           color: theme.palette.tokens.textSecondary,
         };
+      case 'DEACTIVATED':
+        return {
+          label: 'Deactivated',
+          bg: theme.palette.tokens.fieldBg,
+          color: theme.palette.tokens.textSecondary,
+        };
 
       default:
         return {

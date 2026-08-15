@@ -10,7 +10,7 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog } from '@molecules';
 import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 export const AgencyBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -18,10 +18,15 @@ export const AgencyBrandsOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('agencyBrands');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: brandsData,
@@ -41,11 +46,6 @@ export const AgencyBrandsOrganism: React.FC = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
 
   const handleOpenCreate = () => {
     setBrandToEdit(null);
@@ -135,8 +135,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search brands by name or industry..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<BrandResponse>

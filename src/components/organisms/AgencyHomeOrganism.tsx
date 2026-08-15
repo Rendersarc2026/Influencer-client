@@ -42,7 +42,7 @@ export const AgencyHomeOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
   const { data: brandsData } = useAgencyBrands();
-  const campaigns = campaignsData?.items || [];
+  const campaigns = useMemo(() => campaignsData?.items || [], [campaignsData?.items]);
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
   const brands = brandsData?.items || [];
   const createCampaignMutation = useCreateCampaign();

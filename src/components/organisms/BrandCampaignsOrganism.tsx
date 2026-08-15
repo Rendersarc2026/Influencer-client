@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -8,18 +8,24 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { useBrandCampaigns } from '@api';
 import { CampaignResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useEnumOptions, useViewFilters } from '@hooks';
 
 export const BrandCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const [activePill, setActivePill] = useState('ALL');
-  const [search, setSearch] = useState('');
+  const {
+    activePill,
+    setActivePill,
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('brandCampaigns');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: campaignsData,
@@ -35,21 +41,15 @@ export const BrandCampaignsOrganism: React.FC = () => {
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
 
+  // A brand never sees a draft or cancelled campaign, so those two statuses are
+  // dropped rather than offered as filters that can only ever return nothing.
+  const campaignStatuses = useEnumOptions('CAMPAIGN_STATUS');
   const filterPills = [
     { id: 'ALL', label: 'All Campaigns' },
-    { id: 'ACTIVE', label: 'Active' },
-    { id: 'COMPLETED', label: 'Completed' },
+    ...campaignStatuses
+      .filter((s) => s.value === 'ACTIVE' || s.value === 'COMPLETED')
+      .map((s) => ({ id: s.value, label: s.label })),
   ];
-
-  const handlePillChange = (pillId: string) => {
-    setActivePill(pillId);
-    setPage(0);
-  };
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -112,10 +112,9 @@ export const BrandCampaignsOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
-          onPillChange={handlePillChange}
+          onPillChange={setActivePill}
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search campaigns by name..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<CampaignResponse>

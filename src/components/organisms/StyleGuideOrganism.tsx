@@ -402,7 +402,6 @@ export const StyleGuideOrganism: React.FC = () => {
               onPillChange={setActiveFilterPill}
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}
-              searchPlaceholder="Search campaigns or creators..."
               selectOptions={[
                 { value: 'newest', label: 'Newest First' },
                 { value: 'budget_high', label: 'Highest Budget' },

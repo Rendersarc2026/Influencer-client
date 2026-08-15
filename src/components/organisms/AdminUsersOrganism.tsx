@@ -28,8 +28,8 @@ import {
   useAdminDeactivateUser,
   useAdminResendInvite,
 } from '@api';
-import { UserResponse, RoleCode, CreateUserRequest } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { UserResponse, RoleCode, CreateUserRequest, UserStatusFilter } from '@contracts';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
 
 export const AdminUsersOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -38,11 +38,23 @@ export const AdminUsersOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [activeRolePill, setActiveRolePill] = useState<string>('ALL');
-  const [search, setSearch] = useState('');
+  const {
+    activePill: activeRolePill,
+    setActivePill: setActiveRolePill,
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    selectedSelect,
+    setSelectedSelect,
+  } = useViewFilters('adminUsers');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Empty persisted state means nobody has touched the dropdown yet, which the
+  // list has always treated as active-only.
+  const statusFilter = (selectedSelect || 'ACTIVE') as UserStatusFilter;
 
   const {
     data: usersData,
@@ -51,6 +63,9 @@ export const AdminUsersOrganism: React.FC = () => {
   } = useAdminUsers({
     roleCode: activeRolePill !== 'ALL' ? activeRolePill : undefined,
     search: debouncedSearch.trim() || undefined,
+    // Omitted on ACTIVE so the key still hashes to the boot-prefetched entry —
+    // active-only is what the server already defaults to.
+    status: statusFilter === 'ACTIVE' ? undefined : statusFilter,
     page: page + 1,
     limit: rowsPerPage,
   });
@@ -77,23 +92,13 @@ export const AdminUsersOrganism: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [inviteSuccessMsg, setInviteSuccessMsg] = useState('');
 
-  const filterPills = [
-    { id: 'ALL', label: 'All Users' },
-    { id: 'ADMIN', label: 'Admin' },
-    { id: 'AGENCY', label: 'Agency' },
-    { id: 'BRAND', label: 'Brand' },
-    { id: 'INFLUENCER', label: 'Creator' },
+  const filterPills = useEnumPills('ROLE', 'All Users', { INFLUENCER: 'Creator' });
+
+  const statusOptions = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Deactivated' },
+    { value: 'ALL', label: 'Active + Deactivated' },
   ];
-
-  const handleRolePillChange = (pillId: string) => {
-    setActiveRolePill(pillId);
-    setPage(0);
-  };
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
 
   const handleOpenCreate = () => {
     setEmail('');
@@ -188,7 +193,7 @@ export const AdminUsersOrganism: React.FC = () => {
       id: 'status',
       header: 'Status',
       type: 'status',
-      accessor: (row) => (row.isActive ? 'ACTIVE' : 'ARCHIVED'),
+      accessor: (row) => (row.isActive ? 'ACTIVE' : 'DEACTIVATED'),
     },
     {
       id: 'createdOn',
@@ -268,10 +273,13 @@ export const AdminUsersOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activeRolePill}
-          onPillChange={handleRolePillChange}
+          onPillChange={setActiveRolePill}
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search users by name or email..."
+          onSearchChange={setSearch}
+          selectOptions={statusOptions}
+          selectedOption={statusFilter}
+          onSelectChange={setSelectedSelect}
+          selectLabel="Account Status"
         />
 
         <DataTable<UserResponse>
@@ -315,8 +323,8 @@ export const AdminUsersOrganism: React.FC = () => {
             />
           </DialogTitle>
 
-          <DialogContent sx={{ py: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
               <TextField
                 label="Email Address *"
                 type="email"
@@ -324,7 +332,6 @@ export const AdminUsersOrganism: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@organization.com"
                 fullWidth
-                autoFocus
               />
 
               <TextField
@@ -387,7 +394,7 @@ export const AdminUsersOrganism: React.FC = () => {
             </Box>
           </DialogContent>
 
-          <DialogActions sx={{ pt: 3, pb: 1, px: 2, gap: 1 }}>
+          <DialogActions sx={{ gap: 1 }}>
             <Button variant="outlined" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>

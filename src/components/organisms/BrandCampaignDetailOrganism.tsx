@@ -16,7 +16,7 @@ import { DataTable, DataTableColumn, CommentDialog, FilterBar } from '@molecules
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision } from '@api';
 import { BrandMapperResponse, BrandDecisionRequest } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl } from '@utils';
 
 interface BrandCampaignDetailOrganismProps {
@@ -34,10 +34,15 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('brandCampaignDetail');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { data: campaign, isLoading: campaignLoading } = useBrandCampaign(campaignId);
   const {
@@ -324,11 +329,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
 
         <FilterBar
           searchValue={search}
-          onSearchChange={(val) => {
-            setSearch(val);
-            setPage(0);
-          }}
-          searchPlaceholder="Search creators or deliverables..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<BrandMapperResponse>

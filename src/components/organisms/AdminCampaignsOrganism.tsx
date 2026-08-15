@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -8,19 +8,26 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { useAdminCampaigns, useAdminBrands } from '@api';
 import { CampaignResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useEnumPills, useViewFilters } from '@hooks';
 
 export const AdminCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const [activePill, setActivePill] = useState<string>('ALL');
-  const [search, setSearch] = useState('');
+  const {
+    activePill,
+    setActivePill,
+    search,
+    setSearch,
+    selectedSelect: selectedBrand,
+    setSelectedSelect: setSelectedBrand,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('adminCampaigns');
   const debouncedSearch = useDebounce(search, 300);
-  const [selectedBrand, setSelectedBrand] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: campaignsData,
@@ -40,32 +47,14 @@ export const AdminCampaignsOrganism: React.FC = () => {
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
   const brands = brandsData?.items || [];
 
-  const filterPills = [
-    { id: 'ALL', label: 'All Campaigns' },
-    { id: 'ACTIVE', label: 'Active' },
-    { id: 'DRAFT', label: 'Draft' },
-    { id: 'COMPLETED', label: 'Completed' },
-  ];
+  // Driven by the enum_code registry, so a status added by a migration shows up
+  // here without an edit — and one that does not exist cannot be filtered for.
+  const filterPills = useEnumPills('CAMPAIGN_STATUS', 'All Campaigns');
 
   const brandOptions = [
     { value: '', label: 'All Brands' },
     ...brands.map((b) => ({ value: b.id, label: b.name })),
   ];
-
-  const handlePillChange = (pillId: string) => {
-    setActivePill(pillId);
-    setPage(0);
-  };
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
-
-  const handleBrandChange = (val: string) => {
-    setSelectedBrand(val);
-    setPage(0);
-  };
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -133,13 +122,12 @@ export const AdminCampaignsOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
-          onPillChange={handlePillChange}
+          onPillChange={setActivePill}
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search campaigns by name..."
+          onSearchChange={setSearch}
           selectOptions={brandOptions}
           selectedOption={selectedBrand}
-          onSelectChange={handleBrandChange}
+          onSelectChange={setSelectedBrand}
           selectLabel="Filter by Brand"
         />
 

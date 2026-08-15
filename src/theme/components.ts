@@ -116,6 +116,38 @@ export const components: Components<Theme> = {
       },
     ],
   },
+  MuiDialog: {
+    styleOverrides: {
+      paper: {
+        borderRadius: `${tokens.radii.card}px`,
+        backgroundImage: 'none',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12)',
+      },
+    },
+  },
+  MuiDialogTitle: {
+    styleOverrides: {
+      root: {
+        padding: '24px 24px 12px 24px',
+      },
+    },
+  },
+  MuiDialogContent: {
+    styleOverrides: {
+      root: {
+        padding: '16px 24px 16px 24px',
+        overflowY: 'visible',
+      },
+    },
+  },
+  MuiDialogActions: {
+    styleOverrides: {
+      root: {
+        padding: '16px 24px 24px 24px',
+        gap: '12px',
+      },
+    },
+  },
   MuiTextField: {
     defaultProps: {
       variant: 'outlined',
@@ -125,8 +157,8 @@ export const components: Components<Theme> = {
     styleOverrides: {
       root: {
         borderRadius: `${tokens.radii.inner}px`,
-        backgroundColor: tokens.colors.fieldBg,
-        transition: 'border-color 0.2s ease, background-color 0.2s ease',
+        backgroundColor: tokens.colors.surface,
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
         '& fieldset': {
           borderColor: tokens.colors.divider,
           borderRadius: `${tokens.radii.inner}px`,
@@ -145,15 +177,22 @@ export const components: Components<Theme> = {
           borderColor: tokens.colors.negative,
         },
         '&.Mui-disabled': {
-          backgroundColor: tokens.colors.divider,
+          backgroundColor: tokens.colors.fieldBg,
+          '& fieldset': {
+            borderColor: tokens.colors.divider,
+          },
         },
       },
       input: {
-        padding: '14px 16px',
+        padding: '13px 16px',
         fontSize: '14px',
         fontWeight: 500,
         color: tokens.colors.textPrimary,
         height: 'auto',
+      },
+      inputSizeSmall: {
+        padding: '8px 14px',
+        fontSize: '13px',
       },
     },
   },
@@ -163,14 +202,13 @@ export const components: Components<Theme> = {
         color: tokens.colors.textSecondary,
         fontSize: '14px',
         fontWeight: 500,
-        transform: 'translate(16px, 14px) scale(1)',
         '&.MuiInputLabel-shrink': {
-          transform: 'translate(14px, -9px) scale(0.75)',
           backgroundColor: tokens.colors.surface,
-          paddingLeft: '4px',
-          paddingRight: '4px',
+          paddingLeft: '6px',
+          paddingRight: '6px',
           borderRadius: '4px',
           fontWeight: 600,
+          zIndex: 1,
         },
         '&.Mui-focused': {
           color: tokens.colors.accent,
@@ -181,15 +219,40 @@ export const components: Components<Theme> = {
       },
       filled: {
         color: tokens.colors.textSecondary,
-        transform: 'translate(16px, 16px) scale(1)',
         fontSize: '14px',
         fontWeight: 500,
         '&.MuiInputLabel-shrink': {
-          transform: 'translate(16px, 6px) scale(0.75)',
           fontWeight: 600,
         },
         '&.Mui-focused': {
           color: tokens.colors.accent,
+        },
+      },
+    },
+  },
+  MuiSelect: {
+    styleOverrides: {
+      // Scoped away from TablePagination: these are form-field metrics, and the
+      // 16px right padding is narrower than the arrow, so letting them reach the
+      // "rows per page" select drops the arrow on top of the value.
+      select: {
+        '&:not(.MuiTablePagination-select)': {
+          padding: '13px 16px',
+          fontSize: '14px',
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          minHeight: 'auto',
+          '&.MuiInputBase-inputSizeSmall': {
+            padding: '8px 14px',
+            fontSize: '13px',
+          },
+        },
+      },
+      icon: {
+        color: tokens.colors.textSecondary,
+        '&:not(.MuiTablePagination-selectIcon)': {
+          right: 12,
         },
       },
     },

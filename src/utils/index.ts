@@ -14,3 +14,4 @@ export function formatCurrency(amount: number, currency = 'INR'): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+export * from './enum-label';

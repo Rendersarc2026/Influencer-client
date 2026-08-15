@@ -14,7 +14,7 @@ import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } f
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignments, useSubmitInfluencerRate } from '@api';
 import { InfluencerMapperResponse, SubmitRateRequest } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
 
 export const InfluencerHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -22,11 +22,17 @@ export const InfluencerHomeOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [activePill, setActivePill] = useState<string>('ALL');
-  const [search, setSearch] = useState('');
+  const {
+    activePill,
+    setActivePill,
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('influencerHome');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: assignmentsData,
@@ -52,22 +58,15 @@ export const InfluencerHomeOrganism: React.FC = () => {
   ).length;
   const approvedCount = assignments.filter((a) => a?.rateStatus === 'AGENCY_APPROVED').length;
 
-  const filterPills = [
-    { id: 'ALL', label: 'All Briefs' },
-    { id: 'PENDING_SUBMISSION', label: 'Action Required' },
-    { id: 'SUBMITTED', label: 'Under Review' },
-    { id: 'AGENCY_APPROVED', label: 'Approved' },
-  ];
-
-  const handlePillChange = (pillId: string) => {
-    setActivePill(pillId);
-    setPage(0);
-  };
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
+  // The set comes from the registry; only the wording is creator-facing. This
+  // also restores REVISION_REQUESTED, which the hardcoded list omitted — a
+  // creator whose rate was sent back had no way to filter for it.
+  const filterPills = useEnumPills('RATE_STATUS', 'All Briefs', {
+    PENDING_SUBMISSION: 'Action Required',
+    SUBMITTED: 'Under Review',
+    REVISION_REQUESTED: 'Needs Revision',
+    AGENCY_APPROVED: 'Approved',
+  });
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
     try {
@@ -205,10 +204,9 @@ export const InfluencerHomeOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
-          onPillChange={handlePillChange}
+          onPillChange={setActivePill}
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search assignments..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<InfluencerMapperResponse>

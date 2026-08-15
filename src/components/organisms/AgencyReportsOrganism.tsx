@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid2';
@@ -13,7 +13,7 @@ import { navConfig } from '@routes/navConfig';
 import { MetricCard, ChartCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
-import { useAuth } from '@hooks';
+import { useAuth, useViewFilters } from '@hooks';
 import { formatCurrency } from '@utils';
 
 interface CampaignMetricRow extends Record<string, unknown> {
@@ -42,8 +42,8 @@ export const AgencyReportsOrganism: React.FC = () => {
     isFetching: campaignsFetching,
   } = useAgencyCampaigns();
   const { data: brandsData } = useAgencyBrands();
-  const campaigns = campaignsData?.items || [];
-  const brands = brandsData?.items || [];
+  const campaigns = useMemo(() => campaignsData?.items || [], [campaignsData?.items]);
+  const brands = useMemo(() => brandsData?.items || [], [brandsData?.items]);
 
   const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
   const {
@@ -52,8 +52,12 @@ export const AgencyReportsOrganism: React.FC = () => {
     isFetching: reportsFetching,
   } = useCampaignReports(campaignIds);
 
-  const [search, setSearch] = useState('');
-  const [selectedBrand, setSelectedBrand] = useState('');
+  const {
+    search,
+    setSearch,
+    selectedSelect: selectedBrand,
+    setSelectedSelect: setSelectedBrand,
+  } = useViewFilters('agencyReports');
 
   const brandOptions = [
     { value: '', label: 'All Brands' },
@@ -246,7 +250,6 @@ export const AgencyReportsOrganism: React.FC = () => {
         <FilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search reports by campaign..."
           selectOptions={brandOptions}
           selectedOption={selectedBrand}
           onSelectChange={setSelectedBrand}

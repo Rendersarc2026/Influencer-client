@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -10,7 +10,7 @@ import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { useBrandPayments, useApprovePayment } from '@api';
 import { PaymentResponse } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
 
 export const BrandPaymentsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -18,11 +18,17 @@ export const BrandPaymentsOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [activePill, setActivePill] = useState<string>('ALL');
-  const [search, setSearch] = useState('');
+  const {
+    activePill,
+    setActivePill,
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('brandPayments');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: paymentsData,
@@ -40,22 +46,9 @@ export const BrandPaymentsOrganism: React.FC = () => {
 
   const approvePaymentMutation = useApprovePayment();
 
-  const statusPills = [
-    { id: 'ALL', label: 'All Payments' },
-    { id: 'PENDING_APPROVAL', label: 'Pending Approval' },
-    { id: 'APPROVED', label: 'Approved' },
-    { id: 'DISBURSED', label: 'Disbursed' },
-  ];
-
-  const handlePillChange = (pillId: string) => {
-    setActivePill(pillId);
-    setPage(0);
-  };
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
+  // Was filtering on DISBURSED, which is not a PaymentStatus at all — that pill
+  // could never match a row. The registry supplies the real set.
+  const statusPills = useEnumPills('PAYMENT_STATUS', 'All Payments');
 
   const handleApprovePayment = async (paymentId: string) => {
     try {
@@ -145,10 +138,9 @@ export const BrandPaymentsOrganism: React.FC = () => {
         <FilterBar
           pills={statusPills}
           activePillId={activePill}
-          onPillChange={handlePillChange}
+          onPillChange={setActivePill}
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search payments by note or campaign..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<PaymentResponse>

@@ -47,6 +47,8 @@
       "@utils/*": ["src/utils/*"],
       "@context": ["src/context"],
       "@context/*": ["src/context/*"],
+      "@store": ["src/store"],
+      "@store/*": ["src/store/*"],
       "@/*": ["src/*"]
     }
   },

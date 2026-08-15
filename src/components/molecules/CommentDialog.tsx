@@ -6,6 +6,7 @@ import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 
@@ -92,25 +93,25 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
           )}
         </DialogTitle>
 
-        <DialogContent sx={{ py: 1 }}>
-          <TextField
-            multiline
-            minRows={minRows}
-            fullWidth
-            label={label}
-            placeholder={placeholder}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            onBlur={() => setTouched(true)}
-            error={touched && !isValid}
-            helperText={touched && !isValid ? 'This field is required' : ''}
-            disabled={loading}
-            autoFocus
-            sx={{ mt: 1 }}
-          />
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              multiline
+              minRows={minRows}
+              fullWidth
+              label={label}
+              placeholder={placeholder}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onBlur={() => setTouched(true)}
+              error={touched && !isValid}
+              helperText={touched && !isValid ? 'This field is required' : ''}
+              disabled={loading}
+            />
+          </Box>
         </DialogContent>
 
-        <DialogActions sx={{ pt: 2, pb: 1, px: 2, gap: 1 }}>
+        <DialogActions sx={{ gap: 1 }}>
           <Button variant="outlined" onClick={onCancel} disabled={loading}>
             {cancelText}
           </Button>

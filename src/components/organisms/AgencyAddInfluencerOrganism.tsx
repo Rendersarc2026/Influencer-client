@@ -17,7 +17,7 @@ import { navConfig } from '@routes/navConfig';
 import { FilterBar } from '@molecules';
 import { SectionHeading, EmptyState } from '@atoms';
 import { useAgencyCampaign, useCampaignInfluencers, useAddInfluencerToCampaign } from '@api';
-import { useAuth, useToast } from '@hooks';
+import { useAuth, useToast, useViewFilters } from '@hooks';
 import { safeImageUrl } from '@utils';
 import { AgencyMapperResponse } from '@contracts';
 
@@ -45,7 +45,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const currentMappers: AgencyMapperResponse[] = currentMappersData?.items || [];
   const addInfluencerMutation = useAddInfluencerToCampaign(campaignId);
 
-  const [search, setSearch] = useState('');
+  const { search, setSearch } = useViewFilters('agencyAddInfluencer');
   const [deliverablesMap, setDeliverablesMap] = useState<Record<string, string>>({});
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
@@ -106,7 +106,6 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
         <FilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search creators by name, handle, or category..."
         />
 
         <SectionHeading

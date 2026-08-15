@@ -4,6 +4,7 @@ export * from './roles.contract';
 export * from './health.contract';
 export * from './auth.contract';
 export * from './user.contract';
+export * from './enums.contract';
 export * from './agency.contract';
 export * from './brand.contract';
 export * from './campaign.contract';

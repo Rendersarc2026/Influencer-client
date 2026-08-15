@@ -87,8 +87,8 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent sx={{ py: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             {deliverables && (
               <Box
                 sx={{
@@ -119,7 +119,6 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
               onChange={(e) => setRateInput(e.target.value)}
               placeholder="e.g. 75000"
               fullWidth
-              autoFocus
               disabled={loading}
             />
 
@@ -142,7 +141,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ pt: 3, pb: 1, px: 2, gap: 1 }}>
+        <DialogActions sx={{ gap: 1 }}>
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>

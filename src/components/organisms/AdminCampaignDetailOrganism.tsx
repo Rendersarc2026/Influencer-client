@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -13,7 +13,7 @@ import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useAdminCampaign, useAdminBrands, useAdminCampaignInfluencers } from '@api';
 import { AgencyMapperResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useViewFilters } from '@hooks';
 import { safeUrl } from '@utils';
 
 interface AdminCampaignDetailOrganismProps {
@@ -29,10 +29,15 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('adminCampaignDetail');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { data: campaign, isLoading: campaignLoading } = useAdminCampaign(campaignId);
   const { data: brandsData } = useAdminBrands();
@@ -248,11 +253,7 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
 
           <FilterBar
             searchValue={search}
-            onSearchChange={(val) => {
-              setSearch(val);
-              setPage(0);
-            }}
-            searchPlaceholder="Search mapped creators by name or handle..."
+            onSearchChange={setSearch}
           />
 
           <DataTable<AgencyMapperResponse>

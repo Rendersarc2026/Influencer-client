@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -8,7 +8,7 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { useAdminInfluencers, useAdminAgencies } from '@api';
 import { InfluencerResponse } from '@contracts';
-import { useAuth, useDebounce } from '@hooks';
+import { useAuth, useDebounce, useViewFilters } from '@hooks';
 
 /** "64.7k" reads better than "64700" in a directory of reach numbers. */
 function formatFollowers(value: number | null): string {
@@ -39,11 +39,17 @@ export const AdminInfluencersOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    selectedSelect: selectedAgencyFilter,
+    setSelectedSelect: setSelectedAgencyFilter,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('adminInfluencers');
   const debouncedSearch = useDebounce(search, 300);
-  const [selectedAgencyFilter, setSelectedAgencyFilter] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: influencersData,
@@ -133,17 +139,10 @@ export const AdminInfluencersOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={(val) => {
-            setSearch(val);
-            setPage(0);
-          }}
-          searchPlaceholder="Search creators by name, category, location, or handle..."
+          onSearchChange={setSearch}
           selectOptions={agencyOptions}
           selectedOption={selectedAgencyFilter}
-          onSelectChange={(val) => {
-            setSelectedAgencyFilter(val);
-            setPage(0);
-          }}
+          onSelectChange={setSelectedAgencyFilter}
           selectLabel="Filter by Agency"
         />
 

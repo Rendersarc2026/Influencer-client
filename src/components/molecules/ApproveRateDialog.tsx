@@ -88,8 +88,8 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent sx={{ py: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             {/* Submitted Influencer Rate */}
             <Box
               sx={{
@@ -117,7 +117,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               error={Boolean(error)}
               helperText={error || 'Margin added to influencer rate'}
               fullWidth
-              autoFocus
               disabled={loading}
             />
 
@@ -156,7 +155,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ pt: 3, pb: 1, px: 2, gap: 1 }}>
+        <DialogActions sx={{ gap: 1 }}>
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>

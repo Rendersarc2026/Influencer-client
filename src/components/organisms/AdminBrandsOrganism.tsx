@@ -27,7 +27,7 @@ import {
   useAdminDeactivateBrand,
 } from '@api';
 import { BrandResponse } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 export const AdminBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -36,11 +36,17 @@ export const AdminBrandsOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    selectedSelect: selectedAgencyFilter,
+    setSelectedSelect: setSelectedAgencyFilter,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('adminBrands');
   const debouncedSearch = useDebounce(search, 300);
-  const [selectedAgencyFilter, setSelectedAgencyFilter] = useState('');
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: brandsData,
@@ -75,16 +81,6 @@ export const AdminBrandsOrganism: React.FC = () => {
     { value: '', label: 'All Agencies' },
     ...agencies.map((a) => ({ value: a.id, label: a.name })),
   ];
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
-
-  const handleAgencyFilterChange = (val: string) => {
-    setSelectedAgencyFilter(val);
-    setPage(0);
-  };
 
   const handleOpenCreate = () => {
     setBrandToEdit(null);
@@ -232,11 +228,10 @@ export const AdminBrandsOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search brands by name or category..."
+          onSearchChange={setSearch}
           selectOptions={agencyFilterOptions}
           selectedOption={selectedAgencyFilter}
-          onSelectChange={handleAgencyFilterChange}
+          onSelectChange={setSelectedAgencyFilter}
           selectLabel="Agency"
         />
 
@@ -281,8 +276,8 @@ export const AdminBrandsOrganism: React.FC = () => {
             />
           </DialogTitle>
 
-          <DialogContent sx={{ py: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
               <TextField
                 select
                 label="Managing Agencies *"
@@ -319,7 +314,6 @@ export const AdminBrandsOrganism: React.FC = () => {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. SkinGlo D2C"
                 fullWidth
-                autoFocus
               />
 
               <TextField
@@ -332,7 +326,7 @@ export const AdminBrandsOrganism: React.FC = () => {
             </Box>
           </DialogContent>
 
-          <DialogActions sx={{ pt: 3, pb: 1, px: 2, gap: 1 }}>
+          <DialogActions sx={{ gap: 1 }}>
             <Button variant="outlined" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>

@@ -38,7 +38,7 @@ import {
   useRemoveInfluencerFromCampaign,
 } from '@api';
 import { AgencyMapperResponse, RecordMetricRequest } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl } from '@utils';
 
 interface AgencyCampaignDetailOrganismProps {
@@ -56,10 +56,15 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('agencyCampaignDetail');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
   const { data: brandsData } = useAgencyBrands();
@@ -458,11 +463,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
         <FilterBar
           searchValue={search}
-          onSearchChange={(val) => {
-            setSearch(val);
-            setPage(0);
-          }}
-          searchPlaceholder="Search influencers or deliverables..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<AgencyMapperResponse>

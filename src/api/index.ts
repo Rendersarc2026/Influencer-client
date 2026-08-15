@@ -6,3 +6,4 @@ export * from './influencer.api';
 export * from './admin.api';
 export * from './chat.api';
 export * from './prefetch';
+export * from './enums.api';

@@ -99,8 +99,8 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent sx={{ py: 1 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
               label="Reach (Unique Views) *"
               type="number"
@@ -108,7 +108,6 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               onChange={(e) => setReach(e.target.value)}
               placeholder="e.g. 450000"
               fullWidth
-              autoFocus
               disabled={loading}
             />
 
@@ -162,7 +161,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ pt: 3, pb: 1, px: 2, gap: 1 }}>
+        <DialogActions sx={{ gap: 1 }}>
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>

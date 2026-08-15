@@ -20,7 +20,7 @@ import { DataTable, DataTableColumn, FilterBar, ConfirmDialog } from '@molecules
 import { SectionHeading } from '@atoms';
 import { useAdminAgencies, useCreateAgency, useUpdateAgency, useDeactivateAgency } from '@api';
 import { AgencyResponse } from '@contracts';
-import { useAuth, useDebounce, useToast } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 export const AdminAgenciesOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -29,10 +29,15 @@ export const AdminAgenciesOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [search, setSearch] = useState('');
+  const {
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('adminAgencies');
   const debouncedSearch = useDebounce(search, 300);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const {
     data: agenciesData,
@@ -56,11 +61,6 @@ export const AdminAgenciesOrganism: React.FC = () => {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [deactivateAgencyId, setDeactivateAgencyId] = useState<string | null>(null);
-
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setPage(0);
-  };
 
   const handleOpenCreate = () => {
     setAgencyToEdit(null);
@@ -189,8 +189,7 @@ export const AdminAgenciesOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={handleSearchChange}
-          searchPlaceholder="Search agencies by name or slug..."
+          onSearchChange={setSearch}
         />
 
         <DataTable<AgencyResponse>
@@ -234,8 +233,8 @@ export const AdminAgenciesOrganism: React.FC = () => {
             />
           </DialogTitle>
 
-          <DialogContent sx={{ py: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
               <TextField
                 label="Agency Name *"
                 value={name}
@@ -247,7 +246,6 @@ export const AdminAgenciesOrganism: React.FC = () => {
                 }}
                 placeholder="e.g. Omnicom Media Group"
                 fullWidth
-                autoFocus
               />
 
               <TextField
@@ -260,7 +258,7 @@ export const AdminAgenciesOrganism: React.FC = () => {
             </Box>
           </DialogContent>
 
-          <DialogActions sx={{ pt: 3, pb: 1, px: 2, gap: 1 }}>
+          <DialogActions sx={{ gap: 1 }}>
             <Button variant="outlined" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>

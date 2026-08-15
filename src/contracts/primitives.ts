@@ -108,6 +108,15 @@ export const phone = z
   .transform((v) => v.replace(/[\s()-]/g, ''))
   .refine((v) => /^\+?[0-9]{7,15}$/.test(v), 'Must be a valid phone number');
 
+/**
+ * Boolean carried in a query string. `z.coerce.boolean()` cannot be used here:
+ * it runs `Boolean(value)`, so the string "false" coerces to `true` and a
+ * negative filter silently reads as a positive one.
+ */
+export const boolQuery = z
+  .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+  .transform((v) => v === true || v === 'true' || v === '1');
+
 /** Cursor / pagination primitives. */
 export const cursor = z.string().uuid().optional();
 export const page = z.coerce.number().int().min(1).optional();

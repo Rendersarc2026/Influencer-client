@@ -1,5 +1,14 @@
 import { z } from 'zod';
-import { count, email, httpUrl, money, phone, safeMultilineText, safeText } from './primitives';
+import {
+  boolQuery,
+  count,
+  email,
+  httpUrl,
+  money,
+  phone,
+  safeMultilineText,
+  safeText,
+} from './primitives';
 import { RoleCodeEnum } from './roles.contract';
 
 /** Identity fields every role has. Creator-only data lives on InfluencerDetail. */
@@ -129,9 +138,17 @@ export const InfluencerListQuerySchema = z.object({
   category: z.string().max(120).optional(),
   location: z.string().max(120).optional(),
   agencyId: z.string().uuid().optional(),
-  isActive: z.coerce.boolean().optional(),
+  isActive: boolQuery.optional(),
 });
 export type InfluencerListQuery = z.infer<typeof InfluencerListQuerySchema>;
+
+/**
+ * Which side of the active/deactivated split a list should return. Distinct
+ * from `isActive` because it can also express "both", which an optional
+ * boolean cannot — an absent `isActive` already means "active only".
+ */
+export const UserStatusFilterSchema = z.enum(['ACTIVE', 'INACTIVE', 'ALL']);
+export type UserStatusFilter = z.infer<typeof UserStatusFilterSchema>;
 
 export const UserListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
@@ -142,6 +159,7 @@ export const UserListQuerySchema = z.object({
   roleCode: z.string().optional(),
   /** Matches influencer_detail.location. */
   city: z.string().max(100).optional(),
-  isActive: z.coerce.boolean().optional(),
+  isActive: boolQuery.optional(),
+  status: UserStatusFilterSchema.optional(),
 });
 export type UserListQuery = z.infer<typeof UserListQuerySchema>;
