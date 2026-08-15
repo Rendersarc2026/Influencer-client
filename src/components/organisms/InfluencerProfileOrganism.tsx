@@ -25,11 +25,19 @@ export const InfluencerProfileOrganism: React.FC = () => {
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
-  const [city, setCity] = useState(user?.profile?.city || '');
-  const [instagram, setInstagram] = useState(user?.profile?.instagram || '');
-  const [youtube, setYoutube] = useState(user?.profile?.youtube || '');
+  // Location, handles and reach live on the creator's detail row now.
+  const [city, setCity] = useState(user?.influencer?.location || '');
+  const [category, setCategory] = useState(user?.influencer?.category || '');
+  const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
+  const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState(
-    user?.profile?.followers ? String(user.profile.followers) : '',
+    user?.influencer?.followers ? String(user.influencer.followers) : '',
+  );
+  const [commercialMin, setCommercialMin] = useState(
+    user?.influencer?.avgCommercialMin ? String(user.influencer.avgCommercialMin) : '',
+  );
+  const [commercialMax, setCommercialMax] = useState(
+    user?.influencer?.avgCommercialMax ? String(user.influencer.avgCommercialMax) : '',
   );
   const [bio, setBio] = useState(user?.profile?.bio || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -39,11 +47,17 @@ export const InfluencerProfileOrganism: React.FC = () => {
     if (user?.profile) {
       setFullName(user.profile.fullName || '');
       setDisplayName(user.profile.displayName || '');
-      setCity(user.profile.city || '');
-      setInstagram(user.profile.instagram || '');
-      setYoutube(user.profile.youtube || '');
-      setFollowers(user.profile.followers ? String(user.profile.followers) : '');
       setBio(user.profile.bio || '');
+    }
+    const detail = user?.influencer;
+    if (detail) {
+      setCity(detail.location || '');
+      setCategory(detail.category || '');
+      setInstagram(detail.instagram || '');
+      setYoutube(detail.youtube || '');
+      setFollowers(detail.followers ? String(detail.followers) : '');
+      setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
+      setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
     }
   }, [user]);
 
@@ -55,19 +69,26 @@ export const InfluencerProfileOrganism: React.FC = () => {
     const payload: UpdateProfileRequest = {
       fullName: fullName.trim(),
       displayName: displayName.trim() || undefined,
-      city: city.trim() || undefined,
-      instagram: instagram.trim() || undefined,
-      youtube: youtube.trim() || undefined,
-      followers: followers ? parseInt(followers, 10) : undefined,
       bio: bio.trim() || undefined,
+      influencer: {
+        location: city.trim() || undefined,
+        category: category.trim() || undefined,
+        instagram: instagram.trim() || undefined,
+        youtube: youtube.trim() || undefined,
+        followers: followers ? parseInt(followers, 10) : undefined,
+        avgCommercialMin: commercialMin ? Number(commercialMin) : undefined,
+        avgCommercialMax: commercialMax ? Number(commercialMax) : undefined,
+      },
     };
 
     const validation = UpdateProfileSchema.safeParse(payload);
     if (!validation.success) {
       const errors: Record<string, string> = {};
       validation.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          errors[String(err.path[0])] = err.message;
+        // Creator fields are nested under influencerDetail; key on the leaf.
+        const field = err.path[err.path.length - 1];
+        if (field !== undefined) {
+          errors[String(field)] = err.message;
         }
       });
       setFieldErrors(errors);

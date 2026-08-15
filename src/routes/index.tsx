@@ -30,6 +30,9 @@ const AdminAgenciesPage = lazy(() =>
 const AdminBrandsPage = lazy(() =>
   import('../pages/AdminBrandsPage').then((m) => ({ default: m.AdminBrandsPage })),
 );
+const AdminInfluencersPage = lazy(() =>
+  import('../pages/AdminInfluencersPage').then((m) => ({ default: m.AdminInfluencersPage })),
+);
 const AdminCampaignsPage = lazy(() =>
   import('../pages/AdminCampaignsPage').then((m) => ({ default: m.AdminCampaignsPage })),
 );
@@ -107,6 +110,7 @@ const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
     () => import('../pages/AdminHome'),
     () => import('../pages/AdminAgenciesPage'),
     () => import('../pages/AdminBrandsPage'),
+    () => import('../pages/AdminInfluencersPage'),
     () => import('../pages/AdminCampaignsPage'),
     () => import('../pages/AdminCampaignDetailPage'),
     () => import('../pages/AdminUsersPage'),
@@ -153,16 +157,18 @@ function prefetchRoutes(roleCode: string | null): void {
   }
 }
 
-import { DashboardSkeleton } from '../components/templates/DashboardSkeleton';
+import { PageSkeleton, PageSkeletonVariant } from '../components/templates/PageSkeleton';
 
 /**
- * Suspense fallback renders an instantaneous shimmering dashboard skeleton.
+ * Wraps a lazy page in its error boundary and Suspense fallback.
+ *
+ * The fallback shimmer is per-route on purpose: a list page that flashes the
+ * dashboard's metric cards before rendering a plain table reads as a layout
+ * jump rather than as loading. Pass the variant that matches the page shape.
  */
-const RouteFallback: React.FC = () => <DashboardSkeleton />;
-
-const withBoundary = (Component: React.ComponentType) => (
+const withBoundary = (Component: React.ComponentType, skeleton: PageSkeletonVariant = 'shell') => (
   <ErrorBoundary>
-    <Suspense fallback={<RouteFallback />}>
+    <Suspense fallback={<PageSkeleton variant={skeleton} />}>
       <Component />
     </Suspense>
   </ErrorBoundary>
@@ -178,7 +184,7 @@ const router = createBrowserRouter([
   // Public Routes
   {
     path: '/login',
-    element: withBoundary(LoginPage),
+    element: withBoundary(LoginPage, 'auth'),
   },
   // The style guide is a development-only reference. Excluding it from
   // production keeps an unauthenticated internal surface — and its chunk — out
@@ -197,13 +203,13 @@ const router = createBrowserRouter([
   // Blocking Setup Routes
   {
     path: '/accept-terms',
-    element: <RequireAuth>{withBoundary(AcceptTerms)}</RequireAuth>,
+    element: <RequireAuth skeleton="auth">{withBoundary(AcceptTerms, 'auth')}</RequireAuth>,
   },
   {
     path: '/complete-profile',
     element: (
-      <RequireAuth>
-        <RequireTerms>{withBoundary(CompleteProfile)}</RequireTerms>
+      <RequireAuth skeleton="auth">
+        <RequireTerms skeleton="auth">{withBoundary(CompleteProfile, 'auth')}</RequireTerms>
       </RequireAuth>
     ),
   },
@@ -211,38 +217,58 @@ const router = createBrowserRouter([
   // Admin Routes
   {
     path: '/admin',
-    element: <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminHome)}</ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="dashboard">
+        {withBoundary(AdminHome, 'dashboard')}
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/agencies',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminAgenciesPage)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="list">
+        {withBoundary(AdminAgenciesPage, 'list')}
+      </ProtectedRoute>
     ),
   },
   {
     path: '/admin/brands',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminBrandsPage)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="list">
+        {withBoundary(AdminBrandsPage, 'list')}
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/influencers',
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="list">
+        {withBoundary(AdminInfluencersPage, 'list')}
+      </ProtectedRoute>
     ),
   },
   {
     path: '/admin/campaigns',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminCampaignsPage)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="list">
+        {withBoundary(AdminCampaignsPage, 'list')}
+      </ProtectedRoute>
     ),
   },
   {
     path: '/admin/campaigns/:id',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN']}>
-        {withBoundary(AdminCampaignDetailPage)}
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="detail">
+        {withBoundary(AdminCampaignDetailPage, 'detail')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/admin/users',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN']}>{withBoundary(AdminUsersPage)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN']} skeleton="list">
+        {withBoundary(AdminUsersPage, 'list')}
+      </ProtectedRoute>
     ),
   },
 
@@ -250,53 +276,57 @@ const router = createBrowserRouter([
   {
     path: '/agency',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>{withBoundary(AgencyHome)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="dashboard">
+        {withBoundary(AgencyHome, 'dashboard')}
+      </ProtectedRoute>
     ),
   },
   {
     path: '/agency/brands',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>
-        {withBoundary(AgencyBrandsPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="list">
+        {withBoundary(AgencyBrandsPage, 'list')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/agency/campaigns',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>
-        {withBoundary(AgencyCampaignsPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="list">
+        {withBoundary(AgencyCampaignsPage, 'list')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/agency/campaigns/:id',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>
-        {withBoundary(AgencyCampaignDetailPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="detail">
+        {withBoundary(AgencyCampaignDetailPage, 'detail')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/agency/campaigns/:id/add',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>
-        {withBoundary(AgencyAddInfluencerPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="grid">
+        {withBoundary(AgencyAddInfluencerPage, 'grid')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/agency/reports',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>
-        {withBoundary(AgencyReportsPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="reports">
+        {withBoundary(AgencyReportsPage, 'reports')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/agency/chats',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']}>{withBoundary(ChatPage)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="chat">
+        {withBoundary(ChatPage, 'chat')}
+      </ProtectedRoute>
     ),
   },
 
@@ -304,45 +334,49 @@ const router = createBrowserRouter([
   {
     path: '/brand',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']}>{withBoundary(BrandHome)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']} skeleton="dashboard">
+        {withBoundary(BrandHome, 'dashboard')}
+      </ProtectedRoute>
     ),
   },
   {
     path: '/brand/campaigns',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']}>
-        {withBoundary(BrandCampaignsPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']} skeleton="list">
+        {withBoundary(BrandCampaignsPage, 'list')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/brand/campaigns/:id',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']}>
-        {withBoundary(BrandCampaignDetailPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']} skeleton="detail">
+        {withBoundary(BrandCampaignDetailPage, 'detail')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/brand/payments',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']}>
-        {withBoundary(BrandPaymentsPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']} skeleton="list">
+        {withBoundary(BrandPaymentsPage, 'list')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/brand/requirements',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']}>
-        {withBoundary(BrandRequirementsPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']} skeleton="list">
+        {withBoundary(BrandRequirementsPage, 'list')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/brand/chats',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']}>{withBoundary(ChatPage)}</ProtectedRoute>
+      <ProtectedRoute allowedRoles={['ADMIN', 'BRAND']} skeleton="chat">
+        {withBoundary(ChatPage, 'chat')}
+      </ProtectedRoute>
     ),
   },
 
@@ -350,32 +384,32 @@ const router = createBrowserRouter([
   {
     path: '/influencer',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']}>
-        {withBoundary(InfluencerHome)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']} skeleton="dashboard">
+        {withBoundary(InfluencerHome, 'dashboard')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/influencer/campaigns/:id',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']}>
-        {withBoundary(InfluencerAssignmentDetailPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']} skeleton="detail">
+        {withBoundary(InfluencerAssignmentDetailPage, 'detail')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/influencer/profile',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']}>
-        {withBoundary(InfluencerProfilePage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']} skeleton="form">
+        {withBoundary(InfluencerProfilePage, 'form')}
       </ProtectedRoute>
     ),
   },
   {
     path: '/influencer/chats',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']}>
-        {withBoundary(ChatPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'INFLUENCER']} skeleton="chat">
+        {withBoundary(ChatPage, 'chat')}
       </ProtectedRoute>
     ),
   },
@@ -384,8 +418,8 @@ const router = createBrowserRouter([
   {
     path: '/chat',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY', 'BRAND', 'INFLUENCER']}>
-        {withBoundary(ChatPage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY', 'BRAND', 'INFLUENCER']} skeleton="chat">
+        {withBoundary(ChatPage, 'chat')}
       </ProtectedRoute>
     ),
   },
@@ -394,8 +428,8 @@ const router = createBrowserRouter([
   {
     path: '/profile',
     element: (
-      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY', 'BRAND', 'INFLUENCER']}>
-        {withBoundary(ProfilePage)}
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY', 'BRAND', 'INFLUENCER']} skeleton="form">
+        {withBoundary(ProfilePage, 'form')}
       </ProtectedRoute>
     ),
   },

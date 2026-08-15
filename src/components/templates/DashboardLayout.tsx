@@ -57,7 +57,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
+        height: '100vh',          // hard lock — never grows past viewport
+        overflow: 'hidden',
         backgroundColor: theme.palette.tokens.pageBg,
         padding: { xs: '8px 8px 80px 8px', sm: '12px 12px 88px 12px', md: '16px' },
         gap: { xs: 0, md: '20px' },
@@ -77,10 +78,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         component="main"
         sx={{
           flexGrow: 1,
+          minHeight: 0,           // must shrink inside flex parent
           backgroundColor: theme.palette.tokens.surface,
           borderRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
           border: `1px solid ${theme.palette.tokens.divider}`,
-          minHeight: { xs: 'calc(100vh - 88px)', md: 'calc(100vh - 32px)' },
           marginLeft: { xs: 0, md: '260px' },
           display: 'flex',
           flexDirection: 'column',
@@ -101,7 +102,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           rightAction={rightAction}
         />
 
-        {/* Content Body with responsive padding */}
+        {/* Content Body */}
         <Box
           sx={{
             padding: {
@@ -109,12 +110,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               sm: `${theme.customSpacing.cardPadding}px`,
             },
             flexGrow: 1,
-            minHeight: 0,          // allows flex child to shrink below content size
+            minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             gap: `${theme.customSpacing.cardGap}px`,
             overflowX: 'hidden',
-            overflowY: 'hidden',   // page itself does NOT scroll — tables scroll internally
+            overflowY: 'auto',    // mixed-content pages scroll here; fillHeight tables scroll their own rows
+            // Thin scrollbar
+            '&::-webkit-scrollbar': { width: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: theme.palette.tokens.divider,
+              borderRadius: 3,
+            },
           }}
         >
           {children}

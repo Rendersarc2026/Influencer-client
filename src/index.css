@@ -11,6 +11,7 @@ body,
 #root {
   height: 100%;
   width: 100%;
+  overflow: hidden; /* page never scrolls — tables scroll internally */
   font-family:
     'Plus Jakarta Sans',
     -apple-system,
@@ -23,3 +24,4 @@ body,
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+

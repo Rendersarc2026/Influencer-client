@@ -46,4 +46,3 @@ export const CampaignListQuerySchema = z.object({
   isActive: z.coerce.boolean().optional(),
 });
 export type CampaignListQuery = z.infer<typeof CampaignListQuerySchema>;
-

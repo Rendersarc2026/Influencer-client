@@ -30,4 +30,3 @@ export const PaymentListQuerySchema = z.object({
   status: z.string().optional(),
 });
 export type PaymentListQuery = z.infer<typeof PaymentListQuerySchema>;
-

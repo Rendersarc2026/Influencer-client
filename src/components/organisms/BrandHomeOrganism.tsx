@@ -24,7 +24,11 @@ export const BrandHomeOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useBrandCampaigns({
+  const {
+    data: campaignsData,
+    isLoading: campaignsLoading,
+    isFetching: campaignsFetching,
+  } = useBrandCampaigns({
     page: page + 1,
     limit: rowsPerPage,
   });
@@ -171,6 +175,7 @@ export const BrandHomeOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
+          isFetching={campaignsFetching}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

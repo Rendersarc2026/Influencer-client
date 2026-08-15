@@ -44,7 +44,11 @@ export const AdminUsersOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: usersData, isLoading: usersLoading } = useAdminUsers({
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    isFetching: usersFetching,
+  } = useAdminUsers({
     roleCode: activeRolePill !== 'ALL' ? activeRolePill : undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
@@ -129,7 +133,9 @@ export const AdminUsersOrganism: React.FC = () => {
       setTimeout(() => setInviteSuccessMsg(''), 4000);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to resend invite code.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to resend invite code.',
+      );
     }
   };
 
@@ -141,7 +147,9 @@ export const AdminUsersOrganism: React.FC = () => {
       setDeactivateUserId(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate user.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate user.',
+      );
     }
   };
 
@@ -278,6 +286,7 @@ export const AdminUsersOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={usersLoading}
+          isFetching={usersFetching}
           fillHeight
         />
       </Box>

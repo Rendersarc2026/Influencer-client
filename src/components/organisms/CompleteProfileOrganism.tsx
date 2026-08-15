@@ -24,12 +24,13 @@ export const CompleteProfileOrganism: React.FC = () => {
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
-  const [city, setCity] = useState(user?.profile?.city || '');
   const [bio, setBio] = useState(user?.profile?.bio || '');
-  const [instagram, setInstagram] = useState(user?.profile?.instagram || '');
-  const [youtube, setYoutube] = useState(user?.profile?.youtube || '');
+  // Creator-only onboarding fields — they land on influencer_detail, not profile.
+  const [city, setCity] = useState(user?.influencer?.location || '');
+  const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
+  const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState<string>(
-    user?.profile?.followers ? String(user.profile.followers) : '',
+    user?.influencer?.followers ? String(user.influencer.followers) : '',
   );
 
   const [loading, setLoading] = useState(false);
@@ -44,13 +45,15 @@ export const CompleteProfileOrganism: React.FC = () => {
     const payload = {
       fullName: fullName.trim(),
       displayName: displayName.trim() || undefined,
-      city: city.trim() || undefined,
       bio: bio.trim() || undefined,
       ...(isInfluencer
         ? {
-            instagram: instagram.trim() || undefined,
-            youtube: youtube.trim() || undefined,
-            followers: followers ? parseInt(followers, 10) : undefined,
+            influencer: {
+              location: city.trim() || undefined,
+              instagram: instagram.trim() || undefined,
+              youtube: youtube.trim() || undefined,
+              followers: followers ? parseInt(followers, 10) : undefined,
+            },
           }
         : {}),
     };
@@ -59,8 +62,10 @@ export const CompleteProfileOrganism: React.FC = () => {
     if (!validation.success) {
       const errors: Record<string, string> = {};
       validation.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          errors[String(err.path[0])] = err.message;
+        // Creator fields are nested under influencerDetail; key on the leaf.
+        const field = err.path[err.path.length - 1];
+        if (field !== undefined) {
+          errors[String(field)] = err.message;
         }
       });
       setFieldErrors(errors);

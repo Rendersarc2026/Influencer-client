@@ -34,7 +34,11 @@ export const AdminAgenciesOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: agenciesData, isLoading } = useAdminAgencies({
+  const {
+    data: agenciesData,
+    isLoading,
+    isFetching,
+  } = useAdminAgencies({
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -105,7 +109,9 @@ export const AdminAgenciesOrganism: React.FC = () => {
       setDeactivateAgencyId(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate agency.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate agency.',
+      );
     }
   };
 
@@ -199,6 +205,7 @@ export const AdminAgenciesOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isLoading}
+          isFetching={isFetching}
           fillHeight
         />
       </Box>

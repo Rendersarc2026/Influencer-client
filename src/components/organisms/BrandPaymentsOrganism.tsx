@@ -24,7 +24,11 @@ export const BrandPaymentsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: paymentsData, isLoading: paymentsLoading } = useBrandPayments({
+  const {
+    data: paymentsData,
+    isLoading: paymentsLoading,
+    isFetching: paymentsFetching,
+  } = useBrandPayments({
     status: activePill !== 'ALL' ? activePill : undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
@@ -59,7 +63,9 @@ export const BrandPaymentsOrganism: React.FC = () => {
       showSuccess('Deliverable payment authorized successfully.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to authorize payment.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to authorize payment.',
+      );
     }
   };
 
@@ -157,6 +163,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={paymentsLoading}
+          isFetching={paymentsFetching}
         />
       </Box>
     </DashboardLayout>

@@ -25,7 +25,11 @@ export const AdminHomeOrganism: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { data: statsData, isLoading: statsLoading } = useAdminPlatformStats();
-  const { data: usersData, isLoading: usersLoading } = useAdminUsers({
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    isFetching: usersFetching,
+  } = useAdminUsers({
     page: page + 1,
     limit: rowsPerPage,
   });
@@ -173,6 +177,7 @@ export const AdminHomeOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={usersLoading}
+          isFetching={usersFetching}
         />
       </Box>
     </DashboardLayout>

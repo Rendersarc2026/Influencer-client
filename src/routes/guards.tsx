@@ -1,19 +1,22 @@
 import React, { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { RoleCode } from '@contracts';
-import { DashboardSkeleton } from '@templates';
+import { PageSkeleton, PageSkeletonVariant } from '@templates';
 import { useAuth } from '@hooks';
 import { getRoleDashboardPath } from './navConfig';
 
 /**
  * 1. RequireAuth: Ensures the user has an active session cookie.
  */
-export const RequireAuth: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const RequireAuth: React.FC<{ children: ReactNode; skeleton?: PageSkeletonVariant }> = ({
+  children,
+  skeleton = 'shell',
+}) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <PageSkeleton variant={skeleton} />;
   }
 
   if (!isAuthenticated) {
@@ -26,12 +29,15 @@ export const RequireAuth: React.FC<{ children: ReactNode }> = ({ children }) => 
 /**
  * 2. RequireTerms: Ensures user accepted the latest terms version.
  */
-export const RequireTerms: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const RequireTerms: React.FC<{ children: ReactNode; skeleton?: PageSkeletonVariant }> = ({
+  children,
+  skeleton = 'shell',
+}) => {
   const { termsAccepted, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <PageSkeleton variant={skeleton} />;
   }
 
   if (!termsAccepted) {
@@ -44,12 +50,15 @@ export const RequireTerms: React.FC<{ children: ReactNode }> = ({ children }) =>
 /**
  * 3. RequireProfile: Ensures user completed their profile.
  */
-export const RequireProfile: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const RequireProfile: React.FC<{ children: ReactNode; skeleton?: PageSkeletonVariant }> = ({
+  children,
+  skeleton = 'shell',
+}) => {
   const { profileComplete, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <PageSkeleton variant={skeleton} />;
   }
 
   if (!profileComplete) {
@@ -66,11 +75,12 @@ export const RequireProfile: React.FC<{ children: ReactNode }> = ({ children }) 
 export const RequireRole: React.FC<{
   allowedRoles: RoleCode[];
   children: ReactNode;
-}> = ({ allowedRoles, children }) => {
+  skeleton?: PageSkeletonVariant;
+}> = ({ allowedRoles, children, skeleton = 'shell' }) => {
   const { roleCode, isLoading } = useAuth();
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <PageSkeleton variant={skeleton} />;
   }
 
   if (!roleCode || !allowedRoles.includes(roleCode)) {
@@ -88,13 +98,21 @@ export const RequireRole: React.FC<{
 export const ProtectedRoute: React.FC<{
   allowedRoles?: RoleCode[];
   children: ReactNode;
-}> = ({ allowedRoles, children }) => {
+  /**
+   * Shimmer shape to show while the session resolves. Matching it to the page
+   * being guarded avoids a second, differently-shaped skeleton once the auth
+   * check clears and the route's own Suspense fallback takes over.
+   */
+  skeleton?: PageSkeletonVariant;
+}> = ({ allowedRoles, children, skeleton = 'shell' }) => {
   return (
-    <RequireAuth>
-      <RequireTerms>
-        <RequireProfile>
+    <RequireAuth skeleton={skeleton}>
+      <RequireTerms skeleton={skeleton}>
+        <RequireProfile skeleton={skeleton}>
           {allowedRoles ? (
-            <RequireRole allowedRoles={allowedRoles}>{children}</RequireRole>
+            <RequireRole allowedRoles={allowedRoles} skeleton={skeleton}>
+              {children}
+            </RequireRole>
           ) : (
             children
           )}
@@ -111,7 +129,7 @@ export const RootRedirect: React.FC = () => {
   const { isAuthenticated, roleCode, termsAccepted, profileComplete, isLoading } = useAuth();
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return <PageSkeleton variant="shell" />;
   }
 
   if (!isAuthenticated || !roleCode) {

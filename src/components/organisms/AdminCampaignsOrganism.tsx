@@ -6,7 +6,6 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
-import { SectionHeading } from '@atoms';
 import { useAdminCampaigns, useAdminBrands } from '@api';
 import { CampaignResponse } from '@contracts';
 import { useAuth, useDebounce } from '@hooks';
@@ -23,7 +22,11 @@ export const AdminCampaignsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useAdminCampaigns({
+  const {
+    data: campaignsData,
+    isLoading: campaignsLoading,
+    isFetching: campaignsFetching,
+  } = useAdminCampaigns({
     status: activePill !== 'ALL' ? activePill : undefined,
     brandId: selectedBrand || undefined,
     search: debouncedSearch.trim() || undefined,
@@ -125,10 +128,7 @@ export const AdminCampaignsOrganism: React.FC = () => {
       onLogout={logout}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
-        <SectionHeading
-          title="All Campaigns"
-          subtitle="System-wide campaigns registry"
-        />
+        {/* <SectionHeading title="All Campaigns" subtitle="System-wide campaigns registry" /> */}
 
         <FilterBar
           pills={filterPills}
@@ -155,6 +155,7 @@ export const AdminCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
+          isFetching={campaignsFetching}
           fillHeight
         />
       </Box>

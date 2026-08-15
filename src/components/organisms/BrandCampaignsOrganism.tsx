@@ -21,7 +21,11 @@ export const BrandCampaignsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: campaignsData, isLoading } = useBrandCampaigns({
+  const {
+    data: campaignsData,
+    isLoading,
+    isFetching,
+  } = useBrandCampaigns({
     status: activePill !== 'ALL' ? activePill : undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
@@ -126,6 +130,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isLoading}
+          isFetching={isFetching}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

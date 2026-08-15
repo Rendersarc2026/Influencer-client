@@ -33,7 +33,11 @@ export const AgencyHomeOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns({
+  const {
+    data: campaignsData,
+    isLoading: campaignsLoading,
+    isFetching: campaignsFetching,
+  } = useAgencyCampaigns({
     page: page + 1,
     limit: rowsPerPage,
   });
@@ -81,7 +85,9 @@ export const AgencyHomeOrganism: React.FC = () => {
       setCreateCampaignOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.',
+      );
     }
   };
 
@@ -242,6 +248,7 @@ export const AgencyHomeOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
+          isFetching={campaignsFetching}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

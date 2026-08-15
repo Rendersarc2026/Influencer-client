@@ -24,7 +24,11 @@ export const AgencyCampaignsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns({
+  const {
+    data: campaignsData,
+    isLoading: campaignsLoading,
+    isFetching: campaignsFetching,
+  } = useAgencyCampaigns({
     status: activePill !== 'ALL' ? activePill : undefined,
     brandId: selectedBrand || undefined,
     search: debouncedSearch.trim() || undefined,
@@ -75,7 +79,9 @@ export const AgencyCampaignsOrganism: React.FC = () => {
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.',
+      );
     }
   };
 
@@ -174,6 +180,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
+          isFetching={campaignsFetching}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

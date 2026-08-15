@@ -114,4 +114,3 @@ export const CampaignMapperListQuerySchema = z.object({
   brandStatus: z.string().optional(),
 });
 export type CampaignMapperListQuery = z.infer<typeof CampaignMapperListQuerySchema>;
-

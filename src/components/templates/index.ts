@@ -1,2 +1,2 @@
 export * from './DashboardLayout';
-export * from './DashboardSkeleton';
+export * from './PageSkeleton';

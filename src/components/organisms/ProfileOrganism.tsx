@@ -30,11 +30,20 @@ export const ProfileOrganism: React.FC = () => {
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
-  const [city, setCity] = useState(user?.profile?.city || '');
-  const [instagram, setInstagram] = useState(user?.profile?.instagram || '');
-  const [youtube, setYoutube] = useState(user?.profile?.youtube || '');
+  // Location, handles, reach and commercials moved off the shared profile onto
+  // the creator's own detail row — only an INFLUENCER has one.
+  const [city, setCity] = useState(user?.influencer?.location || '');
+  const [category, setCategory] = useState(user?.influencer?.category || '');
+  const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
+  const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState(
-    user?.profile?.followers ? String(user.profile.followers) : '',
+    user?.influencer?.followers ? String(user.influencer.followers) : '',
+  );
+  const [commercialMin, setCommercialMin] = useState(
+    user?.influencer?.avgCommercialMin ? String(user.influencer.avgCommercialMin) : '',
+  );
+  const [commercialMax, setCommercialMax] = useState(
+    user?.influencer?.avgCommercialMax ? String(user.influencer.avgCommercialMax) : '',
   );
   const [bio, setBio] = useState(user?.profile?.bio || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -45,11 +54,17 @@ export const ProfileOrganism: React.FC = () => {
     if (user?.profile) {
       setFullName(user.profile.fullName || '');
       setDisplayName(user.profile.displayName || '');
-      setCity(user.profile.city || '');
-      setInstagram(user.profile.instagram || '');
-      setYoutube(user.profile.youtube || '');
-      setFollowers(user.profile.followers ? String(user.profile.followers) : '');
       setBio(user.profile.bio || '');
+    }
+    const detail = user?.influencer;
+    if (detail) {
+      setCity(detail.location || '');
+      setCategory(detail.category || '');
+      setInstagram(detail.instagram || '');
+      setYoutube(detail.youtube || '');
+      setFollowers(detail.followers ? String(detail.followers) : '');
+      setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
+      setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
     }
   }, [user]);
 
@@ -86,13 +101,20 @@ export const ProfileOrganism: React.FC = () => {
     const payload: UpdateProfileRequest = {
       fullName: fullName.trim(),
       displayName: displayName.trim() || undefined,
-      city: city.trim() || undefined,
       bio: bio.trim() || undefined,
+      // One request writes both tables; the server upserts them together so a
+      // save costs one round trip rather than two.
       ...(isInfluencer
         ? {
-            instagram: instagram.trim() || undefined,
-            youtube: youtube.trim() || undefined,
-            followers: followers ? parseInt(followers, 10) : undefined,
+            influencer: {
+              location: city.trim() || undefined,
+              category: category.trim() || undefined,
+              instagram: instagram.trim() || undefined,
+              youtube: youtube.trim() || undefined,
+              followers: followers ? parseInt(followers, 10) : undefined,
+              avgCommercialMin: commercialMin ? Number(commercialMin) : undefined,
+              avgCommercialMax: commercialMax ? Number(commercialMax) : undefined,
+            },
           }
         : {}),
     };
@@ -101,8 +123,10 @@ export const ProfileOrganism: React.FC = () => {
     if (!validation.success) {
       const errors: Record<string, string> = {};
       validation.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          errors[String(err.path[0])] = err.message;
+        // Creator fields are nested, so key on the leaf segment.
+        const field = err.path[err.path.length - 1];
+        if (field !== undefined) {
+          errors[String(field)] = err.message;
         }
       });
       setFieldErrors(errors);
@@ -218,28 +242,39 @@ export const ProfileOrganism: React.FC = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                label="City / Location"
-                placeholder="e.g. Mumbai, Bengaluru"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                error={Boolean(fieldErrors.city)}
-                helperText={fieldErrors.city}
-                fullWidth
-                disabled={updateProfileMutation.isPending}
-              />
-
-              <TextField
-                label="Account Email (Read-Only)"
-                value={user?.email || ''}
-                disabled
-                fullWidth
-              />
-            </Box>
+            <TextField
+              label="Account Email (Read-Only)"
+              value={user?.email || ''}
+              disabled
+              fullWidth
+            />
 
             {isInfluencer && (
               <>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TextField
+                    label="City / Location"
+                    placeholder="e.g. Kochi, Trivandrum"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    error={Boolean(fieldErrors.location)}
+                    helperText={fieldErrors.location}
+                    fullWidth
+                    disabled={updateProfileMutation.isPending}
+                  />
+
+                  <TextField
+                    label="Category"
+                    placeholder="e.g. Fashion Lifestyle, Food Vlogger"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    error={Boolean(fieldErrors.category)}
+                    helperText={fieldErrors.category}
+                    fullWidth
+                    disabled={updateProfileMutation.isPending}
+                  />
+                </Box>
+
                 <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                   <TextField
                     label="Instagram Handle"
@@ -275,6 +310,34 @@ export const ProfileOrganism: React.FC = () => {
                   fullWidth
                   disabled={updateProfileMutation.isPending}
                 />
+
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <TextField
+                    label="Average Commercial (Min)"
+                    type="number"
+                    placeholder="e.g. 20000"
+                    value={commercialMin}
+                    onChange={(e) => setCommercialMin(e.target.value)}
+                    error={Boolean(fieldErrors.avgCommercialMin)}
+                    helperText={fieldErrors.avgCommercialMin}
+                    fullWidth
+                    disabled={updateProfileMutation.isPending}
+                  />
+
+                  <TextField
+                    label="Average Commercial (Max)"
+                    type="number"
+                    placeholder="e.g. 25000"
+                    value={commercialMax}
+                    onChange={(e) => setCommercialMax(e.target.value)}
+                    error={Boolean(fieldErrors.avgCommercialMax)}
+                    helperText={
+                      fieldErrors.avgCommercialMax || 'Indicative range shown to your agency'
+                    }
+                    fullWidth
+                    disabled={updateProfileMutation.isPending}
+                  />
+                </Box>
               </>
             )}
 

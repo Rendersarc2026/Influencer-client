@@ -33,6 +33,7 @@ export function useAgencyBrands(params?: BrandListQuery) {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -139,6 +140,7 @@ export function useCampaignInfluencers(
       return response.data;
     },
     enabled: Boolean(campaignId),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -357,6 +359,7 @@ export function useCampaignReports(campaignIds: Array<string>) {
   return {
     reports,
     isLoading: key.length > 0 && query.isPending,
+    isFetching: key.length > 0 && query.isFetching,
     isError: query.isError,
   };
 }

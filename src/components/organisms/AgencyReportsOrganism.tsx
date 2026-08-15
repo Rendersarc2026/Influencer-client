@@ -36,13 +36,21 @@ export const AgencyReportsOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns();
+  const {
+    data: campaignsData,
+    isLoading: campaignsLoading,
+    isFetching: campaignsFetching,
+  } = useAgencyCampaigns();
   const { data: brandsData } = useAgencyBrands();
   const campaigns = campaignsData?.items || [];
   const brands = brandsData?.items || [];
 
   const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
-  const { reports, isLoading: reportsLoading } = useCampaignReports(campaignIds);
+  const {
+    reports,
+    isLoading: reportsLoading,
+    isFetching: reportsFetching,
+  } = useCampaignReports(campaignIds);
 
   const [search, setSearch] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
@@ -254,6 +262,7 @@ export const AgencyReportsOrganism: React.FC = () => {
           columns={columns}
           rows={filteredRows}
           loading={campaignsLoading || reportsLoading}
+          isFetching={campaignsFetching || reportsFetching}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

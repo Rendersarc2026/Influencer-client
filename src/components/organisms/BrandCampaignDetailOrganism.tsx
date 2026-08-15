@@ -40,7 +40,11 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const { data: campaign, isLoading: campaignLoading } = useBrandCampaign(campaignId);
-  const { data: mappersData, isLoading: mappersLoading } = useBrandCampaignInfluencers(campaignId, {
+  const {
+    data: mappersData,
+    isLoading: mappersLoading,
+    isFetching: mappersFetching,
+  } = useBrandCampaignInfluencers(campaignId, {
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -70,7 +74,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       showSuccess('Creator commercial proposal approved.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve proposal.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve proposal.',
+      );
     }
   };
 
@@ -116,7 +122,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       setActiveDialog(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit decision.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit decision.',
+      );
     }
   };
 
@@ -335,6 +343,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             setPage(0);
           }}
           loading={mappersLoading || campaignLoading}
+          isFetching={mappersFetching}
         />
       </Box>
 

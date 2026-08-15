@@ -11,6 +11,8 @@ import {
   UpdateBrandRequest,
   UserResponse,
   UserListQuery,
+  InfluencerResponse,
+  InfluencerListQuery,
   CreateUserRequest,
   UpdateUserRequest,
   CampaignResponse,
@@ -87,6 +89,21 @@ export function useAdminBrands(params?: BrandListQuery) {
       const response = await apiClient.get<PaginatedResult<BrandResponse>>('/admin/brands', {
         params,
       });
+      return response.data;
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** The creator directory. */
+export function useAdminInfluencers(params?: InfluencerListQuery) {
+  return useQuery<PaginatedResult<InfluencerResponse>>({
+    queryKey: ['admin', 'influencers', params],
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<InfluencerResponse>>(
+        '/admin/influencers',
+        { params },
+      );
       return response.data;
     },
     placeholderData: keepPreviousData,
@@ -272,4 +289,3 @@ export function adminPlatformStatsQueryOptions() {
 export function useAdminPlatformStats() {
   return useQuery<AdminPlatformStatsResponse>(adminPlatformStatsQueryOptions());
 }
-

@@ -64,7 +64,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
   const { data: brandsData } = useAgencyBrands();
   const brands = brandsData?.items || [];
-  const { data: mappersData, isLoading: mappersLoading } = useCampaignInfluencers(campaignId, {
+  const {
+    data: mappersData,
+    isLoading: mappersLoading,
+    isFetching: mappersFetching,
+  } = useCampaignInfluencers(campaignId, {
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -98,7 +102,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       setApproveDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve rate.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve rate.',
+      );
     }
   };
 
@@ -114,7 +120,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       setRevisionDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to request revision.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to request revision.',
+      );
     }
   };
 
@@ -125,7 +133,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       showSuccess('Submitted to brand for review.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit for brand review.');
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to submit for brand review.',
+      );
     }
   };
 
@@ -137,7 +149,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       setMetricsDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to record metrics.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to record metrics.',
+      );
     }
   };
 
@@ -150,7 +164,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       setDeleteDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.',
+      );
     }
   };
 
@@ -461,6 +477,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             setPage(0);
           }}
           loading={mappersLoading || campaignLoading}
+          isFetching={mappersFetching}
         />
       </Box>
 

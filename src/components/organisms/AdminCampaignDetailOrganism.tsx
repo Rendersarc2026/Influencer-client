@@ -37,7 +37,11 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
   const { data: campaign, isLoading: campaignLoading } = useAdminCampaign(campaignId);
   const { data: brandsData } = useAdminBrands();
   const brands = brandsData?.items || [];
-  const { data: mappersData, isLoading: mappersLoading } = useAdminCampaignInfluencers(campaignId, {
+  const {
+    data: mappersData,
+    isLoading: mappersLoading,
+    isFetching: mappersFetching,
+  } = useAdminCampaignInfluencers(campaignId, {
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -204,7 +208,10 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
           <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center', pt: 1 }}>
             <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
               Timeline:{' '}
-              <Box component="span" sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}>
+              <Box
+                component="span"
+                sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}
+              >
                 {campaign?.startDate
                   ? new Date(campaign.startDate).toLocaleDateString('en-IN')
                   : 'Flexible'}{' '}
@@ -260,6 +267,7 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
               setPage(0);
             }}
             loading={mappersLoading || campaignLoading}
+            isFetching={mappersFetching}
           />
         </Box>
       </Box>

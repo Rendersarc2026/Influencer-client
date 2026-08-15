@@ -23,7 +23,11 @@ export const AgencyBrandsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: brandsData, isLoading } = useAgencyBrands({
+  const {
+    data: brandsData,
+    isLoading,
+    isFetching,
+  } = useAgencyBrands({
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -147,6 +151,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isLoading}
+          isFetching={isFetching}
         />
       </Box>
 

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   CampaignResponse,
@@ -20,6 +20,9 @@ export function useBrandCampaigns(params?: CampaignListQuery) {
       });
       return response.data;
     },
+    // Keep the current page on screen while the next one loads — the table
+    // shows its backlit refetch state instead of collapsing to a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -50,6 +53,7 @@ export function useBrandCampaignInfluencers(
       return response.data;
     },
     enabled: Boolean(campaignId),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -87,6 +91,7 @@ export function useBrandPayments(params?: PaymentListQuery) {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 

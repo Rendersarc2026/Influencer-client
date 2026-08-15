@@ -14,7 +14,7 @@ import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import { useTheme } from '@mui/material/styles';
-import { MoneyText, DeltaBadge, StatusChip, EmptyState, LoadingBlock } from '@atoms';
+import { MoneyText, DeltaBadge, StatusChip, EmptyState, LoadingBlock, BusyOverlay } from '@atoms';
 import { safeImageUrl } from '@utils';
 
 export type ColumnType =
@@ -63,6 +63,12 @@ export interface DataTableProps<T> {
    * pagination bar stay pinned.
    */
   fillHeight?: boolean;
+  /**
+   * When true (and not loading) shows a backlit overlay with a progress bar
+   * over the table — used while React Query is refetching in the background
+   * (search / filter / page / rowsPerPage changes).
+   */
+  isFetching?: boolean;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -86,6 +92,7 @@ export function DataTable<T extends Record<string, unknown>>({
   onRowsPerPageChange,
   minHeight = 420,
   fillHeight = false,
+  isFetching = false,
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [internalPage, setInternalPage] = useState(0);
@@ -308,10 +315,34 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   const hasHeader = Boolean(title || subtitle || headerAction);
-  const minTableContainerHeight =
-    typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
-  const emptyRowHeight =
-    typeof minHeight === 'number' ? `${Math.max(240, minHeight - 60)}px` : '280px';
+  // `loading` already swapped the whole table for a skeleton above, so the
+  // backlight only ever applies to a refetch over data that is still on screen.
+  const busy = isFetching && !loading;
+  const minTableContainerHeight = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
+  const isEmpty = rows.length === 0;
+
+  // With no rows the empty state is rendered as a sibling of the table rather
+  // than inside a tbody cell, so it can be centred in whatever height is left
+  // over below the column headers instead of in a fixed-height row.
+  const emptyBlock = (
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        p: 4,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {emptyState || (
+        <EmptyState
+          title="No records found"
+          description="There are no items to display right now."
+        />
+      )}
+    </Box>
+  );
 
   // ─── fillHeight layout ───────────────────────────────────────────────────
   // Card becomes a flex column that fills its parent. The TableContainer
@@ -356,95 +387,87 @@ export function DataTable<T extends Record<string, unknown>>({
           </Box>
         )}
 
-        {/* Scrollable table body — grows to fill remaining card height */}
-        <TableContainer
+        {/* Table wrapper — position:relative so the backlight overlay can cover it */}
+        <Box
           sx={{
+            position: 'relative',
             flex: 1,
             minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'auto',
-            // Custom scrollbar styling
-            '&::-webkit-scrollbar': { width: 6, height: 6 },
-            '&::-webkit-scrollbar-track': { background: 'transparent' },
-            '&::-webkit-scrollbar-thumb': {
-              background: theme.palette.tokens.divider,
-              borderRadius: 3,
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: theme.palette.tokens.textSecondary,
-            },
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          <Table stickyHeader sx={{ minWidth: 600 }}>
-            <TableHead>
-              <TableRow>
-                {columns.map((col) => (
-                  <TableCell
-                    key={col.id}
-                    align={col.align || 'left'}
-                    sx={{
-                      width: col.width,
-                      // stickyHeader uses position:sticky — keep bg consistent
-                      backgroundColor: theme.palette.tokens.surface,
-                    }}
-                  >
-                    {col.header}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.length === 0 ? (
+          <BusyOverlay busy={busy} />
+
+          {/* Scrollable table body — grows to fill remaining card height.
+              When empty it shrinks to just the column headers so the empty
+              state below can claim the rest of the space. */}
+          <TableContainer
+            sx={{
+              flex: isEmpty ? '0 0 auto' : 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'auto',
+              // Custom scrollbar styling
+              '&::-webkit-scrollbar': { width: 6, height: 6 },
+              '&::-webkit-scrollbar-track': { background: 'transparent' },
+              '&::-webkit-scrollbar-thumb': {
+                background: theme.palette.tokens.divider,
+                borderRadius: 3,
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: theme.palette.tokens.textSecondary,
+              },
+            }}
+          >
+            <Table stickyHeader sx={{ minWidth: 600 }}>
+              <TableHead>
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    sx={{
-                      p: 0,
-                      border: 'none',
-                      textAlign: 'center',
-                      verticalAlign: 'middle',
-                      height: '320px',
-                    }}
-                  >
-                    {emptyState || (
-                      <Box
-                        sx={{
-                          p: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          height: '100%',
-                        }}
-                      >
-                        <EmptyState
-                          title="No records found"
-                          description="There are no items to display right now."
-                        />
-                      </Box>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                displayedRows.map((row, index) => {
-                  const globalIndex = pagination ? page * rowsPerPage + index : index;
-                  return (
-                    <TableRow
-                      key={getRowKey(row, globalIndex)}
-                      onClick={() => onRowClick && onRowClick(row)}
-                      sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                  {columns.map((col) => (
+                    <TableCell
+                      key={col.id}
+                      align={col.align || 'left'}
+                      sx={{
+                        width: col.width,
+                        // stickyHeader uses position:sticky — keep bg consistent
+                        backgroundColor: theme.palette.tokens.surface,
+                      }}
                     >
-                      {columns.map((col) => (
-                        <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
-                          {renderCellContent(row, col, globalIndex)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                      {col.header}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isEmpty
+                  ? null
+                  : displayedRows.map((row, index) => {
+                      const globalIndex = pagination ? page * rowsPerPage + index : index;
+                      return (
+                        <TableRow
+                          key={getRowKey(row, globalIndex)}
+                          onClick={() => onRowClick && onRowClick(row)}
+                          sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                        >
+                          {columns.map((col) => (
+                            <TableCell
+                              key={col.id}
+                              align={col.align || 'left'}
+                              sx={{ width: col.width }}
+                            >
+                              {renderCellContent(row, col, globalIndex)}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      );
+                    })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {isEmpty && emptyBlock}
+        </Box>
+        {/* end table wrapper */}
 
         {/* Pinned pagination bar */}
         {pagination && totalCount > 0 && (
@@ -486,78 +509,69 @@ export function DataTable<T extends Record<string, unknown>>({
         </Box>
       )}
 
-      <TableContainer
+      {/* Table wrapper — position:relative so the backlight overlay can cover it.
+          It owns the minimum height so an empty table can centre its empty
+          state in the leftover space below the column headers. */}
+      <Box
         sx={{
+          position: 'relative',
           minHeight: minTableContainerHeight,
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'flex-start',
         }}
       >
-        <Table sx={{ minWidth: 600 }}>
-          <TableHead>
-            <TableRow>
-              {columns.map((col) => (
-                <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
-                  {col.header}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow sx={{ height: emptyRowHeight }}>
-                <TableCell
-                  colSpan={columns.length}
-                  sx={{
-                    p: 0,
-                    border: 'none',
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                    height: emptyRowHeight,
-                  }}
-                >
-                  {emptyState || (
-                    <Box
-                      sx={{
-                        p: 4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                      }}
-                    >
-                      <EmptyState
-                        title="No records found"
-                        description="There are no items to display right now."
-                      />
-                    </Box>
-                  )}
-                </TableCell>
+        <BusyOverlay busy={busy} />
+
+        <TableContainer
+          sx={{
+            flex: isEmpty ? '0 0 auto' : 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+          }}
+        >
+          <Table sx={{ minWidth: 600 }}>
+            <TableHead>
+              <TableRow>
+                {columns.map((col) => (
+                  <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
+                    {col.header}
+                  </TableCell>
+                ))}
               </TableRow>
-            ) : (
-              displayedRows.map((row, index) => {
-                const globalIndex = pagination ? page * rowsPerPage + index : index;
-                return (
-                  <TableRow
-                    key={getRowKey(row, globalIndex)}
-                    onClick={() => onRowClick && onRowClick(row)}
-                    sx={{
-                      cursor: onRowClick ? 'pointer' : 'default',
-                    }}
-                  >
-                    {columns.map((col) => (
-                      <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
-                        {renderCellContent(row, col, globalIndex)}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {isEmpty
+                ? null
+                : displayedRows.map((row, index) => {
+                    const globalIndex = pagination ? page * rowsPerPage + index : index;
+                    return (
+                      <TableRow
+                        key={getRowKey(row, globalIndex)}
+                        onClick={() => onRowClick && onRowClick(row)}
+                        sx={{
+                          cursor: onRowClick ? 'pointer' : 'default',
+                        }}
+                      >
+                        {columns.map((col) => (
+                          <TableCell
+                            key={col.id}
+                            align={col.align || 'left'}
+                            sx={{ width: col.width }}
+                          >
+                            {renderCellContent(row, col, globalIndex)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {isEmpty && emptyBlock}
+      </Box>
+      {/* end table wrapper */}
 
       {pagination && totalCount > 0 && (
         <TablePagination

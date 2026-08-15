@@ -42,7 +42,11 @@ export const AdminBrandsOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: brandsData, isLoading: brandsLoading } = useAdminBrands({
+  const {
+    data: brandsData,
+    isLoading: brandsLoading,
+    isFetching: brandsFetching,
+  } = useAdminBrands({
     agencyId: selectedAgencyFilter || undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
@@ -64,7 +68,7 @@ export const AdminBrandsOrganism: React.FC = () => {
 
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
-  const [agencyId, setAgencyId] = useState('');
+  const [agencyIds, setAgencyIds] = useState<string[]>([]);
   const [deactivateBrandId, setDeactivateBrandId] = useState<string | null>(null);
 
   const agencyFilterOptions = [
@@ -86,7 +90,7 @@ export const AdminBrandsOrganism: React.FC = () => {
     setBrandToEdit(null);
     setName('');
     setIndustry('');
-    setAgencyId(agencies.length > 0 ? agencies[0].id : '');
+    setAgencyIds(agencies.length > 0 ? [agencies[0].id] : []);
     setDialogOpen(true);
   };
 
@@ -94,7 +98,7 @@ export const AdminBrandsOrganism: React.FC = () => {
     setBrandToEdit(brand);
     setName(brand.name);
     setIndustry(brand.industry || '');
-    setAgencyId(brand.agencyId);
+    setAgencyIds(brand.agencyIds);
     setDialogOpen(true);
   };
 
@@ -109,7 +113,7 @@ export const AdminBrandsOrganism: React.FC = () => {
           data: {
             name: name.trim(),
             industry: industry.trim() || undefined,
-            agencyId: agencyId || undefined,
+            agencyIds,
           },
         });
         showSuccess('Brand updated successfully.');
@@ -117,7 +121,7 @@ export const AdminBrandsOrganism: React.FC = () => {
         await createBrandMutation.mutateAsync({
           name: name.trim(),
           industry: industry.trim() || undefined,
-          agencyId: agencyId || undefined,
+          agencyIds,
         });
         showSuccess('Brand created successfully.');
       }
@@ -136,7 +140,9 @@ export const AdminBrandsOrganism: React.FC = () => {
       setDeactivateBrandId(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate brand.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate brand.',
+      );
     }
   };
 
@@ -153,8 +159,11 @@ export const AdminBrandsOrganism: React.FC = () => {
       header: 'Assigned Agency',
       type: 'text',
       accessor: (row) => {
-        const agency = agencies.find((a) => a.id === row.agencyId);
-        return agency ? agency.name : 'Direct Account';
+        // A brand may be managed by several agencies at once.
+        const names = row.agencyIds
+          .map((id) => agencies.find((a) => a.id === id)?.name)
+          .filter(Boolean);
+        return names.length ? names.join(', ') : 'Direct Account';
       },
     },
     {
@@ -243,6 +252,7 @@ export const AdminBrandsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={brandsLoading}
+          isFetching={brandsFetching}
           fillHeight
         />
       </Box>
@@ -275,9 +285,25 @@ export const AdminBrandsOrganism: React.FC = () => {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <TextField
                 select
-                label="Assign to Agency *"
-                value={agencyId}
-                onChange={(e) => setAgencyId(e.target.value)}
+                label="Managing Agencies *"
+                value={agencyIds}
+                onChange={(e) =>
+                  setAgencyIds(
+                    typeof e.target.value === 'string'
+                      ? e.target.value.split(',')
+                      : (e.target.value as unknown as string[]),
+                  )
+                }
+                helperText="A brand may be managed by more than one agency"
+                slotProps={{
+                  select: {
+                    multiple: true,
+                    renderValue: (selected) =>
+                      (selected as string[])
+                        .map((id) => agencies.find((a) => a.id === id)?.name ?? id)
+                        .join(', '),
+                  },
+                }}
                 fullWidth
               >
                 {agencies.map((a) => (

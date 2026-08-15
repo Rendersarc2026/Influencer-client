@@ -28,7 +28,11 @@ export const InfluencerHomeOrganism: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const { data: assignmentsData, isLoading } = useInfluencerAssignments({
+  const {
+    data: assignmentsData,
+    isLoading,
+    isFetching,
+  } = useInfluencerAssignments({
     rateStatus: activePill !== 'ALL' ? activePill : undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
@@ -72,7 +76,9 @@ export const InfluencerHomeOrganism: React.FC = () => {
       setActiveRateDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit quote.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit quote.',
+      );
     }
   };
 
@@ -217,6 +223,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isLoading}
+          isFetching={isFetching}
           onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
         />
       </Box>
