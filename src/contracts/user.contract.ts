@@ -16,8 +16,6 @@ export type ProfileResponse = z.infer<typeof ProfileResponseSchema>;
 
 export const InfluencerResponseSchema = z.object({
   id: z.string().uuid(),
-  /** Null for a directory row that has no login yet. */
-  userId: z.string().uuid().nullable(),
   name: z.string(),
   category: z.string().nullable(),
   location: z.string().nullable(),
