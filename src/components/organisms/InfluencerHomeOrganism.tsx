@@ -27,10 +27,12 @@ export const InfluencerHomeOrganism: React.FC = () => {
   const [activeRateDialogMapper, setActiveRateDialogMapper] =
     useState<InfluencerMapperResponse | null>(null);
 
-  const pendingRatesCount = assignments.filter(
-    (a) => a.rateStatus === 'PENDING_SUBMISSION' || a.rateStatus === 'REVISION_REQUESTED',
+  const pendingRatesCount = (assignments || []).filter(
+    (a) => a?.rateStatus === 'PENDING_SUBMISSION' || a?.rateStatus === 'REVISION_REQUESTED',
   ).length;
-  const approvedCount = assignments.filter((a) => a.rateStatus === 'AGENCY_APPROVED').length;
+  const approvedCount = (assignments || []).filter(
+    (a) => a?.rateStatus === 'AGENCY_APPROVED',
+  ).length;
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
     await submitRateMutation.mutateAsync({ mapperId, data });

@@ -18,28 +18,70 @@ import { useAuth } from '@hooks';
 // no loading state is visible in practice.
 // -------------------------------------------------------------
 const LoginPage = lazy(() => import('../pages/Login').then((m) => ({ default: m.LoginPage })));
-const AcceptTerms = lazy(() => import('../pages/AcceptTerms').then((m) => ({ default: m.AcceptTerms })));
-const CompleteProfile = lazy(() => import('../pages/CompleteProfile').then((m) => ({ default: m.CompleteProfile })));
+const AcceptTerms = lazy(() =>
+  import('../pages/AcceptTerms').then((m) => ({ default: m.AcceptTerms })),
+);
+const CompleteProfile = lazy(() =>
+  import('../pages/CompleteProfile').then((m) => ({ default: m.CompleteProfile })),
+);
 const AdminHome = lazy(() => import('../pages/AdminHome').then((m) => ({ default: m.AdminHome })));
-const AdminAgenciesPage = lazy(() => import('../pages/AdminAgenciesPage').then((m) => ({ default: m.AdminAgenciesPage })));
-const AdminBrandsPage = lazy(() => import('../pages/AdminBrandsPage').then((m) => ({ default: m.AdminBrandsPage })));
-const AdminUsersPage = lazy(() => import('../pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
-const AgencyHome = lazy(() => import('../pages/AgencyHome').then((m) => ({ default: m.AgencyHome })));
-const AgencyBrandsPage = lazy(() => import('../pages/AgencyBrandsPage').then((m) => ({ default: m.AgencyBrandsPage })));
-const AgencyCampaignsPage = lazy(() => import('../pages/AgencyCampaignsPage').then((m) => ({ default: m.AgencyCampaignsPage })));
-const AgencyCampaignDetailPage = lazy(() => import('../pages/AgencyCampaignDetailPage').then((m) => ({ default: m.AgencyCampaignDetailPage })));
-const AgencyAddInfluencerPage = lazy(() => import('../pages/AgencyAddInfluencerPage').then((m) => ({ default: m.AgencyAddInfluencerPage })));
-const AgencyReportsPage = lazy(() => import('../pages/AgencyReportsPage').then((m) => ({ default: m.AgencyReportsPage })));
+const AdminAgenciesPage = lazy(() =>
+  import('../pages/AdminAgenciesPage').then((m) => ({ default: m.AdminAgenciesPage })),
+);
+const AdminBrandsPage = lazy(() =>
+  import('../pages/AdminBrandsPage').then((m) => ({ default: m.AdminBrandsPage })),
+);
+const AdminUsersPage = lazy(() =>
+  import('../pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })),
+);
+const AgencyHome = lazy(() =>
+  import('../pages/AgencyHome').then((m) => ({ default: m.AgencyHome })),
+);
+const AgencyBrandsPage = lazy(() =>
+  import('../pages/AgencyBrandsPage').then((m) => ({ default: m.AgencyBrandsPage })),
+);
+const AgencyCampaignsPage = lazy(() =>
+  import('../pages/AgencyCampaignsPage').then((m) => ({ default: m.AgencyCampaignsPage })),
+);
+const AgencyCampaignDetailPage = lazy(() =>
+  import('../pages/AgencyCampaignDetailPage').then((m) => ({
+    default: m.AgencyCampaignDetailPage,
+  })),
+);
+const AgencyAddInfluencerPage = lazy(() =>
+  import('../pages/AgencyAddInfluencerPage').then((m) => ({ default: m.AgencyAddInfluencerPage })),
+);
+const AgencyReportsPage = lazy(() =>
+  import('../pages/AgencyReportsPage').then((m) => ({ default: m.AgencyReportsPage })),
+);
 const BrandHome = lazy(() => import('../pages/BrandHome').then((m) => ({ default: m.BrandHome })));
-const BrandCampaignsPage = lazy(() => import('../pages/BrandCampaignsPage').then((m) => ({ default: m.BrandCampaignsPage })));
-const BrandCampaignDetailPage = lazy(() => import('../pages/BrandCampaignDetailPage').then((m) => ({ default: m.BrandCampaignDetailPage })));
-const BrandPaymentsPage = lazy(() => import('../pages/BrandPaymentsPage').then((m) => ({ default: m.BrandPaymentsPage })));
-const BrandRequirementsPage = lazy(() => import('../pages/BrandRequirementsPage').then((m) => ({ default: m.BrandRequirementsPage })));
-const InfluencerHome = lazy(() => import('../pages/InfluencerHome').then((m) => ({ default: m.InfluencerHome })));
-const InfluencerAssignmentDetailPage = lazy(() => import('../pages/InfluencerAssignmentDetailPage').then((m) => ({ default: m.InfluencerAssignmentDetailPage })));
-const InfluencerProfilePage = lazy(() => import('../pages/InfluencerProfilePage').then((m) => ({ default: m.InfluencerProfilePage })));
+const BrandCampaignsPage = lazy(() =>
+  import('../pages/BrandCampaignsPage').then((m) => ({ default: m.BrandCampaignsPage })),
+);
+const BrandCampaignDetailPage = lazy(() =>
+  import('../pages/BrandCampaignDetailPage').then((m) => ({ default: m.BrandCampaignDetailPage })),
+);
+const BrandPaymentsPage = lazy(() =>
+  import('../pages/BrandPaymentsPage').then((m) => ({ default: m.BrandPaymentsPage })),
+);
+const BrandRequirementsPage = lazy(() =>
+  import('../pages/BrandRequirementsPage').then((m) => ({ default: m.BrandRequirementsPage })),
+);
+const InfluencerHome = lazy(() =>
+  import('../pages/InfluencerHome').then((m) => ({ default: m.InfluencerHome })),
+);
+const InfluencerAssignmentDetailPage = lazy(() =>
+  import('../pages/InfluencerAssignmentDetailPage').then((m) => ({
+    default: m.InfluencerAssignmentDetailPage,
+  })),
+);
+const InfluencerProfilePage = lazy(() =>
+  import('../pages/InfluencerProfilePage').then((m) => ({ default: m.InfluencerProfilePage })),
+);
 const ChatPage = lazy(() => import('../pages/ChatPage').then((m) => ({ default: m.ChatPage })));
-const ProfilePage = lazy(() => import('../pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const ProfilePage = lazy(() =>
+  import('../pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
 
 /**
  * Route chunks worth warming, grouped by role.

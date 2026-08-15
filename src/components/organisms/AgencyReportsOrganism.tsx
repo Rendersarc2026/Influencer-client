@@ -54,19 +54,21 @@ export const AgencyReportsOrganism: React.FC = () => {
   // aggregates and engagement rate are computed server side.
   const reportRows: CampaignMetricRow[] = useMemo(
     () =>
-      reports.map((report) => {
-        const brand = brands.find((b) => b.id === report.campaign.brandId);
-        return {
-          id: report.campaign.id,
-          campaignName: report.campaign.name,
-          brandName: brand?.name ?? '—',
-          influencerCount: report.influencerCount,
-          totalClientRate: report.totalClientRate,
-          totalMargin: report.totalMargin,
-          totalReach: report.totalReach,
-          erPercent: report.averageErPercent,
-        };
-      }),
+      reports
+        .filter((report) => report?.campaign)
+        .map((report) => {
+          const brand = brands.find((b) => b.id === report.campaign.brandId);
+          return {
+            id: report.campaign.id,
+            campaignName: report.campaign.name,
+            brandName: brand?.name ?? '—',
+            influencerCount: report.influencerCount ?? 0,
+            totalClientRate: report.totalClientRate ?? 0,
+            totalMargin: report.totalMargin ?? 0,
+            totalReach: report.totalReach ?? 0,
+            erPercent: report.averageErPercent ?? 0,
+          };
+        }),
     [reports, brands],
   );
 

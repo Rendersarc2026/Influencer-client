@@ -1,7 +1,8 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { SidebarRail, TopBar } from '@organisms';
+import { ConfirmDialog } from '@molecules';
 import { NavItem } from '@routes/navConfig';
 
 export interface DashboardLayoutProps {
@@ -39,6 +40,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
 }) => {
   const theme = useTheme();
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+
+  const handleLogoutClick = () => {
+    setLogoutConfirmOpen(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setLogoutConfirmOpen(false);
+    if (onLogout) {
+      onLogout();
+    }
+  };
 
   return (
     <Box
@@ -56,7 +69,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         items={navItems}
         activePath={activePath}
         onNavigate={onNavigate}
-        onLogout={onLogout}
+        onLogout={handleLogoutClick}
       />
 
       {/* 2. Main White Content Surface */}
@@ -84,7 +97,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onNotificationsClick={onNotificationsClick}
           notificationCount={notificationCount}
           onProfileClick={() => onNavigate && onNavigate('/profile')}
-          onLogoutClick={onLogout}
+          onLogoutClick={handleLogoutClick}
           rightAction={rightAction}
         />
 
@@ -105,6 +118,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {children}
         </Box>
       </Box>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Log Out?"
+        body="Are you sure you want to log out of your account?"
+        confirmText="Log Out"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmLogout}
+        onCancel={() => setLogoutConfirmOpen(false)}
+      />
     </Box>
   );
 };

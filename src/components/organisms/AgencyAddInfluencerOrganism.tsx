@@ -38,7 +38,6 @@ interface AvailableCreator {
  */
 const availableCreators: AvailableCreator[] = [];
 
-
 export const AgencyAddInfluencerOrganism: React.FC = () => {
   const theme = useTheme();
   const { id: campaignId = '' } = useParams<{ id: string }>();

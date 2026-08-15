@@ -123,14 +123,22 @@ export const ProtectedRoute: React.FC<{
  * RootRedirect: Redirects / to role home or /login
  */
 export const RootRedirect: React.FC = () => {
-  const { isAuthenticated, roleCode, isLoading } = useAuth();
+  const { isAuthenticated, roleCode, termsAccepted, profileComplete, isLoading } = useAuth();
 
   if (isLoading) {
     return <CenteredLoading />;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !roleCode) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!termsAccepted) {
+    return <Navigate to="/accept-terms" replace />;
+  }
+
+  if (!profileComplete) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   return <Navigate to={getRoleDashboardPath(roleCode)} replace />;

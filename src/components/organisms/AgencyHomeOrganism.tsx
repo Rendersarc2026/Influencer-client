@@ -43,12 +43,12 @@ export const AgencyHomeOrganism: React.FC = () => {
   // Every tile below is derived from the campaign report aggregates, which carry
   // the mapper rows with their current rate and brand statuses.
   const summary = useMemo(() => {
-    const mappers = reports.flatMap((r) => r.mappers);
+    const mappers = reports.flatMap((r) => r.mappers || []);
     return {
-      pendingRates: mappers.filter((m) => m.rateStatus === 'SUBMITTED').length,
-      awaitingBrand: mappers.filter((m) => m.brandStatus === 'PENDING_REVIEW').length,
-      totalMargin: reports.reduce((sum, r) => sum + r.totalMargin, 0),
-      totalReach: reports.reduce((sum, r) => sum + r.totalReach, 0),
+      pendingRates: mappers.filter((m) => m?.rateStatus === 'SUBMITTED').length,
+      awaitingBrand: mappers.filter((m) => m?.brandStatus === 'PENDING_REVIEW').length,
+      totalMargin: reports.reduce((sum, r) => sum + (r.totalMargin || 0), 0),
+      totalReach: reports.reduce((sum, r) => sum + (r.totalReach || 0), 0),
     };
   }, [reports]);
 
@@ -57,7 +57,8 @@ export const AgencyHomeOrganism: React.FC = () => {
   const chartData = useMemo(
     () =>
       reports
-        .map((r) => ({ label: r.campaign.name, value: r.totalReach }))
+        .filter((r) => r?.campaign?.name)
+        .map((r) => ({ label: r.campaign.name, value: r.totalReach || 0 }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 8),
     [reports],

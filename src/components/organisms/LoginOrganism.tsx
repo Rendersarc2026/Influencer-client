@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -11,9 +12,11 @@ import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { RequestOtpRequestSchema, VerifyOtpRequestSchema } from '@contracts';
 import { useAuth } from '@hooks';
+import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const LoginOrganism: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { requestOtp, verifyOtp } = useAuth();
 
   // Step state: 1 = email, 2 = otp
@@ -144,8 +147,14 @@ export const LoginOrganism: React.FC = () => {
 
     try {
       setLoading(true);
-      await verifyOtp(email.trim(), fullCode);
-      // On success, session cookie is set and AuthProvider invalidates query; routing redirects to /
+      const authResult = await verifyOtp(email.trim(), fullCode);
+      if (!authResult.termsAccepted) {
+        navigate('/accept-terms', { replace: true });
+      } else if (!authResult.profileComplete) {
+        navigate('/complete-profile', { replace: true });
+      } else {
+        navigate(getRoleDashboardPath(authResult.roleCode), { replace: true });
+      }
     } catch (err: unknown) {
       const errorObj = err as {
         response?: { data?: { message?: string; attemptsRemaining?: number } };

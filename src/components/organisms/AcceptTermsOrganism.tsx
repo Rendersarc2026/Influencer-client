@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -6,19 +7,28 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import { useTheme } from '@mui/material/styles';
+import { ConfirmDialog } from '@molecules';
 import { useAuth } from '@hooks';
+import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const AcceptTermsOrganism: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { acceptTerms, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const handleAccept = async () => {
     try {
       setLoading(true);
       setError('');
-      await acceptTerms();
+      const authResult = await acceptTerms();
+      if (!authResult.profileComplete) {
+        navigate('/complete-profile', { replace: true });
+      } else {
+        navigate(getRoleDashboardPath(authResult.roleCode), { replace: true });
+      }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       setError(
@@ -143,7 +153,7 @@ export const AcceptTermsOrganism: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Button
             variant="text"
-            onClick={logout}
+            onClick={() => setConfirmLogoutOpen(true)}
             disabled={loading}
             sx={{ color: theme.palette.tokens.textSecondary }}
           >
@@ -160,6 +170,21 @@ export const AcceptTermsOrganism: React.FC = () => {
           </Button>
         </Box>
       </Card>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        open={confirmLogoutOpen}
+        title="Log Out?"
+        body="Are you sure you want to log out of your account?"
+        confirmText="Log Out"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={async () => {
+          setConfirmLogoutOpen(false);
+          await logout();
+        }}
+        onCancel={() => setConfirmLogoutOpen(false)}
+      />
     </Box>
   );
 };

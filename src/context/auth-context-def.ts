@@ -3,7 +3,7 @@ import {
   UserResponse,
   RoleCode,
   RequestOtpResponse,
-  VerifyOtpResponse,
+  CurrentUserResponse,
   UpdateProfileRequest,
 } from '@contracts';
 
@@ -15,11 +15,11 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   requestOtp: (email: string) => Promise<RequestOtpResponse>;
-  verifyOtp: (email: string, code: string) => Promise<VerifyOtpResponse>;
+  verifyOtp: (email: string, code: string) => Promise<CurrentUserResponse>;
   logout: () => Promise<void>;
-  acceptTerms: () => Promise<void>;
-  completeProfile: (data: UpdateProfileRequest) => Promise<void>;
-  refetchUser: () => Promise<void>;
+  acceptTerms: () => Promise<CurrentUserResponse>;
+  completeProfile: (data: UpdateProfileRequest) => Promise<CurrentUserResponse>;
+  refetchUser: () => Promise<CurrentUserResponse | null>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -8,6 +8,7 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TablePagination from '@mui/material/TablePagination';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
@@ -47,6 +48,9 @@ export interface DataTableProps<T> {
   subtitle?: string;
   headerAction?: ReactNode;
   className?: string;
+  pagination?: boolean;
+  rowsPerPageOptions?: number[];
+  initialRowsPerPage?: number;
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -60,8 +64,34 @@ export function DataTable<T extends Record<string, unknown>>({
   subtitle,
   headerAction,
   className,
+  pagination = true,
+  rowsPerPageOptions = [5, 10, 20, 30],
+  initialRowsPerPage = 10,
 }: DataTableProps<T>) {
   const theme = useTheme();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
+
+  useEffect(() => {
+    if (page > 0 && page * rowsPerPage >= rows.length) {
+      setPage(0);
+    }
+  }, [rows.length, page, rowsPerPage]);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const displayedRows = pagination
+    ? rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+    : rows;
 
   const getRowKey = (row: T, index: number): string | number => {
     if (typeof keyField === 'function') {
@@ -281,25 +311,40 @@ export function DataTable<T extends Record<string, unknown>>({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row, index) => (
-                <TableRow
-                  key={getRowKey(row, index)}
-                  onClick={() => onRowClick && onRowClick(row)}
-                  sx={{
-                    cursor: onRowClick ? 'pointer' : 'default',
-                  }}
-                >
-                  {columns.map((col) => (
-                    <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
-                      {renderCellContent(row, col, index)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              displayedRows.map((row, index) => {
+                const globalIndex = pagination ? page * rowsPerPage + index : index;
+                return (
+                  <TableRow
+                    key={getRowKey(row, globalIndex)}
+                    onClick={() => onRowClick && onRowClick(row)}
+                    sx={{
+                      cursor: onRowClick ? 'pointer' : 'default',
+                    }}
+                  >
+                    {columns.map((col) => (
+                      <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
+                        {renderCellContent(row, col, globalIndex)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
       </TableContainer>
+
+      {pagination && rows.length > 0 && (
+        <TablePagination
+          rowsPerPageOptions={rowsPerPageOptions}
+          component="div"
+          count={rows.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      )}
     </Card>
   );
 }

@@ -296,4 +296,44 @@ export const components: Components<Theme> = {
       },
     },
   },
+  MuiTablePagination: {
+    styleOverrides: {
+      root: {
+        color: tokens.colors.textSecondary,
+        fontSize: tokens.typography.caption.fontSize,
+        borderTop: `1px solid ${tokens.colors.divider}`,
+        borderBottom: 'none',
+      },
+      select: {
+        color: tokens.colors.textPrimary,
+        fontWeight: 600,
+        fontSize: tokens.typography.caption.fontSize,
+      },
+      selectIcon: {
+        color: tokens.colors.textSecondary,
+      },
+      displayedRows: {
+        color: tokens.colors.textSecondary,
+        fontSize: tokens.typography.caption.fontSize,
+        fontWeight: 500,
+      },
+      actions: {
+        color: tokens.colors.textPrimary,
+        '& .MuiIconButton-root': {
+          width: 32,
+          height: 32,
+          color: tokens.colors.textPrimary,
+          backgroundColor: tokens.colors.fieldBg,
+          '&:hover': {
+            backgroundColor: tokens.colors.divider,
+          },
+          '&.Mui-disabled': {
+            backgroundColor: 'transparent',
+            color: tokens.colors.textSecondary,
+            opacity: 0.5,
+          },
+        },
+      },
+    },
+  },
 };

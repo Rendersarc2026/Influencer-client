@@ -319,9 +319,7 @@ export function useCampaignReports(campaignIds: Array<string>) {
   });
 
   return {
-    reports: queries
-      .map((q) => q.data)
-      .filter((d): d is CampaignReportResponse => d !== undefined),
+    reports: queries.map((q) => q.data).filter((d): d is CampaignReportResponse => d !== undefined),
     isLoading: queries.some((q) => q.isLoading),
     isError: queries.some((q) => q.isError),
   };

@@ -6,7 +6,6 @@ import {
   RoleCode,
   RequestOtpRequest,
   RequestOtpResponse,
-  VerifyOtpRequest,
   VerifyOtpResponse,
   UpdateProfileRequest,
 } from '@contracts';
@@ -19,11 +18,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     data: authData,
     isLoading,
     refetch,
-  } = useQuery<CurrentUserResponse>({
+  } = useQuery<CurrentUserResponse | null>({
     queryKey: ['auth', 'me'],
     queryFn: async () => {
-      const response = await apiClient.get<CurrentUserResponse>('/auth/me');
-      return response.data;
+      try {
+        const response = await apiClient.get<CurrentUserResponse>('/auth/me');
+        return response.data;
+      } catch {
+        return null;
+      }
     },
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -36,22 +39,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     },
   });
 
-  const verifyOtpMutation = useMutation({
-    mutationFn: async (data: VerifyOtpRequest) => {
-      const response = await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', data);
-      return response.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-      await refetch();
-    },
-  });
-
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiClient.post('/auth/logout');
     },
     onSettled: () => {
+      queryClient.setQueryData(['auth', 'me'], null);
       queryClient.clear();
       window.location.href = '/login';
     },
@@ -61,36 +54,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return requestOtpMutation.mutateAsync({ email });
   };
 
-  const verifyOtp = async (email: string, code: string): Promise<VerifyOtpResponse> => {
-    return verifyOtpMutation.mutateAsync({ email, code });
+  const verifyOtp = async (email: string, code: string): Promise<CurrentUserResponse> => {
+    await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', { email, code });
+    const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
+    queryClient.setQueryData(['auth', 'me'], meRes.data);
+    return meRes.data;
   };
 
   const logout = async (): Promise<void> => {
     await logoutMutation.mutateAsync();
   };
 
-  const acceptTerms = async (): Promise<void> => {
+  const acceptTerms = async (): Promise<CurrentUserResponse> => {
     try {
       await apiClient.post('/terms/accept');
     } catch {
       // Fallback
     }
-    await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-    await refetch();
+    const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
+    queryClient.setQueryData(['auth', 'me'], meRes.data);
+    return meRes.data;
   };
 
-  const completeProfile = async (data: UpdateProfileRequest): Promise<void> => {
+  const completeProfile = async (data: UpdateProfileRequest): Promise<CurrentUserResponse> => {
     try {
       await apiClient.put('/users/profile', data);
     } catch {
       // Fallback
     }
-    await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-    await refetch();
+    const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
+    queryClient.setQueryData(['auth', 'me'], meRes.data);
+    return meRes.data;
   };
 
-  const refetchUser = async (): Promise<void> => {
-    await refetch();
+  const refetchUser = async (): Promise<CurrentUserResponse | null> => {
+    const res = await refetch();
+    return res.data ?? null;
   };
 
   const user = authData?.user ?? null;
