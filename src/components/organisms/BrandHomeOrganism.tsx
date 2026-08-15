@@ -90,7 +90,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="lavender"
             title="Active Campaigns"
-            value={campaignsLoading ? '—' : activeCampaigns}
+            value={activeCampaigns}
+            loading={campaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="In progress with agency"
             onClick={() => navigate('/brand/campaigns')}
@@ -123,7 +124,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="sky"
             title="Pending Payments"
-            value={paymentsLoading ? '—' : pendingPayments}
+            value={pendingPayments}
+            loading={paymentsLoading}
             icon={<PaymentRoundedIcon fontSize="small" />}
             subtitle="Awaiting authorization"
             onClick={() => navigate('/brand/payments')}

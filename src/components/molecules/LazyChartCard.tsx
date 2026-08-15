@@ -30,9 +30,9 @@ const ChartCardSkeleton: React.FC<{ height: number }> = ({ height }) => {
         border: `1px solid ${theme.palette.tokens.divider}`,
       }}
     >
-      <Skeleton variant="text" width={200} height={28} />
-      <Skeleton variant="text" width={140} height={40} />
-      <Skeleton variant="rounded" height={height} sx={{ mt: 2 }} />
+      <Skeleton animation="wave" variant="text" width={200} height={28} />
+      <Skeleton animation="wave" variant="text" width={140} height={40} />
+      <Skeleton animation="wave" variant="rounded" height={height} sx={{ mt: 2 }} />
     </Box>
   );
 };

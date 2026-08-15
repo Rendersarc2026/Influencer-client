@@ -144,7 +144,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="lavender"
             title="Active Campaigns"
-            value={campaignsLoading ? '—' : activeCampaignsCount}
+            value={activeCampaignsCount}
+            loading={campaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Currently in market"
             onClick={() => navigate('/agency/campaigns')}
@@ -155,7 +156,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Pending Rates"
-            value={reportsLoading ? '—' : summary.pendingRates}
+            value={summary.pendingRates}
+            loading={reportsLoading || campaignsLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
             subtitle="Submitted, awaiting your approval"
             onClick={() => navigate('/agency/campaigns')}
@@ -166,7 +168,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="sky"
             title="Awaiting Brand"
-            value={reportsLoading ? '—' : summary.awaitingBrand}
+            value={summary.awaitingBrand}
+            loading={reportsLoading || campaignsLoading}
             icon={<VisibilityRoundedIcon fontSize="small" />}
             subtitle="Rates submitted to brand"
             onClick={() => navigate('/agency/campaigns')}
@@ -177,7 +180,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="mint"
             title="Total Margin"
-            value={reportsLoading ? '—' : formatCurrency(summary.totalMargin)}
+            value={formatCurrency(summary.totalMargin)}
+            loading={reportsLoading || campaignsLoading}
             icon={<AttachMoneyRoundedIcon fontSize="small" />}
             subtitle="Approved rates across campaigns"
             onClick={() => navigate('/agency/reports')}
@@ -192,6 +196,7 @@ export const AgencyHomeOrganism: React.FC = () => {
         deltaLabel="total recorded reach"
         timeframeOptions={[]}
         data={chartData}
+        loading={reportsLoading || campaignsLoading}
       />
 
       {/* 3. Recent Campaigns DataTable */}

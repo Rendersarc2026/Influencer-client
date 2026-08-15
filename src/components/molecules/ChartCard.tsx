@@ -4,7 +4,7 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { StatValue, DeltaBadge, Pill } from '@atoms';
+import { StatValue, DeltaBadge, Pill, LoadingBlock } from '@atoms';
 
 export interface ChartDataPoint {
   label: string;
@@ -22,6 +22,7 @@ export interface ChartCardProps {
   data: Array<ChartDataPoint>;
   dataKey?: string;
   height?: number;
+  loading?: boolean;
   className?: string;
 }
 
@@ -36,10 +37,15 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   data,
   dataKey = 'value',
   height = 240,
+  loading = false,
   className,
 }) => {
   const theme = useTheme();
   const gradientId = `area-gradient-${title.replace(/\s+/g, '-').toLowerCase()}`;
+
+  if (loading) {
+    return <LoadingBlock variant="chart" height={height + 80} className={className} />;
+  }
 
   return (
     <Card

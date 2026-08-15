@@ -1,6 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import Box from '@mui/material/Box';
 // Imported from its own module rather than the '@molecules' barrel on purpose:
 // the barrel re-exports ChartCard, which pulls recharts into the entry chunk's
 // import graph and made every page preload the ~150kB chart bundle.
@@ -144,14 +143,12 @@ function prefetchRoutes(roleCode: string | null): void {
   }
 }
 
+import { DashboardSkeleton } from '../components/templates/DashboardSkeleton';
+
 /**
- * Suspense fallback. Deliberately just the page background: with prefetching in
- * place this is almost never seen, and a spinner that flashes for 30ms reads as
- * a glitch rather than as progress.
+ * Suspense fallback renders an instantaneous shimmering dashboard skeleton.
  */
-const RouteFallback: React.FC = () => (
-  <Box sx={{ minHeight: '100vh', backgroundColor: (theme) => theme.palette.tokens.pageBg }} />
-);
+const RouteFallback: React.FC = () => <DashboardSkeleton />;
 
 const withBoundary = (Component: React.ComponentType) => (
   <ErrorBoundary>

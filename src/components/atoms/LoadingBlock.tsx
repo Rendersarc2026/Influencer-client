@@ -32,12 +32,12 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Skeleton variant="text" width="40%" height={24} />
-          <Skeleton variant="circular" width={32} height={32} />
+          <Skeleton animation="wave" variant="text" width="40%" height={24} />
+          <Skeleton animation="wave" variant="circular" width={32} height={32} />
         </Box>
         <Box>
-          <Skeleton variant="text" width="60%" height={48} />
-          <Skeleton variant="text" width="30%" height={18} />
+          <Skeleton animation="wave" variant="text" width="60%" height={48} />
+          <Skeleton animation="wave" variant="text" width="30%" height={18} />
         </Box>
       </Card>
     );
@@ -56,10 +56,11 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Box sx={{ width: '40%' }}>
-            <Skeleton variant="text" width="80%" height={28} />
-            <Skeleton variant="text" width="40%" height={36} />
+            <Skeleton animation="wave" variant="text" width="80%" height={28} />
+            <Skeleton animation="wave" variant="text" width="40%" height={36} />
           </Box>
           <Skeleton
+            animation="wave"
             variant="rounded"
             width={180}
             height={32}
@@ -67,6 +68,7 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
           />
         </Box>
         <Skeleton
+          animation="wave"
           variant="rounded"
           width="100%"
           height="100%"
@@ -80,8 +82,9 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
     return (
       <Card className={className} sx={{ padding: `${theme.customSpacing.cardPadding}px` }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Skeleton variant="text" width={160} height={32} />
+          <Skeleton animation="wave" variant="text" width={160} height={32} />
           <Skeleton
+            animation="wave"
             variant="rounded"
             width={100}
             height={36}
@@ -100,11 +103,12 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
                 borderBottom: `1px solid ${theme.palette.tokens.divider}`,
               }}
             >
-              <Skeleton variant="circular" width={32} height={32} />
-              <Skeleton variant="text" width="25%" height={24} />
-              <Skeleton variant="text" width="20%" height={24} />
-              <Skeleton variant="text" width="15%" height={24} />
+              <Skeleton animation="wave" variant="circular" width={32} height={32} />
+              <Skeleton animation="wave" variant="text" width="25%" height={24} />
+              <Skeleton animation="wave" variant="text" width="20%" height={24} />
+              <Skeleton animation="wave" variant="text" width="15%" height={24} />
               <Skeleton
+                animation="wave"
                 variant="rounded"
                 width={80}
                 height={24}
@@ -123,6 +127,7 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
         {Array.from({ length: rows }).map((_, index) => (
           <Skeleton
             key={index}
+            animation="wave"
             variant="text"
             width={index === rows - 1 ? '60%' : '100%'}
             height={24}
@@ -141,14 +146,15 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
         height: height || 200,
       }}
     >
-      <Skeleton variant="text" width="40%" height={32} sx={{ mb: 2 }} />
+      <Skeleton animation="wave" variant="text" width="40%" height={32} sx={{ mb: 2 }} />
       <Skeleton
+        animation="wave"
         variant="rounded"
         width="100%"
         height={80}
         sx={{ borderRadius: `${theme.customRadii.inner}px`, mb: 2 }}
       />
-      <Skeleton variant="text" width="60%" height={20} />
+      <Skeleton animation="wave" variant="text" width="60%" height={20} />
     </Card>
   );
 };

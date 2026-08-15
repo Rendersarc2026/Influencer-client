@@ -13,6 +13,7 @@ import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { NavItem } from '@routes/navConfig';
@@ -136,18 +137,14 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           height: 44,
           borderRadius: `${theme.customRadii.inner}px`,
           backgroundColor: theme.palette.tints.butter,
-          color: theme.palette.tokens.rail,
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: 800,
-          fontSize: '18px',
-          letterSpacing: '-0.02em',
           cursor: 'pointer',
           flexShrink: 0,
         }}
         onClick={() => onNavigate && onNavigate('/')}
       >
-        IM
+        <StarRoundedIcon sx={{ fontSize: '24px', color: theme.palette.tokens.rail }} />
       </Box>
 
       {/* Main Navigation Items */}

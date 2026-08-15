@@ -9,6 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
+import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { RequestOtpRequestSchema, VerifyOtpRequestSchema } from '@contracts';
 import { useAuth } from '@hooks';
@@ -204,16 +205,12 @@ export const LoginOrganism: React.FC = () => {
               height: 52,
               borderRadius: `${theme.customRadii.inner}px`,
               backgroundColor: theme.palette.tokens.rail,
-              color: theme.palette.tints.butter,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '22px',
-              letterSpacing: '-0.02em',
             }}
           >
-            IM
+            <StarRoundedIcon sx={{ fontSize: '28px', color: theme.palette.tints.butter }} />
           </Box>
         </Box>
 

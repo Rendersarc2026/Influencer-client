@@ -92,7 +92,8 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="lavender"
             title="Managed Agencies"
-            value={agenciesLoading ? '—' : agencies.length}
+            value={agencies.length}
+            loading={agenciesLoading}
             icon={<BusinessRoundedIcon fontSize="small" />}
             subtitle="Active agency tenants"
             onClick={() => navigate('/admin/agencies')}
@@ -103,7 +104,8 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="mint"
             title="Client Brands"
-            value={brandsLoading ? '—' : brands.length}
+            value={brands.length}
+            loading={brandsLoading}
             icon={<StorefrontRoundedIcon fontSize="small" />}
             subtitle="Brand accounts"
             onClick={() => navigate('/admin/brands')}
@@ -114,7 +116,8 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Platform Users"
-            value={usersLoading ? '—' : users.length}
+            value={users.length}
+            loading={usersLoading}
             icon={<PeopleRoundedIcon fontSize="small" />}
             subtitle="Across all four roles"
             onClick={() => navigate('/admin/users')}
@@ -125,7 +128,8 @@ export const AdminHomeOrganism: React.FC = () => {
           <MetricCard
             tint="sky"
             title="Active Campaigns"
-            value={campaignsLoading ? '—' : activeCampaigns}
+            value={activeCampaigns}
+            loading={campaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Live in market"
           />

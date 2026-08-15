@@ -111,7 +111,8 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="lavender"
             title="Active Campaigns"
-            value={isLoading ? '—' : assignments.length}
+            value={assignments.length}
+            loading={isLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Invited & assigned briefs"
           />
@@ -121,7 +122,8 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Awaiting My Rate"
-            value={isLoading ? '—' : pendingRatesCount}
+            value={pendingRatesCount}
+            loading={isLoading}
             icon={<EditNoteRoundedIcon fontSize="small" />}
             deltaLabel="quotes needed"
           />
@@ -131,7 +133,8 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="mint"
             title="Approved Deals"
-            value={isLoading ? '—' : approvedCount}
+            value={approvedCount}
+            loading={isLoading}
             icon={<CheckCircleRoundedIcon fontSize="small" />}
             subtitle="Agency approved rates"
           />

@@ -1,24 +1,9 @@
 import React, { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import { RoleCode } from '@contracts';
+import { DashboardSkeleton } from '@templates';
 import { useAuth } from '@hooks';
 import { getRoleDashboardPath } from './navConfig';
-
-const CenteredLoading: React.FC = () => (
-  <Box
-    sx={{
-      display: 'flex',
-      minHeight: '100vh',
-      backgroundColor: '#EDF3F9',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}
-  >
-    <CircularProgress size={36} sx={{ color: '#2F80ED' }} />
-  </Box>
-);
 
 /**
  * 1. RequireAuth: Ensures the user has an active session cookie.
@@ -28,7 +13,7 @@ export const RequireAuth: React.FC<{ children: ReactNode }> = ({ children }) => 
   const location = useLocation();
 
   if (isLoading) {
-    return <CenteredLoading />;
+    return <DashboardSkeleton />;
   }
 
   if (!isAuthenticated) {
@@ -46,7 +31,7 @@ export const RequireTerms: React.FC<{ children: ReactNode }> = ({ children }) =>
   const location = useLocation();
 
   if (isLoading) {
-    return <CenteredLoading />;
+    return <DashboardSkeleton />;
   }
 
   if (!termsAccepted) {
@@ -64,7 +49,7 @@ export const RequireProfile: React.FC<{ children: ReactNode }> = ({ children }) 
   const location = useLocation();
 
   if (isLoading) {
-    return <CenteredLoading />;
+    return <DashboardSkeleton />;
   }
 
   if (!profileComplete) {
@@ -85,7 +70,7 @@ export const RequireRole: React.FC<{
   const { roleCode, isLoading } = useAuth();
 
   if (isLoading) {
-    return <CenteredLoading />;
+    return <DashboardSkeleton />;
   }
 
   if (!roleCode || !allowedRoles.includes(roleCode)) {
@@ -126,7 +111,7 @@ export const RootRedirect: React.FC = () => {
   const { isAuthenticated, roleCode, termsAccepted, profileComplete, isLoading } = useAuth();
 
   if (isLoading) {
-    return <CenteredLoading />;
+    return <DashboardSkeleton />;
   }
 
   if (!isAuthenticated || !roleCode) {
