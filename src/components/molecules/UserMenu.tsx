@@ -8,7 +8,6 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Divider from '@mui/material/Divider';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import { useTheme } from '@mui/material/styles';
 import { safeImageUrl } from '@utils';
@@ -21,7 +20,6 @@ export interface UserMenuProps {
     avatarUrl?: string;
   };
   onProfileClick?: () => void;
-  onSettingsClick?: () => void;
   onLogoutClick?: () => void;
   className?: string;
 }
@@ -29,7 +27,6 @@ export interface UserMenuProps {
 export const UserMenu: React.FC<UserMenuProps> = ({
   user,
   onProfileClick,
-  onSettingsClick,
   onLogoutClick,
   className,
 }) => {
@@ -148,18 +145,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({
             <PersonOutlineRoundedIcon fontSize="small" />
           </ListItemIcon>
           Profile
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            handleClose();
-            if (onSettingsClick) onSettingsClick();
-          }}
-          sx={{ fontSize: '14px', py: 1 }}
-        >
-          <ListItemIcon sx={{ color: theme.palette.tokens.textPrimary, minWidth: '32px' }}>
-            <SettingsRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          Settings
         </MenuItem>
         <Divider sx={{ my: 0.5 }} />
         <MenuItem

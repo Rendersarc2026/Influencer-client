@@ -1,34 +1,23 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar, ConfirmDialog } from '@molecules';
-import { SectionHeading } from '@atoms';
+import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
 import {
   useAdminUsers,
   useAdminAgencies,
   useAdminBrands,
-  useAdminCreateUser,
   useAdminDeactivateUser,
   useAdminResendInvite,
 } from '@api';
-import { UserResponse, RoleCode, CreateUserRequest, UserStatusFilter } from '@contracts';
+import { UserResponse, UserStatusFilter } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
 
 export const AdminUsersOrganism: React.FC = () => {
@@ -78,19 +67,12 @@ export const AdminUsersOrganism: React.FC = () => {
   const agencies = agenciesData?.items || [];
   const brands = brandsData?.items || [];
 
-  const createUserMutation = useAdminCreateUser();
   const deactivateUserMutation = useAdminDeactivateUser();
   const resendInviteMutation = useAdminResendInvite();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [deactivateUserId, setDeactivateUserId] = useState<string | null>(null);
-
-  // Form state
-  const [email, setEmail] = useState('');
-  const [roleCode, setRoleCode] = useState<RoleCode>('AGENCY');
-  const [orgId, setOrgId] = useState('');
-  const [phone, setPhone] = useState('');
   const [inviteSuccessMsg, setInviteSuccessMsg] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
   const filterPills = useEnumPills('ROLE', 'All Users', { INFLUENCER: 'Creator' });
 
@@ -99,36 +81,6 @@ export const AdminUsersOrganism: React.FC = () => {
     { value: 'INACTIVE', label: 'Deactivated' },
     { value: 'ALL', label: 'Active + Deactivated' },
   ];
-
-  const handleOpenCreate = () => {
-    setEmail('');
-    setRoleCode('AGENCY');
-    setOrgId(agencies.length > 0 ? agencies[0].id : '');
-    setPhone('');
-    setDialogOpen(true);
-  };
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !roleCode) return;
-
-    const payload: CreateUserRequest = {
-      email: email.trim(),
-      roleCode,
-      phone: phone.trim() || undefined,
-      agencyId: roleCode === 'AGENCY' ? orgId || undefined : undefined,
-      brandId: roleCode === 'BRAND' ? orgId || undefined : undefined,
-    };
-
-    try {
-      await createUserMutation.mutateAsync(payload);
-      showSuccess(`User account invited successfully (${email.trim()}).`);
-      setDialogOpen(false);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to create user.');
-    }
-  };
 
   const handleResendInvite = async (userEmail: string) => {
     try {
@@ -232,7 +184,7 @@ export const AdminUsersOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="User Accounts"
-      subtitle="Role administration, organization mappings, and invite provisioning"
+      subtitle="Role administration and organization user accounts"
       navItems={navConfig.ADMIN}
       activePath={location.pathname}
       user={{
@@ -242,15 +194,6 @@ export const AdminUsersOrganism: React.FC = () => {
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
-      rightAction={
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon fontSize="small" />}
-          onClick={handleOpenCreate}
-        >
-          Provision User
-        </Button>
-      }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         {inviteSuccessMsg && (
@@ -295,124 +238,10 @@ export const AdminUsersOrganism: React.FC = () => {
           }}
           loading={usersLoading}
           isFetching={usersFetching}
+          onRowClick={(row) => setSelectedUser(row)}
           fillHeight
         />
       </Box>
-
-      {/* Provision User Dialog */}
-      <Dialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: `${theme.customRadii.card}px`,
-              padding: '12px',
-              backgroundImage: 'none',
-            },
-          },
-        }}
-      >
-        <form onSubmit={handleCreateUser}>
-          <DialogTitle sx={{ pb: 1 }}>
-            <SectionHeading
-              title="Provision User Account"
-              subtitle="Invite user by email, assign system role and tenant organization"
-            />
-          </DialogTitle>
-
-          <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-              <TextField
-                label="Email Address *"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@organization.com"
-                fullWidth
-              />
-
-              <TextField
-                select
-                label="Assigned Role *"
-                value={roleCode}
-                onChange={(e) => {
-                  const r = e.target.value as RoleCode;
-                  setRoleCode(r);
-                  if (r === 'AGENCY') setOrgId(agencies[0]?.id || '');
-                  if (r === 'BRAND') setOrgId(brands[0]?.id || '');
-                }}
-                fullWidth
-              >
-                <MenuItem value="ADMIN">ADMIN (System Administrator)</MenuItem>
-                <MenuItem value="AGENCY">AGENCY (Agency Manager)</MenuItem>
-                <MenuItem value="BRAND">BRAND (Brand Manager)</MenuItem>
-                <MenuItem value="INFLUENCER">INFLUENCER (Creator)</MenuItem>
-              </TextField>
-
-              {roleCode === 'AGENCY' && (
-                <TextField
-                  select
-                  label="Assign to Agency *"
-                  value={orgId}
-                  onChange={(e) => setOrgId(e.target.value)}
-                  fullWidth
-                >
-                  {agencies.map((a) => (
-                    <MenuItem key={a.id} value={a.id}>
-                      {a.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
-
-              {roleCode === 'BRAND' && (
-                <TextField
-                  select
-                  label="Assign to Brand *"
-                  value={orgId}
-                  onChange={(e) => setOrgId(e.target.value)}
-                  fullWidth
-                >
-                  {brands.map((b) => (
-                    <MenuItem key={b.id} value={b.id}>
-                      {b.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              )}
-
-              <TextField
-                label="Phone Number (Optional)"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                fullWidth
-              />
-            </Box>
-          </DialogContent>
-
-          <DialogActions sx={{ gap: 1 }}>
-            <Button variant="outlined" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={!email.trim() || createUserMutation.isPending}
-              sx={{ minWidth: 140 }}
-            >
-              {createUserMutation.isPending ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                'Send Invite'
-              )}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
 
       {/* Confirm Deactivation */}
       <ConfirmDialog
@@ -424,6 +253,104 @@ export const AdminUsersOrganism: React.FC = () => {
         loading={deactivateUserMutation.isPending}
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateUserId(null)}
+      />
+
+      {/* User Account Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedUser)}
+        onClose={() => setSelectedUser(null)}
+        title={selectedUser?.profile?.fullName || selectedUser?.email || 'User Account'}
+        subtitle={`Role: ${selectedUser?.roleCode || 'USER'}`}
+        badge={selectedUser?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        avatarText={selectedUser?.profile?.fullName || selectedUser?.email}
+        avatarUrl={selectedUser?.profile?.avatarUrl || undefined}
+        highlights={
+          selectedUser
+            ? [
+                {
+                  label: 'Platform Role',
+                  value: selectedUser.roleCode,
+                  tint: 'sky',
+                },
+                {
+                  label: 'Account Status',
+                  value: selectedUser.isActive ? 'Active' : 'Archived',
+                  tint: selectedUser.isActive ? 'mint' : 'lavender',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedUser
+            ? [
+                {
+                  title: 'Account Information',
+                  fields: [
+                    { label: 'Login Email', value: selectedUser.email, copyable: true },
+                    { label: 'Platform Role', value: selectedUser.roleCode },
+                    { label: 'Phone Number', value: selectedUser.phone || '—' },
+                    { label: 'Account ID', value: selectedUser.id, copyable: true },
+                    {
+                      label: 'Joined Platform',
+                      value: new Date(selectedUser.createdOn).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    },
+                  ],
+                },
+                {
+                  title: 'Profile Details',
+                  fields: [
+                    { label: 'Legal Full Name', value: selectedUser.profile?.fullName || '—' },
+                    { label: 'Display Name', value: selectedUser.profile?.displayName || '—' },
+                    {
+                      label: 'Profile Status',
+                      value: selectedUser.profile?.completedOn ? 'Complete' : 'Pending',
+                    },
+                    {
+                      label: 'Biography',
+                      value: selectedUser.profile?.bio || 'No bio provided',
+                      fullWidth: true,
+                    },
+                  ],
+                },
+                {
+                  title: 'Tenancy & Association',
+                  fields: [
+                    {
+                      label: 'Agency Tenant',
+                      value: selectedUser.agencyId
+                        ? (agencies.find((a) => a.id === selectedUser.agencyId)?.name || selectedUser.agencyId)
+                        : 'None (Global/Direct)',
+                      copyable: Boolean(selectedUser.agencyId),
+                    },
+                    {
+                      label: 'Brand Account',
+                      value: selectedUser.brandId
+                        ? (brands.find((b) => b.id === selectedUser.brandId)?.name || selectedUser.brandId)
+                        : 'None (Global/Direct)',
+                      copyable: Boolean(selectedUser.brandId),
+                    },
+                  ],
+                },
+              ]
+            : []
+        }
+        actions={
+          selectedUser
+            ? [
+                {
+                  label: 'Copy Email',
+                  onClick: () => {
+                    navigator.clipboard.writeText(selectedUser.email);
+                    showSuccess('Email copied to clipboard');
+                  },
+                },
+              ]
+            : []
+        }
       />
     </DashboardLayout>
   );

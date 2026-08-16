@@ -97,7 +97,7 @@ export function slug(max = 80) {
     .transform((v) => v.trim().toLowerCase())
     .refine(
       (v) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v),
-      'Must contain only lowercase letters, digits and single hyphens',
+      'Must contain only lowercase letters, digits, and single hyphens without spaces',
     );
 }
 
@@ -107,6 +107,14 @@ export const phone = z
   .max(32)
   .transform((v) => v.replace(/[\s()-]/g, ''))
   .refine((v) => /^\+?[0-9]{7,15}$/.test(v), 'Must be a valid phone number');
+
+/** Password primitive: length-bounded (min 6, max 128), no whitespace, no control characters. */
+export const password = z
+  .string()
+  .min(6, 'Password must be at least 6 characters')
+  .max(128, 'Password must be at most 128 characters')
+  .refine((v) => !/\s/.test(v), 'Password cannot contain spaces or whitespace')
+  .refine((v) => !CONTROL_CHARS.test(v), 'Password must not contain control characters');
 
 /**
  * Boolean carried in a query string. `z.coerce.boolean()` cannot be used here:

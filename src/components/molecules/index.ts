@@ -12,5 +12,7 @@ export * from './ApproveRateDialog';
 export * from './RecordMetricsDialog';
 export * from './CreateBrandDialog';
 export * from './CreateCampaignDialog';
+export * from './CreateInfluencerDialog';
 export * from './SubmitRateDialog';
+export * from './OverviewDrawer';
 export * from './ErrorBoundary';

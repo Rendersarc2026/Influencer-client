@@ -13,6 +13,7 @@ import {
   UserListQuery,
   InfluencerResponse,
   InfluencerListQuery,
+  CreateInfluencerRequest,
   CreateUserRequest,
   UpdateUserRequest,
   CampaignResponse,
@@ -48,7 +49,11 @@ export function useCreateAgency() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'agencies'] });
+      // refetchType: 'all' so a filter dropdown cached from an earlier visit
+      // (mounted elsewhere, currently inactive) is already fresh by the time
+      // it's shown again, rather than waiting for its next mount to notice
+      // it's stale.
+      queryClient.invalidateQueries({ queryKey: ['admin', 'agencies'], refetchType: 'all' });
     },
   });
 }
@@ -61,7 +66,7 @@ export function useUpdateAgency() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'agencies'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'agencies'], refetchType: 'all' });
     },
   });
 }
@@ -73,7 +78,7 @@ export function useDeactivateAgency() {
       await apiClient.delete(`/admin/agencies/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'agencies'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'agencies'], refetchType: 'all' });
     },
   });
 }
@@ -110,6 +115,33 @@ export function useAdminInfluencers(params?: InfluencerListQuery) {
   });
 }
 
+/**
+ * A standalone directory entry, not attached to any agency's roster. Also
+ * invalidates the agency portal's directory, which reads the same table.
+ */
+export function useAdminCreateInfluencer() {
+  const queryClient = useQueryClient();
+  return useMutation<InfluencerResponse, Error, CreateInfluencerRequest>({
+    mutationFn: async (data) => {
+      const response = await apiClient.post<InfluencerResponse>('/admin/influencers', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'influencers'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
+    },
+  });
+}
+
+/**
+ * Brands are read by both the admin portal (`useAdminBrands`, keyed
+ * `['admin','brands']`) and the agency portal (`useAgencyBrands`, keyed
+ * `['agency','brands']`) even though both hit this same `/admin/brands`
+ * endpoint. The two are separate React Query cache entries, so a brand
+ * created here has to invalidate both namespaces — otherwise an
+ * agency-portal filter dropdown keeps showing its last-fetched brand list
+ * until something else (e.g. a full reload) throws the cache away.
+ */
 export function useAdminCreateBrand() {
   const queryClient = useQueryClient();
   return useMutation<BrandResponse, Error, CreateBrandRequest>({
@@ -118,7 +150,8 @@ export function useAdminCreateBrand() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
     },
   });
 }
@@ -131,7 +164,8 @@ export function useAdminUpdateBrand() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
     },
   });
 }
@@ -143,7 +177,8 @@ export function useAdminDeactivateBrand() {
       await apiClient.delete(`/admin/brands/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
     },
   });
 }

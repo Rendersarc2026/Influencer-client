@@ -65,23 +65,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await logoutMutation.mutateAsync();
   };
 
+  /**
+   * The write has to be allowed to throw. Both of these gate a redirect: the
+   * caller navigates on the refreshed session, and if the write silently failed
+   * that session still says "not accepted" / "not complete", so the route guard
+   * bounces the user straight back to the screen they just submitted — with no
+   * error shown, because the failure was swallowed here.
+   */
   const acceptTerms = async (): Promise<CurrentUserResponse> => {
-    try {
-      await apiClient.post('/terms/accept');
-    } catch {
-      // Fallback
-    }
+    await apiClient.post('/terms/accept');
     const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
     queryClient.setQueryData(['auth', 'me'], meRes.data);
     return meRes.data;
   };
 
   const completeProfile = async (data: UpdateProfileRequest): Promise<CurrentUserResponse> => {
-    try {
-      await apiClient.put('/users/profile', data);
-    } catch {
-      // Fallback
-    }
+    await apiClient.put('/users/profile', data);
     const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
     queryClient.setQueryData(['auth', 'me'], meRes.data);
     return meRes.data;

@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar } from '@molecules';
+import { DataTable, DataTableColumn, FilterBar, OverviewDrawer } from '@molecules';
 import { useAdminCampaigns, useAdminBrands } from '@api';
 import { CampaignResponse } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useViewFilters } from '@hooks';
@@ -14,6 +14,7 @@ export const AdminCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [selectedCampaign, setSelectedCampaign] = useState<CampaignResponse | null>(null);
 
   const {
     activePill,
@@ -109,7 +110,7 @@ export const AdminCampaignsOrganism: React.FC = () => {
       navItems={navConfig.ADMIN}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Super Administrator',
+        name: user?.profile?.fullName || 'Platform Administrator',
         email: user?.email,
         roleCode: 'ADMIN',
       }}
@@ -144,9 +145,103 @@ export const AdminCampaignsOrganism: React.FC = () => {
           }}
           loading={campaignsLoading}
           isFetching={campaignsFetching}
+          onRowClick={(row) => setSelectedCampaign(row)}
           fillHeight
         />
       </Box>
+
+      {/* Campaign Overview Details Viewer Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedCampaign)}
+        onClose={() => setSelectedCampaign(null)}
+        title={selectedCampaign?.name || 'Campaign Overview'}
+        subtitle={
+          selectedCampaign
+            ? `Brand: ${brands.find((b) => b.id === selectedCampaign.brandId)?.name || 'Platform Brand'}`
+            : undefined
+        }
+        badge={selectedCampaign?.status}
+        avatarText={selectedCampaign?.name}
+        highlights={
+          selectedCampaign
+            ? [
+                {
+                  label: 'Campaign Status',
+                  value: selectedCampaign.status,
+                  tint: selectedCampaign.status === 'ACTIVE' ? 'mint' : 'butter',
+                },
+                {
+                  label: 'Timeline',
+                  value: selectedCampaign.startDate
+                    ? new Date(selectedCampaign.startDate).toLocaleDateString('en-IN')
+                    : 'Flexible',
+                  tint: 'sky',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedCampaign
+            ? [
+                {
+                  title: 'Campaign Overview',
+                  fields: [
+                    { label: 'Campaign Name', value: selectedCampaign.name },
+                    {
+                      label: 'Client Brand',
+                      value: brands.find((b) => b.id === selectedCampaign.brandId)?.name || 'Platform Brand',
+                    },
+                    { label: 'Status', value: selectedCampaign.status, isStatus: true },
+                    {
+                      label: 'Timeline',
+                      value: `${selectedCampaign.startDate ? new Date(selectedCampaign.startDate).toLocaleDateString('en-IN') : 'Flexible'} — ${selectedCampaign.endDate ? new Date(selectedCampaign.endDate).toLocaleDateString('en-IN') : 'Ongoing'}`,
+                    },
+                    { label: 'Campaign ID', value: selectedCampaign.id, copyable: true },
+                  ],
+                },
+                {
+                  title: 'Description',
+                  fields: [
+                    {
+                      label: 'Description',
+                      value: selectedCampaign.description || 'No description provided',
+                      fullWidth: true,
+                    },
+                    {
+                      label: 'Campaign Brief',
+                      value: selectedCampaign.briefUrl ? 'Open Document' : 'No brief URL',
+                      isLink: Boolean(selectedCampaign.briefUrl),
+                      href: selectedCampaign.briefUrl || undefined,
+                    },
+                  ],
+                },
+                {
+                  title: 'Metadata',
+                  fields: [
+                    {
+                      label: 'Created On',
+                      value: new Date(selectedCampaign.createdOn).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    },
+                  ],
+                },
+              ]
+            : []
+        }
+        actions={[
+          {
+            label: 'View Campaign Details',
+            onClick: () => {
+              if (selectedCampaign) {
+                navigate(`/admin/campaigns/${selectedCampaign.id}`);
+              }
+            },
+          },
+        ]}
+      />
     </DashboardLayout>
   );
 };

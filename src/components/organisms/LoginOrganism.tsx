@@ -13,6 +13,7 @@ import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { RequestOtpRequestSchema, VerifyOtpRequestSchema } from '@contracts';
 import { useAuth, useToast } from '@hooks';
+import { prefetchForRoute } from '@api';
 import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const LoginOrganism: React.FC = () => {
@@ -177,7 +178,13 @@ export const LoginOrganism: React.FC = () => {
       } else if (!authResult.profileComplete) {
         navigate('/complete-profile', { replace: true });
       } else {
-        navigate(getRoleDashboardPath(authResult.roleCode), { replace: true });
+        const target = getRoleDashboardPath(authResult.roleCode);
+        // Start the dashboard's queries before navigating, so they overlap the
+        // route chunk load and first render instead of queueing behind them.
+        // Same warming the boot prefetch does on a cold page load — which never
+        // fires here, since the app booted on /login.
+        prefetchForRoute(target);
+        navigate(target, { replace: true });
       }
     } catch (err: unknown) {
       const errorObj = err as {

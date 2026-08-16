@@ -33,30 +33,92 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   const theme = useTheme();
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [error, setError] = useState('');
+
+  const validateEmail = (val: string) => {
+    if (!val) return '';
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(val)) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePhone = (val: string) => {
+    if (!val) return '';
+    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,15}$/;
+    if (!phoneRegex.test(val)) return 'Please enter a valid phone number (e.g. +91 9876543210)';
+    return '';
+  };
 
   useEffect(() => {
     if (open) {
       setName(brandToEdit?.name || '');
       setIndustry(brandToEdit?.industry || '');
+      setContactEmail(brandToEdit?.contactEmail || '');
+      setContactPhone(brandToEdit?.contactPhone || '');
+      setEmailError('');
+      setPhoneError('');
       setError('');
     }
   }, [open, brandToEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    setError('');
+    setEmailError('');
+    setPhoneError('');
+
+    const trimmedName = name.trim();
+    const trimmedEmail = contactEmail.trim().toLowerCase();
+    const trimmedPhone = contactPhone.trim();
+
+    if (!trimmedName) {
       setError('Brand name is required');
       return;
     }
 
-    setError('');
+    if (!trimmedEmail) {
+      setEmailError('Email is required');
+      return;
+    }
+
+    const eErr = validateEmail(trimmedEmail);
+    if (eErr) {
+      setEmailError(eErr);
+      return;
+    }
+
+    if (!trimmedPhone) {
+      setPhoneError('Phone number is required');
+      return;
+    }
+
+    const pErr = validatePhone(trimmedPhone);
+    if (pErr) {
+      setPhoneError(pErr);
+      return;
+    }
+
     const payload = {
-      name: name.trim(),
+      name: trimmedName,
       industry: industry.trim() || undefined,
+      contactEmail: trimmedEmail,
+      contactPhone: trimmedPhone,
     };
 
-    await onSubmit(payload, brandToEdit?.id);
+    try {
+      await onSubmit(payload, brandToEdit?.id);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = errorObj?.response?.data?.message || errorObj?.message || 'Failed to save brand.';
+      if (msg.toLowerCase().includes('email')) {
+        setEmailError(msg);
+      }
+      setError(msg);
+    }
   };
 
   return (
@@ -95,6 +157,58 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
             />
 
             <TextField
+              label="Login / Contact Email *"
+              value={contactEmail}
+              onChange={(e) => {
+                const val = e.target.value;
+                setContactEmail(val);
+                if (emailError) {
+                  if (!val.trim()) setEmailError('Email is required');
+                  else setEmailError(validateEmail(val));
+                }
+              }}
+              onBlur={() => {
+                if (!contactEmail.trim()) {
+                  setEmailError('Email is required');
+                } else {
+                  setEmailError(validateEmail(contactEmail));
+                }
+              }}
+              error={Boolean(emailError)}
+              helperText={
+                emailError || 'Required: Brand manager will use this email address to log in'
+              }
+              placeholder="e.g. manager@brand.com"
+              fullWidth
+              disabled={loading}
+            />
+
+            <TextField
+              label="Contact Phone *"
+              value={contactPhone}
+              onChange={(e) => {
+                const val = e.target.value;
+                setContactPhone(val);
+                if (phoneError) {
+                  if (!val.trim()) setPhoneError('Phone number is required');
+                  else setPhoneError(validatePhone(val));
+                }
+              }}
+              onBlur={() => {
+                if (!contactPhone.trim()) {
+                  setPhoneError('Phone number is required');
+                } else {
+                  setPhoneError(validatePhone(contactPhone));
+                }
+              }}
+              error={Boolean(phoneError)}
+              helperText={phoneError || 'Required: the brand manager\u2019s direct line'}
+              placeholder="e.g. +91 9876543210"
+              fullWidth
+              disabled={loading}
+            />
+
+            <TextField
               label="Industry / Category"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
@@ -118,7 +232,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || !name.trim()}
+            disabled={loading || !name.trim() || !contactEmail.trim() || !contactPhone.trim()}
             sx={{ minWidth: 120 }}
           >
             {loading ? (

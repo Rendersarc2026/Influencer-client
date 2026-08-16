@@ -7,28 +7,20 @@ import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import HourglassEmptyRoundedIcon from '@mui/icons-material/HourglassEmptyRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import {
-  MetricCard,
-  ChartCard,
-  DataTable,
-  DataTableColumn,
-  CreateCampaignDialog,
-} from '@molecules';
+import { MetricCard, ChartCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign, useCampaignReports } from '@api';
-import { CampaignResponse, CreateCampaignRequest } from '@contracts';
-import { useAuth, useToast } from '@hooks';
+import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
+import { CampaignResponse } from '@contracts';
+import { useAuth } from '@hooks';
 import { formatCurrency } from '@utils';
 
 export const AgencyHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { showSuccess, showError } = useToast();
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -45,9 +37,6 @@ export const AgencyHomeOrganism: React.FC = () => {
   const campaigns = useMemo(() => campaignsData?.items || [], [campaignsData?.items]);
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
   const brands = brandsData?.items || [];
-  const createCampaignMutation = useCreateCampaign();
-
-  const [createCampaignOpen, setCreateCampaignOpen] = useState(false);
 
   const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
   const { reports, isLoading: reportsLoading } = useCampaignReports(campaignIds);
@@ -77,19 +66,6 @@ export const AgencyHomeOrganism: React.FC = () => {
         .slice(0, 8),
     [reports],
   );
-
-  const handleCreateCampaign = async (data: CreateCampaignRequest) => {
-    try {
-      await createCampaignMutation.mutateAsync(data);
-      showSuccess('Campaign created successfully.');
-      setCreateCampaignOpen(false);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to create campaign.',
-      );
-    }
-  };
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -150,15 +126,6 @@ export const AgencyHomeOrganism: React.FC = () => {
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
-      rightAction={
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon fontSize="small" />}
-          onClick={() => setCreateCampaignOpen(true)}
-        >
-          New Campaign
-        </Button>
-      }
     >
       {/* 1. Four Metric Cards */}
       <Grid container spacing={2.5} alignItems="stretch">
@@ -252,15 +219,6 @@ export const AgencyHomeOrganism: React.FC = () => {
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>
-
-      {/* Create Campaign Dialog */}
-      <CreateCampaignDialog
-        open={createCampaignOpen}
-        brands={brands}
-        loading={createCampaignMutation.isPending}
-        onSubmit={handleCreateCampaign}
-        onClose={() => setCreateCampaignOpen(false)}
-      />
     </DashboardLayout>
   );
 };

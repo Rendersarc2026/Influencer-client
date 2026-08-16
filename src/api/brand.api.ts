@@ -11,15 +11,22 @@ import {
   PaginatedResult,
 } from '@contracts';
 
-export function useBrandCampaigns(params?: CampaignListQuery) {
-  return useQuery<PaginatedResult<CampaignResponse>>({
-    queryKey: ['brand', 'campaigns', params],
+/** Shared with the boot-time prefetch, so the key cannot drift from the hook's. */
+export function brandCampaignsQueryOptions(params?: CampaignListQuery) {
+  return {
+    queryKey: ['brand', 'campaigns', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<CampaignResponse>>('/brand/campaigns', {
         params,
       });
       return response.data;
     },
+  };
+}
+
+export function useBrandCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    ...brandCampaignsQueryOptions(params),
     // Keep the current page on screen while the next one loads — the table
     // shows its backlit refetch state instead of collapsing to a skeleton.
     placeholderData: keepPreviousData,
@@ -82,15 +89,22 @@ export function useBrandDecision(campaignId?: string) {
   });
 }
 
-export function useBrandPayments(params?: PaymentListQuery) {
-  return useQuery<PaginatedResult<PaymentResponse>>({
-    queryKey: ['brand', 'payments', params],
+/** Shared with the boot-time prefetch — see brandCampaignsQueryOptions. */
+export function brandPaymentsQueryOptions(params?: PaymentListQuery) {
+  return {
+    queryKey: ['brand', 'payments', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<PaymentResponse>>('/brand/payments', {
         params,
       });
       return response.data;
     },
+  };
+}
+
+export function useBrandPayments(params?: PaymentListQuery) {
+  return useQuery<PaginatedResult<PaymentResponse>>({
+    ...brandPaymentsQueryOptions(params),
     placeholderData: keepPreviousData,
   });
 }

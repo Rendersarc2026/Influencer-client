@@ -26,6 +26,7 @@ export type ProfileResponse = z.infer<typeof ProfileResponseSchema>;
 export const InfluencerResponseSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  email: z.string().nullable().optional(),
   category: z.string().nullable(),
   location: z.string().nullable(),
   followers: z.number().nullable(),
@@ -37,6 +38,40 @@ export const InfluencerResponseSchema = z.object({
   currency: z.string(),
 });
 export type InfluencerResponse = z.infer<typeof InfluencerResponseSchema>;
+
+/**
+ * A directory-only creator row — added by an admin or an agency before the
+ * creator ever signs in themselves (see InfluencerRepository.create).
+ */
+export const CreateInfluencerSchema = z
+  .object({
+    name: safeText(200),
+    /**
+     * Both are mandatory: the pair becomes the creator's login when the agency
+     * or admin adds them to the directory ahead of their first sign-in.
+     */
+    email: email,
+    category: safeText(120).optional(),
+    location: safeText(120).optional(),
+    followers: count.optional(),
+    contactPhone: phone,
+    instagram: safeText(120).optional(),
+    youtube: safeText(120).optional(),
+    avgCommercialMin: money.optional(),
+    avgCommercialMax: money.optional(),
+    currency: safeText(10).optional(),
+  })
+  .refine(
+    (d) =>
+      d.avgCommercialMin === undefined ||
+      d.avgCommercialMax === undefined ||
+      d.avgCommercialMax >= d.avgCommercialMin,
+    {
+      message: 'avgCommercialMax must be greater than or equal to avgCommercialMin',
+      path: ['avgCommercialMax'],
+    },
+  );
+export type CreateInfluencerRequest = z.infer<typeof CreateInfluencerSchema>;
 
 export const UpdateInfluencerSchema = z
   .object({

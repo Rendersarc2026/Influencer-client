@@ -31,8 +31,13 @@ export const CreateBrandSchema = z.object({
   name: safeText(200),
   industry: safeText(120).optional(),
   contactPerson: safeText(200).optional(),
-  contactPhone: phone.optional(),
-  contactEmail: email.optional(),
+  /**
+   * Both are mandatory on creation: the pair becomes the brand manager's login
+   * (see AdminBrandUseCases.create, which provisions a BRAND user from them),
+   * and an account with no way to reach its owner is not worth creating.
+   */
+  contactPhone: phone,
+  contactEmail: email,
   website: httpUrl.optional(),
   address: safeText(400).optional(),
   city: safeText(120).optional(),

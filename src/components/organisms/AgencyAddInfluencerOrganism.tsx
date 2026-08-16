@@ -9,17 +9,38 @@ import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { FilterBar } from '@molecules';
+import { FilterBar, CreateInfluencerDialog } from '@molecules';
 import { SectionHeading, EmptyState } from '@atoms';
-import { useAgencyCampaign, useCampaignInfluencers, useAddInfluencerToCampaign } from '@api';
-import { useAuth, useToast, useViewFilters } from '@hooks';
+import {
+  useAgencyCampaign,
+  useCampaignInfluencers,
+  useAddInfluencerToCampaign,
+  useAgencyInfluencers,
+  useCreateInfluencer,
+} from '@api';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeImageUrl } from '@utils';
-import { AgencyMapperResponse } from '@contracts';
+import { AgencyMapperResponse, CreateInfluencerRequest, InfluencerResponse } from '@contracts';
+
+/** "64.7k" reads better than "64700" in a directory of reach numbers. */
+function formatFollowers(value: number | null): string {
+  if (value === null || value === undefined) return '—';
+  if (value >= 1_000_000) {
+    const m = value / 1_000_000;
+    return `${Number.isInteger(m) ? m : m.toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    const k = value / 1_000;
+    return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+  }
+  return String(value);
+}
 
 interface AvailableCreator {
   id: string;
@@ -30,7 +51,15 @@ interface AvailableCreator {
   avatarUrl?: string;
 }
 
-const availableCreators: AvailableCreator[] = [];
+function toAvailableCreator(influencer: InfluencerResponse): AvailableCreator {
+  return {
+    id: influencer.id,
+    name: influencer.name,
+    handle: influencer.instagram || influencer.youtube || '—',
+    category: influencer.category || 'Uncategorized',
+    followers: formatFollowers(influencer.followers),
+  };
+}
 
 export const AgencyAddInfluencerOrganism: React.FC = () => {
   const theme = useTheme();
@@ -46,6 +75,12 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const addInfluencerMutation = useAddInfluencerToCampaign(campaignId);
 
   const { search, setSearch } = useViewFilters('agencyAddInfluencer');
+  const debouncedSearch = useDebounce(search, 300);
+  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers({
+    search: debouncedSearch.trim() || undefined,
+  });
+  const createInfluencerMutation = useCreateInfluencer();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deliverablesMap, setDeliverablesMap] = useState<Record<string, string>>({});
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
@@ -55,12 +90,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
     ...Array.from(addedIds),
   ]);
 
-  const filteredCreators = availableCreators.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.handle.toLowerCase().includes(search.toLowerCase()) ||
-      c.category.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredCreators = (influencersData?.items || []).map(toAvailableCreator);
 
   const handleAddCreator = async (creatorId: string) => {
     const deliverables = deliverablesMap[creatorId] || '1x Instagram Reel + 2x Stories';
@@ -74,6 +104,17 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign influencer.');
+    }
+  };
+
+  const handleCreateInfluencer = async (data: CreateInfluencerRequest) => {
+    try {
+      await createInfluencerMutation.mutateAsync(data);
+      showSuccess('Creator added to your roster.');
+      setCreateDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add creator.');
     }
   };
 
@@ -93,13 +134,22 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
       rightAction={
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackRoundedIcon fontSize="small" />}
-          onClick={() => navigate(`/agency/campaigns/${campaignId}`)}
-        >
-          Back to Campaign
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon fontSize="small" />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            New Creator
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackRoundedIcon fontSize="small" />}
+            onClick={() => navigate(`/agency/campaigns/${campaignId}`)}
+          >
+            Back to Campaign
+          </Button>
+        </Box>
       }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -113,11 +163,11 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
           subtitle="Select creators and specify required campaign deliverables"
         />
 
-        {filteredCreators.length === 0 && (
+        {!influencersLoading && filteredCreators.length === 0 && (
           <EmptyState
             icon={<PersonSearchRoundedIcon sx={{ fontSize: 40 }} />}
-            title="Creator directory unavailable"
-            description="Assigning creators needs a directory endpoint on the API. Nothing is listed here rather than showing placeholder creators that cannot be assigned."
+            title="No creators found"
+            description="Nobody in the directory matches your search yet. Add a new creator to get them into the roster."
           />
         )}
 
@@ -226,6 +276,14 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
           })}
         </Box>
       </Box>
+
+      <CreateInfluencerDialog
+        open={createDialogOpen}
+        addsToRoster
+        loading={createInfluencerMutation.isPending}
+        onSubmit={handleCreateInfluencer}
+        onClose={() => setCreateDialogOpen(false)}
+      />
     </DashboardLayout>
   );
 };

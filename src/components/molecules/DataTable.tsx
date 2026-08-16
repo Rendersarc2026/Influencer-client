@@ -272,6 +272,7 @@ export function DataTable<T extends Record<string, unknown>>({
       case 'actions':
         return (
           <Box
+            onClick={(e) => e.stopPropagation()}
             sx={{
               display: 'flex',
               alignItems: 'center',
@@ -447,7 +448,11 @@ export function DataTable<T extends Record<string, unknown>>({
                         <TableRow
                           key={getRowKey(row, globalIndex)}
                           onClick={() => onRowClick && onRowClick(row)}
-                          sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                          sx={{
+                            cursor: onRowClick ? 'pointer' : 'default',
+                            transition: 'background-color 0.15s ease',
+                            '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
+                          }}
                         >
                           {columns.map((col) => (
                             <TableCell
@@ -551,6 +556,8 @@ export function DataTable<T extends Record<string, unknown>>({
                         onClick={() => onRowClick && onRowClick(row)}
                         sx={{
                           cursor: onRowClick ? 'pointer' : 'default',
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
                         }}
                       >
                         {columns.map((col) => (

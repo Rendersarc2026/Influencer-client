@@ -1,5 +1,7 @@
 import { queryClient } from './query.client';
 import { adminPlatformStatsQueryOptions, adminUsersQueryOptions } from './admin.api';
+import { agencyBrandsQueryOptions, agencyCampaignsQueryOptions } from './agency.api';
+import { brandCampaignsQueryOptions, brandPaymentsQueryOptions } from './brand.api';
 
 /**
  * Boot-time data prefetch.
@@ -12,16 +14,34 @@ import { adminPlatformStatsQueryOptions, adminUsersQueryOptions } from './admin.
  *
  * Called before React renders, so the requests leave as early as possible.
  *
- * If the visitor turns out not to be an admin the responses are simply
+ * Each entry must match the params the corresponding home screen mounts with,
+ * or the warmed entry sits unused under a different key — which is why the
+ * query options are imported from the API modules rather than restated here.
+ *
+ * If the visitor turns out not to hold that role the responses are simply
  * discarded: a signed-out visitor is redirected to login by the guard (and by
- * the 401 interceptor) exactly as before, and a signed-in non-admin gets a 403,
- * which does not disturb their session.
+ * the 401 interceptor) exactly as before, and a signed-in user of another role
+ * gets a 403, which does not disturb their session.
  */
-export function prefetchForRoute(pathname: string): void {
-  if (!pathname.startsWith('/admin')) return;
+const FIRST_PAGE = { page: 1, limit: 10 };
 
-  // Must match the defaults AdminHomeOrganism mounts with, or the warmed
-  // entry sits unused under a different key.
-  void queryClient.prefetchQuery(adminUsersQueryOptions({ page: 1, limit: 10 }));
-  void queryClient.prefetchQuery(adminPlatformStatsQueryOptions());
+export function prefetchForRoute(pathname: string): void {
+  if (pathname.startsWith('/admin')) {
+    void queryClient.prefetchQuery(adminUsersQueryOptions(FIRST_PAGE));
+    void queryClient.prefetchQuery(adminPlatformStatsQueryOptions());
+    return;
+  }
+
+  if (pathname.startsWith('/agency')) {
+    void queryClient.prefetchQuery(agencyCampaignsQueryOptions(FIRST_PAGE));
+    // AgencyHomeOrganism mounts `useAgencyBrands()` with no params, so the
+    // warmed key has to carry `undefined` too.
+    void queryClient.prefetchQuery(agencyBrandsQueryOptions());
+    return;
+  }
+
+  if (pathname.startsWith('/brand')) {
+    void queryClient.prefetchQuery(brandCampaignsQueryOptions(FIRST_PAGE));
+    void queryClient.prefetchQuery(brandPaymentsQueryOptions());
+  }
 }

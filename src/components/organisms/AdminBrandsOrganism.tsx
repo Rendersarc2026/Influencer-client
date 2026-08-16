@@ -9,7 +9,6 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
@@ -17,7 +16,7 @@ import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar, ConfirmDialog } from '@molecules';
+import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
 import { SectionHeading } from '@atoms';
 import {
   useAdminBrands,
@@ -61,9 +60,9 @@ export const AdminBrandsOrganism: React.FC = () => {
 
   const { data: agenciesData } = useAdminAgencies();
 
+  const agencies = agenciesData?.items || [];
   const brands = brandsData?.items || [];
   const totalBrands = brandsData?.total ?? brands.length;
-  const agencies = agenciesData?.items || [];
 
   const createBrandMutation = useAdminCreateBrand();
   const updateBrandMutation = useAdminUpdateBrand();
@@ -71,11 +70,36 @@ export const AdminBrandsOrganism: React.FC = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
 
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
-  const [agencyIds, setAgencyIds] = useState<string[]>([]);
+  const [contactPerson, setContactPerson] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [deactivateBrandId, setDeactivateBrandId] = useState<string | null>(null);
+
+  const validateEmail = (val: string): string => {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return 'Must be a valid email address (e.g. manager@brand.com)';
+    }
+    return '';
+  };
+
+  const validatePhone = (val: string): string => {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    const stripped = trimmed.replace(/[\s()-]/g, '');
+    if (!/^\+?[0-9]{7,15}$/.test(stripped)) {
+      return 'Must be a valid phone number (7-15 digits, optional + prefix)';
+    }
+    return '';
+  };
 
   const agencyFilterOptions = [
     { value: '', label: 'All Agencies' },
@@ -86,7 +110,12 @@ export const AdminBrandsOrganism: React.FC = () => {
     setBrandToEdit(null);
     setName('');
     setIndustry('');
-    setAgencyIds(agencies.length > 0 ? [agencies[0].id] : []);
+    setContactPerson('');
+    setContactEmail('');
+    setContactPhone('');
+    setNameError('');
+    setEmailError('');
+    setPhoneError('');
     setDialogOpen(true);
   };
 
@@ -94,37 +123,88 @@ export const AdminBrandsOrganism: React.FC = () => {
     setBrandToEdit(brand);
     setName(brand.name);
     setIndustry(brand.industry || '');
-    setAgencyIds(brand.agencyIds);
+    setContactPerson(brand.contactPerson || '');
+    setContactEmail(brand.contactEmail || '');
+    setContactPhone(brand.contactPhone || '');
+    setNameError('');
+    setEmailError('');
+    setPhoneError('');
     setDialogOpen(true);
   };
 
   const handleSaveBrand = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    setNameError('');
+    setEmailError('');
+    setPhoneError('');
+
+    const trimmedName = name.trim();
+    const trimmedIndustry = industry.trim();
+    const trimmedContactPerson = contactPerson.trim();
+    const trimmedContactEmail = contactEmail.trim().toLowerCase();
+    const trimmedContactPhone = contactPhone.trim();
+
+    let hasError = false;
+    if (!trimmedName) {
+      setNameError('Brand name is required');
+      hasError = true;
+    }
+
+    if (!trimmedContactEmail) {
+      setEmailError('Email is required');
+      hasError = true;
+    } else {
+      const eErr = validateEmail(trimmedContactEmail);
+      if (eErr) {
+        setEmailError(eErr);
+        hasError = true;
+      }
+    }
+
+    if (!trimmedContactPhone) {
+      setPhoneError('Phone number is required');
+      hasError = true;
+    } else {
+      const pErr = validatePhone(trimmedContactPhone);
+      if (pErr) {
+        setPhoneError(pErr);
+        hasError = true;
+      }
+    }
+
+    if (hasError) return;
 
     try {
       if (brandToEdit) {
         await updateBrandMutation.mutateAsync({
           id: brandToEdit.id,
           data: {
-            name: name.trim(),
-            industry: industry.trim() || undefined,
-            agencyIds,
+            name: trimmedName,
+            industry: trimmedIndustry || undefined,
+            contactPerson: trimmedContactPerson || undefined,
+            contactEmail: trimmedContactEmail || undefined,
+            contactPhone: trimmedContactPhone || undefined,
           },
         });
         showSuccess('Brand updated successfully.');
       } else {
         await createBrandMutation.mutateAsync({
-          name: name.trim(),
-          industry: industry.trim() || undefined,
-          agencyIds,
+          name: trimmedName,
+          industry: trimmedIndustry || undefined,
+          contactPerson: trimmedContactPerson || undefined,
+          contactEmail: trimmedContactEmail,
+          contactPhone: trimmedContactPhone,
         });
         showSuccess('Brand created successfully.');
       }
       setDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to save brand.');
+      const msg = errorObj?.response?.data?.message || errorObj?.message || 'Failed to save brand.';
+      if (msg.toLowerCase().includes('email')) {
+        setEmailError(msg);
+      }
+      showError(msg);
     }
   };
 
@@ -148,7 +228,8 @@ export const AdminBrandsOrganism: React.FC = () => {
       header: 'Brand Name',
       type: 'entity',
       accessor: 'name',
-      subAccessor: (row) => row.industry || 'General Consumer Brand',
+      subAccessor: (row) =>
+        `${row.industry || 'General Brand'}${row.contactEmail ? ` • Email: ${row.contactEmail}` : ''}${row.contactPhone ? ` • Phone: ${row.contactPhone}` : ''}`,
     },
     {
       id: 'agency',
@@ -181,7 +262,7 @@ export const AdminBrandsOrganism: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Edit Brand & Agency Assignment">
+          <Tooltip title="Edit Brand">
             <IconButton size="small" onClick={() => handleOpenEdit(row)}>
               <EditRoundedIcon fontSize="small" />
             </IconButton>
@@ -205,7 +286,7 @@ export const AdminBrandsOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Brands Management"
-      subtitle="Client brand portfolios and agency tenant assignments"
+      subtitle="Client brand portfolios — agencies pick these up the first time they run a campaign"
       navItems={navConfig.ADMIN}
       activePath={location.pathname}
       user={{
@@ -248,6 +329,7 @@ export const AdminBrandsOrganism: React.FC = () => {
           }}
           loading={brandsLoading}
           isFetching={brandsFetching}
+          onRowClick={(row) => setSelectedBrand(row)}
           fillHeight
         />
       </Box>
@@ -272,46 +354,21 @@ export const AdminBrandsOrganism: React.FC = () => {
           <DialogTitle sx={{ pb: 1 }}>
             <SectionHeading
               title={brandToEdit ? 'Edit Brand' : 'Create Brand'}
-              subtitle="Brand profile and agency assignment"
+              subtitle="Brand profile — an agency picks it up the first time it runs a campaign under it"
             />
           </DialogTitle>
 
           <DialogContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
               <TextField
-                select
-                label="Managing Agencies *"
-                value={agencyIds}
-                onChange={(e) =>
-                  setAgencyIds(
-                    typeof e.target.value === 'string'
-                      ? e.target.value.split(',')
-                      : (e.target.value as unknown as string[]),
-                  )
-                }
-                helperText="A brand may be managed by more than one agency"
-                slotProps={{
-                  select: {
-                    multiple: true,
-                    renderValue: (selected) =>
-                      (selected as string[])
-                        .map((id) => agencies.find((a) => a.id === id)?.name ?? id)
-                        .join(', '),
-                  },
-                }}
-                fullWidth
-              >
-                {agencies.map((a) => (
-                  <MenuItem key={a.id} value={a.id}>
-                    {a.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
                 label="Brand Name *"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (nameError) setNameError('');
+                }}
+                error={Boolean(nameError)}
+                helperText={nameError}
                 placeholder="e.g. SkinGlo D2C"
                 fullWidth
               />
@@ -321,6 +378,64 @@ export const AdminBrandsOrganism: React.FC = () => {
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
                 placeholder="e.g. Beauty & Wellness"
+                fullWidth
+              />
+
+              <TextField
+                label="Contact Person Name"
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                placeholder="e.g. Jane Smith - Brand Lead"
+                fullWidth
+              />
+
+              <TextField
+                label="Login / Contact Email *"
+                value={contactEmail}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setContactEmail(val);
+                  if (emailError) {
+                    if (!val.trim()) setEmailError('Email is required');
+                    else setEmailError(validateEmail(val));
+                  }
+                }}
+                onBlur={() => {
+                  if (!contactEmail.trim()) {
+                    setEmailError('Email is required');
+                  } else {
+                    setEmailError(validateEmail(contactEmail));
+                  }
+                }}
+                error={Boolean(emailError)}
+                helperText={
+                  emailError || 'Required: Brand manager will use this email address to log in'
+                }
+                placeholder="e.g. manager@brand.com"
+                fullWidth
+              />
+
+              <TextField
+                label="Contact Phone *"
+                value={contactPhone}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setContactPhone(val);
+                  if (phoneError) {
+                    if (!val.trim()) setPhoneError('Phone number is required');
+                    else setPhoneError(validatePhone(val));
+                  }
+                }}
+                onBlur={() => {
+                  if (!contactPhone.trim()) {
+                    setPhoneError('Phone number is required');
+                  } else {
+                    setPhoneError(validatePhone(contactPhone));
+                  }
+                }}
+                error={Boolean(phoneError)}
+                helperText={phoneError || 'Required: the brand manager\u2019s direct line'}
+                placeholder="e.g. +91 9876543210"
                 fullWidth
               />
             </Box>
@@ -334,7 +449,13 @@ export const AdminBrandsOrganism: React.FC = () => {
               type="submit"
               variant="contained"
               disabled={
-                !name.trim() || createBrandMutation.isPending || updateBrandMutation.isPending
+                !name.trim() ||
+                !contactEmail.trim() ||
+                !contactPhone.trim() ||
+                Boolean(emailError) ||
+                Boolean(phoneError) ||
+                createBrandMutation.isPending ||
+                updateBrandMutation.isPending
               }
               sx={{ minWidth: 120 }}
             >
@@ -358,6 +479,97 @@ export const AdminBrandsOrganism: React.FC = () => {
         loading={deactivateBrandMutation.isPending}
         onConfirm={handleConfirmDeactivate}
         onCancel={() => setDeactivateBrandId(null)}
+      />
+
+      {/* Brand Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedBrand)}
+        onClose={() => setSelectedBrand(null)}
+        title={selectedBrand?.name || 'Brand Overview'}
+        subtitle={
+          selectedBrand
+            ? `Managing Agency: ${agencies.find((a) => a.id === selectedBrand.agencyIds?.[0])?.name || 'Direct / Platform'}`
+            : undefined
+        }
+        badge={selectedBrand?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        avatarText={selectedBrand?.name}
+        highlights={
+          selectedBrand
+            ? [
+                {
+                  label: 'Industry',
+                  value: selectedBrand.industry || 'General',
+                  tint: 'mint',
+                },
+                {
+                  label: 'Location',
+                  value: selectedBrand.city || 'Not specified',
+                  tint: 'sky',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedBrand
+            ? [
+                {
+                  title: 'Brand Information',
+                  fields: [
+                    { label: 'Brand Name', value: selectedBrand.name },
+                    {
+                      label: 'Managing Agency',
+                      value: agencies.find((a) => a.id === selectedBrand.agencyIds?.[0])?.name || 'Direct / Platform',
+                    },
+                    { label: 'Brand ID', value: selectedBrand.id, copyable: true },
+                    { label: 'Status', value: selectedBrand.isActive ? 'Active' : 'Archived', isStatus: true },
+                    {
+                      label: 'Created On',
+                      value: new Date(selectedBrand.createdOn).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    },
+                  ],
+                },
+                {
+                  title: 'Contact Details',
+                  fields: [
+                    { label: 'Contact Email', value: selectedBrand.contactEmail, copyable: true },
+                    { label: 'Contact Phone', value: selectedBrand.contactPhone || '—' },
+                    {
+                      label: 'Official Website',
+                      value: selectedBrand.website || '—',
+                      isLink: Boolean(selectedBrand.website),
+                      href: selectedBrand.website || undefined,
+                    },
+                  ],
+                },
+                {
+                  title: 'Details',
+                  fields: [
+                    { label: 'Industry', value: selectedBrand.industry || '—' },
+                    { label: 'Address', value: selectedBrand.address || '—' },
+                    { label: 'City', value: selectedBrand.city || '—' },
+                  ],
+                },
+              ]
+            : []
+        }
+        actions={
+          selectedBrand
+            ? [
+                {
+                  label: 'Edit Brand',
+                  onClick: () => {
+                    const br = selectedBrand;
+                    setSelectedBrand(null);
+                    handleOpenEdit(br);
+                  },
+                },
+              ]
+            : []
+        }
       />
     </DashboardLayout>
   );

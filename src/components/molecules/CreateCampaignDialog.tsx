@@ -95,7 +95,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
         <DialogTitle sx={{ pb: 1 }}>
           <SectionHeading
             title="Create New Campaign"
-            subtitle="Setup campaign parameters under a managed brand"
+            subtitle="Setup campaign parameters under a brand — picking one you don't manage yet adds it to your account"
           />
         </DialogTitle>
 

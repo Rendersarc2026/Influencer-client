@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar } from '@molecules';
-import { useAdminInfluencers, useAdminAgencies } from '@api';
-import { InfluencerResponse } from '@contracts';
-import { useAuth, useDebounce, useViewFilters } from '@hooks';
+import { DataTable, DataTableColumn, FilterBar, CreateInfluencerDialog, OverviewDrawer } from '@molecules';
+import { useAdminInfluencers, useAdminAgencies, useAdminCreateInfluencer } from '@api';
+import { InfluencerResponse, CreateInfluencerRequest } from '@contracts';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 /** "64.7k" reads better than "64700" in a directory of reach numbers. */
 function formatFollowers(value: number | null): string {
@@ -38,6 +40,10 @@ export const AdminInfluencersOrganism: React.FC = () => {
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
+  const createInfluencerMutation = useAdminCreateInfluencer();
 
   const {
     search,
@@ -72,6 +78,17 @@ export const AdminInfluencersOrganism: React.FC = () => {
     { value: '', label: 'All Agencies' },
     ...agencies.map((a) => ({ value: a.id, label: a.name })),
   ];
+
+  const handleCreateInfluencer = async (data: CreateInfluencerRequest) => {
+    try {
+      await createInfluencerMutation.mutateAsync(data);
+      showSuccess('Creator added to the directory.');
+      setCreateDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add creator.');
+    }
+  };
 
   const columns: Array<DataTableColumn<InfluencerResponse>> = [
     {
@@ -135,6 +152,15 @@ export const AdminInfluencersOrganism: React.FC = () => {
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
+      rightAction={
+        <Button
+          variant="contained"
+          startIcon={<AddRoundedIcon fontSize="small" />}
+          onClick={() => setCreateDialogOpen(true)}
+        >
+          Add Creator
+        </Button>
+      }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
@@ -159,9 +185,115 @@ export const AdminInfluencersOrganism: React.FC = () => {
           }}
           loading={isLoading}
           isFetching={isFetching}
+          onRowClick={(row) => setSelectedInfluencer(row)}
           fillHeight
         />
       </Box>
+
+      <CreateInfluencerDialog
+        open={createDialogOpen}
+        loading={createInfluencerMutation.isPending}
+        onSubmit={handleCreateInfluencer}
+        onClose={() => setCreateDialogOpen(false)}
+      />
+
+      {/* Creator Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedInfluencer)}
+        onClose={() => setSelectedInfluencer(null)}
+        title={selectedInfluencer?.name || 'Creator Overview'}
+        subtitle={
+          selectedInfluencer
+            ? `Category: ${selectedInfluencer.category || 'Creator'} · ${selectedInfluencer.location || 'Global'}`
+            : undefined
+        }
+        badge={selectedInfluencer?.category || 'CREATOR'}
+        avatarText={selectedInfluencer?.name}
+        highlights={
+          selectedInfluencer
+            ? [
+                {
+                  label: 'Follower Reach',
+                  value: formatFollowers(selectedInfluencer.followers),
+                  tint: 'sky',
+                },
+                {
+                  label: 'Avg Commercials',
+                  value: formatCommercials(selectedInfluencer) === '—' ? 'Not quoted' : `₹${formatCommercials(selectedInfluencer)}`,
+                  tint: 'mint',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedInfluencer
+            ? [
+                {
+                  title: 'Creator Profile',
+                  fields: [
+                    { label: 'Creator Name', value: selectedInfluencer.name },
+                    { label: 'Category / Niche', value: selectedInfluencer.category || '—' },
+                    { label: 'Location', value: selectedInfluencer.location || 'Global' },
+                    { label: 'Creator ID', value: selectedInfluencer.id, copyable: true },
+                  ],
+                },
+                {
+                  title: 'Contact & Socials',
+                  fields: [
+                    { label: 'Contact Phone', value: selectedInfluencer.contactPhone || '—' },
+                    {
+                      label: 'Instagram',
+                      value: selectedInfluencer.instagram ? `@${selectedInfluencer.instagram}` : '—',
+                      isLink: Boolean(selectedInfluencer.instagram),
+                      href: selectedInfluencer.instagram
+                        ? (selectedInfluencer.instagram.startsWith('http')
+                            ? selectedInfluencer.instagram
+                            : `https://instagram.com/${selectedInfluencer.instagram.replace(/^@/, '')}`)
+                        : undefined,
+                    },
+                    {
+                      label: 'YouTube Channel',
+                      value: selectedInfluencer.youtube || '—',
+                      isLink: Boolean(selectedInfluencer.youtube),
+                      href: selectedInfluencer.youtube || undefined,
+                    },
+                  ],
+                },
+                {
+                  title: 'Commercial Rates',
+                  fields: [
+                    {
+                      label: 'Minimum Rate',
+                      value: selectedInfluencer.avgCommercialMin,
+                      isMoney: true,
+                      currency: selectedInfluencer.currency || 'INR',
+                    },
+                    {
+                      label: 'Maximum Rate',
+                      value: selectedInfluencer.avgCommercialMax,
+                      isMoney: true,
+                      currency: selectedInfluencer.currency || 'INR',
+                    },
+                    { label: 'Currency', value: selectedInfluencer.currency || 'INR' },
+                  ],
+                },
+              ]
+            : []
+        }
+        actions={
+          selectedInfluencer
+            ? [
+                {
+                  label: 'Copy Creator ID',
+                  onClick: () => {
+                    navigator.clipboard.writeText(selectedInfluencer.id);
+                    showSuccess('Creator ID copied to clipboard');
+                  },
+                },
+              ]
+            : []
+        }
+      />
     </DashboardLayout>
   );
 };

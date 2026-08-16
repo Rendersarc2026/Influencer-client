@@ -22,7 +22,7 @@ export const CreateAgencySchema = z.object({
   slug: slug(),
   contactPerson: safeText(200).optional(),
   contactPhone: phone.optional(),
-  contactEmail: email.optional(),
+  contactEmail: email,
   gstNumber: safeText(30).optional(),
   address: safeText(400).optional(),
   city: safeText(120).optional(),

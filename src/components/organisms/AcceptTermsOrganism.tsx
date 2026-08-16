@@ -9,6 +9,7 @@ import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
 import { useAuth, useToast } from '@hooks';
+import { prefetchForRoute } from '@api';
 import { getRoleDashboardPath } from '@routes/navConfig';
 
 export const AcceptTermsOrganism: React.FC = () => {
@@ -29,7 +30,10 @@ export const AcceptTermsOrganism: React.FC = () => {
       if (!authResult.profileComplete) {
         navigate('/complete-profile', { replace: true });
       } else {
-        navigate(getRoleDashboardPath(authResult.roleCode), { replace: true });
+        const target = getRoleDashboardPath(authResult.roleCode);
+        // Warm the dashboard's queries while the route chunk loads.
+        prefetchForRoute(target);
+        navigate(target, { replace: true });
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };

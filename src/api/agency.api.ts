@@ -17,6 +17,9 @@ import {
   RequestRateRevisionRequest,
   RecordMetricRequest,
   MetricResponse,
+  InfluencerResponse,
+  InfluencerListQuery,
+  CreateInfluencerRequest,
   PaginatedResult,
 } from '@contracts';
 
@@ -24,28 +27,67 @@ import {
 // 1. Brands Queries & Mutations
 // -------------------------------------------------------------
 
-export function useAgencyBrands(params?: BrandListQuery) {
-  return useQuery<PaginatedResult<BrandResponse>>({
-    queryKey: ['agency', 'brands', params],
+/**
+ * Shared by the hook below and by the boot-time prefetch, so the query key and
+ * the fetcher cannot drift apart — a mismatched key would silently turn a
+ * warmed cache entry into a second network request.
+ */
+export function agencyBrandsQueryOptions(params?: BrandListQuery) {
+  return {
+    queryKey: ['agency', 'brands', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<BrandResponse>>('/agency/brands', {
         params,
       });
       return response.data;
     },
+  };
+}
+
+export function useAgencyBrands(params?: BrandListQuery) {
+  return useQuery<PaginatedResult<BrandResponse>>({
+    ...agencyBrandsQueryOptions(params),
     placeholderData: keepPreviousData,
   });
 }
 
+/**
+ * Every active brand, not just ones this agency already manages — feeds the
+ * "create campaign" brand picker, which can start a relationship with a
+ * brand the agency hasn't run a campaign under before.
+ */
+export function useAgencyBrandDirectory() {
+  return useQuery<PaginatedResult<BrandResponse>>({
+    queryKey: ['agency', 'brands', 'directory'],
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<BrandResponse>>(
+        '/agency/brands/directory',
+      );
+      return response.data;
+    },
+  });
+}
+
+/**
+ * An agency signs up its own client brands. These hit `/agency/brands`, which
+ * runs the same use case the admin portal does but resolves the owning agency
+ * from the acting user — the `/admin/*` routes are ADMIN-only and would 403.
+ *
+ * Both write into the table the admin portal reads from (`useAdminBrands`,
+ * keyed `['admin','brands']`), so they invalidate that namespace too —
+ * otherwise the admin portal's filter dropdowns keep showing their
+ * last-fetched brand list until a full reload throws the cache away.
+ */
 export function useCreateBrand() {
   const queryClient = useQueryClient();
   return useMutation<BrandResponse, Error, CreateBrandRequest>({
     mutationFn: async (data) => {
-      const response = await apiClient.post<BrandResponse>('/admin/brands', data);
+      const response = await apiClient.post<BrandResponse>('/agency/brands', data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'] });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
     },
   });
 }
@@ -54,11 +96,12 @@ export function useUpdateBrand() {
   const queryClient = useQueryClient();
   return useMutation<BrandResponse, Error, { id: string; data: UpdateBrandRequest }>({
     mutationFn: async ({ id, data }) => {
-      const response = await apiClient.patch<BrandResponse>(`/admin/brands/${id}`, data);
+      const response = await apiClient.patch<BrandResponse>(`/agency/brands/${id}`, data);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'] });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
     },
   });
 }
@@ -67,15 +110,22 @@ export function useUpdateBrand() {
 // 2. Campaigns Queries & Mutations
 // -------------------------------------------------------------
 
-export function useAgencyCampaigns(params?: CampaignListQuery) {
-  return useQuery<PaginatedResult<CampaignResponse>>({
-    queryKey: ['agency', 'campaigns', params],
+/** Shared with the boot-time prefetch — see agencyBrandsQueryOptions. */
+export function agencyCampaignsQueryOptions(params?: CampaignListQuery) {
+  return {
+    queryKey: ['agency', 'campaigns', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<CampaignResponse>>('/agency/campaigns', {
         params,
       });
       return response.data;
     },
+  };
+}
+
+export function useAgencyCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    ...agencyCampaignsQueryOptions(params),
     // Paging keeps the previous page on screen while the next one loads, rather
     // than tearing the table down to a skeleton on every page change.
     placeholderData: keepPreviousData,
@@ -122,7 +172,49 @@ export function useUpdateCampaign() {
 }
 
 // -------------------------------------------------------------
-// 3. Campaign Influencer Mappers & Rates
+// 3. Influencer Directory
+// -------------------------------------------------------------
+
+/**
+ * The shared creator directory — every influencer, not just ones already on
+ * this agency's roster, since any of them can be assigned to a campaign.
+ */
+export function useAgencyInfluencers(params?: InfluencerListQuery) {
+  return useQuery<PaginatedResult<InfluencerResponse>>({
+    queryKey: ['agency', 'influencers', params],
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<InfluencerResponse>>(
+        '/agency/influencers',
+        { params },
+      );
+      return response.data;
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Adds a creator to the shared directory and straight onto this agency's own
+ * roster — for a creator the agency knows about before they've signed in
+ * themselves. Also invalidates the admin directory, which reads the same
+ * underlying table.
+ */
+export function useCreateInfluencer() {
+  const queryClient = useQueryClient();
+  return useMutation<InfluencerResponse, Error, CreateInfluencerRequest>({
+    mutationFn: async (data) => {
+      const response = await apiClient.post<InfluencerResponse>('/agency/influencers', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'influencers'], refetchType: 'all' });
+    },
+  });
+}
+
+// -------------------------------------------------------------
+// 4. Campaign Influencer Mappers & Rates
 // -------------------------------------------------------------
 
 export function useCampaignInfluencers(
@@ -247,7 +339,7 @@ export function useSubmitForBrandReview(campaignId?: string) {
 }
 
 // -------------------------------------------------------------
-// 4. Metrics Recording & Viewing
+// 5. Metrics Recording & Viewing
 // -------------------------------------------------------------
 
 export function useRecordMetric(campaignId?: string) {
@@ -286,7 +378,7 @@ export function useMapperMetrics(mapperId: string | undefined) {
 }
 
 // -------------------------------------------------------------
-// 5. Reports & Metrics Aggregates
+// 6. Reports & Metrics Aggregates
 // -------------------------------------------------------------
 
 export interface CampaignReportResponse {

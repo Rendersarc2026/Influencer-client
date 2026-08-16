@@ -10,7 +10,7 @@ import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { MetricCard, DataTable, DataTableColumn } from '@molecules';
+import { MetricCard, DataTable, DataTableColumn, OverviewDrawer } from '@molecules';
 import { SectionHeading } from '@atoms';
 import { useAdminPlatformStats, useAdminUsers } from '@api';
 import { UserResponse } from '@contracts';
@@ -23,6 +23,7 @@ export const AdminHomeOrganism: React.FC = () => {
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
   const { data: statsData, isLoading: statsLoading } = useAdminPlatformStats();
   const {
@@ -153,7 +154,7 @@ export const AdminHomeOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <SectionHeading
           title="Recent User Accounts"
-          subtitle="Provisioned users across agencies, brands, and creator studios"
+          subtitle="Registered users across agencies, brands, and creator studios"
           action={
             <Button
               variant="text"
@@ -178,8 +179,91 @@ export const AdminHomeOrganism: React.FC = () => {
           }}
           loading={usersLoading}
           isFetching={usersFetching}
+          onRowClick={(row) => setSelectedUser(row)}
         />
       </Box>
+
+      {/* Overview Details Viewer Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedUser)}
+        onClose={() => setSelectedUser(null)}
+        title={selectedUser?.profile?.fullName || selectedUser?.email || 'User Account'}
+        subtitle={`Role: ${selectedUser?.roleCode || 'USER'}`}
+        badge={selectedUser?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        avatarText={selectedUser?.profile?.fullName || selectedUser?.email}
+        avatarUrl={selectedUser?.profile?.avatarUrl || undefined}
+        highlights={
+          selectedUser
+            ? [
+                {
+                  label: 'Platform Role',
+                  value: selectedUser.roleCode,
+                  tint: 'sky',
+                },
+                {
+                  label: 'Account Status',
+                  value: selectedUser.isActive ? 'Active' : 'Archived',
+                  tint: selectedUser.isActive ? 'mint' : 'lavender',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedUser
+            ? [
+                {
+                  title: 'Account Information',
+                  fields: [
+                    { label: 'Login Email', value: selectedUser.email, copyable: true },
+                    { label: 'Platform Role', value: selectedUser.roleCode },
+                    { label: 'Phone Number', value: selectedUser.phone || '—' },
+                    { label: 'Account ID', value: selectedUser.id, copyable: true },
+                    {
+                      label: 'Joined Platform',
+                      value: new Date(selectedUser.createdOn).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    },
+                  ],
+                },
+                {
+                  title: 'Profile Details',
+                  fields: [
+                    { label: 'Legal Full Name', value: selectedUser.profile?.fullName || '—' },
+                    { label: 'Display Name', value: selectedUser.profile?.displayName || '—' },
+                    {
+                      label: 'Profile Status',
+                      value: selectedUser.profile?.completedOn ? 'Complete' : 'Pending',
+                    },
+                    {
+                      label: 'Biography',
+                      value: selectedUser.profile?.bio || 'No bio provided',
+                      fullWidth: true,
+                    },
+                  ],
+                },
+                {
+                  title: 'Tenancy & Association',
+                  fields: [
+                    { label: 'Agency ID', value: selectedUser.agencyId || 'None (Global/Direct)', copyable: Boolean(selectedUser.agencyId) },
+                    { label: 'Brand ID', value: selectedUser.brandId || 'None (Global/Direct)', copyable: Boolean(selectedUser.brandId) },
+                  ],
+                },
+              ]
+            : []
+        }
+        actions={[
+          {
+            label: 'Manage in Users',
+            onClick: () => {
+              setSelectedUser(null);
+              navigate('/admin/users');
+            },
+          },
+        ]}
+      />
     </DashboardLayout>
   );
 };

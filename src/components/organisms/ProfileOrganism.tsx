@@ -14,7 +14,11 @@ import { DashboardLayout } from '@templates';
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
 import { apiClient } from '@api';
-import { UpdateProfileSchema, UpdateProfileRequest, UserResponse } from '@contracts';
+import {
+  UpdateProfileSchema,
+  UpdateProfileRequest,
+  UserResponse,
+} from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -27,11 +31,13 @@ export const ProfileOrganism: React.FC = () => {
   const queryClient = useQueryClient();
 
   const isInfluencer = roleCode === 'INFLUENCER';
+  // Profile fields are held on the role's details row (creator, agency or
+  // brand). An admin account is mapped to none of them, so there is nothing to
+  // save and the form reads back the account email only.
+  const isAdmin = roleCode === 'ADMIN';
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
-  // Location, handles, reach and commercials moved off the shared profile onto
-  // the creator's own detail row — only an INFLUENCER has one.
   const [city, setCity] = useState(user?.influencer?.location || '');
   const [category, setCategory] = useState(user?.influencer?.category || '');
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
@@ -92,24 +98,31 @@ export const ProfileOrganism: React.FC = () => {
     },
   });
 
+  const fieldsLocked = updateProfileMutation.isPending || isAdmin;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdmin) return;
     setSavedSuccess(false);
     setErrorMsg('');
     setFieldErrors({});
 
+    const trimmedFullName = fullName.trim();
+    if (!trimmedFullName) {
+      setFieldErrors({ fullName: 'Full Legal Name is required and cannot be whitespace only' });
+      return;
+    }
+
     const payload: UpdateProfileRequest = {
-      fullName: fullName.trim(),
+      fullName: trimmedFullName,
       displayName: displayName.trim() || undefined,
       bio: bio.trim() || undefined,
-      // One request writes both tables; the server upserts them together so a
-      // save costs one round trip rather than two.
       ...(isInfluencer
         ? {
             influencer: {
               location: city.trim() || undefined,
               category: category.trim() || undefined,
-              instagram: instagram.trim() || undefined,
+              instagram: instagram.trim().replace(/\s+/g, '') || undefined,
               youtube: youtube.trim() || undefined,
               followers: followers ? parseInt(followers, 10) : undefined,
               avgCommercialMin: commercialMin ? Number(commercialMin) : undefined,
@@ -123,7 +136,6 @@ export const ProfileOrganism: React.FC = () => {
     if (!validation.success) {
       const errors: Record<string, string> = {};
       validation.error.errors.forEach((err) => {
-        // Creator fields are nested, so key on the leaf segment.
         const field = err.path[err.path.length - 1];
         if (field !== undefined) {
           errors[String(field)] = err.message;
@@ -176,238 +188,247 @@ export const ProfileOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
     >
-      <Card
-        sx={{
-          maxWidth: 720,
-          padding: `${theme.customSpacing.cardPadding}px`,
-          borderRadius: `${theme.customRadii.card}px`,
-          backgroundColor: theme.palette.tokens.surface,
-          border: `1px solid ${theme.palette.tokens.divider}`,
-          boxShadow: 'none',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: `${theme.customRadii.inner}px`,
-                backgroundColor: theme.palette.tokens.fieldBg,
-                color: theme.palette.tokens.accent,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <PersonOutlineRoundedIcon fontSize="medium" />
+      <Box sx={{ width: '100%', maxWidth: 880, pb: 4 }}>
+        <Card
+          sx={{
+            padding: `${theme.customSpacing.cardPadding}px`,
+            borderRadius: `${theme.customRadii.card}px`,
+            backgroundColor: theme.palette.tokens.surface,
+            border: `1px solid ${theme.palette.tokens.divider}`,
+            boxShadow: 'none',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                  color: theme.palette.tokens.accent,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <PersonOutlineRoundedIcon fontSize="medium" />
+              </Box>
+              <Box>
+                <Typography variant="h2">{user?.profile?.fullName || 'User Profile'}</Typography>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  {user?.email}
+                </Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography variant="h2">{user?.profile?.fullName || 'User Profile'}</Typography>
-              <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                {user?.email}
-              </Typography>
-            </Box>
+            <Chip label={roleCode || 'USER'} size="small" />
           </Box>
-          <Chip label={roleCode || 'USER'} size="small" />
-        </Box>
 
-        <SectionHeading
-          title="Personal & Workspace Details"
-          subtitle="Update your personal details and contact information"
-        />
+          <SectionHeading
+            title="Personal & Workspace Details"
+            subtitle="Update your personal details and contact information"
+          />
 
-        <form onSubmit={handleSubmit}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                label="Full Legal Name *"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                error={Boolean(fieldErrors.fullName)}
-                helperText={fieldErrors.fullName}
-                fullWidth
-                disabled={updateProfileMutation.isPending}
-              />
-
-              <TextField
-                label="Public Display Name"
-                value={displayName}
-                placeholder="e.g. Alex Creator"
-                onChange={(e) => setDisplayName(e.target.value)}
-                error={Boolean(fieldErrors.displayName)}
-                helperText={fieldErrors.displayName}
-                fullWidth
-                disabled={updateProfileMutation.isPending}
-              />
-            </Box>
-
-            <TextField
-              label="Account Email (Read-Only)"
-              value={user?.email || ''}
-              disabled
-              fullWidth
-            />
-
-            {isInfluencer && (
-              <>
-                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                  <TextField
-                    label="City / Location"
-                    placeholder="e.g. Kochi, Trivandrum"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    error={Boolean(fieldErrors.location)}
-                    helperText={fieldErrors.location}
-                    fullWidth
-                    disabled={updateProfileMutation.isPending}
-                  />
-
-                  <TextField
-                    label="Category"
-                    placeholder="e.g. Fashion Lifestyle, Food Vlogger"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    error={Boolean(fieldErrors.category)}
-                    helperText={fieldErrors.category}
-                    fullWidth
-                    disabled={updateProfileMutation.isPending}
-                  />
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                  <TextField
-                    label="Instagram Handle"
-                    placeholder="@handle"
-                    value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
-                    error={Boolean(fieldErrors.instagram)}
-                    helperText={fieldErrors.instagram}
-                    fullWidth
-                    disabled={updateProfileMutation.isPending}
-                  />
-
-                  <TextField
-                    label="YouTube Channel"
-                    placeholder="Channel URL or Handle"
-                    value={youtube}
-                    onChange={(e) => setYoutube(e.target.value)}
-                    error={Boolean(fieldErrors.youtube)}
-                    helperText={fieldErrors.youtube}
-                    fullWidth
-                    disabled={updateProfileMutation.isPending}
-                  />
-                </Box>
-
+          <form onSubmit={handleSubmit}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
+              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <TextField
-                  label="Estimated Followers"
-                  type="number"
-                  placeholder="e.g. 350000"
-                  value={followers}
-                  onChange={(e) => setFollowers(e.target.value)}
-                  error={Boolean(fieldErrors.followers)}
-                  helperText={fieldErrors.followers}
+                  label="Full Legal Name *"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  error={Boolean(fieldErrors.fullName)}
+                  helperText={fieldErrors.fullName}
                   fullWidth
-                  disabled={updateProfileMutation.isPending}
+                  disabled={fieldsLocked}
                 />
 
-                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                  <TextField
-                    label="Average Commercial (Min)"
-                    type="number"
-                    placeholder="e.g. 20000"
-                    value={commercialMin}
-                    onChange={(e) => setCommercialMin(e.target.value)}
-                    error={Boolean(fieldErrors.avgCommercialMin)}
-                    helperText={fieldErrors.avgCommercialMin}
-                    fullWidth
-                    disabled={updateProfileMutation.isPending}
-                  />
+                <TextField
+                  label="Public Display Name"
+                  value={displayName}
+                  placeholder="e.g. Alex Creator"
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  error={Boolean(fieldErrors.displayName)}
+                  helperText={fieldErrors.displayName}
+                  fullWidth
+                  disabled={fieldsLocked}
+                />
+              </Box>
+
+              <TextField
+                label="Account Email (Read-Only)"
+                value={user?.email || ''}
+                disabled
+                fullWidth
+              />
+
+              {isInfluencer && (
+                <>
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField
+                      label="City / Location"
+                      placeholder="e.g. Kochi, Trivandrum"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      error={Boolean(fieldErrors.location)}
+                      helperText={fieldErrors.location}
+                      fullWidth
+                      disabled={fieldsLocked}
+                    />
+
+                    <TextField
+                      label="Category"
+                      placeholder="e.g. Fashion Lifestyle, Food Vlogger"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      error={Boolean(fieldErrors.category)}
+                      helperText={fieldErrors.category}
+                      fullWidth
+                      disabled={fieldsLocked}
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField
+                      label="Instagram Handle"
+                      placeholder="@handle"
+                      value={instagram}
+                      onChange={(e) => setInstagram(e.target.value)}
+                      error={Boolean(fieldErrors.instagram)}
+                      helperText={fieldErrors.instagram}
+                      fullWidth
+                      disabled={fieldsLocked}
+                    />
+
+                    <TextField
+                      label="YouTube Channel"
+                      placeholder="Channel URL or Handle"
+                      value={youtube}
+                      onChange={(e) => setYoutube(e.target.value)}
+                      error={Boolean(fieldErrors.youtube)}
+                      helperText={fieldErrors.youtube}
+                      fullWidth
+                      disabled={fieldsLocked}
+                    />
+                  </Box>
 
                   <TextField
-                    label="Average Commercial (Max)"
+                    label="Estimated Followers"
                     type="number"
-                    placeholder="e.g. 25000"
-                    value={commercialMax}
-                    onChange={(e) => setCommercialMax(e.target.value)}
-                    error={Boolean(fieldErrors.avgCommercialMax)}
-                    helperText={
-                      fieldErrors.avgCommercialMax || 'Indicative range shown to your agency'
-                    }
+                    placeholder="e.g. 150000"
+                    value={followers}
+                    onChange={(e) => setFollowers(e.target.value)}
+                    error={Boolean(fieldErrors.followers)}
+                    helperText={fieldErrors.followers}
                     fullWidth
-                    disabled={updateProfileMutation.isPending}
+                    disabled={fieldsLocked}
                   />
+
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField
+                      label="Avg Commercial Min (₹)"
+                      type="number"
+                      placeholder="e.g. 5000"
+                      value={commercialMin}
+                      onChange={(e) => setCommercialMin(e.target.value)}
+                      error={Boolean(fieldErrors.avgCommercialMin)}
+                      helperText={fieldErrors.avgCommercialMin}
+                      fullWidth
+                      disabled={fieldsLocked}
+                    />
+
+                    <TextField
+                      label="Avg Commercial Max (₹)"
+                      type="number"
+                      placeholder="e.g. 25000"
+                      value={commercialMax}
+                      onChange={(e) => setCommercialMax(e.target.value)}
+                      error={Boolean(fieldErrors.avgCommercialMax)}
+                      helperText={fieldErrors.avgCommercialMax}
+                      fullWidth
+                      disabled={fieldsLocked}
+                    />
+                  </Box>
+                </>
+              )}
+
+              <TextField
+                label="Bio & Overview"
+                multiline
+                rows={3}
+                placeholder="Short description of your background or representation"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                error={Boolean(fieldErrors.bio)}
+                helperText={fieldErrors.bio}
+                fullWidth
+                disabled={fieldsLocked}
+              />
+
+              {savedSuccess && (
+                <Box
+                  sx={{
+                    padding: '10px 14px',
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: '#DEF2E5',
+                    border: `1px solid ${theme.palette.tokens.positive}`,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.positive, fontWeight: 600 }}
+                  >
+                    ✓ Profile details saved successfully!
+                  </Typography>
                 </Box>
-              </>
-            )}
+              )}
 
-            <TextField
-              label="Bio & Overview"
-              multiline
-              minRows={3}
-              placeholder="A brief overview of your background, experience, or channel category..."
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              error={Boolean(fieldErrors.bio)}
-              helperText={fieldErrors.bio}
-              fullWidth
-              disabled={updateProfileMutation.isPending}
-            />
+              {errorMsg && (
+                <Box
+                  sx={{
+                    padding: '10px 14px',
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: '#FDE8E8',
+                    border: `1px solid ${theme.palette.tokens.negative}`,
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.negative, fontWeight: 600 }}
+                  >
+                    {errorMsg}
+                  </Typography>
+                </Box>
+              )}
 
-            {savedSuccess && (
-              <Box
-                sx={{
-                  padding: '10px 14px',
-                  borderRadius: `${theme.customRadii.inner}px`,
-                  backgroundColor: '#DEF2E5',
-                  border: `1px solid ${theme.palette.tokens.positive}`,
-                }}
-              >
+              {isAdmin ? (
                 <Typography
                   variant="body2"
-                  sx={{ color: theme.palette.tokens.positive, fontWeight: 600 }}
+                  sx={{ color: theme.palette.tokens.textSecondary, mt: 1 }}
                 >
-                  ✓ Profile details saved successfully!
+                  Administrator accounts are identified by their email address and carry no
+                  editable profile details.
                 </Typography>
-              </Box>
-            )}
-
-            {errorMsg && (
-              <Box
-                sx={{
-                  padding: '10px 14px',
-                  borderRadius: `${theme.customRadii.inner}px`,
-                  backgroundColor: '#FDE8E8',
-                  border: `1px solid ${theme.palette.tokens.negative}`,
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{ color: theme.palette.tokens.negative, fontWeight: 600 }}
-                >
-                  {errorMsg}
-                </Typography>
-              </Box>
-            )}
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-              <Button
-                type="submit"
-                variant="contained"
-                startIcon={<SaveRoundedIcon fontSize="small" />}
-                disabled={updateProfileMutation.isPending || !fullName.trim()}
-                sx={{ minWidth: 160, height: 44 }}
-              >
-                {updateProfileMutation.isPending ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  'Save Profile'
-                )}
-              </Button>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    startIcon={<SaveRoundedIcon fontSize="small" />}
+                    disabled={fieldsLocked || !fullName.trim()}
+                    sx={{ minWidth: 160, height: 44 }}
+                  >
+                    {updateProfileMutation.isPending ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      'Save Profile'
+                    )}
+                  </Button>
+                </Box>
+              )}
             </Box>
-          </Box>
-        </form>
-      </Card>
+          </form>
+        </Card>
+      </Box>
     </DashboardLayout>
   );
 };

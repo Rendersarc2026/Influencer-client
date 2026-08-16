@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -9,7 +9,7 @@ import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar } from '@molecules';
+import { DataTable, DataTableColumn, FilterBar, OverviewDrawer } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useAdminCampaign, useAdminBrands, useAdminCampaignInfluencers } from '@api';
 import { AgencyMapperResponse } from '@contracts';
@@ -28,6 +28,7 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
   const campaignId = propCampaignId || routeCampaignId;
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [selectedMapper, setSelectedMapper] = useState<AgencyMapperResponse | null>(null);
 
   const {
     search,
@@ -140,7 +141,7 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
       navItems={navConfig.ADMIN}
       activePath="/admin/campaigns"
       user={{
-        name: user?.profile?.fullName || 'Super Administrator',
+        name: user?.profile?.fullName || 'Platform Administrator',
         email: user?.email,
         roleCode: 'ADMIN',
       }}
@@ -269,9 +270,108 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
             }}
             loading={mappersLoading || campaignLoading}
             isFetching={mappersFetching}
+            onRowClick={(row) => setSelectedMapper(row)}
           />
         </Box>
       </Box>
+
+      {/* Creator Assignment Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedMapper)}
+        onClose={() => setSelectedMapper(null)}
+        title={selectedMapper?.influencerName || (selectedMapper ? `Creator #${selectedMapper.influencerId.slice(0, 8)}` : 'Creator Assignment')}
+        subtitle={selectedMapper ? `Campaign: ${campaign?.name || 'Campaign'}` : undefined}
+        badge={selectedMapper?.brandStatus || selectedMapper?.rateStatus}
+        avatarText={selectedMapper?.influencerName}
+        highlights={
+          selectedMapper
+            ? [
+                {
+                  label: 'Rate Status',
+                  value: selectedMapper.rateStatus,
+                  tint: selectedMapper.rateStatus === 'AGENCY_APPROVED' ? 'mint' : 'butter',
+                },
+                {
+                  label: 'Brand Decision',
+                  value: selectedMapper.brandStatus,
+                  tint: selectedMapper.brandStatus === 'APPROVED' ? 'mint' : 'sky',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedMapper
+            ? [
+                {
+                  title: 'Deliverables & Assignment',
+                  fields: [
+                    { label: 'Creator Name', value: selectedMapper.influencerName || '—' },
+                    { label: 'Influencer ID', value: selectedMapper.influencerId, copyable: true },
+                    { label: 'Assignment ID', value: selectedMapper.id, copyable: true },
+                    {
+                      label: 'Deliverables',
+                      value: selectedMapper.deliverables || 'Pending deliverables definition',
+                      fullWidth: true,
+                    },
+                    {
+                      label: 'Created On',
+                      value: new Date(selectedMapper.createdOn).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    },
+                  ],
+                },
+                {
+                  title: 'Commercial Breakdown',
+                  fields: [
+                    {
+                      label: 'Creator Rate',
+                      value: selectedMapper.influencerRate,
+                      isMoney: true,
+                      currency: selectedMapper.currency || 'INR',
+                    },
+                    {
+                      label: 'Agency Margin',
+                      value: selectedMapper.margin,
+                      isMoney: true,
+                      currency: selectedMapper.currency || 'INR',
+                      color: theme.palette.tokens.accentText,
+                    },
+                    {
+                      label: 'Client / Brand Rate',
+                      value: selectedMapper.clientRate,
+                      isMoney: true,
+                      currency: selectedMapper.currency || 'INR',
+                      color: theme.palette.tokens.positiveText,
+                    },
+                    { label: 'Currency', value: selectedMapper.currency || 'INR' },
+                  ],
+                },
+                {
+                  title: 'Approval Timeline',
+                  fields: [
+                    { label: 'Rate Approval Status', value: selectedMapper.rateStatus, isStatus: true },
+                    {
+                      label: 'Rate Approved On',
+                      value: selectedMapper.rateApprovedOn
+                        ? new Date(selectedMapper.rateApprovedOn).toLocaleDateString('en-IN')
+                        : 'Pending approval',
+                    },
+                    { label: 'Brand Decision Status', value: selectedMapper.brandStatus, isStatus: true },
+                    {
+                      label: 'Brand Decided On',
+                      value: selectedMapper.brandDecidedOn
+                        ? new Date(selectedMapper.brandDecidedOn).toLocaleDateString('en-IN')
+                        : 'Pending decision',
+                    },
+                  ],
+                },
+              ]
+            : []
+        }
+      />
     </DashboardLayout>
   );
 };
