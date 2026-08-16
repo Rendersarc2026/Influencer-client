@@ -3,12 +3,8 @@ import { email, httpUrl, phone, safeText } from './primitives';
 
 export const BrandResponseSchema = z.object({
   id: z.string().uuid(),
-  /**
-   * Every agency managing this brand, resolved through agency_brand_mapper.
-   * Many-to-many in both directions: an agency handles many brands, and a brand
-   * may be handled by several agencies.
-   */
-  agencyIds: z.array(z.string().uuid()),
+  /** The agency that created and owns this brand. */
+  agencyId: z.string().uuid(),
   name: z.string(),
   industry: z.string().nullable(),
   contactPerson: z.string().nullable(),
@@ -23,17 +19,17 @@ export const BrandResponseSchema = z.object({
 });
 export type BrandResponse = z.infer<typeof BrandResponseSchema>;
 
+/**
+ * The owning agency is never part of the payload: it is taken from the acting
+ * user's token, so a caller cannot create a brand under someone else's agency.
+ */
 export const CreateBrandSchema = z.object({
-  /** Convenience for the single-agency case. */
-  agencyId: z.string().uuid().optional(),
-  /** Full set of managing agencies; wins over agencyId when both are given. */
-  agencyIds: z.array(z.string().uuid()).max(20).optional(),
   name: safeText(200),
   industry: safeText(120).optional(),
   contactPerson: safeText(200).optional(),
   /**
    * Both are mandatory on creation: the pair becomes the brand manager's login
-   * (see AdminBrandUseCases.create, which provisions a BRAND user from them),
+   * (see AgencyBrandUseCases.create, which provisions a BRAND user from them),
    * and an account with no way to reach its owner is not worth creating.
    */
   contactPhone: phone,
@@ -45,19 +41,8 @@ export const CreateBrandSchema = z.object({
 });
 export type CreateBrandRequest = z.infer<typeof CreateBrandSchema>;
 
-/**
- * Takes an existing brand onto the acting agency's client list. Carries no
- * brand fields on purpose — this only asserts the managing-agency link, it
- * never edits the brand another agency (or an admin) registered.
- */
-export const LinkBrandSchema = z.object({
-  brandId: z.string().uuid(),
-});
-export type LinkBrandRequest = z.infer<typeof LinkBrandSchema>;
-
+/** Ownership is fixed at creation, so it is absent here too. */
 export const UpdateBrandSchema = z.object({
-  agencyId: z.string().uuid().optional(),
-  agencyIds: z.array(z.string().uuid()).max(20).optional(),
   name: safeText(200).optional(),
   industry: safeText(120).optional(),
   contactPerson: safeText(200).optional(),
@@ -75,7 +60,6 @@ export const BrandListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   search: z.string().max(100).optional(),
-  agencyId: z.string().uuid().optional(),
   isActive: z.coerce.boolean().optional(),
 });
 export type BrandListQuery = z.infer<typeof BrandListQuerySchema>;

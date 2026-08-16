@@ -45,7 +45,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   backLabel,
   navItems = [],
   activePath = '',
-  user = { name: 'User', roleCode: 'ADMIN' },
+  user = { name: 'User', roleCode: 'AGENCY' },
   onNavigate,
   onLogout,
   onSearchClick,

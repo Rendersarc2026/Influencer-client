@@ -1,5 +1,4 @@
 import { queryClient } from './query.client';
-import { adminPlatformStatsQueryOptions, adminUsersQueryOptions } from './admin.api';
 import { agencyBrandsQueryOptions, agencyCampaignsQueryOptions } from './agency.api';
 import { brandCampaignsQueryOptions, brandPaymentsQueryOptions } from './brand.api';
 
@@ -26,12 +25,6 @@ import { brandCampaignsQueryOptions, brandPaymentsQueryOptions } from './brand.a
 const FIRST_PAGE = { page: 1, limit: 10 };
 
 export function prefetchForRoute(pathname: string): void {
-  if (pathname.startsWith('/admin')) {
-    void queryClient.prefetchQuery(adminUsersQueryOptions(FIRST_PAGE));
-    void queryClient.prefetchQuery(adminPlatformStatsQueryOptions());
-    return;
-  }
-
   if (pathname.startsWith('/agency')) {
     void queryClient.prefetchQuery(agencyCampaignsQueryOptions(FIRST_PAGE));
     // AgencyHomeOrganism mounts `useAgencyBrands()` with no params, so the

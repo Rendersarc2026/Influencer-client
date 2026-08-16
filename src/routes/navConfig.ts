@@ -9,20 +9,6 @@ export interface NavItem {
 }
 
 export const navConfig: Record<RoleCode, NavItem[]> = {
-  ADMIN: [
-    { id: 'admin-dashboard', label: 'Dashboard', path: '/admin', iconName: 'Dashboard' },
-    { id: 'admin-agencies', label: 'Agencies', path: '/admin/agencies', iconName: 'Business' },
-    { id: 'admin-brands', label: 'Brands', path: '/admin/brands', iconName: 'Storefront' },
-    {
-      id: 'admin-influencers',
-      label: 'Influencers',
-      path: '/admin/influencers',
-      iconName: 'People',
-    },
-    { id: 'admin-categories', label: 'Categories', path: '/admin/categories', iconName: 'Category' },
-    { id: 'admin-campaigns', label: 'Campaigns', path: '/admin/campaigns', iconName: 'Campaign' },
-    { id: 'admin-users', label: 'Users', path: '/admin/users', iconName: 'People' },
-  ],
   AGENCY: [
     { id: 'agency-dashboard', label: 'Dashboard', path: '/agency', iconName: 'Dashboard' },
     { id: 'agency-brands', label: 'Brands', path: '/agency/brands', iconName: 'Storefront' },
@@ -33,6 +19,13 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
       iconName: 'People',
     },
     { id: 'agency-campaigns', label: 'Campaigns', path: '/agency/campaigns', iconName: 'Campaign' },
+    {
+      id: 'agency-categories',
+      label: 'Categories',
+      path: '/agency/categories',
+      iconName: 'Category',
+    },
+    { id: 'agency-users', label: 'Users', path: '/agency/users', iconName: 'People' },
     { id: 'agency-reports', label: 'Reports', path: '/agency/reports', iconName: 'Assessment' },
     { id: 'agency-messages', label: 'Messages', path: '/agency/chats', iconName: 'Chat' },
   ],
@@ -40,12 +33,6 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
     { id: 'brand-dashboard', label: 'Dashboard', path: '/brand', iconName: 'Dashboard' },
     { id: 'brand-campaigns', label: 'Campaigns', path: '/brand/campaigns', iconName: 'Campaign' },
     { id: 'brand-payments', label: 'Payments', path: '/brand/payments', iconName: 'AttachMoney' },
-    {
-      id: 'brand-requirements',
-      label: 'Requirements',
-      path: '/brand/requirements',
-      iconName: 'Assignment',
-    },
     { id: 'brand-messages', label: 'Messages', path: '/brand/chats', iconName: 'Chat' },
   ],
   INFLUENCER: [
@@ -67,15 +54,13 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
 
 export function getNavItemsForRole(roleCode: RoleCode | string | undefined): NavItem[] {
   if (!roleCode || !(roleCode in navConfig)) {
-    return navConfig.ADMIN;
+    return [];
   }
   return navConfig[roleCode as RoleCode];
 }
 
 export function getRoleDashboardPath(roleCode: RoleCode | null | string | undefined): string {
   switch (roleCode) {
-    case 'ADMIN':
-      return '/admin';
     case 'AGENCY':
       return '/agency';
     case 'BRAND':

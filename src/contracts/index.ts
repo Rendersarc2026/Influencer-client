@@ -15,7 +15,6 @@ export * from './payment.contract';
 export * from './metric.contract';
 export * from './chat.contract';
 export * from './terms.contract';
-export * from './admin.contract';
 export * from './category.contract';
 export * from './navigation.contract';
 

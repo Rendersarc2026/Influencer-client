@@ -24,16 +24,16 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
 import { SectionHeading } from '@atoms';
 import {
-  useAdminCategories,
-  useAdminCreateCategory,
-  useAdminUpdateCategory,
-  useAdminDeactivateCategory,
+  useCategoryList,
+  useCreateCategory,
+  useUpdateCategory,
+  useDeactivateCategory,
 } from '@api';
 import { CategoryResponse, CategoryType } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { capitalizeWords } from '@utils';
 
-export const AdminCategoriesOrganism: React.FC = () => {
+export const AgencyCategoriesOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
@@ -51,7 +51,7 @@ export const AdminCategoriesOrganism: React.FC = () => {
     setPage,
     rowsPerPage,
     setRowsPerPage,
-  } = useViewFilters('adminBrands');
+  } = useViewFilters('agencyCategories');
   const debouncedSearch = useDebounce(search, 300);
 
   const activeStatus =
@@ -61,7 +61,7 @@ export const AdminCategoriesOrganism: React.FC = () => {
     data: categoriesData,
     isLoading: categoriesLoading,
     isFetching: categoriesFetching,
-  } = useAdminCategories({
+  } = useCategoryList({
     type: activeTab,
     search: debouncedSearch.trim() || undefined,
     isActive: activeStatus,
@@ -70,8 +70,8 @@ export const AdminCategoriesOrganism: React.FC = () => {
   });
 
   // Query counts for tabs
-  const { data: brandCountData } = useAdminCategories({ type: 'BRAND', page: 1, limit: 1 });
-  const { data: influencerCountData } = useAdminCategories({
+  const { data: brandCountData } = useCategoryList({ type: 'BRAND', page: 1, limit: 1 });
+  const { data: influencerCountData } = useCategoryList({
     type: 'INFLUENCER',
     page: 1,
     limit: 1,
@@ -83,9 +83,9 @@ export const AdminCategoriesOrganism: React.FC = () => {
   const categories = categoriesData?.items || [];
   const totalCategories = categoriesData?.total ?? categories.length;
 
-  const createCategoryMutation = useAdminCreateCategory();
-  const updateCategoryMutation = useAdminUpdateCategory();
-  const deactivateCategoryMutation = useAdminDeactivateCategory();
+  const createCategoryMutation = useCreateCategory();
+  const updateCategoryMutation = useUpdateCategory();
+  const deactivateCategoryMutation = useDeactivateCategory();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<CategoryResponse | null>(null);
@@ -277,12 +277,12 @@ export const AdminCategoriesOrganism: React.FC = () => {
     <DashboardLayout
       title="Categories"
       subtitle="Manage taxonomy for brand industry classifications and creator niche categories"
-      navItems={navConfig.ADMIN}
+      navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Platform Administrator',
+        name: user?.profile?.fullName || 'Agency Manager',
         email: user?.email,
-        roleCode: 'ADMIN',
+        roleCode: 'AGENCY',
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}

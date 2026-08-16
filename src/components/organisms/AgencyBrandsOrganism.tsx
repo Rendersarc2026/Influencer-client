@@ -3,92 +3,46 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import AddBusinessRoundedIcon from '@mui/icons-material/AddBusinessRounded';
-import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog } from '@molecules';
-import {
-  useAgencyBrands,
-  useAgencyBrandDirectory,
-  useCreateBrand,
-  useLinkExistingBrand,
-  useUpdateBrand,
-} from '@api';
+import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 /**
- * Which set of brands the table shows. A brand exists once platform-wide and
- * is managed by any number of agencies, so "all brands" is a real view: it is
- * where an agency finds a client somebody else registered and takes it on.
+ * The agency's client brands.
+ *
+ * There is one list, not two: every brand here was created by this agency, so
+ * there is no platform-wide pool to browse and no "take on an existing client"
+ * path — signing one up is the only way the list grows.
  */
-const SCOPE_CLIENTS = 'CLIENTS';
-const SCOPE_ALL = 'ALL_BRANDS';
-
 export const AgencyBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const {
-    search,
-    setSearch,
-    activePill,
-    setActivePill,
-    page,
-    setPage,
-    rowsPerPage,
-    setRowsPerPage,
-  } = useViewFilters('agencyBrands');
+  const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
+    useViewFilters('agencyBrands');
   const debouncedSearch = useDebounce(search, 300);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
-  /** The row whose link request is in flight, so only that row shows a spinner. */
-  const [linkingId, setLinkingId] = useState<string | null>(null);
 
-  // The stored default pill is 'ALL', which is neither of these ids — anything
-  // but an explicit "all brands" choice falls back to this agency's own list.
-  const scope = activePill === SCOPE_ALL ? SCOPE_ALL : SCOPE_CLIENTS;
-  const showingAll = scope === SCOPE_ALL;
-
-  const listParams = {
+  const brandsQuery = useAgencyBrands({
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
-  };
+  });
 
-  // Only the list the filter is showing is fetched — the other would spend a
-  // round trip on rows that are not on screen.
-  const managedQuery = useAgencyBrands(listParams, { enabled: !showingAll });
-  // Paged the same way, so switching tabs does not change how the table reads.
-  const directoryQuery = useAgencyBrandDirectory(listParams, { enabled: showingAll });
-
-  const activeQuery = showingAll ? directoryQuery : managedQuery;
-  const brands = activeQuery.data?.items || [];
-  const totalBrands = activeQuery.data?.total ?? brands.length;
-
-  // The unpaged directory, which the dialog needs whole: it is both the
-  // "add existing" picker's options and what the create form checks a typed
-  // name against, and neither can work off a single page of results. Fetched
-  // only once the dialog is open — nothing on the table itself reads it.
-  const { data: fullDirectoryData, isLoading: directoryLoading } = useAgencyBrandDirectory(
-    undefined,
-    { enabled: dialogOpen },
-  );
-  const fullDirectory = fullDirectoryData?.items || [];
+  const brands = brandsQuery.data?.items || [];
+  const totalBrands = brandsQuery.data?.total ?? brands.length;
 
   const createBrandMutation = useCreateBrand();
   const updateBrandMutation = useUpdateBrand();
-  const linkBrandMutation = useLinkExistingBrand();
-
-  const isManaged = (brand: BrandResponse) =>
-    Boolean(user?.agencyId && brand.agencyIds.includes(user.agencyId));
 
   const handleOpenCreate = () => {
     setBrandToEdit(null);
@@ -119,20 +73,6 @@ export const AgencyBrandsOrganism: React.FC = () => {
     }
   };
 
-  const handleLinkBrand = async (brandId: string, closeDialog: boolean) => {
-    setLinkingId(brandId);
-    try {
-      const brand = await linkBrandMutation.mutateAsync(brandId);
-      showSuccess(`${brand.name} added to your client brands.`);
-      if (closeDialog) setDialogOpen(false);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add brand.');
-    } finally {
-      setLinkingId(null);
-    }
-  };
-
   const columns: Array<DataTableColumn<BrandResponse>> = [
     {
       id: 'name',
@@ -158,50 +98,17 @@ export const AgencyBrandsOrganism: React.FC = () => {
       header: 'Actions',
       type: 'actions',
       align: 'right',
-      render: (row) => {
-        // In the full directory a row may belong to another agency entirely,
-        // so the action there is "take it on", not "edit what you don't manage".
-        if (showingAll && !isManaged(row)) {
-          return (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={
-                linkingId === row.id ? undefined : <AddBusinessRoundedIcon fontSize="small" />
-              }
-              disabled={Boolean(linkingId)}
-              onClick={() => handleLinkBrand(row.id, false)}
-            >
-              {linkingId === row.id ? <CircularProgress size={16} color="inherit" /> : 'Add'}
-            </Button>
-          );
-        }
-
-        if (showingAll) {
-          return (
-            <Button
-              size="small"
-              variant="text"
-              startIcon={<CheckRoundedIcon fontSize="small" />}
-              disabled
-            >
-              Your client
-            </Button>
-          );
-        }
-
-        return (
-          <IconButton size="small" onClick={() => handleOpenEdit(row)}>
-            <EditRoundedIcon fontSize="small" />
-          </IconButton>
-        );
-      },
+      render: (row) => (
+        <IconButton size="small" onClick={() => handleOpenEdit(row)}>
+          <EditRoundedIcon fontSize="small" />
+        </IconButton>
+      ),
     },
   ];
 
   return (
     <DashboardLayout
-      title="Managed Brands"
+      title="Client Brands"
       subtitle="Client brand portfolios and account relationships"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
@@ -224,12 +131,6 @@ export const AgencyBrandsOrganism: React.FC = () => {
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
-          pills={[
-            { id: SCOPE_CLIENTS, label: 'My Clients' },
-            { id: SCOPE_ALL, label: 'All Brands' },
-          ]}
-          activePillId={scope}
-          onPillChange={setActivePill}
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search by brand name or industry"
@@ -246,8 +147,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
             setRowsPerPage(limit);
             setPage(0);
           }}
-          loading={activeQuery.isLoading}
-          isFetching={activeQuery.isFetching}
+          loading={brandsQuery.isLoading}
+          isFetching={brandsQuery.isFetching}
           fillHeight
         />
       </Box>
@@ -255,13 +156,9 @@ export const AgencyBrandsOrganism: React.FC = () => {
       <CreateBrandDialog
         open={dialogOpen}
         brandToEdit={brandToEdit}
-        directory={fullDirectory}
-        directoryLoading={directoryLoading}
-        agencyId={user?.agencyId}
+        existingBrands={brands}
         loading={createBrandMutation.isPending || updateBrandMutation.isPending}
-        linking={linkBrandMutation.isPending}
         onSubmit={handleDialogSubmit}
-        onLinkExisting={(brandId) => handleLinkBrand(brandId, true)}
         onClose={() => setDialogOpen(false)}
       />
     </DashboardLayout>

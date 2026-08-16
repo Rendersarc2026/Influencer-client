@@ -54,7 +54,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   breadcrumbs,
   onBack,
   backLabel = 'Back',
-  user = { name: 'User', roleCode: 'ADMIN' },
+  user = { name: 'User', roleCode: 'AGENCY' },
   onSearchClick,
   onNotificationsClick,
   notificationCount = 0,

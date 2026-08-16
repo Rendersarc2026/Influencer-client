@@ -25,14 +25,14 @@ import {
   useCampaignInfluencers,
   useAddInfluencerToCampaign,
   useRemoveInfluencerFromCampaign,
-  useAgencyInfluencerDirectory,
+  useAgencyInfluencers,
   useCreateInfluencer,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeImageUrl } from '@utils';
 import { AgencyMapperResponse, CreateInfluencerRequest, InfluencerResponse } from '@contracts';
 
-/** "64.7k" reads better than "64700" in a directory of reach numbers. */
+/** "64.7k" reads better than "64700" in a list of reach numbers. */
 function formatFollowers(value: number | null): string {
   if (value === null || value === undefined) return '—';
   if (value >= 1_000_000) {
@@ -95,9 +95,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
   const activeCategory = categoryFilter && categoryFilter !== 'ALL' ? categoryFilter : undefined;
 
-  // The shared directory, not this agency's roster: a campaign can be staffed
-  // with any active creator, and assigning one adds them to the roster.
-  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencerDirectory({
+  // The creators this agency represents — the only ones it can staff a campaign
+  // with. Someone new is entered from the Creators screen first.
+  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers({
     search: debouncedSearch.trim() || undefined,
     category: activeCategory,
     location: locationFilter || undefined,
@@ -109,7 +109,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   // deriving them from the paged results would limit the choices to whatever
   // happens to be on the current page, and deriving them from the filtered
   // results would make each choice erase the others.
-  const { data: allCreatorsData } = useAgencyInfluencerDirectory();
+  const { data: allCreatorsData } = useAgencyInfluencers();
   const allCreators = useMemo(() => allCreatorsData?.items ?? [], [allCreatorsData]);
 
   const categoryPills = useMemo(() => {
@@ -599,7 +599,6 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
       <CreateInfluencerDialog
         open={createDialogOpen}
-        addsToRoster
         loading={createInfluencerMutation.isPending}
         onSubmit={handleCreateInfluencer}
         onClose={() => setCreateDialogOpen(false)}

@@ -14,11 +14,11 @@ import {
   CreateInfluencerDialog,
   OverviewDrawer,
 } from '@molecules';
-import { useAgencyInfluencerDirectory, useCreateInfluencer } from '@api';
+import { useAgencyInfluencers, useCreateInfluencer } from '@api';
 import { InfluencerResponse, CreateInfluencerRequest } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
-/** "64.7k" reads better than "64700" in a directory of reach numbers. */
+/** "64.7k" reads better than "64700" in a list of reach numbers. */
 function formatFollowers(value: number | null): string {
   if (value === null || value === undefined) return '—';
   if (value >= 1_000_000) {
@@ -74,14 +74,14 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   const activeCategory = categoryFilter && categoryFilter !== 'ALL' ? categoryFilter : undefined;
 
-  // The whole platform directory, not just this agency's roster: an agency
-  // browses every creator here, the same set the assign-to-campaign picker
-  // offers. Assigning one to a campaign is what puts them on the roster.
+  // The creators this agency represents — the same set the assign-to-campaign
+  // picker offers. A creator joins it by being entered here, not by being
+  // assigned to something.
   const {
     data: influencersData,
     isLoading,
     isFetching,
-  } = useAgencyInfluencerDirectory({
+  } = useAgencyInfluencers({
     search: debouncedSearch.trim() || undefined,
     category: activeCategory,
     location: locationFilter || undefined,
@@ -93,7 +93,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   // deriving them from the paged results would limit the choices to whatever
   // happens to be on the current page, and deriving them from the filtered
   // results would make each choice erase the others.
-  const { data: allCreatorsData } = useAgencyInfluencerDirectory();
+  const { data: allCreatorsData } = useAgencyInfluencers();
   const allCreators = useMemo(() => allCreatorsData?.items ?? [], [allCreatorsData]);
 
   const influencers = influencersData?.items || [];
@@ -193,7 +193,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Creators"
-      subtitle="Creator directory with reach, niche, and indicative commercials"
+      subtitle="The creators you represent, with reach, niche and indicative commercials"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -247,7 +247,6 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
       <CreateInfluencerDialog
         open={createDialogOpen}
-        addsToRoster
         loading={createInfluencerMutation.isPending}
         onSubmit={handleCreateInfluencer}
         onClose={() => setCreateDialogOpen(false)}

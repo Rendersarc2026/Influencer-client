@@ -34,7 +34,7 @@ export const InfluencerMapperResponseSchema = z.object({
 });
 export type InfluencerMapperResponse = z.infer<typeof InfluencerMapperResponseSchema>;
 
-// Agency / Admin view: full transparency
+// Agency view: full transparency
 export const AgencyMapperResponseSchema = z.object({
   id: z.string().uuid(),
   campaignId: z.string().uuid(),

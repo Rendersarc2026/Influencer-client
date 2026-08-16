@@ -5,7 +5,6 @@ import {
   BrandResponse,
   BrandListQuery,
   CreateBrandRequest,
-  LinkBrandRequest,
   UpdateBrandRequest,
   CampaignResponse,
   CampaignListQuery,
@@ -21,8 +20,59 @@ import {
   InfluencerResponse,
   InfluencerListQuery,
   CreateInfluencerRequest,
+  UserResponse,
+  UserListQuery,
   PaginatedResult,
 } from '@contracts';
+
+// -------------------------------------------------------------
+// 0. Accounts
+// -------------------------------------------------------------
+
+/**
+ * The logins in this agency's world: its own staff, its brands' managers and
+ * the creators it represents. Shared with the boot-time prefetch, so the query
+ * key and the fetcher cannot drift apart.
+ */
+export function agencyUsersQueryOptions(params?: UserListQuery) {
+  return {
+    queryKey: ['agency', 'users', params] as const,
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<UserResponse>>('/agency/users', {
+        params,
+      });
+      return response.data;
+    },
+  };
+}
+
+export function useAgencyUsers(params?: UserListQuery) {
+  return useQuery<PaginatedResult<UserResponse>>({
+    ...agencyUsersQueryOptions(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Blocks or unblocks an account — the only write the agency has over one.
+ *
+ * A blocked account is `isActive: false`, which the list filters on, so the
+ * whole namespace is invalidated rather than one page.
+ */
+export function useSetUserBlocked() {
+  const queryClient = useQueryClient();
+  return useMutation<UserResponse, Error, { id: string; blocked: boolean }>({
+    mutationFn: async ({ id, blocked }) => {
+      const response = await apiClient.patch<UserResponse>(`/agency/users/${id}/blocked`, {
+        blocked,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agency', 'users'] });
+    },
+  });
+}
 
 // -------------------------------------------------------------
 // 1. Brands Queries & Mutations
@@ -45,56 +95,18 @@ export function agencyBrandsQueryOptions(params?: BrandListQuery) {
   };
 }
 
-/**
- * `enabled` is exposed because the Brands screen holds two mutually exclusive
- * lists — this one and the directory below. Leaving both switched on would
- * spend a round trip on the list the filter is not showing.
- */
-export function useAgencyBrands(params?: BrandListQuery, options?: { enabled?: boolean }) {
+export function useAgencyBrands(params?: BrandListQuery) {
   return useQuery<PaginatedResult<BrandResponse>>({
     ...agencyBrandsQueryOptions(params),
     placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
   });
 }
 
 /**
- * Every active brand, not just ones this agency already manages — feeds the
- * "create campaign" brand picker, which can start a relationship with a
- * brand the agency hasn't run a campaign under before, the "All Brands" view,
- * and the duplicate check on the create-brand form.
+ * Signs up a new client brand under this agency.
  *
- * Called without params it returns the whole live set in one request, which is
- * what the pickers want: they filter locally rather than paying a round trip
- * per keystroke.
- */
-export function useAgencyBrandDirectory(
-  params?: BrandListQuery,
-  options?: { enabled?: boolean },
-) {
-  return useQuery<PaginatedResult<BrandResponse>>({
-    queryKey: ['agency', 'brands', 'directory', params],
-    queryFn: async () => {
-      const response = await apiClient.get<PaginatedResult<BrandResponse>>(
-        '/agency/brands/directory',
-        { params },
-      );
-      return response.data;
-    },
-    placeholderData: keepPreviousData,
-    enabled: options?.enabled ?? true,
-  });
-}
-
-/**
- * An agency signs up its own client brands. These hit `/agency/brands`, which
- * runs the same use case the admin portal does but resolves the owning agency
- * from the acting user — the `/admin/*` routes are ADMIN-only and would 403.
- *
- * Both write into the table the admin portal reads from (`useAdminBrands`,
- * keyed `['admin','brands']`), so they invalidate that namespace too —
- * otherwise the admin portal's filter dropdowns keep showing their
- * last-fetched brand list until a full reload throws the cache away.
+ * There is no counterpart that takes on an existing brand: every brand belongs
+ * to the agency that created it, so the client list only ever grows this way.
  */
 export function useCreateBrand() {
   const queryClient = useQueryClient();
@@ -104,32 +116,10 @@ export function useCreateBrand() {
       return response.data;
     },
     onSuccess: () => {
+      // refetchType: 'all' so a brand picker cached from an earlier visit
+      // (mounted elsewhere, currently inactive) is already fresh by the time
+      // it is shown again, rather than waiting for its next mount to notice.
       queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
-    },
-  });
-}
-
-/**
- * Takes a brand that already exists onto this agency's client list.
- *
- * The counterpart to `useCreateBrand`: a brand is registered once
- * platform-wide, so adding one another agency already signed up writes only
- * the managing-agency link, never a second brand.
- */
-export function useLinkExistingBrand() {
-  const queryClient = useQueryClient();
-  return useMutation<BrandResponse, Error, string>({
-    mutationFn: async (brandId) => {
-      const payload: LinkBrandRequest = { brandId };
-      const response = await apiClient.post<BrandResponse>('/agency/brands/link', payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      // The managed list gains a row and the directory's agencyIds change, so
-      // both live under the invalidated prefix.
-      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
     },
   });
 }
@@ -143,7 +133,6 @@ export function useUpdateBrand() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
     },
   });
 }
@@ -211,21 +200,15 @@ export function useUpdateCampaign() {
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'campaigns', variables.id] });
     },
   });
 }
 
 // -------------------------------------------------------------
-// 3. Influencer Directory
+// 3. Creators
 // -------------------------------------------------------------
 
-/**
- * This agency's own roster — the creators it represents, resolved through
- * agency_influencer_mapper. For the full platform list see
- * `useAgencyInfluencerDirectory`.
- */
+/** The creators this agency represents — also the assign-to-campaign picker. */
 export function useAgencyInfluencers(params?: InfluencerListQuery) {
   return useQuery<PaginatedResult<InfluencerResponse>>({
     queryKey: ['agency', 'influencers', params],
@@ -241,29 +224,9 @@ export function useAgencyInfluencers(params?: InfluencerListQuery) {
 }
 
 /**
- * Every active creator on the platform, not just this agency's roster — the
- * "add creators to campaign" picker assigns from the shared directory, and
- * assigning someone new brings them onto the roster.
- */
-export function useAgencyInfluencerDirectory(params?: InfluencerListQuery) {
-  return useQuery<PaginatedResult<InfluencerResponse>>({
-    queryKey: ['agency', 'influencers', 'directory', params],
-    queryFn: async () => {
-      const response = await apiClient.get<PaginatedResult<InfluencerResponse>>(
-        '/agency/influencers/directory',
-        { params },
-      );
-      return response.data;
-    },
-    placeholderData: keepPreviousData,
-  });
-}
-
-/**
- * Adds a creator to the shared directory and straight onto this agency's own
- * roster — for a creator the agency knows about before they've signed in
- * themselves. Also invalidates the admin directory, which reads the same
- * underlying table.
+ * Enters a creator this agency represents, before that creator has signed in
+ * themselves. The row is owned by this agency from the first write, so it lands
+ * on the list above straight away.
  */
 export function useCreateInfluencer() {
   const queryClient = useQueryClient();
@@ -274,7 +237,6 @@ export function useCreateInfluencer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'influencers'], refetchType: 'all' });
     },
   });
 }
@@ -316,10 +278,6 @@ export function useAddInfluencerToCampaign(campaignId: string) {
       queryClient.invalidateQueries({
         queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
       });
-      // Assigning a creator the agency did not represent yet also puts them on
-      // its roster, so the roster list (and the directory beneath the same key
-      // prefix) is now stale.
-      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
     },
   });
 }

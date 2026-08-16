@@ -17,8 +17,6 @@ import { capitalizeWords } from '@utils';
 
 export interface CreateInfluencerDialogProps {
   open: boolean;
-  /** Shown only when the dialog is opened from the agency portal. */
-  addsToRoster?: boolean;
   loading?: boolean;
   onSubmit: (data: CreateInfluencerRequest) => Promise<void> | void;
   onClose: () => void;
@@ -26,7 +24,6 @@ export interface CreateInfluencerDialogProps {
 
 export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   open,
-  addsToRoster = false,
   loading = false,
   onSubmit,
   onClose,
@@ -176,11 +173,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
         <DialogTitle sx={{ pb: 1 }}>
           <SectionHeading
             title="Add Creator"
-            subtitle={
-              addsToRoster
-                ? 'Adds a directory entry and puts it straight on your roster'
-                : 'A directory entry — no login required until the creator signs in themselves'
-            }
+            subtitle="Added to the creators you represent; no login is needed until they first sign in"
           />
         </DialogTitle>
 

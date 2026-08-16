@@ -43,10 +43,9 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
-  // Scoped to this agency's own brands. The create-campaign picker is fed from
-  // the same list, so an agency only ever starts a campaign for a client it
-  // actually manages — /agency/brands/directory returns every active brand on
-  // the platform and is deliberately not used here.
+  // This agency's own brands, which is every brand it can reach. The
+  // create-campaign picker is fed from the same list, and many campaigns may
+  // run under one brand.
   const { data: brandsData } = useAgencyBrands();
 
   const campaigns = campaignsData?.items || [];

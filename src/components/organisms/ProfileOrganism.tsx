@@ -33,10 +33,6 @@ export const ProfileOrganism: React.FC = () => {
   const queryClient = useQueryClient();
 
   const isInfluencer = roleCode === 'INFLUENCER';
-  // Profile fields are held on the role's details row (creator, agency or
-  // brand). An admin account is mapped to none of them, so there is nothing to
-  // save and the form reads back the account email only.
-  const isAdmin = roleCode === 'ADMIN';
   const { data: influencerCategoriesData } = useCategories('INFLUENCER');
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
@@ -102,11 +98,10 @@ export const ProfileOrganism: React.FC = () => {
     },
   });
 
-  const fieldsLocked = updateProfileMutation.isPending || isAdmin;
+  const fieldsLocked = updateProfileMutation.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAdmin) return;
     setSavedSuccess(false);
     setErrorMsg('');
     setFieldErrors({});
@@ -187,7 +182,7 @@ export const ProfileOrganism: React.FC = () => {
       user={{
         name: user?.profile?.fullName || user?.email || 'User',
         email: user?.email,
-        roleCode: roleCode || 'ADMIN',
+        roleCode: roleCode || 'AGENCY',
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
@@ -415,15 +410,6 @@ export const ProfileOrganism: React.FC = () => {
                 </Box>
               )}
 
-              {isAdmin ? (
-                <Typography
-                  variant="body2"
-                  sx={{ color: theme.palette.tokens.textSecondary, mt: 1 }}
-                >
-                  Administrator accounts are identified by their email address and carry no
-                  editable profile details.
-                </Typography>
-              ) : (
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                   <Button
                     type="submit"
@@ -439,7 +425,6 @@ export const ProfileOrganism: React.FC = () => {
                     )}
                   </Button>
                 </Box>
-              )}
             </Box>
           </form>
         </Card>

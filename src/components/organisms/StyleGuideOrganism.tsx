@@ -256,7 +256,7 @@ export const StyleGuideOrganism: React.FC = () => {
     >
       {/* 1. Floating Dark Sidebar Rail */}
       <SidebarRail
-        items={navConfig.ADMIN}
+        items={navConfig.AGENCY}
         activePath="/style-guide"
         onNavigate={(path) => console.log('Navigated to:', path)}
         onLogout={() => console.log('Logged out')}
@@ -289,9 +289,9 @@ export const StyleGuideOrganism: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <UserMenu
                 user={{
-                  name: 'Abin Admin',
-                  email: 'admin@platform.internal',
-                  roleCode: 'ADMIN',
+                  name: 'Abin Fetch',
+                  email: 'lead@fetch.com',
+                  roleCode: 'AGENCY',
                 }}
               />
             </Box>

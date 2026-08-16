@@ -9,7 +9,6 @@ import {
   safeMultilineText,
   safeText,
 } from './primitives';
-import { RoleCodeEnum } from './roles.contract';
 
 /** Identity fields every role has. Creator-only data lives on InfluencerDetail. */
 export const ProfileResponseSchema = z.object({
@@ -40,15 +39,15 @@ export const InfluencerResponseSchema = z.object({
 export type InfluencerResponse = z.infer<typeof InfluencerResponseSchema>;
 
 /**
- * A directory-only creator row — added by an admin or an agency before the
- * creator ever signs in themselves (see InfluencerRepository.create).
+ * A creator row the agency enters before that creator ever signs in themselves
+ * (see InfluencerRepository.create).
  */
 export const CreateInfluencerSchema = z
   .object({
     name: safeText(200),
     /**
      * Both are mandatory: the pair becomes the creator's login when the agency
-     * or admin adds them to the directory ahead of their first sign-in.
+     * enters them, ahead of their first sign-in.
      */
     email: email,
     category: safeText(120).optional(),
@@ -125,6 +124,9 @@ export const UserResponseSchema = z.object({
   phone: z.string().nullable(),
   agencyId: z.string().uuid().nullable(),
   brandId: z.string().uuid().nullable(),
+  /** Tenant names, joined in on read so a list need not resolve ids itself. */
+  agencyName: z.string().nullable(),
+  brandName: z.string().nullable(),
   isActive: z.boolean(),
   createdOn: z.date(),
   profile: ProfileResponseSchema.nullable().optional(),
@@ -132,39 +134,19 @@ export const UserResponseSchema = z.object({
 });
 export type UserResponse = z.infer<typeof UserResponseSchema>;
 
-export const CreateUserSchema = z
-  .object({
-    email,
-    roleCode: RoleCodeEnum,
-    phone: phone.optional(),
-    agencyId: z.string().uuid().optional(),
-    brandId: z.string().uuid().optional(),
-  })
-  // A tenant-scoped role without its tenant id produces a token that no
-  // repository can scope. Reject it at the edge rather than issue one.
-  .refine((d) => d.roleCode !== 'AGENCY' || Boolean(d.agencyId), {
-    message: 'agencyId is required for an AGENCY user',
-    path: ['agencyId'],
-  })
-  .refine((d) => d.roleCode !== 'BRAND' || Boolean(d.brandId), {
-    message: 'brandId is required for a BRAND user',
-    path: ['brandId'],
-  });
-export type CreateUserRequest = z.infer<typeof CreateUserSchema>;
-
-export const UpdateUserSchema = z.object({
-  phone: phone.optional(),
-  agencyId: z.string().uuid().nullable().optional(),
-  brandId: z.string().uuid().nullable().optional(),
-  isActive: z.boolean().optional(),
+/**
+ * The one write an admin has over an account.
+ *
+ * Logins are provisioned alongside the row they belong to — a brand's manager
+ * when the agency creates the brand, a creator's when the agency enters them —
+ * so there is no admin-side account creation, and nothing an admin may edit
+ * beyond blocking or unblocking. Role and tenancy in particular are fixed:
+ * changing either would move a live account across a tenant boundary.
+ */
+export const SetUserBlockedSchema = z.object({
+  blocked: z.boolean(),
 });
-export type UpdateUserRequest = z.infer<typeof UpdateUserSchema>;
-
-export const AssignUserSchema = z.object({
-  agencyId: z.string().uuid().nullable().optional(),
-  brandId: z.string().uuid().nullable().optional(),
-});
-export type AssignUserRequest = z.infer<typeof AssignUserSchema>;
+export type SetUserBlockedRequest = z.infer<typeof SetUserBlockedSchema>;
 
 export const InfluencerListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),

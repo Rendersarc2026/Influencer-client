@@ -5,6 +5,8 @@ import { CampaignStatusEnum } from './enums';
 export const CampaignResponseSchema = z.object({
   id: z.string().uuid(),
   brandId: z.string().uuid(),
+  /** Joined in on read so a list does not have to fetch brands separately. */
+  brandName: z.string().nullable(),
   name: z.string(),
   description: z.string().nullable(),
   briefUrl: z.string().nullable(),

@@ -137,7 +137,6 @@ export const ChatOrganism: React.FC = () => {
   };
 
   const getNavItems = () => {
-    if (roleCode === 'ADMIN') return navConfig.ADMIN;
     if (roleCode === 'AGENCY') return navConfig.AGENCY;
     if (roleCode === 'BRAND') return navConfig.BRAND;
     return navConfig.INFLUENCER;
