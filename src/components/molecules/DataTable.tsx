@@ -71,6 +71,30 @@ export interface DataTableProps<T> {
   isFetching?: boolean;
 }
 
+/**
+ * Row actions sit inside a clickable row, so their clicks have to be stopped
+ * before they reach onRowClick — otherwise pressing "deactivate" also opens the
+ * row's detail drawer underneath the confirm dialog.
+ */
+function wrapActions<T extends Record<string, unknown>>(
+  column: DataTableColumn<T>,
+  content: ReactNode,
+) {
+  return (
+    <Box
+      onClick={(e) => e.stopPropagation()}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: column.align === 'right' ? 'flex-end' : 'flex-start',
+        gap: 1,
+      }}
+    >
+      {content}
+    </Box>
+  );
+}
+
 export function DataTable<T extends Record<string, unknown>>({
   columns,
   rows,
@@ -158,7 +182,14 @@ export function DataTable<T extends Record<string, unknown>>({
 
   const renderCellContent = (row: T, column: DataTableColumn<T>, index: number) => {
     if (column.render) {
-      return column.render(row, index);
+      // An actions column is almost always built with `render`, which used to
+      // return here and skip the `case 'actions'` wrapper below — so the click
+      // on a row action bubbled up to onRowClick and opened the detail drawer
+      // behind the action's own dialog. Actions stay inside the guard whichever
+      // way their content is produced.
+      return column.type === 'actions'
+        ? wrapActions(column, column.render(row, index))
+        : column.render(row, index);
     }
 
     const value = getCellValue(row, column);
@@ -270,19 +301,7 @@ export function DataTable<T extends Record<string, unknown>>({
       }
 
       case 'actions':
-        return (
-          <Box
-            onClick={(e) => e.stopPropagation()}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: column.align === 'right' ? 'flex-end' : 'flex-start',
-              gap: 1,
-            }}
-          >
-            {value as ReactNode}
-          </Box>
-        );
+        return wrapActions(column, value as ReactNode);
 
       case 'text':
       default:

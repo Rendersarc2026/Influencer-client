@@ -8,6 +8,15 @@ import { NavItem } from '@routes/navConfig';
 export interface DashboardLayoutProps {
   title: string;
   subtitle?: string;
+  /**
+   * Ancestors of the current page, shown as a trail above the title; the page
+   * itself is appended from `title`. A crumb with a `path` navigates through
+   * `onNavigate`, so pages describe the trail rather than wiring each click.
+   */
+  breadcrumbs?: Array<{ label: string; path?: string }>;
+  /** Shows a back control to the left of the title. */
+  onBack?: () => void;
+  backLabel?: string;
   navItems?: NavItem[];
   activePath?: string;
   user?: {
@@ -28,6 +37,9 @@ export interface DashboardLayoutProps {
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   title,
   subtitle,
+  breadcrumbs,
+  onBack,
+  backLabel,
   navItems = [],
   activePath = '',
   user = { name: 'User', roleCode: 'ADMIN' },
@@ -93,6 +105,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <TopBar
           title={title}
           subtitle={subtitle}
+          breadcrumbs={breadcrumbs?.map((crumb) => ({
+            label: crumb.label,
+            onClick: crumb.path && onNavigate ? () => onNavigate(crumb.path!) : undefined,
+          }))}
+          onBack={onBack}
+          backLabel={backLabel}
           user={user}
           onSearchClick={onSearchClick}
           onNotificationsClick={onNotificationsClick}

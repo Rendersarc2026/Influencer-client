@@ -176,8 +176,9 @@ export function useUpdateCampaign() {
 // -------------------------------------------------------------
 
 /**
- * The shared creator directory — every influencer, not just ones already on
- * this agency's roster, since any of them can be assigned to a campaign.
+ * This agency's own roster — the creators it represents, resolved through
+ * agency_influencer_mapper. For the full platform list see
+ * `useAgencyInfluencerDirectory`.
  */
 export function useAgencyInfluencers(params?: InfluencerListQuery) {
   return useQuery<PaginatedResult<InfluencerResponse>>({
@@ -185,6 +186,25 @@ export function useAgencyInfluencers(params?: InfluencerListQuery) {
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<InfluencerResponse>>(
         '/agency/influencers',
+        { params },
+      );
+      return response.data;
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Every active creator on the platform, not just this agency's roster — the
+ * "add creators to campaign" picker assigns from the shared directory, and
+ * assigning someone new brings them onto the roster.
+ */
+export function useAgencyInfluencerDirectory(params?: InfluencerListQuery) {
+  return useQuery<PaginatedResult<InfluencerResponse>>({
+    queryKey: ['agency', 'influencers', 'directory', params],
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<InfluencerResponse>>(
+        '/agency/influencers/directory',
         { params },
       );
       return response.data;
@@ -250,6 +270,10 @@ export function useAddInfluencerToCampaign(campaignId: string) {
       queryClient.invalidateQueries({
         queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
       });
+      // Assigning a creator the agency did not represent yet also puts them on
+      // its roster, so the roster list (and the directory beneath the same key
+      // prefix) is now stale.
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
     },
   });
 }

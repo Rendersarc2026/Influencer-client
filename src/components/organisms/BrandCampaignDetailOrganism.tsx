@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
@@ -231,15 +230,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
-      rightAction={
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackRoundedIcon fontSize="small" />}
-          onClick={() => navigate('/brand/campaigns')}
-        >
-          All Campaigns
-        </Button>
-      }
+      breadcrumbs={[{ label: 'Campaigns', path: '/brand/campaigns' }]}
+      onBack={() => navigate('/brand/campaigns')}
+      backLabel="Back to Campaigns"
     >
       {/* 1. Brief Card */}
       <Card

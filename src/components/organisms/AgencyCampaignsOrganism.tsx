@@ -7,7 +7,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
-import { useAgencyCampaigns, useAgencyBrands, useAgencyBrandDirectory, useCreateCampaign } from '@api';
+import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
 import { CampaignResponse, CreateCampaignRequest } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
 
@@ -43,15 +43,15 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
+  // Scoped to this agency's own brands. The create-campaign picker is fed from
+  // the same list, so an agency only ever starts a campaign for a client it
+  // actually manages — /agency/brands/directory returns every active brand on
+  // the platform and is deliberately not used here.
   const { data: brandsData } = useAgencyBrands();
-  // Not the same list as `brands` below: the create-campaign picker can
-  // target any active brand, not just ones this agency already manages.
-  const { data: brandDirectoryData } = useAgencyBrandDirectory();
 
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
   const brands = brandsData?.items || [];
-  const brandDirectory = brandDirectoryData?.items || [];
 
   const createCampaignMutation = useCreateCampaign();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -179,7 +179,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
 
       <CreateCampaignDialog
         open={createDialogOpen}
-        brands={brandDirectory}
+        brands={brands}
         loading={createCampaignMutation.isPending}
         onSubmit={handleCreateCampaign}
         onClose={() => setCreateDialogOpen(false)}

@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
@@ -61,15 +60,9 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
-      rightAction={
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackRoundedIcon fontSize="small" />}
-          onClick={() => navigate('/influencer')}
-        >
-          Back to Assignments
-        </Button>
-      }
+      breadcrumbs={[{ label: 'Assignments', path: '/influencer' }]}
+      onBack={() => navigate('/influencer')}
+      backLabel="Back to Assignments"
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* 1. Brief & Deliverables Card */}

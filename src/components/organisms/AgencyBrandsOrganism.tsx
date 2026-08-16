@@ -111,8 +111,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Brands"
-      subtitle="Every brand on the platform — run a campaign under any of them"
+      title="Managed Brands"
+      subtitle="Client brand portfolios and account relationships"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{

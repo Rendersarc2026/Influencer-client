@@ -13,6 +13,7 @@ export * from './AgencyBrandsOrganism';
 export * from './AgencyCampaignsOrganism';
 export * from './AgencyCampaignDetailOrganism';
 export * from './AgencyAddInfluencerOrganism';
+export * from './AgencyInfluencersOrganism';
 export * from './AgencyReportsOrganism';
 export * from './BrandHomeOrganism';
 export * from './BrandCampaignsOrganism';

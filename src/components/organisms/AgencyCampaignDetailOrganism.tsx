@@ -6,7 +6,6 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RateReviewRoundedIcon from '@mui/icons-material/RateReviewRounded';
@@ -340,23 +339,17 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
+      breadcrumbs={[{ label: 'Campaigns', path: '/agency/campaigns' }]}
+      onBack={() => navigate('/agency/campaigns')}
+      backLabel="Back to Campaigns"
       rightAction={
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<ArrowBackRoundedIcon fontSize="small" />}
-            onClick={() => navigate('/agency/campaigns')}
-          >
-            Campaigns
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<PersonAddRoundedIcon fontSize="small" />}
-            onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
-          >
-            Add Influencers
-          </Button>
-        </Box>
+        <Button
+          variant="contained"
+          startIcon={<PersonAddRoundedIcon fontSize="small" />}
+          onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
+        >
+          Add Influencers
+        </Button>
       }
     >
       {/* 1. Campaign Brief Summary Card */}
@@ -367,6 +360,10 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,
           boxShadow: 'none',
+          // The layout's content body is a fixed-height flex column, so a card
+          // left to shrink gets squeezed by the table below it — and MUI's Card
+          // clips overflow, which cut the description off mid-line.
+          flexShrink: 0,
         }}
       >
         <Box

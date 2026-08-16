@@ -61,6 +61,9 @@ const AgencyCampaignDetailPage = lazy(() =>
 const AgencyAddInfluencerPage = lazy(() =>
   import('../pages/AgencyAddInfluencerPage').then((m) => ({ default: m.AgencyAddInfluencerPage })),
 );
+const AgencyInfluencersPage = lazy(() =>
+  import('../pages/AgencyInfluencersPage').then((m) => ({ default: m.AgencyInfluencersPage })),
+);
 const AgencyReportsPage = lazy(() =>
   import('../pages/AgencyReportsPage').then((m) => ({ default: m.AgencyReportsPage })),
 );
@@ -121,6 +124,7 @@ const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
     () => import('../pages/AgencyCampaignsPage'),
     () => import('../pages/AgencyCampaignDetailPage'),
     () => import('../pages/AgencyAddInfluencerPage'),
+    () => import('../pages/AgencyInfluencersPage'),
     () => import('../pages/AgencyReportsPage'),
   ],
   BRAND: [
@@ -310,6 +314,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="grid">
         {withBoundary(AgencyAddInfluencerPage, 'grid')}
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/agency/influencers',
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN', 'AGENCY']} skeleton="list">
+        {withBoundary(AgencyInfluencersPage, 'list')}
       </ProtectedRoute>
     ),
   },

@@ -196,7 +196,6 @@ export const AdminCampaignsOrganism: React.FC = () => {
                       label: 'Timeline',
                       value: `${selectedCampaign.startDate ? new Date(selectedCampaign.startDate).toLocaleDateString('en-IN') : 'Flexible'} — ${selectedCampaign.endDate ? new Date(selectedCampaign.endDate).toLocaleDateString('en-IN') : 'Ongoing'}`,
                     },
-                    { label: 'Campaign ID', value: selectedCampaign.id, copyable: true },
                   ],
                 },
                 {

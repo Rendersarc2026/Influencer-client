@@ -3,8 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import Typography from '@mui/material/Typography';
-import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -15,7 +13,6 @@ import {
   useAdminAgencies,
   useAdminBrands,
   useAdminDeactivateUser,
-  useAdminResendInvite,
 } from '@api';
 import { UserResponse, UserStatusFilter } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
@@ -68,10 +65,8 @@ export const AdminUsersOrganism: React.FC = () => {
   const brands = brandsData?.items || [];
 
   const deactivateUserMutation = useAdminDeactivateUser();
-  const resendInviteMutation = useAdminResendInvite();
 
   const [deactivateUserId, setDeactivateUserId] = useState<string | null>(null);
-  const [inviteSuccessMsg, setInviteSuccessMsg] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
   const filterPills = useEnumPills('ROLE', 'All Users', { INFLUENCER: 'Creator' });
@@ -81,20 +76,6 @@ export const AdminUsersOrganism: React.FC = () => {
     { value: 'INACTIVE', label: 'Deactivated' },
     { value: 'ALL', label: 'Active + Deactivated' },
   ];
-
-  const handleResendInvite = async (userEmail: string) => {
-    try {
-      await resendInviteMutation.mutateAsync(userEmail);
-      showSuccess(`Login invite code resent to ${userEmail}`);
-      setInviteSuccessMsg(`Login invite code resent to ${userEmail}`);
-      setTimeout(() => setInviteSuccessMsg(''), 4000);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to resend invite code.',
-      );
-    }
-  };
 
   const handleConfirmDeactivate = async () => {
     if (!deactivateUserId) return;
@@ -160,22 +141,30 @@ export const AdminUsersOrganism: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Resend Login Invite OTP">
-            <IconButton size="small" onClick={() => handleResendInvite(row.email)}>
-              <SendRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {row.isActive && (
-            <Tooltip title="Deactivate User">
-              <IconButton
-                size="small"
-                onClick={() => setDeactivateUserId(row.id)}
-                sx={{ '&:hover': { color: theme.palette.tokens.negative } }}
-              >
-                <BlockRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
+          {row.isActive &&
+            // Deactivating your own account revokes your session on the next
+            // request, so the operator is thrown back to the login screen
+            // mid-action. The server rejects it too — this just keeps the
+            // control from looking available.
+            (row.id === user?.id ? (
+              <Tooltip title="You cannot deactivate your own account">
+                <span>
+                  <IconButton size="small" disabled>
+                    <BlockRoundedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Deactivate User">
+                <IconButton
+                  size="small"
+                  onClick={() => setDeactivateUserId(row.id)}
+                  sx={{ '&:hover': { color: theme.palette.tokens.negative } }}
+                >
+                  <BlockRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ))}
         </Box>
       ),
     },
@@ -196,23 +185,6 @@ export const AdminUsersOrganism: React.FC = () => {
       onLogout={logout}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
-        {inviteSuccessMsg && (
-          <Box
-            sx={{
-              padding: '12px 18px',
-              backgroundColor: theme.palette.tints.mint,
-              borderRadius: `${theme.customRadii.inner}px`,
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{ color: theme.palette.tokens.positiveText, fontWeight: 600 }}
-            >
-              {inviteSuccessMsg}
-            </Typography>
-          </Box>
-        )}
-
         <FilterBar
           pills={filterPills}
           activePillId={activeRolePill}
@@ -289,7 +261,6 @@ export const AdminUsersOrganism: React.FC = () => {
                     { label: 'Login Email', value: selectedUser.email, copyable: true },
                     { label: 'Platform Role', value: selectedUser.roleCode },
                     { label: 'Phone Number', value: selectedUser.phone || '—' },
-                    { label: 'Account ID', value: selectedUser.id, copyable: true },
                     {
                       label: 'Joined Platform',
                       value: new Date(selectedUser.createdOn).toLocaleDateString('en-IN', {
@@ -321,17 +292,18 @@ export const AdminUsersOrganism: React.FC = () => {
                   fields: [
                     {
                       label: 'Agency Tenant',
+                      // Falls back to a generic label rather than the raw uuid
+                      // when the tenant is not on the currently loaded page.
                       value: selectedUser.agencyId
-                        ? (agencies.find((a) => a.id === selectedUser.agencyId)?.name || selectedUser.agencyId)
+                        ? agencies.find((a) => a.id === selectedUser.agencyId)?.name ||
+                          'Agency Tenant'
                         : 'None (Global/Direct)',
-                      copyable: Boolean(selectedUser.agencyId),
                     },
                     {
                       label: 'Brand Account',
                       value: selectedUser.brandId
-                        ? (brands.find((b) => b.id === selectedUser.brandId)?.name || selectedUser.brandId)
+                        ? brands.find((b) => b.id === selectedUser.brandId)?.name || 'Brand Account'
                         : 'None (Global/Direct)',
-                      copyable: Boolean(selectedUser.brandId),
                     },
                   ],
                 },

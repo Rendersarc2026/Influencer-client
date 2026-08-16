@@ -9,6 +9,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import ListItemText from '@mui/material/ListItemText';
+import Chip from '@mui/material/Chip';
+import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
@@ -73,6 +78,11 @@ export const AdminBrandsOrganism: React.FC = () => {
   const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
 
   const [name, setName] = useState('');
+  // A brand can sit under several agencies at once, so this is a set rather
+  // than a single owner — it maps straight onto agency_brand_mapper. Empty is
+  // valid and means unmanaged: a brand may exist on its own until an agency
+  // picks it up for a campaign, which links the two automatically.
+  const [agencyIds, setAgencyIds] = useState<string[]>([]);
   const [industry, setIndustry] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -106,9 +116,20 @@ export const AdminBrandsOrganism: React.FC = () => {
     ...agencies.map((a) => ({ value: a.id, label: a.name })),
   ];
 
+  /** Every agency managing a brand, not just the first of the set. */
+  const managingAgencyNames = (brand: BrandResponse | null): string => {
+    const names = (brand?.agencyIds ?? [])
+      .map((id) => agencies.find((a) => a.id === id)?.name)
+      .filter(Boolean);
+    return names.length ? names.join(', ') : 'Direct / Platform';
+  };
+
   const handleOpenCreate = () => {
     setBrandToEdit(null);
     setName('');
+    // When the list is filtered to one agency, creating from that view almost
+    // always means "under this agency" — prefill it, still editable.
+    setAgencyIds(selectedAgencyFilter ? [selectedAgencyFilter] : []);
     setIndustry('');
     setContactPerson('');
     setContactEmail('');
@@ -122,6 +143,7 @@ export const AdminBrandsOrganism: React.FC = () => {
   const handleOpenEdit = (brand: BrandResponse) => {
     setBrandToEdit(brand);
     setName(brand.name);
+    setAgencyIds(brand.agencyIds ?? []);
     setIndustry(brand.industry || '');
     setContactPerson(brand.contactPerson || '');
     setContactEmail(brand.contactEmail || '');
@@ -180,6 +202,10 @@ export const AdminBrandsOrganism: React.FC = () => {
           id: brandToEdit.id,
           data: {
             name: trimmedName,
+            // Always sent, including empty — the server treats the array as the
+            // full desired set and reconciles the mapper rows against it, so
+            // omitting it would make unlinking the last agency impossible.
+            agencyIds,
             industry: trimmedIndustry || undefined,
             contactPerson: trimmedContactPerson || undefined,
             contactEmail: trimmedContactEmail || undefined,
@@ -190,6 +216,7 @@ export const AdminBrandsOrganism: React.FC = () => {
       } else {
         await createBrandMutation.mutateAsync({
           name: trimmedName,
+          agencyIds,
           industry: trimmedIndustry || undefined,
           contactPerson: trimmedContactPerson || undefined,
           contactEmail: trimmedContactEmail,
@@ -374,6 +401,60 @@ export const AdminBrandsOrganism: React.FC = () => {
               />
 
               <TextField
+                select
+                label="Managing Agencies"
+                value={agencyIds}
+                onChange={(e) => {
+                  // MUI hands a multiple Select its value as string[], but the
+                  // change event is typed as a string.
+                  const val = e.target.value as unknown as string[] | string;
+                  setAgencyIds(typeof val === 'string' ? val.split(',') : val);
+                }}
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) => {
+                    const ids = selected as string[];
+                    if (!ids.length) {
+                      return (
+                        <Typography
+                          variant="body2"
+                          sx={{ color: theme.palette.tokens.textSecondary }}
+                        >
+                          None — unmanaged brand
+                        </Typography>
+                      );
+                    }
+                    return (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {ids.map((id) => (
+                          <Chip
+                            key={id}
+                            size="small"
+                            label={agencies.find((a) => a.id === id)?.name || 'Agency'}
+                          />
+                        ))}
+                      </Box>
+                    );
+                  },
+                }}
+                helperText="Optional — a brand may be managed by one or several agencies, or by none until an agency runs a campaign for it"
+                fullWidth
+              >
+                {agencies.length === 0 ? (
+                  <MenuItem disabled value="">
+                    No agencies available yet
+                  </MenuItem>
+                ) : (
+                  agencies.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      <Checkbox checked={agencyIds.includes(a.id)} />
+                      <ListItemText primary={a.name} />
+                    </MenuItem>
+                  ))
+                )}
+              </TextField>
+
+              <TextField
                 label="Industry Category"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
@@ -488,7 +569,7 @@ export const AdminBrandsOrganism: React.FC = () => {
         title={selectedBrand?.name || 'Brand Overview'}
         subtitle={
           selectedBrand
-            ? `Managing Agency: ${agencies.find((a) => a.id === selectedBrand.agencyIds?.[0])?.name || 'Direct / Platform'}`
+            ? `Managing Agency: ${managingAgencyNames(selectedBrand)}`
             : undefined
         }
         badge={selectedBrand?.isActive ? 'ACTIVE' : 'ARCHIVED'}
@@ -517,10 +598,9 @@ export const AdminBrandsOrganism: React.FC = () => {
                   fields: [
                     { label: 'Brand Name', value: selectedBrand.name },
                     {
-                      label: 'Managing Agency',
-                      value: agencies.find((a) => a.id === selectedBrand.agencyIds?.[0])?.name || 'Direct / Platform',
+                      label: 'Managing Agencies',
+                      value: managingAgencyNames(selectedBrand),
                     },
-                    { label: 'Brand ID', value: selectedBrand.id, copyable: true },
                     { label: 'Status', value: selectedBrand.isActive ? 'Active' : 'Archived', isStatus: true },
                     {
                       label: 'Created On',

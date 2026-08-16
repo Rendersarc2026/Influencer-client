@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -147,23 +146,11 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
+      breadcrumbs={[{ label: 'Campaigns', path: '/admin/campaigns' }]}
+      onBack={() => navigate('/admin/campaigns')}
+      backLabel="Back to Campaigns"
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {/* Back Link */}
-        <Box>
-          <Button
-            variant="text"
-            startIcon={<ArrowBackRoundedIcon />}
-            onClick={() => navigate('/admin/campaigns')}
-            sx={{
-              color: theme.palette.tokens.textSecondary,
-              '&:hover': { color: theme.palette.tokens.textPrimary },
-            }}
-          >
-            Back to Campaigns
-          </Button>
-        </Box>
-
         {/* Campaign Info Card */}
         <Card
           sx={{
@@ -306,8 +293,6 @@ export const AdminCampaignDetailOrganism: React.FC<AdminCampaignDetailOrganismPr
                   title: 'Deliverables & Assignment',
                   fields: [
                     { label: 'Creator Name', value: selectedMapper.influencerName || '—' },
-                    { label: 'Influencer ID', value: selectedMapper.influencerId, copyable: true },
-                    { label: 'Assignment ID', value: selectedMapper.id, copyable: true },
                     {
                       label: 'Deliverables',
                       value: selectedMapper.deliverables || 'Pending deliverables definition',

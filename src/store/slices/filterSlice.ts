@@ -20,6 +20,7 @@ export type PredefinedFilterViewKey =
   | 'agencyBrands'
   | 'agencyReports'
   | 'agencyAddInfluencer'
+  | 'agencyInfluencers'
   | 'agencyCampaignDetail'
   | 'brandCampaigns'
   | 'brandCampaignDetail'
@@ -52,6 +53,7 @@ const initialViews: Record<PredefinedFilterViewKey, ViewFilterState> = {
   agencyBrands: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyReports: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyAddInfluencer: { ...DEFAULT_VIEW_FILTER_STATE },
+  agencyInfluencers: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyCampaignDetail: { ...DEFAULT_VIEW_FILTER_STATE },
   brandCampaigns: { ...DEFAULT_VIEW_FILTER_STATE },
   brandCampaignDetail: { ...DEFAULT_VIEW_FILTER_STATE },

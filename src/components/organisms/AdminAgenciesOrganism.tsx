@@ -542,7 +542,6 @@ export const AdminAgenciesOrganism: React.FC = () => {
                   fields: [
                     { label: 'Agency Name', value: selectedAgency.name },
                     { label: 'Slug Identifier', value: selectedAgency.slug, copyable: true },
-                    { label: 'Tenant ID', value: selectedAgency.id, copyable: true },
                     { label: 'Tenant Status', value: selectedAgency.isActive ? 'Active' : 'Archived', isStatus: true },
                     {
                       label: 'Created On',

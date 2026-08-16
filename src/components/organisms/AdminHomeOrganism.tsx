@@ -217,7 +217,6 @@ export const AdminHomeOrganism: React.FC = () => {
                     { label: 'Login Email', value: selectedUser.email, copyable: true },
                     { label: 'Platform Role', value: selectedUser.roleCode },
                     { label: 'Phone Number', value: selectedUser.phone || '—' },
-                    { label: 'Account ID', value: selectedUser.id, copyable: true },
                     {
                       label: 'Joined Platform',
                       value: new Date(selectedUser.createdOn).toLocaleDateString('en-IN', {
@@ -247,8 +246,11 @@ export const AdminHomeOrganism: React.FC = () => {
                 {
                   title: 'Tenancy & Association',
                   fields: [
-                    { label: 'Agency ID', value: selectedUser.agencyId || 'None (Global/Direct)', copyable: Boolean(selectedUser.agencyId) },
-                    { label: 'Brand ID', value: selectedUser.brandId || 'None (Global/Direct)', copyable: Boolean(selectedUser.brandId) },
+                    // Presence only — this screen does not load the agency and
+                    // brand lists, and the raw tenant uuid is not something an
+                    // operator can act on. The Users page resolves the names.
+                    { label: 'Agency Tenant', value: selectedUser.agencyId ? 'Assigned' : 'None (Global/Direct)' },
+                    { label: 'Brand Account', value: selectedUser.brandId ? 'Assigned' : 'None (Global/Direct)' },
                   ],
                 },
               ]

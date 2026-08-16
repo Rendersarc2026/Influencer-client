@@ -11,6 +11,7 @@ export * from './AgencyBrandsPage';
 export * from './AgencyCampaignsPage';
 export * from './AgencyCampaignDetailPage';
 export * from './AgencyAddInfluencerPage';
+export * from './AgencyInfluencersPage';
 export * from './AgencyReportsPage';
 export * from './BrandHome';
 export * from './BrandCampaignsPage';

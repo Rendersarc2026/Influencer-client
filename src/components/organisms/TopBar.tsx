@@ -4,14 +4,35 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Badge from '@mui/material/Badge';
 import Tooltip from '@mui/material/Tooltip';
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Link from '@mui/material/Link';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import { useTheme } from '@mui/material/styles';
 import { UserMenu } from '@molecules';
+
+/**
+ * One step in the trail above a page title. A crumb without `onClick` is the
+ * current page — rendered as plain text rather than a dead link.
+ */
+export interface BreadcrumbItem {
+  label: string;
+  onClick?: () => void;
+}
 
 export interface TopBarProps {
   title: string;
   subtitle?: string;
+  /**
+   * Trail shown above the title. The current page is appended automatically
+   * from `title`, so pass only its ancestors.
+   */
+  breadcrumbs?: BreadcrumbItem[];
+  /** Renders a back control to the left of the title. */
+  onBack?: () => void;
+  backLabel?: string;
   user?: {
     name: string;
     email?: string;
@@ -30,6 +51,9 @@ export interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({
   title,
   subtitle,
+  breadcrumbs,
+  onBack,
+  backLabel = 'Back',
   user = { name: 'User', roleCode: 'ADMIN' },
   onSearchClick,
   onNotificationsClick,
@@ -56,14 +80,89 @@ export const TopBar: React.FC<TopBarProps> = ({
         borderTopRightRadius: `${theme.customRadii.card}px`,
       }}
     >
-      {/* Left title and subtitle */}
-      <Box>
-        <Typography variant="h1">{title}</Typography>
-        {subtitle && (
-          <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mt: '4px' }}>
-            {subtitle}
-          </Typography>
+      {/* Left: back control, breadcrumb trail, title and subtitle */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, minWidth: 0 }}>
+        {onBack && (
+          <Tooltip title={backLabel}>
+            <IconButton
+              onClick={onBack}
+              aria-label={backLabel}
+              sx={{
+                // Nudged down so the arrow optically centres on the title line
+                // rather than on the whole block once crumbs are present.
+                mt: breadcrumbs?.length ? '20px' : '2px',
+                flexShrink: 0,
+                border: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <ArrowBackRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         )}
+
+        <Box sx={{ minWidth: 0 }}>
+          {Boolean(breadcrumbs?.length) && (
+            <Breadcrumbs
+              separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}
+              aria-label="breadcrumb"
+              sx={{
+                mb: '2px',
+                '& .MuiBreadcrumbs-separator': { mx: 0.5 },
+                color: theme.palette.tokens.textSecondary,
+              }}
+            >
+              {breadcrumbs!.map((crumb, i) =>
+                crumb.onClick ? (
+                  <Link
+                    key={`${crumb.label}-${i}`}
+                    component="button"
+                    type="button"
+                    underline="hover"
+                    onClick={crumb.onClick}
+                    sx={{
+                      font: 'inherit',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: theme.palette.tokens.textSecondary,
+                      cursor: 'pointer',
+                      '&:hover': { color: theme.palette.tokens.textPrimary },
+                    }}
+                  >
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <Typography
+                    key={`${crumb.label}-${i}`}
+                    variant="caption"
+                    sx={{ fontSize: '13px', fontWeight: 500 }}
+                  >
+                    {crumb.label}
+                  </Typography>
+                ),
+              )}
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: theme.palette.tokens.textPrimary,
+                }}
+              >
+                {title}
+              </Typography>
+            </Breadcrumbs>
+          )}
+
+          <Typography variant="h1">{title}</Typography>
+          {subtitle && (
+            <Typography
+              variant="body2"
+              sx={{ color: theme.palette.tokens.textSecondary, mt: '4px' }}
+            >
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
       </Box>
 
       {/* Right controls: Search, Notifications, UserMenu, and Custom Actions */}

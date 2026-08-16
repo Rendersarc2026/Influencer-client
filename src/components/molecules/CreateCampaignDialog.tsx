@@ -95,7 +95,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
         <DialogTitle sx={{ pb: 1 }}>
           <SectionHeading
             title="Create New Campaign"
-            subtitle="Setup campaign parameters under a brand — picking one you don't manage yet adds it to your account"
+            subtitle="Setup campaign parameters under one of your client brands"
           />
         </DialogTitle>
 
@@ -107,7 +107,15 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
               value={brandId}
               onChange={(e) => setBrandId(e.target.value)}
               fullWidth
-              disabled={loading || Boolean(defaultBrandId)}
+              disabled={loading || Boolean(defaultBrandId) || brands.length === 0}
+              // The picker now lists only this agency's own brands, so an
+              // agency with none yet would otherwise face an empty dropdown
+              // with nothing explaining why.
+              helperText={
+                brands.length === 0
+                  ? 'No client brands yet — add one from the Brands page first'
+                  : undefined
+              }
             >
               {brands.map((b) => (
                 <MenuItem key={b.id} value={b.id}>

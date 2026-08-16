@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -7,8 +7,14 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar, CreateInfluencerDialog, OverviewDrawer } from '@molecules';
-import { useAdminInfluencers, useAdminAgencies, useAdminCreateInfluencer } from '@api';
+import {
+  DataTable,
+  DataTableColumn,
+  FilterBar,
+  CreateInfluencerDialog,
+  OverviewDrawer,
+} from '@molecules';
+import { useAgencyInfluencerDirectory, useCreateInfluencer } from '@api';
 import { InfluencerResponse, CreateInfluencerRequest } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
@@ -35,54 +41,99 @@ function formatCommercials(row: InfluencerResponse): string {
   return fmt((min ?? max) as number);
 }
 
-export const AdminInfluencersOrganism: React.FC = () => {
+/** An instagram value may be stored as a handle or a full URL. */
+function instagramHref(value: string | null): string | undefined {
+  if (!value) return undefined;
+  return value.startsWith('http') ? value : `https://instagram.com/${value.replace(/^@/, '')}`;
+}
+
+export const AgencyInfluencersOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
-  const createInfluencerMutation = useAdminCreateInfluencer();
+  const createInfluencerMutation = useCreateInfluencer();
 
   const {
     search,
     setSearch,
-    selectedSelect: selectedAgencyFilter,
-    setSelectedSelect: setSelectedAgencyFilter,
+    activePill: categoryFilter,
+    setActivePill: setCategoryFilter,
+    selectedSelect: locationFilter,
+    setSelectedSelect: setLocationFilter,
     page,
     setPage,
     rowsPerPage,
     setRowsPerPage,
-  } = useViewFilters('adminInfluencers');
+  } = useViewFilters('agencyInfluencers');
   const debouncedSearch = useDebounce(search, 300);
 
+  const activeCategory = categoryFilter && categoryFilter !== 'ALL' ? categoryFilter : undefined;
+
+  // The whole platform directory, not just this agency's roster: an agency
+  // browses every creator here, the same set the assign-to-campaign picker
+  // offers. Assigning one to a campaign is what puts them on the roster.
   const {
     data: influencersData,
     isLoading,
     isFetching,
-  } = useAdminInfluencers({
-    agencyId: selectedAgencyFilter || undefined,
+  } = useAgencyInfluencerDirectory({
     search: debouncedSearch.trim() || undefined,
-    page: page + 1,
+    category: activeCategory,
+    location: locationFilter || undefined,
+    page: page + 1, // the API pages from 1, the table from 0
     limit: rowsPerPage,
   });
 
-  const { data: agenciesData } = useAdminAgencies();
+  // The unfiltered set, purely to build the filter options from real data —
+  // deriving them from the paged results would limit the choices to whatever
+  // happens to be on the current page, and deriving them from the filtered
+  // results would make each choice erase the others.
+  const { data: allCreatorsData } = useAgencyInfluencerDirectory();
+  const allCreators = useMemo(() => allCreatorsData?.items ?? [], [allCreatorsData]);
 
   const influencers = influencersData?.items || [];
   const totalInfluencers = influencersData?.total ?? influencers.length;
-  const agencies = agenciesData?.items || [];
 
-  const agencyOptions = [
-    { value: '', label: 'All Agencies' },
-    ...agencies.map((a) => ({ value: a.id, label: a.name })),
-  ];
+  const categoryPills = useMemo(() => {
+    const values = [...new Set(allCreators.map((c) => c.category).filter(Boolean))].sort();
+    return [
+      { id: 'ALL', label: 'All Creators' },
+      ...values.map((v) => ({ id: v as string, label: v as string })),
+    ];
+  }, [allCreators]);
+
+  const locationOptions = useMemo(() => {
+    const values = [...new Set(allCreators.map((c) => c.location).filter(Boolean))].sort();
+    return [
+      { value: '', label: 'All Locations' },
+      ...values.map((v) => ({ value: v as string, label: v as string })),
+    ];
+  }, [allCreators]);
+
+  // Narrowing the results while on a later page would otherwise land on a page
+  // that no longer exists, showing an empty table with no way to tell why.
+  const goToFirstPage =
+    <T,>(apply: (value: T) => void) =>
+    (value: T) => {
+      apply(value);
+      setPage(0);
+    };
+
+  useEffect(() => {
+    if (totalInfluencers > 0 && page > 0 && page * rowsPerPage >= totalInfluencers) {
+      setPage(0);
+    }
+  }, [totalInfluencers, page, rowsPerPage, setPage]);
 
   const handleCreateInfluencer = async (data: CreateInfluencerRequest) => {
     try {
       await createInfluencerMutation.mutateAsync(data);
-      showSuccess('Creator added to the directory.');
+      showSuccess('Creator added to your roster.');
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -93,7 +144,7 @@ export const AdminInfluencersOrganism: React.FC = () => {
   const columns: Array<DataTableColumn<InfluencerResponse>> = [
     {
       id: 'name',
-      header: 'Name',
+      header: 'Creator',
       type: 'entity',
       accessor: (row) => row.name,
       subAccessor: (row) => row.instagram || row.youtube || '—',
@@ -141,14 +192,14 @@ export const AdminInfluencersOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Influencers"
+      title="Creators"
       subtitle="Creator directory with reach, niche, and indicative commercials"
-      navItems={navConfig.ADMIN}
+      navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Platform Administrator',
+        name: user?.profile?.fullName || 'Agency Manager',
         email: user?.email,
-        roleCode: 'ADMIN',
+        roleCode: 'AGENCY',
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
@@ -158,18 +209,22 @@ export const AdminInfluencersOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          Add Creator
+          New Creator
         </Button>
       }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
+          pills={categoryPills}
+          activePillId={categoryFilter || 'ALL'}
+          onPillChange={goToFirstPage(setCategoryFilter)}
           searchValue={search}
-          onSearchChange={setSearch}
-          selectOptions={agencyOptions}
-          selectedOption={selectedAgencyFilter}
-          onSelectChange={setSelectedAgencyFilter}
-          selectLabel="Filter by Agency"
+          onSearchChange={goToFirstPage(setSearch)}
+          searchPlaceholder="Search by name, category, location or handle"
+          selectOptions={locationOptions}
+          selectedOption={locationFilter || ''}
+          onSelectChange={goToFirstPage(setLocationFilter)}
+          selectLabel="Location"
         />
 
         <DataTable<InfluencerResponse>
@@ -192,6 +247,7 @@ export const AdminInfluencersOrganism: React.FC = () => {
 
       <CreateInfluencerDialog
         open={createDialogOpen}
+        addsToRoster
         loading={createInfluencerMutation.isPending}
         onSubmit={handleCreateInfluencer}
         onClose={() => setCreateDialogOpen(false)}
@@ -219,7 +275,10 @@ export const AdminInfluencersOrganism: React.FC = () => {
                 },
                 {
                   label: 'Avg Commercials',
-                  value: formatCommercials(selectedInfluencer) === '—' ? 'Not quoted' : `₹${formatCommercials(selectedInfluencer)}`,
+                  value:
+                    formatCommercials(selectedInfluencer) === '—'
+                      ? 'Not quoted'
+                      : `${selectedInfluencer.currency} ${formatCommercials(selectedInfluencer)}`,
                   tint: 'mint',
                 },
               ]
@@ -234,21 +293,24 @@ export const AdminInfluencersOrganism: React.FC = () => {
                     { label: 'Creator Name', value: selectedInfluencer.name },
                     { label: 'Category / Niche', value: selectedInfluencer.category || '—' },
                     { label: 'Location', value: selectedInfluencer.location || 'Global' },
+                    {
+                      label: 'Follower Reach',
+                      value: formatFollowers(selectedInfluencer.followers),
+                    },
                   ],
                 },
                 {
                   title: 'Contact & Socials',
                   fields: [
+                    { label: 'Contact Email', value: selectedInfluencer.email || '—' },
                     { label: 'Contact Phone', value: selectedInfluencer.contactPhone || '—' },
                     {
                       label: 'Instagram',
-                      value: selectedInfluencer.instagram ? `@${selectedInfluencer.instagram}` : '—',
+                      value: selectedInfluencer.instagram
+                        ? `@${selectedInfluencer.instagram}`
+                        : '—',
                       isLink: Boolean(selectedInfluencer.instagram),
-                      href: selectedInfluencer.instagram
-                        ? (selectedInfluencer.instagram.startsWith('http')
-                            ? selectedInfluencer.instagram
-                            : `https://instagram.com/${selectedInfluencer.instagram.replace(/^@/, '')}`)
-                        : undefined,
+                      href: instagramHref(selectedInfluencer.instagram),
                     },
                     {
                       label: 'YouTube Channel',

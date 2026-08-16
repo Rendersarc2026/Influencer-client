@@ -297,15 +297,6 @@ export function useAdminDeactivateUser() {
   });
 }
 
-export function useAdminResendInvite() {
-  return useMutation<{ message: string }, Error, string>({
-    mutationFn: async (email) => {
-      const response = await apiClient.post<{ message: string }>('/auth/otp/request', { email });
-      return response.data;
-    },
-  });
-}
-
 // -------------------------------------------------------------
 // 5. Platform Stats (Ultra-fast pre-aggregated SQL view/function)
 // -------------------------------------------------------------
