@@ -13,6 +13,7 @@ import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
@@ -35,6 +36,8 @@ const getNavIcon = (iconName: string): ReactNode => {
       return <BusinessRoundedIcon fontSize="small" />;
     case 'Storefront':
       return <StorefrontRoundedIcon fontSize="small" />;
+    case 'Category':
+      return <CategoryRoundedIcon fontSize="small" />;
     case 'Campaign':
       return <CampaignRoundedIcon fontSize="small" />;
     case 'People':

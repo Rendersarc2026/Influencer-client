@@ -6,10 +6,12 @@ import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
+import { useCategories } from '@api';
 import { CreateInfluencerRequest } from '@contracts';
 
 export interface CreateInfluencerDialogProps {
@@ -29,6 +31,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
+  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [category, setCategory] = useState('');
@@ -215,6 +220,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. riya@gmail.com"
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
               <TextField
                 label="Contact Phone *"
@@ -239,18 +245,30 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. +91 9876543210"
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
             </Box>
 
+            <Autocomplete
+              fullWidth
+              freeSolo
+              options={influencerCategoryOptions}
+              value={category}
+              onInputChange={(_, newInputValue) => setCategory(newInputValue)}
+              onChange={(_, newValue) => setCategory(newValue || '')}
+              disabled={loading}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Influencer Category"
+                  placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
+                  helperText="Creator niche / content domain"
+                  fullWidth
+                />
+              )}
+            />
+
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. Beauty & Lifestyle"
-                fullWidth
-                disabled={loading}
-              />
               <TextField
                 label="Location"
                 value={location}
@@ -258,6 +276,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. Mumbai"
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
               <TextField
                 label="Followers"
@@ -267,6 +286,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. 50000"
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
             </Box>
 
@@ -278,6 +298,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. @riya.malhotra"
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
               <TextField
                 label="YouTube Handle"
@@ -286,6 +307,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. @riyamalhotra"
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
             </Box>
 
@@ -297,6 +319,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 onChange={(e) => setAvgCommercialMin(e.target.value)}
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
               <TextField
                 label="Indicative Rate — Max (₹)"
@@ -305,6 +328,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 onChange={(e) => setAvgCommercialMax(e.target.value)}
                 fullWidth
                 disabled={loading}
+                sx={{ flex: 1 }}
               />
             </Box>
 

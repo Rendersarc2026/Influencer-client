@@ -5,6 +5,7 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
@@ -13,7 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
-import { apiClient } from '@api';
+import { apiClient, useCategories } from '@api';
 import {
   UpdateProfileSchema,
   UpdateProfileRequest,
@@ -35,6 +36,8 @@ export const ProfileOrganism: React.FC = () => {
   // brand). An admin account is mapped to none of them, so there is nothing to
   // save and the form reads back the account email only.
   const isAdmin = roleCode === 'ADMIN';
+  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
@@ -273,17 +276,28 @@ export const ProfileOrganism: React.FC = () => {
                       helperText={fieldErrors.location}
                       fullWidth
                       disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
                     />
 
-                    <TextField
-                      label="Category"
-                      placeholder="e.g. Fashion Lifestyle, Food Vlogger"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      error={Boolean(fieldErrors.category)}
-                      helperText={fieldErrors.category}
+                    <Autocomplete
                       fullWidth
+                      freeSolo
+                      options={influencerCategoryOptions}
+                      value={category}
+                      onInputChange={(_, newInputValue) => setCategory(newInputValue)}
+                      onChange={(_, newValue) => setCategory(newValue || '')}
                       disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Influencer Category"
+                          placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
+                          error={Boolean(fieldErrors.category)}
+                          helperText={fieldErrors.category || 'Creator niche / content domain'}
+                          fullWidth
+                        />
+                      )}
                     />
                   </Box>
 

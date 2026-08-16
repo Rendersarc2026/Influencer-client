@@ -5,6 +5,7 @@ import {
   BrandResponse,
   BrandListQuery,
   CreateBrandRequest,
+  LinkBrandRequest,
   UpdateBrandRequest,
   CampaignResponse,
   CampaignListQuery,
@@ -44,27 +45,44 @@ export function agencyBrandsQueryOptions(params?: BrandListQuery) {
   };
 }
 
-export function useAgencyBrands(params?: BrandListQuery) {
+/**
+ * `enabled` is exposed because the Brands screen holds two mutually exclusive
+ * lists — this one and the directory below. Leaving both switched on would
+ * spend a round trip on the list the filter is not showing.
+ */
+export function useAgencyBrands(params?: BrandListQuery, options?: { enabled?: boolean }) {
   return useQuery<PaginatedResult<BrandResponse>>({
     ...agencyBrandsQueryOptions(params),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 
 /**
  * Every active brand, not just ones this agency already manages — feeds the
  * "create campaign" brand picker, which can start a relationship with a
- * brand the agency hasn't run a campaign under before.
+ * brand the agency hasn't run a campaign under before, the "All Brands" view,
+ * and the duplicate check on the create-brand form.
+ *
+ * Called without params it returns the whole live set in one request, which is
+ * what the pickers want: they filter locally rather than paying a round trip
+ * per keystroke.
  */
-export function useAgencyBrandDirectory() {
+export function useAgencyBrandDirectory(
+  params?: BrandListQuery,
+  options?: { enabled?: boolean },
+) {
   return useQuery<PaginatedResult<BrandResponse>>({
-    queryKey: ['agency', 'brands', 'directory'],
+    queryKey: ['agency', 'brands', 'directory', params],
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<BrandResponse>>(
         '/agency/brands/directory',
+        { params },
       );
       return response.data;
     },
+    placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -86,6 +104,30 @@ export function useCreateBrand() {
       return response.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
+    },
+  });
+}
+
+/**
+ * Takes a brand that already exists onto this agency's client list.
+ *
+ * The counterpart to `useCreateBrand`: a brand is registered once
+ * platform-wide, so adding one another agency already signed up writes only
+ * the managing-agency link, never a second brand.
+ */
+export function useLinkExistingBrand() {
+  const queryClient = useQueryClient();
+  return useMutation<BrandResponse, Error, string>({
+    mutationFn: async (brandId) => {
+      const payload: LinkBrandRequest = { brandId };
+      const response = await apiClient.post<BrandResponse>('/agency/brands/link', payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      // The managed list gains a row and the directory's agencyIds change, so
+      // both live under the invalidated prefix.
       queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
       queryClient.invalidateQueries({ queryKey: ['admin', 'brands'], refetchType: 'all' });
     },

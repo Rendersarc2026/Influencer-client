@@ -3,6 +3,7 @@ export * from './AdminHome';
 export * from './AdminAgenciesPage';
 export * from './AdminBrandsPage';
 export * from './AdminInfluencersPage';
+export * from './AdminCategoriesPage';
 export * from './AdminCampaignsPage';
 export * from './AdminCampaignDetailPage';
 export * from './AdminUsersPage';

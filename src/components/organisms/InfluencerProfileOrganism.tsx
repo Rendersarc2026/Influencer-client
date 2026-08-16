@@ -5,13 +5,14 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 import CircularProgress from '@mui/material/CircularProgress';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
-import { useUpdateInfluencerProfile } from '@api';
+import { useUpdateInfluencerProfile, useCategories } from '@api';
 import { UpdateProfileSchema, UpdateProfileRequest } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 
@@ -22,6 +23,8 @@ export const InfluencerProfileOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
   const updateProfileMutation = useUpdateInfluencerProfile();
+  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
@@ -207,6 +210,25 @@ export const InfluencerProfileOrganism: React.FC = () => {
                 disabled={updateProfileMutation.isPending}
               />
             </Box>
+
+            <Autocomplete
+              freeSolo
+              options={influencerCategoryOptions}
+              value={category}
+              onInputChange={(_, newInputValue) => setCategory(newInputValue)}
+              onChange={(_, newValue) => setCategory(newValue || '')}
+              disabled={updateProfileMutation.isPending}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Influencer Category"
+                  placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
+                  error={Boolean(fieldErrors.category)}
+                  helperText={fieldErrors.category || 'Creator niche / content domain'}
+                  fullWidth
+                />
+              )}
+            />
 
             <TextField
               label="Bio & Category Focus"

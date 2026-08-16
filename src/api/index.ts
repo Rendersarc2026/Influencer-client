@@ -7,3 +7,5 @@ export * from './admin.api';
 export * from './chat.api';
 export * from './prefetch';
 export * from './enums.api';
+export * from './category.api';
+

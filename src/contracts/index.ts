@@ -16,3 +16,5 @@ export * from './metric.contract';
 export * from './chat.contract';
 export * from './terms.contract';
 export * from './admin.contract';
+export * from './category.contract';
+

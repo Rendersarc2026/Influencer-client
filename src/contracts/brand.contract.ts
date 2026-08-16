@@ -45,6 +45,16 @@ export const CreateBrandSchema = z.object({
 });
 export type CreateBrandRequest = z.infer<typeof CreateBrandSchema>;
 
+/**
+ * Takes an existing brand onto the acting agency's client list. Carries no
+ * brand fields on purpose — this only asserts the managing-agency link, it
+ * never edits the brand another agency (or an admin) registered.
+ */
+export const LinkBrandSchema = z.object({
+  brandId: z.string().uuid(),
+});
+export type LinkBrandRequest = z.infer<typeof LinkBrandSchema>;
+
 export const UpdateBrandSchema = z.object({
   agencyId: z.string().uuid().optional(),
   agencyIds: z.array(z.string().uuid()).max(20).optional(),

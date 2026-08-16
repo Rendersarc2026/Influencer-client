@@ -15,6 +15,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import Autocomplete from '@mui/material/Autocomplete';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
@@ -29,6 +30,7 @@ import {
   useAdminCreateBrand,
   useAdminUpdateBrand,
   useAdminDeactivateBrand,
+  useCategories,
 } from '@api';
 import { BrandResponse } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
@@ -64,8 +66,10 @@ export const AdminBrandsOrganism: React.FC = () => {
   });
 
   const { data: agenciesData } = useAdminAgencies();
+  const { data: brandCategoriesData } = useCategories('BRAND');
 
   const agencies = agenciesData?.items || [];
+  const brandCategoryOptions = (brandCategoriesData || []).map((c) => c.name);
   const brands = brandsData?.items || [];
   const totalBrands = brandsData?.total ?? brands.length;
 
@@ -454,12 +458,22 @@ export const AdminBrandsOrganism: React.FC = () => {
                 )}
               </TextField>
 
-              <TextField
-                label="Industry Category"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                placeholder="e.g. Beauty & Wellness"
+              <Autocomplete
                 fullWidth
+                freeSolo
+                options={brandCategoryOptions}
+                value={industry}
+                onInputChange={(_, newInputValue) => setIndustry(newInputValue)}
+                onChange={(_, newValue) => setIndustry(newValue || '')}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Brand Category"
+                    placeholder="Select brand category (e.g. Beauty & Personal Care)"
+                    helperText="Industry classification for the brand"
+                    fullWidth
+                  />
+                )}
               />
 
               <TextField

@@ -5,6 +5,7 @@ export * from './AdminHomeOrganism';
 export * from './AdminAgenciesOrganism';
 export * from './AdminBrandsOrganism';
 export * from './AdminInfluencersOrganism';
+export * from './AdminCategoriesOrganism';
 export * from './AdminCampaignsOrganism';
 export * from './AdminCampaignDetailOrganism';
 export * from './AdminUsersOrganism';

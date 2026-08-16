@@ -5,10 +5,12 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 import CircularProgress from '@mui/material/CircularProgress';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
+import { useCategories } from '@api';
 import { UpdateProfileSchema } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
@@ -21,12 +23,15 @@ export const CompleteProfileOrganism: React.FC = () => {
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const isInfluencer = roleCode === 'INFLUENCER';
+  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
   const [bio, setBio] = useState(user?.profile?.bio || '');
   // Creator-only onboarding fields — they land on influencer_detail, not profile.
   const [city, setCity] = useState(user?.influencer?.location || '');
+  const [category, setCategory] = useState(user?.influencer?.category || '');
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
   const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState<string>(
@@ -50,6 +55,7 @@ export const CompleteProfileOrganism: React.FC = () => {
         ? {
             influencer: {
               location: city.trim() || undefined,
+              category: category.trim() || undefined,
               instagram: instagram.trim() || undefined,
               youtube: youtube.trim() || undefined,
               followers: followers ? parseInt(followers, 10) : undefined,
@@ -188,6 +194,25 @@ export const CompleteProfileOrganism: React.FC = () => {
                   helperText={fieldErrors.youtube}
                   fullWidth
                   disabled={loading}
+                />
+
+                <Autocomplete
+                  freeSolo
+                  options={influencerCategoryOptions}
+                  value={category}
+                  onInputChange={(_, newInputValue) => setCategory(newInputValue)}
+                  onChange={(_, newValue) => setCategory(newValue || '')}
+                  disabled={loading}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Influencer Category"
+                      placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
+                      error={Boolean(fieldErrors.category)}
+                      helperText={fieldErrors.category || 'Creator niche / content domain'}
+                      fullWidth
+                    />
+                  )}
                 />
 
                 <TextField
