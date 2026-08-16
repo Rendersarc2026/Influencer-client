@@ -13,6 +13,7 @@ import { useTheme } from '@mui/material/styles';
 import { SectionHeading, Pill } from '@atoms';
 import { useCategories } from '@api';
 import { CreateBrandRequest, UpdateBrandRequest, BrandResponse } from '@contracts';
+import { capitalizeWords } from '@utils';
 
 /** Adding an existing client versus registering one that is new to the platform. */
 type BrandDialogMode = 'EXISTING' | 'NEW';
@@ -374,7 +375,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 <TextField
                   label="Brand Name *"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => setName(capitalizeWords(e.target.value))}
                   placeholder="e.g. GlowSkin Co."
                   fullWidth
                   disabled={busy}

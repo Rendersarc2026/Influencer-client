@@ -15,6 +15,7 @@ import { SectionHeading } from '@atoms';
 import { useUpdateInfluencerProfile, useCategories } from '@api';
 import { UpdateProfileSchema, UpdateProfileRequest } from '@contracts';
 import { useAuth, useToast } from '@hooks';
+import { capitalizeWords } from '@utils';
 
 export const InfluencerProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -144,7 +145,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
               <TextField
                 label="Full Legal Name *"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => setFullName(capitalizeWords(e.target.value))}
                 error={Boolean(fieldErrors.fullName)}
                 helperText={fieldErrors.fullName}
                 fullWidth
@@ -154,7 +155,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
               <TextField
                 label="Public Display Name"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
                 error={Boolean(fieldErrors.displayName)}
                 helperText={fieldErrors.displayName}
                 fullWidth
@@ -203,7 +204,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
                 label="City / Location"
                 placeholder="e.g. Mumbai, Bengaluru"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => setCity(capitalizeWords(e.target.value))}
                 error={Boolean(fieldErrors.city)}
                 helperText={fieldErrors.city}
                 fullWidth

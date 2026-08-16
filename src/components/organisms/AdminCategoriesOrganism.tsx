@@ -31,6 +31,7 @@ import {
 } from '@api';
 import { CategoryResponse, CategoryType } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { capitalizeWords } from '@utils';
 
 export const AdminCategoriesOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -479,7 +480,8 @@ export const AdminCategoriesOrganism: React.FC = () => {
                 label="Category Name *"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
+                  const val = capitalizeWords(e.target.value);
+                  setName(val);
                   if (nameError) setNameError('');
                 }}
                 error={Boolean(nameError)}

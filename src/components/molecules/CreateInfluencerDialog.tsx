@@ -13,6 +13,7 @@ import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useCategories } from '@api';
 import { CreateInfluencerRequest } from '@contracts';
+import { capitalizeWords } from '@utils';
 
 export interface CreateInfluencerDialogProps {
   open: boolean;
@@ -188,7 +189,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
             <TextField
               label="Creator Name *"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(capitalizeWords(e.target.value))}
               placeholder="e.g. Riya Malhotra"
               fullWidth
               disabled={loading}
@@ -272,7 +273,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               <TextField
                 label="Location"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => setLocation(capitalizeWords(e.target.value))}
                 placeholder="e.g. Mumbai"
                 fullWidth
                 disabled={loading}

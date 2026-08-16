@@ -14,4 +14,14 @@ export function formatCurrency(amount: number, currency = 'INR'): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+/**
+ * Automatically capitalizes the first letter of each word in a string.
+ */
+export function capitalizeWords(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b[a-z]/g, (char) => char.toUpperCase());
+}
+
 export * from './enum-label';
+

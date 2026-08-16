@@ -222,7 +222,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
         </Button>
       }
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           pills={[
             { id: SCOPE_CLIENTS, label: 'My Clients' },
@@ -248,6 +248,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
           }}
           loading={activeQuery.isLoading}
           isFetching={activeQuery.isFetching}
+          fillHeight
         />
       </Box>
 

@@ -115,7 +115,7 @@ export function DataTable<T extends Record<string, unknown>>({
   onPageChange,
   onRowsPerPageChange,
   minHeight = 420,
-  fillHeight = false,
+  fillHeight = true,
   isFetching = false,
 }: DataTableProps<T>) {
   const theme = useTheme();

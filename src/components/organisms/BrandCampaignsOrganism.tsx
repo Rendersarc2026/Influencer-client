@@ -108,7 +108,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
@@ -130,6 +130,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
           }}
           loading={isLoading}
           isFetching={isFetching}
+          fillHeight
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

@@ -147,7 +147,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
         </Button>
       }
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
@@ -173,6 +173,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           }}
           loading={campaignsLoading}
           isFetching={campaignsFetching}
+          fillHeight
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

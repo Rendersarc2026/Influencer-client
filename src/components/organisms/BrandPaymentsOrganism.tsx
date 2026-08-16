@@ -129,7 +129,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <SectionHeading
           title="Deliverable Payments"
           subtitle="Pending creator disbursements verified by your agency"
@@ -156,6 +156,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
           }}
           loading={paymentsLoading}
           isFetching={paymentsFetching}
+          fillHeight
         />
       </Box>
     </DashboardLayout>

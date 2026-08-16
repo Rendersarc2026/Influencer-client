@@ -209,6 +209,10 @@ export function useUpdateCampaign() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'campaigns', variables.id] });
     },
   });
 }
@@ -343,9 +347,13 @@ export function useRemoveInfluencerFromCampaign(campaignId?: string) {
  */
 export function useApproveRate(campaignId?: string) {
   const queryClient = useQueryClient();
-  return useMutation<AgencyMapperResponse, Error, { mapperId: string; margin: number }>({
-    mutationFn: async ({ mapperId, margin }) => {
-      const payload: ApproveRateRequest = { margin };
+  return useMutation<
+    AgencyMapperResponse,
+    Error,
+    { mapperId: string; margin: number; influencerRate?: number }
+  >({
+    mutationFn: async ({ mapperId, margin, influencerRate }) => {
+      const payload: ApproveRateRequest = { margin, influencerRate };
       const response = await apiClient.post<AgencyMapperResponse>(
         `/agency/mappers/${mapperId}/approve-rate`,
         payload,
@@ -357,8 +365,12 @@ export function useApproveRate(campaignId?: string) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
         });
+        queryClient.invalidateQueries({
+          queryKey: ['brand', 'campaigns', campaignId, 'influencers'],
+        });
       }
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
     },
   });
 }

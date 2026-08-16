@@ -50,7 +50,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({ status, size = 'small', 
       // Brand Statuses
       case 'NOT_VISIBLE':
         return {
-          label: 'Not Visible',
+          label: 'Draft Proposal',
           bg: theme.palette.tokens.fieldBg,
           color: theme.palette.tokens.textSecondary,
         };

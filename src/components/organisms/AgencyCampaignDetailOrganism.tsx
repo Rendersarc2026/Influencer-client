@@ -6,6 +6,9 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import FormControl from '@mui/material/FormControl';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RateReviewRoundedIcon from '@mui/icons-material/RateReviewRounded';
@@ -35,8 +38,9 @@ import {
   useSubmitForBrandReview,
   useRecordMetric,
   useRemoveInfluencerFromCampaign,
+  useUpdateCampaign,
 } from '@api';
-import { AgencyMapperResponse, RecordMetricRequest } from '@contracts';
+import { AgencyMapperResponse, RecordMetricRequest, CampaignStatus } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl } from '@utils';
 
@@ -82,6 +86,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const totalMappers = mappersData?.total ?? mappers.length;
 
   // Mutations
+  const updateCampaignMutation = useUpdateCampaign();
   const approveRateMutation = useApproveRate(campaignId);
   const requestRevisionMutation = useRequestRevision(campaignId);
   const submitBrandReviewMutation = useSubmitForBrandReview(campaignId);
@@ -98,11 +103,34 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   const brand = brands.find((b) => b.id === campaign?.brandId);
 
-  // 1. Handle Approve Rate (sends { mapperId, margin } only)
-  const handleApproveRate = async (mapperId: string, margin: number) => {
+  // 0. Handle Update Campaign Status
+  const handleUpdateCampaignStatus = async (newStatus: CampaignStatus) => {
+    if (!campaignId) return;
     try {
-      await approveRateMutation.mutateAsync({ mapperId, margin });
-      showSuccess('Influencer rate approved and margin recorded.');
+      await updateCampaignMutation.mutateAsync({
+        id: campaignId,
+        data: { status: newStatus },
+      });
+      showSuccess(`Campaign status updated to ${newStatus}.`);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update campaign status.',
+      );
+    }
+  };
+
+  // 1. Handle Approve Rate (sends { mapperId, margin, influencerRate })
+  const handleApproveRate = async (
+    mapperId: string,
+    margin: number,
+    influencerRate?: number,
+  ) => {
+    try {
+      await approveRateMutation.mutateAsync({ mapperId, margin, influencerRate });
+      showSuccess('Creator commercial rate approved and submitted for brand review.');
       setApproveDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -250,6 +278,21 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+          {/* If rate is pending submission: agency can set price & margin to approve and send to brand */}
+          {row.rateStatus === 'PENDING_SUBMISSION' && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<CheckCircleRoundedIcon fontSize="small" />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setApproveDialogMapper(row);
+              }}
+            >
+              Set Price & Approve
+            </Button>
+          )}
+
           {/* If rate is submitted by influencer: Approve or Request Revision */}
           {row.rateStatus === 'SUBMITTED' && (
             <>
@@ -262,7 +305,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                   setApproveDialogMapper(row);
                 }}
               >
-                Approve
+                Approve Rate
               </Button>
               <Button
                 variant="outlined"
@@ -328,12 +371,12 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   return (
     <DashboardLayout
-      title={campaign?.name || 'Campaign Detail'}
-      subtitle={brand ? `Brand: ${brand.name}` : 'Campaign overview & rates'}
+      title={campaign?.name || 'Campaign Management'}
+      subtitle="Manage assigned creator rosters, commercial margins, and deliverable approvals"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Agency Manager',
+        name: user?.profile?.fullName || 'Agency Lead',
         email: user?.email,
         roleCode: 'AGENCY',
       }}
@@ -385,18 +428,39 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             </Typography>
           </Box>
 
-          {safeUrl(campaign?.briefUrl) && (
-            <Button
-              variant="outlined"
-              size="small"
-              href={safeUrl(campaign?.briefUrl) as string}
-              target="_blank"
-              rel="noopener noreferrer"
-              endIcon={<LaunchRoundedIcon fontSize="small" />}
-            >
-              Open Campaign Brief
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <Select
+                value={campaign?.status || 'DRAFT'}
+                onChange={(e) => handleUpdateCampaignStatus(e.target.value as CampaignStatus)}
+                disabled={updateCampaignMutation.isPending}
+                sx={{
+                  height: 34,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                }}
+              >
+                <MenuItem value="DRAFT">Draft</MenuItem>
+                <MenuItem value="ACTIVE">Active</MenuItem>
+                <MenuItem value="COMPLETED">Completed</MenuItem>
+                <MenuItem value="CANCELLED">Cancelled</MenuItem>
+              </Select>
+            </FormControl>
+
+            {safeUrl(campaign?.briefUrl) && (
+              <Button
+                variant="outlined"
+                size="small"
+                href={safeUrl(campaign?.briefUrl) as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                endIcon={<LaunchRoundedIcon fontSize="small" />}
+              >
+                Open Campaign Brief
+              </Button>
+            )}
+          </Box>
         </Box>
 
         {campaign?.description && (
@@ -485,7 +549,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           open={Boolean(approveDialogMapper)}
           mapperId={approveDialogMapper.id}
           influencerName={approveDialogMapper.influencerName}
-          influencerRate={approveDialogMapper.influencerRate || 0}
+          influencerRate={approveDialogMapper.influencerRate}
           currency={approveDialogMapper.currency}
           loading={approveRateMutation.isPending}
           onApprove={handleApproveRate}

@@ -21,6 +21,7 @@ import { SectionHeading } from '@atoms';
 import { useAdminAgencies, useCreateAgency, useUpdateAgency, useDeactivateAgency } from '@api';
 import { AgencyResponse } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { capitalizeWords } from '@utils';
 
 export const AdminAgenciesOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -382,7 +383,7 @@ export const AdminAgenciesOrganism: React.FC = () => {
                 label="Agency Name *"
                 value={name}
                 onChange={(e) => {
-                  const val = e.target.value;
+                  const val = capitalizeWords(e.target.value);
                   setName(val);
                   if (nameError && val.trim()) setNameError('');
                   if (!agencyToEdit) {
@@ -417,7 +418,7 @@ export const AdminAgenciesOrganism: React.FC = () => {
               <TextField
                 label="Contact Person Name"
                 value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
+                onChange={(e) => setContactPerson(capitalizeWords(e.target.value))}
                 placeholder="e.g. John Doe - Managing Director"
                 fullWidth
               />

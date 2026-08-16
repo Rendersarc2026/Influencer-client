@@ -307,14 +307,14 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               PROPOSED CREATORS
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {mappers.length} Influencers
+              {totalMappers} {totalMappers === 1 ? 'Influencer' : 'Influencers'}
             </Typography>
           </Box>
         </Box>
       </Card>
 
       {/* 2. Influencer Table (Rate = Client Rate only) */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <SectionHeading
           title="Creator Deliverables & Commercial Proposals"
           subtitle="Review and authorize proposed creator commercial deliverables"
@@ -338,6 +338,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           }}
           loading={mappersLoading || campaignLoading}
           isFetching={mappersFetching}
+          fillHeight
         />
       </Box>
 

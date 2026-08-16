@@ -14,6 +14,7 @@ import { useCategories } from '@api';
 import { UpdateProfileSchema } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
+import { capitalizeWords } from '@utils';
 
 export const CompleteProfileOrganism: React.FC = () => {
   const theme = useTheme();
@@ -144,7 +145,7 @@ export const CompleteProfileOrganism: React.FC = () => {
             <TextField
               label="Full Name *"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => setFullName(capitalizeWords(e.target.value))}
               error={Boolean(fieldErrors.fullName)}
               helperText={fieldErrors.fullName}
               fullWidth
@@ -155,7 +156,7 @@ export const CompleteProfileOrganism: React.FC = () => {
             <TextField
               label="Display Name"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
               error={Boolean(fieldErrors.displayName)}
               helperText={fieldErrors.displayName}
               fullWidth
@@ -165,7 +166,7 @@ export const CompleteProfileOrganism: React.FC = () => {
             <TextField
               label="City"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => setCity(capitalizeWords(e.target.value))}
               error={Boolean(fieldErrors.city)}
               helperText={fieldErrors.city}
               fullWidth

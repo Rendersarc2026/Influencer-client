@@ -34,6 +34,7 @@ import {
 } from '@api';
 import { BrandResponse } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { capitalizeWords } from '@utils';
 
 export const AdminBrandsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -395,7 +396,8 @@ export const AdminBrandsOrganism: React.FC = () => {
                 label="Brand Name *"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
+                  const val = capitalizeWords(e.target.value);
+                  setName(val);
                   if (nameError) setNameError('');
                 }}
                 error={Boolean(nameError)}
@@ -479,7 +481,7 @@ export const AdminBrandsOrganism: React.FC = () => {
               <TextField
                 label="Contact Person Name"
                 value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
+                onChange={(e) => setContactPerson(capitalizeWords(e.target.value))}
                 placeholder="e.g. Jane Smith - Brand Lead"
                 fullWidth
               />

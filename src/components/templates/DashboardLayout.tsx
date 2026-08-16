@@ -4,7 +4,9 @@ import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { SidebarRail, TopBar } from '@organisms';
 import { ConfirmDialog } from '@molecules';
-import { NavItem } from '@routes/navConfig';
+import { navConfig, NavItem } from '@routes/navConfig';
+import { useNavigation } from '@api';
+import { RoleCode } from '@contracts';
 
 export interface DashboardLayoutProps {
   title: string;
@@ -54,9 +56,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { data: dbNavItems } = useNavigation();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
+
+  const effectiveNavItems: NavItem[] =
+    dbNavItems && dbNavItems.length > 0
+      ? dbNavItems.map((item) => ({
+          id: item.code,
+          label: item.label,
+          path: item.path,
+          iconName: item.iconName as any,
+          badge: item.badge || undefined,
+        }))
+      : navItems.length > 0
+        ? navItems
+        : (navConfig[user?.roleCode as RoleCode] || []);
 
   const handleLogoutClick = () => {
     setLogoutConfirmOpen(true);
@@ -83,7 +99,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     >
       {/* 1. Floating Sidebar Rail / Bottom Bar */}
       <SidebarRail
-        items={navItems}
+        items={effectiveNavItems}
         activePath={activePath}
         onNavigate={effectiveNavigate}
         onLogout={handleLogoutClick}

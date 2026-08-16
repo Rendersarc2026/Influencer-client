@@ -22,6 +22,7 @@ import {
 } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { capitalizeWords } from '@utils';
 
 export const ProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -238,7 +239,7 @@ export const ProfileOrganism: React.FC = () => {
                 <TextField
                   label="Full Legal Name *"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => setFullName(capitalizeWords(e.target.value))}
                   error={Boolean(fieldErrors.fullName)}
                   helperText={fieldErrors.fullName}
                   fullWidth
@@ -249,7 +250,7 @@ export const ProfileOrganism: React.FC = () => {
                   label="Public Display Name"
                   value={displayName}
                   placeholder="e.g. Alex Creator"
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
                   error={Boolean(fieldErrors.displayName)}
                   helperText={fieldErrors.displayName}
                   fullWidth
@@ -271,7 +272,7 @@ export const ProfileOrganism: React.FC = () => {
                       label="City / Location"
                       placeholder="e.g. Kochi, Trivandrum"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      onChange={(e) => setCity(capitalizeWords(e.target.value))}
                       error={Boolean(fieldErrors.location)}
                       helperText={fieldErrors.location}
                       fullWidth

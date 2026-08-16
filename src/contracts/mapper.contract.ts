@@ -79,6 +79,7 @@ export type RequestRateRevisionRequest = z.infer<typeof RequestRateRevisionReque
 
 export const ApproveRateRequestSchema = z.object({
   margin: money,
+  influencerRate: money.optional(),
 });
 export type ApproveRateRequest = z.infer<typeof ApproveRateRequestSchema>;
 

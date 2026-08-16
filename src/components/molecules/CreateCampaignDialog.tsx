@@ -12,6 +12,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { CreateCampaignRequest, BrandResponse } from '@contracts';
+import { capitalizeWords } from '@utils';
 
 export interface CreateCampaignDialogProps {
   open: boolean;
@@ -127,7 +128,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
             <TextField
               label="Campaign Name *"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(capitalizeWords(e.target.value))}
               placeholder="e.g. Summer Glow Skincare Launch"
               fullWidth
               disabled={loading}
