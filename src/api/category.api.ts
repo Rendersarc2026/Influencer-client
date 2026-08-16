@@ -44,11 +44,25 @@ export function useCategories(type?: CategoryType, search?: string) {
   });
 }
 
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation<CategoryResponse, Error, CreateCategoryRequest>({
+    mutationFn: async (data) => {
+      const response = await apiClient.post<CategoryResponse>('/categories', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'categories'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' });
+    },
+  });
+}
+
 export function useAdminCreateCategory() {
   const queryClient = useQueryClient();
   return useMutation<CategoryResponse, Error, CreateCategoryRequest>({
     mutationFn: async (data) => {
-      const response = await apiClient.post<CategoryResponse>('/admin/categories', data);
+      const response = await apiClient.post<CategoryResponse>('/categories', data);
       return response.data;
     },
     onSuccess: () => {

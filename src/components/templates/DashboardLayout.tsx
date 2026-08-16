@@ -1,4 +1,5 @@
 import React, { ReactNode, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { SidebarRail, TopBar } from '@organisms';
@@ -52,7 +53,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+
+  const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
 
   const handleLogoutClick = () => {
     setLogoutConfirmOpen(true);
@@ -81,7 +85,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <SidebarRail
         items={navItems}
         activePath={activePath}
-        onNavigate={onNavigate}
+        onNavigate={effectiveNavigate}
         onLogout={handleLogoutClick}
       />
 
@@ -107,7 +111,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           subtitle={subtitle}
           breadcrumbs={breadcrumbs?.map((crumb) => ({
             label: crumb.label,
-            onClick: crumb.path && onNavigate ? () => onNavigate(crumb.path!) : undefined,
+            onClick: crumb.path ? () => effectiveNavigate(crumb.path!) : undefined,
           }))}
           onBack={onBack}
           backLabel={backLabel}
@@ -115,7 +119,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onSearchClick={onSearchClick}
           onNotificationsClick={onNotificationsClick}
           notificationCount={notificationCount}
-          onProfileClick={() => onNavigate && onNavigate('/profile')}
+          onProfileClick={() => effectiveNavigate('/profile')}
           onLogoutClick={handleLogoutClick}
           rightAction={rightAction}
         />

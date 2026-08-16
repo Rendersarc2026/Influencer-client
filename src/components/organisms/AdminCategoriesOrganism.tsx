@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import ButtonBase from '@mui/material/ButtonBase';
@@ -33,6 +33,7 @@ import { CategoryResponse, CategoryType } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 export const AdminCategoriesOrganism: React.FC = () => {
+  const navigate = useNavigate();
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -282,6 +283,7 @@ export const AdminCategoriesOrganism: React.FC = () => {
         email: user?.email,
         roleCode: 'ADMIN',
       }}
+      onNavigate={(path) => navigate(path)}
       onLogout={logout}
       rightAction={
         <Button
