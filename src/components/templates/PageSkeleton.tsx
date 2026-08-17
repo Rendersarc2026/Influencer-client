@@ -1,46 +1,43 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
-import Grid from '@mui/material/Grid2';
 import Card from '@mui/material/Card';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
+import Grid from '@mui/material/Grid2';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks';
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SidebarRail } from '../organisms/SidebarRail';
 
-/**
- * Which page shape the shimmer should imitate. A skeleton is only useful if it
- * predicts the layout that replaces it — showing the dashboard's metric cards
- * in front of a plain list page makes the content jump when it lands.
- */
 export type PageSkeletonVariant =
-  | 'dashboard' // metric cards + table (role home screens)
-  | 'list' // filter bar + full-height table (brands, users, campaigns…)
-  | 'detail' // summary card + mapped-rows table (campaign detail)
-  | 'reports' // metrics + charts + table
-  | 'chat' // conversation list beside a message thread
-  | 'form' // profile / onboarding field grid
-  | 'grid' // search + card grid (add influencer)
-  | 'auth' // centred card, no dashboard chrome (login, terms)
-  | 'shell'; // chrome only — used before the target page is known
+  | 'dashboard'
+  | 'list'
+  | 'detail'
+  | 'reports'
+  | 'chat'
+  | 'form'
+  | 'grid'
+  | 'auth'
+  | 'shell';
 
 export interface PageSkeletonProps {
   variant?: PageSkeletonVariant;
 }
 
-// ─── shared shimmer primitives ────────────────────────────────────────────
+// ─── shared primitives ───────────────────────────────────────────────────
 
-const Line: React.FC<{ width: number | string; height?: number }> = ({ width, height = 20 }) => (
-  <Skeleton animation="wave" variant="text" width={width} height={height} />
-);
+const Line: React.FC<{ width: number | string; height?: number; sx?: object }> = ({
+  width,
+  height = 20,
+  sx,
+}) => <Skeleton animation="wave" variant="text" width={width} height={height} sx={sx} />;
 
 const Block: React.FC<{
   width: number | string;
   height: number | string;
   radius?: number;
-}> = ({ width, height, radius }) => {
+  sx?: object;
+}> = ({ width, height, radius, sx }) => {
   const theme = useTheme();
   return (
     <Skeleton
@@ -48,50 +45,111 @@ const Block: React.FC<{
       variant="rounded"
       width={width}
       height={height}
-      sx={{ borderRadius: `${radius ?? theme.customRadii.inner}px`, flexShrink: 0 }}
+      sx={{ borderRadius: `${radius ?? theme.customRadii.inner}px`, flexShrink: 0, ...sx }}
     />
   );
 };
 
-/** Search field + dropdown, matching FilterBar. */
-const FilterBarShimmer: React.FC<{ pills?: number }> = ({ pills = 0 }) => {
+// ─── building blocks ─────────────────────────────────────────────────────
+
+const HeadingShimmer: React.FC<{ rightAction?: boolean }> = ({ rightAction = true }) => {
   const theme = useTheme();
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-      <Block width={240} height={48} />
-      <Block width={150} height={48} />
-      {Array.from({ length: pills }).map((_, i) => (
-        <Block key={i} width={96} height={34} radius={theme.customRadii.pill} />
-      ))}
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        minHeight: 48,
+        mb: 1,
+      }}
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+        <Line width={220} height={32} sx={{ borderRadius: 1 }} />
+        <Line width={340} height={18} sx={{ borderRadius: 1 }} />
+      </Box>
+      {rightAction && <Block width={120} height={40} radius={theme.customRadii.pill} />}
     </Box>
   );
 };
 
-/** Table card: title block, column headers, then striped body rows. */
-const TableShimmer: React.FC<{ rows?: number; fill?: boolean; header?: boolean }> = ({
-  rows = 6,
-  fill = false,
-  header = true,
-}) => {
+const FilterBarShimmer: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1 }}>
+      <Block width={260} height={44} radius={theme.customRadii.inner} />
+      <Block width={110} height={36} radius={theme.customRadii.pill} />
+      <Block width={110} height={36} radius={theme.customRadii.pill} />
+      <Block width={110} height={36} radius={theme.customRadii.pill} />
+      <Box sx={{ ml: 'auto' }}>
+        <Block width={140} height={44} radius={theme.customRadii.inner} />
+      </Box>
+    </Box>
+  );
+};
+
+const MetricCardShimmer: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <Card
+      sx={{
+        padding: { xs: '16px', sm: '20px' },
+        borderRadius: `${theme.customRadii.card}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.5,
+        minHeight: 140,
+        backgroundColor: theme.palette.tokens.surface,
+      }}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Line width={100} height={16} />
+        <Skeleton animation="wave" variant="circular" width={36} height={36} />
+      </Box>
+      <Line width={90} height={36} />
+      <Line width={140} height={16} />
+    </Card>
+  );
+};
+
+const ChartCardShimmer: React.FC = () => {
   const theme = useTheme();
   return (
     <Card
       sx={{
         padding: `${theme.customSpacing.cardPadding}px`,
         borderRadius: `${theme.customRadii.card}px`,
-        ...(fill ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : {}),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        height: 320,
       }}
     >
-      {header && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Line width={200} height={24} />
-            <Line width={320} height={18} />
-          </Box>
-          <Block width={120} height={36} radius={theme.customRadii.pill} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Line width={140} height={20} />
+          <Line width={80} height={28} />
         </Box>
-      )}
+        <Block width={120} height={32} radius={theme.customRadii.pill} />
+      </Box>
+      <Block width="100%" height={200} radius={theme.customRadii.inner} />
+    </Card>
+  );
+};
 
+const TableShimmer: React.FC<{ rows?: number; fill?: boolean }> = ({ rows = 6, fill = false }) => {
+  const theme = useTheme();
+  return (
+    <Card
+      sx={{
+        padding: `${theme.customSpacing.cardPadding}px`,
+        borderRadius: `${theme.customRadii.card}px`,
+        flex: fill ? 1 : 'none',
+        minHeight: 360,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* Column header strip */}
       <Box
         sx={{
@@ -103,16 +161,16 @@ const TableShimmer: React.FC<{ rows?: number; fill?: boolean; header?: boolean }
           borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         }}
       >
-        <Line width="22%" height={16} />
-        <Line width="18%" height={16} />
-        <Line width="12%" height={16} />
-        <Line width="14%" height={16} />
+        <Line width="25%" height={16} />
+        <Line width="20%" height={16} />
+        <Line width="15%" height={16} />
+        <Line width="15%" height={16} />
         <Box sx={{ ml: 'auto' }}>
           <Line width={60} height={16} />
         </Box>
       </Box>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: fill ? 1 : 'none' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1 }}>
         {Array.from({ length: rows }).map((_, index) => (
           <Box
             key={index}
@@ -120,16 +178,17 @@ const TableShimmer: React.FC<{ rows?: number; fill?: boolean; header?: boolean }
               display: 'flex',
               alignItems: 'center',
               gap: 2,
-              height: 56,
+              height: 52,
               borderBottom: `1px solid ${theme.palette.tokens.divider}`,
             }}
           >
-            <Line width="25%" height={20} />
-            <Line width="18%" height={20} />
-            <Line width="12%" height={20} />
-            <Line width="16%" height={20} />
+            <Skeleton animation="wave" variant="circular" width={32} height={32} />
+            <Line width="24%" height={18} />
+            <Line width="18%" height={18} />
+            <Line width="14%" height={18} />
+            <Line width="14%" height={18} />
             <Box sx={{ ml: 'auto' }}>
-              <Block width={80} height={26} radius={theme.customRadii.pill} />
+              <Block width={75} height={26} radius={theme.customRadii.pill} />
             </Box>
           </Box>
         ))}
@@ -138,249 +197,233 @@ const TableShimmer: React.FC<{ rows?: number; fill?: boolean; header?: boolean }
   );
 };
 
-/** Metric card row: 4 coloured cards, imitating role home screens. */
-const MetricCardsShimmer: React.FC = () => {
-  const theme = useTheme();
-  return (
-    <Grid container spacing={2.5} alignItems="stretch">
-      {(['lavender', 'mint', 'butter', 'sky'] as const).map((tint) => (
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} key={tint}>
-          <Card
-            sx={{
-              padding: `${theme.customSpacing.cardPadding}px`,
-              borderRadius: `${theme.customRadii.card}px`,
-              backgroundColor: theme.palette.tints[tint],
-              border: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: 140,
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 2,
-              }}
-            >
-              <Line width="50%" height={20} />
-              <Block width={36} height={36} radius={theme.customRadii.inner / 2} />
-            </Box>
-            <Box sx={{ my: 0.5 }}>
-              <Block width={90} height={36} radius={theme.customRadii.inner / 2} />
-            </Box>
-            <Box sx={{ mt: 1 }}>
-              <Line width="65%" height={16} />
-            </Box>
-          </Card>
-        </Grid>
-      ))}
-    </Grid>
-  );
-};
+// ─── page bodies ─────────────────────────────────────────────────────────
 
-/** Section heading: title line over a subtitle line. */
-const HeadingShimmer: React.FC = () => (
-  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-    <Line width={220} height={26} />
-    <Line width={340} height={18} />
-  </Box>
-);
-
-// ─── page bodies ──────────────────────────────────────────────────────────
-
+/** 1. Dashboard: Metrics row + recent table */
 const DashboardBody: React.FC = () => (
   <>
-    <MetricCardsShimmer />
-    <TableShimmer rows={5} />
+    <HeadingShimmer rightAction={false} />
+    <Grid container spacing={2.5} alignItems="stretch">
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+    </Grid>
+    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Line width={180} height={24} />
+      <TableShimmer rows={5} />
+    </Box>
   </>
 );
 
+/** 2. List: Header + FilterBar + Full-height Table */
 const ListBody: React.FC = () => (
   <>
+    <HeadingShimmer />
     <FilterBarShimmer />
-    <TableShimmer rows={8} fill header={false} />
+    <TableShimmer rows={7} fill />
   </>
 );
 
+/** 3. Detail: Summary card + Detail table */
 const DetailBody: React.FC = () => {
   const theme = useTheme();
   return (
     <>
-      {/* Back link + campaign title */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Block width={40} height={40} />
-        <HeadingShimmer />
-      </Box>
-
-      {/* Summary card — four stat columns and a status pill */}
+      <HeadingShimmer />
       <Card
         sx={{
           padding: `${theme.customSpacing.cardPadding}px`,
           borderRadius: `${theme.customRadii.card}px`,
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-          <Line width={240} height={26} />
-          <Block width={110} height={30} radius={theme.customRadii.pill} />
-        </Box>
-        <Grid container spacing={2.5}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Grid size={{ xs: 6, md: 3 }} key={i}>
-              <Line width="60%" height={16} />
-              <Line width="45%" height={30} />
-            </Grid>
-          ))}
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Line width={80} height={16} />
+            <Line width={140} height={24} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Line width={80} height={16} />
+            <Line width={120} height={24} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Line width={80} height={16} />
+            <Line width={110} height={24} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Line width={80} height={16} />
+            <Line width={130} height={24} />
+          </Grid>
         </Grid>
       </Card>
-
-      <FilterBarShimmer />
-      <TableShimmer rows={5} header={false} />
+      <Box sx={{ mt: 1 }}>
+        <TableShimmer rows={5} fill />
+      </Box>
     </>
   );
 };
 
+/** 4. Reports: Metrics + Charts + Performance Table */
 const ReportsBody: React.FC = () => (
   <>
-    <MetricCardsShimmer />
-    <Grid container spacing={2.5}>
-      {[0, 1].map((i) => (
-        <Grid size={{ xs: 12, md: 6 }} key={i}>
-          <Card
-            sx={{
-              padding: '24px',
-              borderRadius: '24px',
-              minHeight: 300,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Line width={180} height={24} />
-              <Block width={80} height={30} radius={100} />
-            </Box>
-            <Block width="100%" height={200} radius={12} />
-          </Card>
-        </Grid>
-      ))}
+    <HeadingShimmer />
+    <Grid container spacing={2.5} alignItems="stretch">
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <MetricCardShimmer />
+      </Grid>
     </Grid>
-    <TableShimmer rows={4} header={false} />
+    <Grid container spacing={2.5} sx={{ mt: 1 }}>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <ChartCardShimmer />
+      </Grid>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <ChartCardShimmer />
+      </Grid>
+    </Grid>
+    <Box sx={{ mt: 1 }}>
+      <TableShimmer rows={5} />
+    </Box>
   </>
 );
 
+/** 5. Chat: Two-column conversation list + message thread */
 const ChatBody: React.FC = () => {
   const theme = useTheme();
   return (
-    <Box sx={{ display: 'flex', gap: 2.5, flex: 1, minHeight: 0 }}>
-      {/* Thread list */}
-      <Card
-        sx={{
-          width: 320,
-          padding: `${theme.customSpacing.cardPadding}px`,
-          borderRadius: `${theme.customRadii.card}px`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          flexShrink: 0,
-        }}
-      >
-        <Block width="100%" height={40} />
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-            <Block width={40} height={40} radius={20} />
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              <Line width="70%" height={18} />
-              <Line width="40%" height={14} />
-            </Box>
-          </Box>
-        ))}
-      </Card>
-
-      {/* Message thread */}
+    <>
+      <HeadingShimmer rightAction={false} />
       <Card
         sx={{
           flex: 1,
-          padding: `${theme.customSpacing.cardPadding}px`,
+          minHeight: 520,
           borderRadius: `${theme.customRadii.card}px`,
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
+          overflow: 'hidden',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pb: 2 }}>
-          <Block width={44} height={44} radius={22} />
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Line width={180} height={20} />
-            <Line width={100} height={14} />
-          </Box>
+        {/* Left conversations panel */}
+        <Box
+          sx={{
+            width: 320,
+            borderRight: `1px solid ${theme.palette.tokens.divider}`,
+            padding: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <Block width="100%" height={40} radius={theme.customRadii.inner} />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Skeleton animation="wave" variant="circular" width={40} height={40} />
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
+                <Line width="70%" height={18} />
+                <Line width="90%" height={14} />
+              </Box>
+            </Box>
+          ))}
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 3 }}>
-          <Box sx={{ alignSelf: 'flex-start', maxWidth: '60%' }}>
-            <Block width={260} height={60} radius={theme.customRadii.inner} />
+
+        {/* Right message thread */}
+        <Box sx={{ flex: 1, padding: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 2, borderBottom: `1px solid ${theme.palette.tokens.divider}` }}>
+            <Skeleton animation="wave" variant="circular" width={40} height={40} />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Line width={140} height={20} />
+              <Line width={90} height={14} />
+            </Box>
           </Box>
-          <Box sx={{ alignSelf: 'flex-end', maxWidth: '60%' }}>
-            <Block width={220} height={44} radius={theme.customRadii.inner} />
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center' }}>
+            <Block width="40%" height={44} radius={theme.customRadii.card} sx={{ alignSelf: 'flex-start' }} />
+            <Block width="50%" height={52} radius={theme.customRadii.card} sx={{ alignSelf: 'flex-end' }} />
+            <Block width="35%" height={40} radius={theme.customRadii.card} sx={{ alignSelf: 'flex-start' }} />
           </Box>
-          <Box sx={{ alignSelf: 'flex-start', maxWidth: '60%' }}>
-            <Block width={300} height={72} radius={theme.customRadii.inner} />
-          </Box>
+          <Block width="100%" height={48} radius={theme.customRadii.pill} />
         </Box>
-        <Block width="100%" height={48} radius={theme.customRadii.inner} />
       </Card>
-    </Box>
+    </>
   );
 };
 
+/** 6. Form: Profile edit card */
 const FormBody: React.FC = () => {
   const theme = useTheme();
   return (
-    <Card
-      sx={{
-        padding: `${theme.customSpacing.cardPadding}px`,
-        borderRadius: `${theme.customRadii.card}px`,
-        maxWidth: 720,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3,
-      }}
-    >
-      <HeadingShimmer />
-      <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Block width="100%" height={52} />
+    <>
+      <HeadingShimmer rightAction={false} />
+      <Card
+        sx={{
+          padding: `${theme.customSpacing.cardPadding}px`,
+          borderRadius: `${theme.customRadii.card}px`,
+          maxWidth: 800,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Skeleton animation="wave" variant="circular" width={72} height={72} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            <Line width={180} height={24} />
+            <Line width={120} height={16} />
+          </Box>
+        </Box>
+        <Grid container spacing={2.5}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Block width="100%" height={52} radius={theme.customRadii.inner} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Block width="100%" height={52} radius={theme.customRadii.inner} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Block width="100%" height={52} radius={theme.customRadii.inner} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Block width="100%" height={52} radius={theme.customRadii.inner} />
+          </Grid>
+          <Grid size={12}>
+            <Block width="100%" height={90} radius={theme.customRadii.inner} />
+          </Grid>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Block width="100%" height={52} />
-        </Grid>
-        <Grid size={12}>
-          <Block width="100%" height={52} />
-        </Grid>
-        <Grid size={12}>
-          <Block width="100%" height={120} />
-        </Grid>
-      </Grid>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
-        <Block width={90} height={40} radius={theme.customRadii.pill} />
-        <Block width={120} height={40} radius={theme.customRadii.pill} />
-      </Box>
-    </Card>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 1 }}>
+          <Block width={100} height={40} radius={theme.customRadii.pill} />
+          <Block width={140} height={40} radius={theme.customRadii.pill} />
+        </Box>
+      </Card>
+    </>
   );
 };
 
+/** 7. Grid: Add Influencer card grid */
 const GridBody: React.FC = () => {
   const theme = useTheme();
   return (
     <>
-      <FilterBarShimmer pills={4} />
+      <HeadingShimmer />
+      <FilterBarShimmer />
       <Grid container spacing={2.5}>
         {Array.from({ length: 6 }).map((_, i) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
+          <Grid key={i} size={{ xs: 12, sm: 6, md: 4 }}>
             <Card
               sx={{
-                padding: `${theme.customSpacing.cardPadding}px`,
+                padding: 2.5,
                 borderRadius: `${theme.customRadii.card}px`,
                 display: 'flex',
                 flexDirection: 'column',
@@ -388,14 +431,17 @@ const GridBody: React.FC = () => {
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Skeleton animation="wave" variant="circular" width={44} height={44} />
-                <Box sx={{ flex: 1 }}>
-                  <Line width="70%" height={20} />
-                  <Line width="45%" height={16} />
+                <Skeleton animation="wave" variant="circular" width={48} height={48} />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
+                  <Line width="75%" height={20} />
+                  <Line width="50%" height={16} />
                 </Box>
               </Box>
-              <Block width="100%" height={44} />
-              <Block width="100%" height={40} radius={theme.customRadii.pill} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                <Line width={70} height={16} />
+                <Line width={90} height={16} />
+              </Box>
+              <Block width="100%" height={38} radius={theme.customRadii.pill} />
             </Card>
           </Grid>
         ))}
@@ -404,14 +450,62 @@ const GridBody: React.FC = () => {
   );
 };
 
-const ShellBody: React.FC = () => (
-  <>
-    <HeadingShimmer />
-    <Block width="100%" height={420} />
-  </>
-);
+/** 8. Centred Auth Skeleton */
+const AuthSkeleton: React.FC = () => {
+  const theme = useTheme();
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        backgroundColor: theme.palette.tokens.pageBg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 2,
+      }}
+    >
+      <Card
+        sx={{
+          padding: `${theme.customSpacing.cardPadding * 1.5}px`,
+          borderRadius: `${theme.customRadii.card}px`,
+          width: '100%',
+          maxWidth: 420,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2.5,
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+          <Skeleton animation="wave" variant="circular" width={56} height={56} />
+        </Box>
+        <Skeleton animation="wave" variant="text" width="60%" height={30} sx={{ mx: 'auto' }} />
+        <Skeleton
+          animation="wave"
+          variant="rounded"
+          width="100%"
+          height={52}
+          sx={{ borderRadius: `${theme.customRadii.inner}px` }}
+        />
+        <Skeleton
+          animation="wave"
+          variant="rounded"
+          width="100%"
+          height={52}
+          sx={{ borderRadius: `${theme.customRadii.inner}px` }}
+        />
+        <Skeleton
+          animation="wave"
+          variant="rounded"
+          width="100%"
+          height={48}
+          sx={{ borderRadius: `${theme.customRadii.pill}px` }}
+        />
+      </Card>
+    </Box>
+  );
+};
 
-const bodies: Record<Exclude<PageSkeletonVariant, 'auth'>, React.FC> = {
+const bodies: Record<Exclude<PageSkeletonVariant, 'auth' | 'shell'>, React.FC> = {
   dashboard: DashboardBody,
   list: ListBody,
   detail: DetailBody,
@@ -419,18 +513,52 @@ const bodies: Record<Exclude<PageSkeletonVariant, 'auth'>, React.FC> = {
   chat: ChatBody,
   form: FormBody,
   grid: GridBody,
-  shell: ShellBody,
 };
 
-// ─── chrome ───────────────────────────────────────────────────────────────
+function resolveVariant(pathname: string, requested?: PageSkeletonVariant): PageSkeletonVariant {
+  if (requested && requested !== 'shell') return requested;
+  if (
+    pathname === '/login' ||
+    pathname === '/accept-terms' ||
+    pathname === '/complete-profile'
+  ) {
+    return 'auth';
+  }
+  if (pathname === '/agency' || pathname === '/brand' || pathname === '/influencer') {
+    return 'dashboard';
+  }
+  if (pathname.includes('/reports')) return 'reports';
+  if (pathname.includes('/chats')) return 'chat';
+  if (pathname.includes('/profile')) return 'form';
+  if (pathname.endsWith('/add')) return 'grid';
+  if (pathname.match(/\/(campaigns|assignments)\/[^/]+$/)) return 'detail';
+  return 'list';
+}
 
-/** Rail + top bar + content surface — the frame every dashboard page shares. */
-const Chrome: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+/**
+ * Route-level loading shimmer precisely tailored to the target page shape.
+ */
+export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' }) => {
   const theme = useTheme();
   const location = useLocation();
-  const { roleCode, logout } = useAuth();
+  const { roleCode: authRoleCode, logout } = useAuth();
 
-  const navItems = roleCode ? getNavItemsForRole(roleCode) : [];
+  const resolved = resolveVariant(location.pathname, variant);
+
+  if (resolved === 'auth') {
+    return <AuthSkeleton />;
+  }
+
+  const roleCode =
+    authRoleCode ||
+    (location.pathname.startsWith('/brand')
+      ? 'BRAND'
+      : location.pathname.startsWith('/influencer')
+      ? 'INFLUENCER'
+      : 'AGENCY');
+
+  const navItems = getNavItemsForRole(roleCode);
+  const Body = bodies[resolved as Exclude<PageSkeletonVariant, 'auth' | 'shell'>] || ListBody;
 
   return (
     <Box
@@ -444,174 +572,25 @@ const Chrome: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         boxSizing: 'border-box',
       }}
     >
-      {/* Sidebar rail */}
-      {roleCode ? (
-        <SidebarRail
-          items={navItems}
-          activePath={location.pathname}
-          onNavigate={() => {}}
-          onLogout={logout}
-        />
-      ) : (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 16,
-            bottom: 16,
-            left: 16,
-            width: 240,
-            backgroundColor: theme.palette.tokens.rail,
-            borderRadius: `${theme.customRadii.rail}px`,
-            display: { xs: 'none', md: 'flex' },
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            padding: '20px 14px',
-            gap: 2,
-            zIndex: 1200,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              px: 0.5,
-              justifyContent: 'flex-start',
-            }}
-          >
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <StarRoundedIcon sx={{ color: theme.palette.tokens.rail, fontSize: 22 }} />
-            </Box>
-            <Skeleton
-              animation="wave"
-              variant="text"
-              width={110}
-              height={24}
-              sx={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
-            />
-          </Box>
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 3, flex: 1 }}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1, py: 1 }}>
-                <Block width={24} height={24} radius={6} />
-                <Line width={90} height={16} />
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      )}
-
-      {/* Main content surface */}
+      <SidebarRail
+        items={navItems}
+        activePath={location.pathname}
+        onNavigate={() => {}}
+        onLogout={logout}
+      />
       <Box
+        component="main"
         sx={{
           flexGrow: 1,
           minWidth: 0,
           ml: { xs: 0, md: '260px' },
           display: 'flex',
           flexDirection: 'column',
-          gap: { xs: '14px', sm: '16px', md: `${theme.customSpacing.cardGap}px` },
+          gap: `${theme.customSpacing.cardGap}px`,
         }}
       >
-        {/* Top bar */}
-        <Box
-          sx={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            px: { xs: 1, md: 0 },
-          }}
-        >
-          <HeadingShimmer />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Block width={40} height={40} radius={20} />
-            <Block width={140} height={40} radius={theme.customRadii.inner} />
-          </Box>
-        </Box>
-
-        {/* Page body shimmer */}
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: { xs: '14px', sm: '16px', md: `${theme.customSpacing.cardGap}px` },
-          }}
-        >
-          {children}
-        </Box>
+        <Body />
       </Box>
     </Box>
-  );
-};
-
-// ─── auth skeleton ────────────────────────────────────────────────────────
-
-/** Centred auth card — used on login, terms, onboarding. */
-const AuthSkeleton: React.FC = () => {
-  const theme = useTheme();
-
-  return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.palette.tokens.pageBg,
-        padding: 2,
-      }}
-    >
-      <Card
-        sx={{
-          width: '100%',
-          maxWidth: 440,
-          padding: { xs: '28px', sm: '36px' },
-          borderRadius: `${theme.customRadii.card}px`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2.5,
-        }}
-      >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Block width={48} height={48} radius={24} />
-          <Line width={180} height={26} />
-          <Line width={240} height={16} />
-        </Box>
-        <Block width="100%" height={52} />
-        <Block width="100%" height={52} />
-        <Block width="100%" height={48} radius={theme.customRadii.pill} />
-      </Card>
-    </Box>
-  );
-};
-
-/**
- * Route-level loading shimmer. Pick the variant that matches the page behind
- * it — see {@link PageSkeletonVariant}.
- */
-export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' }) => {
-  if (variant === 'auth') {
-    return <AuthSkeleton />;
-  }
-
-  const Body = bodies[variant];
-  return (
-    <Chrome>
-      <Body />
-    </Chrome>
   );
 };

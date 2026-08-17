@@ -6,7 +6,7 @@ import Grid from '@mui/material/Grid2';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded';
+import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -187,7 +187,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             tint="sky"
             title="Total Earned (MTD)"
             value="₹2.45L"
-            icon={<MonetizationOnRoundedIcon fontSize="small" />}
+            icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             delta={24.0}
             deltaLabel="from completed deliverables"
           />

@@ -8,7 +8,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Grid from '@mui/material/Grid2';
 import HourglassEmptyRoundedIcon from '@mui/icons-material/HourglassEmptyRounded';
-import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
+import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
@@ -321,7 +321,7 @@ export const StyleGuideOrganism: React.FC = () => {
                 tint="mint"
                 title="Approved Payouts"
                 value="₹24.8L"
-                icon={<AttachMoneyRoundedIcon fontSize="small" />}
+                icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
                 delta={6.2}
                 deltaLabel="vs budget"
                 onKebabClick={() => {}}
@@ -671,7 +671,7 @@ export const StyleGuideOrganism: React.FC = () => {
               color={theme.palette.tokens.accent}
             />
             <IconSquare
-              icon={<AttachMoneyRoundedIcon fontSize="small" />}
+              icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
               bg={theme.palette.tints.mint}
               color={theme.palette.tokens.positive}
             />

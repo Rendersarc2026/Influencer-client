@@ -10,7 +10,7 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
-import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
+import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
@@ -49,7 +49,8 @@ const getNavIcon = (iconName: string): ReactNode => {
     case 'Assignment':
       return <AssignmentRoundedIcon fontSize="small" />;
     case 'AttachMoney':
-      return <AttachMoneyRoundedIcon fontSize="small" />;
+    case 'CurrencyRupee':
+      return <CurrencyRupeeRoundedIcon fontSize="small" />;
     case 'Palette':
       return <PaletteRoundedIcon fontSize="small" />;
     default:

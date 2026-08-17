@@ -102,7 +102,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const categoryPills = useMemo(() => {
     const values = [...new Set(allCreators.map((c) => c.category).filter(Boolean))].sort();
     return [
-      { id: 'ALL', label: 'All Creators' },
+      { id: 'ALL', label: 'All Influencers' },
       ...values.map((v) => ({ id: v as string, label: v as string })),
     ];
   }, [allCreators]);
@@ -192,8 +192,8 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Creators"
-      subtitle="The creators you represent, with reach, niche and indicative commercials"
+      title="Influencers"
+      subtitle="The influencers you represent, with reach, niche and indicative commercials"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -209,7 +209,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          New Creator
+          Add Influencer
         </Button>
       }
     >
@@ -252,17 +252,17 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         onClose={() => setCreateDialogOpen(false)}
       />
 
-      {/* Creator Overview Drawer */}
+      {/* Influencer Overview Drawer */}
       <OverviewDrawer
         open={Boolean(selectedInfluencer)}
         onClose={() => setSelectedInfluencer(null)}
-        title={selectedInfluencer?.name || 'Creator Overview'}
+        title={selectedInfluencer?.name || 'Influencer Overview'}
         subtitle={
           selectedInfluencer
-            ? `Category: ${selectedInfluencer.category || 'Creator'} · ${selectedInfluencer.location || 'Global'}`
+            ? `Category: ${selectedInfluencer.category || 'Influencer'} · ${selectedInfluencer.location || 'Global'}`
             : undefined
         }
-        badge={selectedInfluencer?.category || 'CREATOR'}
+        badge={selectedInfluencer?.category || 'INFLUENCER'}
         avatarText={selectedInfluencer?.name}
         highlights={
           selectedInfluencer
@@ -287,9 +287,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           selectedInfluencer
             ? [
                 {
-                  title: 'Creator Profile',
+                  title: 'Influencer Profile',
                   fields: [
-                    { label: 'Creator Name', value: selectedInfluencer.name },
+                    { label: 'Influencer Name', value: selectedInfluencer.name },
                     { label: 'Category / Niche', value: selectedInfluencer.category || '—' },
                     { label: 'Location', value: selectedInfluencer.location || 'Global' },
                     {

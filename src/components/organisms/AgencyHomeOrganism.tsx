@@ -6,7 +6,7 @@ import Grid from '@mui/material/Grid2';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import HourglassEmptyRoundedIcon from '@mui/icons-material/HourglassEmptyRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
-import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
+import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -158,7 +158,7 @@ export const AgencyHomeOrganism: React.FC = () => {
             title="Total Margin"
             value={formatCurrency(summary.totalMargin)}
             loading={reportsLoading || campaignsLoading}
-            icon={<AttachMoneyRoundedIcon fontSize="small" />}
+            icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             subtitle="Approved rates across campaigns"
             onClick={() => navigate('/agency/reports')}
           />

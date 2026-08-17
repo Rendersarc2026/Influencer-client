@@ -115,7 +115,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const categoryPills = useMemo(() => {
     const values = [...new Set(allCreators.map((c) => c.category).filter(Boolean))].sort();
     return [
-      { id: 'ALL', label: 'All Creators' },
+      { id: 'ALL', label: 'All Influencers' },
       ...values.map((v) => ({ id: v as string, label: v as string })),
     ];
   }, [allCreators]);
@@ -475,7 +475,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
               setRowsPerPage(parseInt(e.target.value, 10));
               setPage(0);
             }}
-            labelRowsPerPage="Creators per page"
+            labelRowsPerPage="Influencers per page"
             sx={{
               borderTop: `1px solid ${theme.palette.tokens.divider}`,
               // The list is cards rather than a table, so the bar supplies its

@@ -7,7 +7,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog } from '@molecules';
+import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawer } from '@molecules';
 import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
@@ -31,6 +31,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
 
   const brandsQuery = useAgencyBrands({
     search: debouncedSearch.trim() || undefined,
@@ -67,6 +68,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
         showSuccess('Brand created successfully.');
       }
       setDialogOpen(false);
+      setSelectedBrand(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to save brand.');
@@ -99,7 +101,13 @@ export const AgencyBrandsOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => (
-        <IconButton size="small" onClick={() => handleOpenEdit(row)}>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEdit(row);
+          }}
+        >
           <EditRoundedIcon fontSize="small" />
         </IconButton>
       ),
@@ -108,8 +116,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Client Brands"
-      subtitle="Client brand portfolios and account relationships"
+      title="Brands"
+      subtitle="Brand portfolios and account relationships"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -132,7 +140,10 @@ export const AgencyBrandsOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <FilterBar
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={(s) => {
+            setSearch(s);
+            setPage(0);
+          }}
           searchPlaceholder="Search by brand name or industry"
         />
 
@@ -149,9 +160,97 @@ export const AgencyBrandsOrganism: React.FC = () => {
           }}
           loading={brandsQuery.isLoading}
           isFetching={brandsQuery.isFetching}
+          onRowClick={(row) => setSelectedBrand(row)}
           fillHeight
         />
       </Box>
+
+      {/* Brand Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedBrand)}
+        onClose={() => setSelectedBrand(null)}
+        title={selectedBrand?.name || 'Brand Overview'}
+        subtitle={
+          selectedBrand
+            ? `Industry: ${selectedBrand.industry || 'General Industry'} · ${selectedBrand.city || 'National'}`
+            : undefined
+        }
+        badge={selectedBrand?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        avatarText={selectedBrand?.name}
+        avatarUrl={selectedBrand?.logoUrl || undefined}
+        highlights={
+          selectedBrand
+            ? [
+                {
+                  label: 'Industry Niche',
+                  value: selectedBrand.industry || 'General',
+                  tint: 'sky',
+                },
+                {
+                  label: 'Account Status',
+                  value: selectedBrand.isActive ? 'Active' : 'Archived',
+                  tint: selectedBrand.isActive ? 'mint' : 'butter',
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedBrand
+            ? [
+                {
+                  title: 'Brand Information',
+                  fields: [
+                    { label: 'Brand Name', value: selectedBrand.name },
+                    { label: 'Industry', value: selectedBrand.industry || 'General' },
+                    {
+                      label: 'Onboarded Date',
+                      value: new Date(selectedBrand.createdOn).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    },
+                    {
+                      label: 'Website',
+                      value: selectedBrand.website || '—',
+                      isLink: Boolean(selectedBrand.website),
+                      href: selectedBrand.website?.startsWith('http')
+                        ? selectedBrand.website
+                        : selectedBrand.website
+                        ? `https://${selectedBrand.website}`
+                        : undefined,
+                    },
+                  ],
+                },
+                {
+                  title: 'Contact Details',
+                  fields: [
+                    { label: 'Contact Person', value: selectedBrand.contactPerson || '—' },
+                    { label: 'Contact Email', value: selectedBrand.contactEmail || '—', copyable: true },
+                    { label: 'Contact Phone', value: selectedBrand.contactPhone || '—' },
+                    { label: 'City', value: selectedBrand.city || '—' },
+                    { label: 'Office Address', value: selectedBrand.address || '—', fullWidth: true },
+                  ],
+                },
+              ]
+            : []
+        }
+        actions={
+          selectedBrand
+            ? [
+                {
+                  label: 'Edit Brand',
+                  variant: 'contained',
+                  onClick: () => {
+                    const b = selectedBrand;
+                    setSelectedBrand(null);
+                    handleOpenEdit(b);
+                  },
+                },
+              ]
+            : []
+        }
+      />
 
       <CreateBrandDialog
         open={dialogOpen}

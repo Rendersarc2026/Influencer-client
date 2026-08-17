@@ -63,7 +63,7 @@ export const AgencyUsersOrganism: React.FC = () => {
   );
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
-  const filterPills = useEnumPills('ROLE', 'All Users', { INFLUENCER: 'Creator' });
+  const filterPills = useEnumPills('ROLE', 'All Users', { INFLUENCER: 'Influencer' });
 
   const statusOptions = [
     { value: 'ACTIVE', label: 'Active' },
@@ -100,7 +100,7 @@ export const AgencyUsersOrganism: React.FC = () => {
       id: 'role',
       header: 'Role',
       type: 'text',
-      accessor: (row) => (row.roleCode === 'INFLUENCER' ? 'Creator' : row.roleCode === 'BRAND' ? 'Brand' : 'Agency'),
+      accessor: (row) => (row.roleCode === 'INFLUENCER' ? 'Influencer' : row.roleCode === 'BRAND' ? 'Brand' : 'Agency'),
     },
     {
       id: 'organization',
@@ -109,7 +109,7 @@ export const AgencyUsersOrganism: React.FC = () => {
       accessor: (row) => {
         if (row.roleCode === 'AGENCY') return row.agencyName ? `Agency: ${row.agencyName}` : 'Agency Staff';
         if (row.roleCode === 'BRAND') return row.brandName ? `Brand: ${row.brandName}` : 'Brand Client';
-        if (row.roleCode === 'INFLUENCER') return 'Creator Studio';
+        if (row.roleCode === 'INFLUENCER') return 'Influencer Studio';
         return 'System Operator';
       },
     },

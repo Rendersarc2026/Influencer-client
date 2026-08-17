@@ -5,8 +5,7 @@ import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
-import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
-import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded';
+import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -139,9 +138,9 @@ export const AgencyReportsOrganism: React.FC = () => {
     },
     {
       id: 'influencerCount',
-      header: 'Creators',
+      header: 'Influencers',
       type: 'text',
-      accessor: (row) => `${row.influencerCount} creators`,
+      accessor: (row) => `${row.influencerCount} influencers`,
     },
     {
       id: 'totalClientRate',
@@ -203,7 +202,7 @@ export const AgencyReportsOrganism: React.FC = () => {
             tint="mint"
             title="Total Client Billings"
             value={formatCurrency(totals.totalClientRate)}
-            icon={<MonetizationOnRoundedIcon fontSize="small" />}
+            icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             subtitle={`${reportRows.length} campaigns reported`}
           />
         </Grid>
@@ -212,7 +211,7 @@ export const AgencyReportsOrganism: React.FC = () => {
             tint="butter"
             title="Total Realized Margin"
             value={formatCurrency(totals.totalMargin)}
-            icon={<AttachMoneyRoundedIcon fontSize="small" />}
+            icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             subtitle={`Margin rate ${totals.marginRate.toFixed(1)}%`}
           />
         </Grid>
