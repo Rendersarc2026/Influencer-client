@@ -25,7 +25,7 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
         className={className}
         sx={{
           padding: `${theme.customSpacing.cardPadding}px`,
-          height: height || 160,
+          height: height || 150,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -36,7 +36,7 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
           <Skeleton animation="wave" variant="circular" width={32} height={32} />
         </Box>
         <Box>
-          <Skeleton animation="wave" variant="text" width="60%" height={48} />
+          <Skeleton animation="wave" variant="text" width="60%" height={44} />
           <Skeleton animation="wave" variant="text" width="30%" height={18} />
         </Box>
       </Card>
@@ -44,12 +44,13 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
   }
 
   if (variant === 'chart') {
+    const minH = typeof height === 'number' ? height : 320;
     return (
       <Card
         className={className}
         sx={{
-          padding: `${theme.customSpacing.cardPadding}px`,
-          height: height || 320,
+          padding: { xs: '16px', sm: '20px', md: `${theme.customSpacing.cardPadding}px` },
+          minHeight: minH,
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -71,8 +72,8 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
           animation="wave"
           variant="rounded"
           width="100%"
-          height="100%"
-          sx={{ borderRadius: `${theme.customRadii.inner}px`, flexGrow: 1 }}
+          height={typeof height === 'number' ? height - 90 : 220}
+          sx={{ borderRadius: `${theme.customRadii.inner}px`, flexGrow: 1, minHeight: 180 }}
         />
       </Card>
     );
@@ -85,10 +86,12 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
         sx={{
           padding: `${theme.customSpacing.cardPadding}px`,
           minHeight: height || 420,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Skeleton animation="wave" variant="text" width={160} height={32} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+          <Skeleton animation="wave" variant="text" width={180} height={32} />
           <Skeleton
             animation="wave"
             variant="rounded"
@@ -97,7 +100,7 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
             sx={{ borderRadius: `${theme.customRadii.pill}px` }}
           />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1 }}>
           {Array.from({ length: rows }).map((_, index) => (
             <Box
               key={index}
@@ -118,7 +121,7 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
                 variant="rounded"
                 width={80}
                 height={24}
-                sx={{ borderRadius: `${theme.customRadii.pill}px` }}
+                sx={{ borderRadius: `${theme.customRadii.pill}px`, ml: 'auto' }}
               />
             </Box>
           ))}

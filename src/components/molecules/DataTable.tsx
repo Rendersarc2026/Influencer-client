@@ -374,7 +374,7 @@ export function DataTable<T extends Record<string, unknown>>({
       <Card
         className={className}
         sx={{
-          padding: `${theme.customSpacing.cardPadding}px`,
+          padding: { xs: '14px 12px', sm: '18px 16px', md: `${theme.customSpacing.cardPadding}px` },
           flex: 1,
           minHeight: 0,
           display: 'flex',
@@ -514,7 +514,10 @@ export function DataTable<T extends Record<string, unknown>>({
   return (
     <Card
       className={className}
-      sx={{ padding: `${theme.customSpacing.cardPadding}px`, overflow: 'hidden' }}
+      sx={{
+        padding: { xs: '14px 12px', sm: '18px 16px', md: `${theme.customSpacing.cardPadding}px` },
+        overflow: 'hidden',
+      }}
     >
       {hasHeader && (
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

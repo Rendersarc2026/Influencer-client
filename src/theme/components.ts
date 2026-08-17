@@ -117,11 +117,19 @@ export const components: Components<Theme> = {
     ],
   },
   MuiDialog: {
+    defaultProps: {
+      disableEscapeKeyDown: true,
+    },
     styleOverrides: {
       paper: {
         borderRadius: `${tokens.radii.card}px`,
         backgroundImage: 'none',
         boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12)',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        '&::-webkit-scrollbar': {
+          display: 'none',
+        },
       },
     },
   },
@@ -136,7 +144,11 @@ export const components: Components<Theme> = {
     styleOverrides: {
       root: {
         padding: '16px 24px 16px 24px',
-        overflowY: 'visible',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        '&::-webkit-scrollbar': {
+          display: 'none',
+        },
       },
     },
   },

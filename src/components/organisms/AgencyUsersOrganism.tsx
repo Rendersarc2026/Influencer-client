@@ -91,26 +91,24 @@ export const AgencyUsersOrganism: React.FC = () => {
   const columns: Array<DataTableColumn<UserResponse>> = [
     {
       id: 'user',
-      header: 'User Account',
+      header: 'User Name',
       type: 'entity',
-      accessor: (row) => row.profile?.fullName || row.email,
+      accessor: (row) => row.profile?.fullName || row.profile?.displayName || row.email,
       subAccessor: (row) => row.email,
     },
     {
       id: 'role',
       header: 'Role',
       type: 'text',
-      accessor: (row) => row.roleCode,
+      accessor: (row) => (row.roleCode === 'INFLUENCER' ? 'Creator' : row.roleCode === 'BRAND' ? 'Brand' : 'Agency'),
     },
     {
       id: 'organization',
       header: 'Assigned Org',
       type: 'text',
-      // The tenant names arrive on the user row, joined server side — this
-      // screen used to fetch the whole agency and brand tables to resolve them.
       accessor: (row) => {
-        if (row.roleCode === 'AGENCY') return `Agency: ${row.agencyName || 'Unnamed'}`;
-        if (row.roleCode === 'BRAND') return `Brand: ${row.brandName || 'Unnamed'}`;
+        if (row.roleCode === 'AGENCY') return row.agencyName ? `Agency: ${row.agencyName}` : 'Agency Staff';
+        if (row.roleCode === 'BRAND') return row.brandName ? `Brand: ${row.brandName}` : 'Brand Client';
         if (row.roleCode === 'INFLUENCER') return 'Creator Studio';
         return 'System Operator';
       },
@@ -170,8 +168,8 @@ export const AgencyUsersOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="User Accounts"
-      subtitle="View platform accounts and block or unblock access"
+      title="All Users"
+      subtitle="View platform accounts and manage user access"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -186,12 +184,22 @@ export const AgencyUsersOrganism: React.FC = () => {
         <FilterBar
           pills={filterPills}
           activePillId={activeRolePill}
-          onPillChange={setActiveRolePill}
+          onPillChange={(pill) => {
+            setActiveRolePill(pill);
+            setPage(0);
+          }}
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={(s) => {
+            setSearch(s);
+            setPage(0);
+          }}
+          searchPlaceholder="Search by name, email or organization"
           selectOptions={statusOptions}
           selectedOption={statusFilter}
-          onSelectChange={setSelectedSelect}
+          onSelectChange={(sel) => {
+            setSelectedSelect(sel);
+            setPage(0);
+          }}
           selectLabel="Account Status"
         />
 

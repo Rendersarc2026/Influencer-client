@@ -79,7 +79,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={loading ? undefined : onClose}
+      disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
       slotProps={{
@@ -88,6 +88,9 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '12px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -100,7 +103,13 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
               select

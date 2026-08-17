@@ -13,7 +13,7 @@ import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useCategories } from '@api';
 import { CreateInfluencerRequest } from '@contracts';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export interface CreateInfluencerDialogProps {
   open: boolean;
@@ -45,6 +45,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [followersError, setFollowersError] = useState('');
 
   const validateEmail = (val: string): string => {
     const trimmed = val.trim();
@@ -80,6 +81,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       setError('');
       setEmailError('');
       setPhoneError('');
+      setFollowersError('');
     }
   }, [open]);
 
@@ -88,6 +90,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     setError('');
     setEmailError('');
     setPhoneError('');
+    setFollowersError('');
 
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
@@ -120,8 +123,26 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       return;
     }
 
+    let parsedFollowers: number | undefined = undefined;
+    if (followers.trim()) {
+      const parsed = parseShorthandNumber(followers);
+      if (parsed === null || parsed < 0) {
+        setFollowersError('Must be a valid positive value (e.g. 10k, 100k, 1m)');
+        return;
+      }
+      parsedFollowers = parsed;
+    }
+
     const min = avgCommercialMin ? Number(avgCommercialMin) : undefined;
     const max = avgCommercialMax ? Number(avgCommercialMax) : undefined;
+    if (min !== undefined && min < 0) {
+      setError('Min commercial rate cannot be negative');
+      return;
+    }
+    if (max !== undefined && max < 0) {
+      setError('Max commercial rate cannot be negative');
+      return;
+    }
     if (min !== undefined && max !== undefined && max < min) {
       setError('Max commercial must be greater than or equal to min commercial');
       return;
@@ -132,7 +153,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       email: trimmedEmail,
       category: category.trim() || undefined,
       location: location.trim() || undefined,
-      followers: followers ? Number(followers) : undefined,
+      followers: parsedFollowers,
       contactPhone: trimmedPhone,
       instagram: instagram.trim() || undefined,
       youtube: youtube.trim() || undefined,
@@ -156,7 +177,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={loading ? undefined : onClose}
+      disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
       slotProps={{
@@ -165,6 +186,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '12px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -177,7 +201,13 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
               label="Creator Name *"
@@ -274,10 +304,37 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               />
               <TextField
                 label="Followers"
-                type="number"
                 value={followers}
-                onChange={(e) => setFollowers(e.target.value)}
-                placeholder="e.g. 50000"
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/-/g, '');
+                  setFollowers(cleaned);
+                  if (cleaned.trim()) {
+                    const parsed = parseShorthandNumber(cleaned);
+                    if (parsed === null) {
+                      setFollowersError('Enter valid followers (e.g. 10k, 100k, 1m)');
+                    } else {
+                      setFollowersError('');
+                    }
+                  } else {
+                    setFollowersError('');
+                  }
+                }}
+                onBlur={() => {
+                  if (followers.trim()) {
+                    const parsed = parseShorthandNumber(followers);
+                    if (parsed !== null) {
+                      setFollowers(formatShorthandNumber(parsed));
+                    }
+                  }
+                }}
+                placeholder="e.g. 10k, 100k, 1m"
+                error={Boolean(followersError)}
+                helperText={
+                  followersError ||
+                  (followers && parseShorthandNumber(followers) !== null
+                    ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
+                    : 'Format: 10k, 100k, 1m')
+                }
                 fullWidth
                 disabled={loading}
                 sx={{ flex: 1 }}
@@ -308,18 +365,18 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="Indicative Rate — Min (₹)"
-                type="number"
                 value={avgCommercialMin}
-                onChange={(e) => setAvgCommercialMin(e.target.value)}
+                onChange={(e) => setAvgCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="e.g. 5000"
                 fullWidth
                 disabled={loading}
                 sx={{ flex: 1 }}
               />
               <TextField
                 label="Indicative Rate — Max (₹)"
-                type="number"
                 value={avgCommercialMax}
-                onChange={(e) => setAvgCommercialMax(e.target.value)}
+                onChange={(e) => setAvgCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="e.g. 15000"
                 fullWidth
                 disabled={loading}
                 sx={{ flex: 1 }}

@@ -25,3 +25,23 @@ body,
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Hide scrollbars across all Dialogs, Modals, and Popups while preserving smooth scroll */
+.MuiDialog-paper,
+.MuiDialogContent-root,
+.MuiDialog-container,
+.MuiModal-root,
+.no-scrollbar {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+.MuiDialog-paper::-webkit-scrollbar,
+.MuiDialogContent-root::-webkit-scrollbar,
+.MuiDialog-container::-webkit-scrollbar,
+.MuiModal-root::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Edge, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+

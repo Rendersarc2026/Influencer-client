@@ -15,7 +15,7 @@ import { SectionHeading } from '@atoms';
 import { useUpdateInfluencerProfile, useCategories } from '@api';
 import { UpdateProfileSchema, UpdateProfileRequest } from '@contracts';
 import { useAuth, useToast } from '@hooks';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export const InfluencerProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
   const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState(
-    user?.influencer?.followers ? String(user.influencer.followers) : '',
+    user?.influencer?.followers ? formatShorthandNumber(user.influencer.followers) : '',
   );
   const [commercialMin, setCommercialMin] = useState(
     user?.influencer?.avgCommercialMin ? String(user.influencer.avgCommercialMin) : '',
@@ -59,7 +59,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
       setCategory(detail.category || '');
       setInstagram(detail.instagram || '');
       setYoutube(detail.youtube || '');
-      setFollowers(detail.followers ? String(detail.followers) : '');
+      setFollowers(detail.followers ? formatShorthandNumber(detail.followers) : '');
       setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
       setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
     }
@@ -70,6 +70,16 @@ export const InfluencerProfileOrganism: React.FC = () => {
     setSavedSuccess(false);
     setFieldErrors({});
 
+    let parsedFollowers: number | undefined = undefined;
+    if (followers.trim()) {
+      const parsed = parseShorthandNumber(followers);
+      if (parsed === null || parsed < 0) {
+        setFieldErrors({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
+        return;
+      }
+      parsedFollowers = parsed;
+    }
+
     const payload: UpdateProfileRequest = {
       fullName: fullName.trim(),
       displayName: displayName.trim() || undefined,
@@ -79,7 +89,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
         category: category.trim() || undefined,
         instagram: instagram.trim() || undefined,
         youtube: youtube.trim() || undefined,
-        followers: followers ? parseInt(followers, 10) : undefined,
+        followers: parsedFollowers,
         avgCommercialMin: commercialMin ? Number(commercialMin) : undefined,
         avgCommercialMax: commercialMax ? Number(commercialMax) : undefined,
       },
@@ -190,12 +200,39 @@ export const InfluencerProfileOrganism: React.FC = () => {
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="Estimated Followers"
-                type="number"
-                placeholder="e.g. 350000"
+                placeholder="e.g. 10k, 100k, 1m"
                 value={followers}
-                onChange={(e) => setFollowers(e.target.value)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/-/g, '');
+                  setFollowers(cleaned);
+                  if (cleaned.trim() && parseShorthandNumber(cleaned) === null) {
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      followers: 'Enter valid followers (e.g. 10k, 100k, 1m)',
+                    }));
+                  } else {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.followers;
+                      return next;
+                    });
+                  }
+                }}
+                onBlur={() => {
+                  if (followers.trim()) {
+                    const parsed = parseShorthandNumber(followers);
+                    if (parsed !== null) {
+                      setFollowers(formatShorthandNumber(parsed));
+                    }
+                  }
+                }}
                 error={Boolean(fieldErrors.followers)}
-                helperText={fieldErrors.followers}
+                helperText={
+                  fieldErrors.followers ||
+                  (followers && parseShorthandNumber(followers) !== null
+                    ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
+                    : 'Format: 10k, 100k, 1m')
+                }
                 fullWidth
                 disabled={updateProfileMutation.isPending}
               />

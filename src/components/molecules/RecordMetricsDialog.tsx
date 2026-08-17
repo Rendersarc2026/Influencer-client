@@ -11,6 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { RecordMetricRequest } from '@contracts';
+import { parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export interface RecordMetricsDialogProps {
   open: boolean;
@@ -48,17 +49,22 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const reachNum = parseInt(reach, 10);
-    const engagementsNum = parseInt(engagements, 10);
-    const impressionsNum = impressions ? parseInt(impressions, 10) : undefined;
+    const reachNum = parseShorthandNumber(reach);
+    const engagementsNum = parseShorthandNumber(engagements);
+    const impressionsParsed = impressions.trim() ? parseShorthandNumber(impressions) : undefined;
 
-    if (isNaN(reachNum) || reachNum <= 0) {
-      setError('Please enter a valid positive Reach count');
+    if (reachNum === null || reachNum <= 0) {
+      setError('Please enter a valid positive Reach count (e.g. 10k, 100k, 1m)');
       return;
     }
 
-    if (isNaN(engagementsNum) || engagementsNum < 0) {
-      setError('Please enter a valid non-negative Engagements count');
+    if (engagementsNum === null || engagementsNum < 0) {
+      setError('Please enter a valid non-negative Engagements count (e.g. 5k, 10k)');
+      return;
+    }
+
+    if (impressions.trim() && (impressionsParsed === null || impressionsParsed === undefined || impressionsParsed < 0)) {
+      setError('Please enter a valid Impressions count (e.g. 20k, 100k, 1m)');
       return;
     }
 
@@ -66,7 +72,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
     const data: RecordMetricRequest = {
       reach: reachNum,
       engagements: engagementsNum,
-      impressions: impressionsNum,
+      impressions: impressionsParsed ?? undefined,
       recordedFor: new Date(recordedFor),
     };
 
@@ -76,7 +82,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={loading ? undefined : onClose}
+      disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
       slotProps={{
@@ -85,6 +91,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '12px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -94,39 +103,69 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           <SectionHeading
             title="Record Campaign Metrics"
             subtitle={
-              influencerName ? `For: ${influencerName}` : 'Enter verified reach and engagements'
+              influencerName ? `For: ${influencerName}` : 'Enter server-verified deliverable metrics for engagement computation'
             }
           />
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
               label="Reach (Unique Views) *"
-              type="number"
               value={reach}
-              onChange={(e) => setReach(e.target.value)}
-              placeholder="e.g. 450000"
+              onChange={(e) => setReach(e.target.value.replace(/-/g, ''))}
+              onBlur={() => {
+                const parsed = parseShorthandNumber(reach);
+                if (parsed !== null) setReach(formatShorthandNumber(parsed));
+              }}
+              placeholder="e.g. 100k, 1m"
+              helperText={
+                reach && parseShorthandNumber(reach) !== null
+                  ? `${parseShorthandNumber(reach)?.toLocaleString('en-IN')} reach`
+                  : undefined
+              }
               fullWidth
               disabled={loading}
             />
 
             <TextField
               label="Engagements (Likes + Comments + Shares) *"
-              type="number"
               value={engagements}
-              onChange={(e) => setEngagements(e.target.value)}
-              placeholder="e.g. 18500"
+              onChange={(e) => setEngagements(e.target.value.replace(/-/g, ''))}
+              onBlur={() => {
+                const parsed = parseShorthandNumber(engagements);
+                if (parsed !== null) setEngagements(formatShorthandNumber(parsed));
+              }}
+              placeholder="e.g. 10k, 50k"
+              helperText={
+                engagements && parseShorthandNumber(engagements) !== null
+                  ? `${parseShorthandNumber(engagements)?.toLocaleString('en-IN')} engagements`
+                  : undefined
+              }
               fullWidth
               disabled={loading}
             />
 
             <TextField
               label="Impressions (Optional)"
-              type="number"
               value={impressions}
-              onChange={(e) => setImpressions(e.target.value)}
-              placeholder="e.g. 620000"
+              onChange={(e) => setImpressions(e.target.value.replace(/-/g, ''))}
+              onBlur={() => {
+                const parsed = parseShorthandNumber(impressions);
+                if (parsed !== null) setImpressions(formatShorthandNumber(parsed));
+              }}
+              placeholder="e.g. 150k, 2m"
+              helperText={
+                impressions && parseShorthandNumber(impressions) !== null
+                  ? `${parseShorthandNumber(impressions)?.toLocaleString('en-IN')} impressions`
+                  : undefined
+              }
               fullWidth
               disabled={loading}
             />

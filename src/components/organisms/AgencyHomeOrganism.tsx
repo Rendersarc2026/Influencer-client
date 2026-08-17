@@ -10,7 +10,7 @@ import AttachMoneyRoundedIcon from '@mui/icons-material/AttachMoneyRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { MetricCard, ChartCard, DataTable, DataTableColumn } from '@molecules';
+import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
 import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
 import { CampaignResponse } from '@contracts';
@@ -51,21 +51,8 @@ export const AgencyHomeOrganism: React.FC = () => {
       pendingRates: mappers.filter((m) => m?.rateStatus === 'SUBMITTED').length,
       awaitingBrand: mappers.filter((m) => m?.brandStatus === 'PENDING_REVIEW').length,
       totalMargin: reports.reduce((sum, r) => sum + (r.totalMargin || 0), 0),
-      totalReach: reports.reduce((sum, r) => sum + (r.totalReach || 0), 0),
     };
   }, [reports]);
-
-  // Reach per campaign rather than an invented weekly trend: the API exposes
-  // aggregates, not a time series.
-  const chartData = useMemo(
-    () =>
-      reports
-        .filter((r) => r?.campaign?.name)
-        .map((r) => ({ label: r.campaign.name, value: r.totalReach || 0 }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 8),
-    [reports],
-  );
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -178,17 +165,7 @@ export const AgencyHomeOrganism: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* 2. ChartCard */}
-      <ChartCard
-        title="Reach by Campaign"
-        value={summary.totalReach.toLocaleString('en-IN')}
-        deltaLabel="total recorded reach"
-        timeframeOptions={[]}
-        data={chartData}
-        loading={reportsLoading || campaignsLoading}
-      />
-
-      {/* 3. Recent Campaigns DataTable */}
+      {/* 2. Recent Campaigns DataTable */}
       <Box>
         <SectionHeading
           title="Recent Campaigns"

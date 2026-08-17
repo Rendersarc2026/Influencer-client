@@ -65,7 +65,7 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={loading ? undefined : onCancel}
+      disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
       slotProps={{
@@ -74,6 +74,9 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '8px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -93,7 +96,14 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
           )}
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            pt: 1,
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Box sx={{ pt: 1 }}>
             <TextField
               multiline

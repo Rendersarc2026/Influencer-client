@@ -176,7 +176,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={busy ? undefined : onClose}
+      disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
       slotProps={{
@@ -185,6 +185,9 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '12px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -197,7 +200,13 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
               label="Brand Name *"

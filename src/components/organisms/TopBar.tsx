@@ -71,13 +71,14 @@ export const TopBar: React.FC<TopBarProps> = ({
       className={className}
       sx={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', sm: 'center' },
         justifyContent: 'space-between',
-        padding: '24px 24px 20px 24px',
+        padding: { xs: '14px 16px', sm: '18px 20px', md: '24px 24px 20px 24px' },
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
-        borderTopLeftRadius: `${theme.customRadii.card}px`,
-        borderTopRightRadius: `${theme.customRadii.card}px`,
+        borderTopLeftRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
+        borderTopRightRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
+        gap: 1.5,
       }}
     >
       {/* Left: back control, breadcrumb trail, title and subtitle */}
@@ -153,11 +154,24 @@ export const TopBar: React.FC<TopBarProps> = ({
             </Breadcrumbs>
           )}
 
-          <Typography variant="h1">{title}</Typography>
+          <Typography
+            variant="h1"
+            sx={{
+              fontSize: { xs: '20px', sm: '24px', md: '32px' },
+              lineHeight: 1.25,
+            }}
+          >
+            {title}
+          </Typography>
           {subtitle && (
             <Typography
               variant="body2"
-              sx={{ color: theme.palette.tokens.textSecondary, mt: '4px' }}
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                mt: '4px',
+                fontSize: { xs: '12px', sm: '13px' },
+                display: { xs: 'none', sm: 'block' },
+              }}
             >
               {subtitle}
             </Typography>

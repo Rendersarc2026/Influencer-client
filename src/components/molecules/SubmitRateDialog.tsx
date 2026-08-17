@@ -66,7 +66,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={loading ? undefined : onClose}
+      disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
       slotProps={{
@@ -75,6 +75,9 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '12px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -87,7 +90,13 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
           />
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          }}
+        >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             {deliverables && (
               <Box
@@ -114,9 +123,9 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
 
             <TextField
               label="Your Commercial Rate (₹) *"
-              type="number"
+              type="text"
               value={rateInput}
-              onChange={(e) => setRateInput(e.target.value)}
+              onChange={(e) => setRateInput(e.target.value.replace(/[^0-9.]/g, ''))}
               placeholder="e.g. 75000"
               fullWidth
               disabled={loading}

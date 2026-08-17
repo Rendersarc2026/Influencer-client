@@ -428,7 +428,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       {/* Add / Edit Category Dialog */}
       <Dialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        disableEscapeKeyDown
         maxWidth="xs"
         fullWidth
         slotProps={{
@@ -437,6 +437,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               borderRadius: `${theme.customRadii.card}px`,
               padding: '12px',
               backgroundImage: 'none',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
             },
           },
         }}
@@ -457,7 +460,13 @@ export const AgencyCategoriesOrganism: React.FC = () => {
             />
           </DialogTitle>
 
-          <DialogContent>
+          <DialogContent
+            sx={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
               <TextField
                 select

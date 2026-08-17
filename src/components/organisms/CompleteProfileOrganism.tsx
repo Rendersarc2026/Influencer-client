@@ -14,7 +14,7 @@ import { useCategories } from '@api';
 import { UpdateProfileSchema } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export const CompleteProfileOrganism: React.FC = () => {
   const theme = useTheme();
@@ -36,7 +36,7 @@ export const CompleteProfileOrganism: React.FC = () => {
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
   const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState<string>(
-    user?.influencer?.followers ? String(user.influencer.followers) : '',
+    user?.influencer?.followers ? formatShorthandNumber(user.influencer.followers) : '',
   );
 
   const [loading, setLoading] = useState(false);
@@ -47,6 +47,16 @@ export const CompleteProfileOrganism: React.FC = () => {
     e.preventDefault();
     setError('');
     setFieldErrors({});
+
+    let parsedFollowers: number | undefined = undefined;
+    if (followers.trim()) {
+      const parsed = parseShorthandNumber(followers);
+      if (parsed === null || parsed < 0) {
+        setFieldErrors({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
+        return;
+      }
+      parsedFollowers = parsed;
+    }
 
     const payload = {
       fullName: fullName.trim(),
@@ -59,7 +69,7 @@ export const CompleteProfileOrganism: React.FC = () => {
               category: category.trim() || undefined,
               instagram: instagram.trim() || undefined,
               youtube: youtube.trim() || undefined,
-              followers: followers ? parseInt(followers, 10) : undefined,
+              followers: parsedFollowers,
             },
           }
         : {}),
@@ -218,12 +228,39 @@ export const CompleteProfileOrganism: React.FC = () => {
 
                 <TextField
                   label="Estimated Total Followers"
-                  type="number"
-                  placeholder="e.g. 250000"
+                  placeholder="e.g. 10k, 100k, 1m"
                   value={followers}
-                  onChange={(e) => setFollowers(e.target.value)}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/-/g, '');
+                    setFollowers(cleaned);
+                    if (cleaned.trim() && parseShorthandNumber(cleaned) === null) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        followers: 'Enter valid followers (e.g. 10k, 100k, 1m)',
+                      }));
+                    } else {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.followers;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={() => {
+                    if (followers.trim()) {
+                      const parsed = parseShorthandNumber(followers);
+                      if (parsed !== null) {
+                        setFollowers(formatShorthandNumber(parsed));
+                      }
+                    }
+                  }}
                   error={Boolean(fieldErrors.followers)}
-                  helperText={fieldErrors.followers}
+                  helperText={
+                    fieldErrors.followers ||
+                    (followers && parseShorthandNumber(followers) !== null
+                      ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
+                      : 'Format: 10k, 100k, 1m')
+                  }
                   fullWidth
                   disabled={loading}
                 />

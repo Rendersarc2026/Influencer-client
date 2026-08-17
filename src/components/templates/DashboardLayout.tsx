@@ -92,7 +92,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         height: '100vh',          // hard lock — never grows past viewport
         overflow: 'hidden',
         backgroundColor: theme.palette.tokens.pageBg,
-        padding: { xs: '8px 8px 80px 8px', sm: '12px 12px 88px 12px', md: '16px' },
+        padding: { xs: '8px 8px 76px 8px', sm: '12px 12px 84px 12px', md: '16px' },
         gap: { xs: 0, md: '20px' },
         position: 'relative',
       }}
@@ -144,23 +144,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <Box
           sx={{
             padding: {
-              xs: `${theme.customSpacing.cardPadding / 2}px`,
-              sm: `${theme.customSpacing.cardPadding}px`,
+              xs: '14px 12px',
+              sm: '18px 20px',
+              md: `${theme.customSpacing.cardPadding}px`,
             },
             flexGrow: 1,
             minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: `${theme.customSpacing.cardGap}px`,
+            gap: { xs: '14px', sm: '16px', md: `${theme.customSpacing.cardGap}px` },
             overflowX: 'hidden',
             overflowY: 'auto',    // mixed-content pages scroll here; fillHeight tables scroll their own rows
-            // Thin scrollbar
-            '&::-webkit-scrollbar': { width: 6 },
-            '&::-webkit-scrollbar-track': { background: 'transparent' },
-            '&::-webkit-scrollbar-thumb': {
-              background: theme.palette.tokens.divider,
-              borderRadius: 3,
-            },
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           }}
         >
           {children}

@@ -75,7 +75,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Search and Select controls */}
       <Box
-        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: { xs: 1, sm: 'inherit' } }}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          flexGrow: { xs: 1, sm: 'inherit' },
+          width: { xs: '100%', sm: 'auto' },
+          flexWrap: { xs: 'wrap', sm: 'nowrap' },
+        }}
       >
         {onSearchChange && (
           <TextField
@@ -92,7 +99,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 ),
               },
             }}
-            sx={{ minWidth: { xs: '100%', sm: 220 } }}
+            sx={{ minWidth: { xs: '100%', sm: 220 }, flexGrow: { xs: 1, sm: 0 } }}
           />
         )}
 
@@ -103,7 +110,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             value={selectedOption || selectOptions[0]?.value || ''}
             onChange={(e) => onSelectChange(e.target.value)}
             label={selectLabel}
-            sx={{ minWidth: 150 }}
+            sx={{ minWidth: { xs: '100%', sm: 150 }, flexGrow: { xs: 1, sm: 0 } }}
           >
             {selectOptions.map((opt) => (
               <MenuItem key={opt.value} value={opt.value}>
@@ -113,7 +120,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </TextField>
         )}
 
-        {extraAction && <Box sx={{ flexShrink: 0 }}>{extraAction}</Box>}
+        {extraAction && <Box sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>{extraAction}</Box>}
       </Box>
     </Box>
   );

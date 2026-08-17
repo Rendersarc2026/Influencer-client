@@ -22,7 +22,7 @@ import {
 } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export const ProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ export const ProfileOrganism: React.FC = () => {
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
   const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
   const [followers, setFollowers] = useState(
-    user?.influencer?.followers ? String(user.influencer.followers) : '',
+    user?.influencer?.followers ? formatShorthandNumber(user.influencer.followers) : '',
   );
   const [commercialMin, setCommercialMin] = useState(
     user?.influencer?.avgCommercialMin ? String(user.influencer.avgCommercialMin) : '',
@@ -68,7 +68,7 @@ export const ProfileOrganism: React.FC = () => {
       setCategory(detail.category || '');
       setInstagram(detail.instagram || '');
       setYoutube(detail.youtube || '');
-      setFollowers(detail.followers ? String(detail.followers) : '');
+      setFollowers(detail.followers ? formatShorthandNumber(detail.followers) : '');
       setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
       setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
     }
@@ -112,6 +112,16 @@ export const ProfileOrganism: React.FC = () => {
       return;
     }
 
+    let parsedFollowers: number | undefined = undefined;
+    if (followers.trim()) {
+      const parsed = parseShorthandNumber(followers);
+      if (parsed === null || parsed < 0) {
+        setFieldErrors({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
+        return;
+      }
+      parsedFollowers = parsed;
+    }
+
     const payload: UpdateProfileRequest = {
       fullName: trimmedFullName,
       displayName: displayName.trim() || undefined,
@@ -123,7 +133,7 @@ export const ProfileOrganism: React.FC = () => {
               category: category.trim() || undefined,
               instagram: instagram.trim().replace(/\s+/g, '') || undefined,
               youtube: youtube.trim() || undefined,
-              followers: followers ? parseInt(followers, 10) : undefined,
+              followers: parsedFollowers,
               avgCommercialMin: commercialMin ? Number(commercialMin) : undefined,
               avgCommercialMax: commercialMax ? Number(commercialMax) : undefined,
             },
@@ -323,12 +333,39 @@ export const ProfileOrganism: React.FC = () => {
 
                   <TextField
                     label="Estimated Followers"
-                    type="number"
-                    placeholder="e.g. 150000"
+                    placeholder="e.g. 10k, 100k, 1m"
                     value={followers}
-                    onChange={(e) => setFollowers(e.target.value)}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/-/g, '');
+                      setFollowers(cleaned);
+                      if (cleaned.trim() && parseShorthandNumber(cleaned) === null) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          followers: 'Enter valid followers (e.g. 10k, 100k, 1m)',
+                        }));
+                      } else {
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.followers;
+                          return next;
+                        });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (followers.trim()) {
+                        const parsed = parseShorthandNumber(followers);
+                        if (parsed !== null) {
+                          setFollowers(formatShorthandNumber(parsed));
+                        }
+                      }
+                    }}
                     error={Boolean(fieldErrors.followers)}
-                    helperText={fieldErrors.followers}
+                    helperText={
+                      fieldErrors.followers ||
+                      (followers && parseShorthandNumber(followers) !== null
+                        ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
+                        : 'Format: 10k, 100k, 1m')
+                    }
                     fullWidth
                     disabled={fieldsLocked}
                   />
@@ -336,10 +373,9 @@ export const ProfileOrganism: React.FC = () => {
                   <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <TextField
                       label="Avg Commercial Min (₹)"
-                      type="number"
                       placeholder="e.g. 5000"
                       value={commercialMin}
-                      onChange={(e) => setCommercialMin(e.target.value)}
+                      onChange={(e) => setCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
                       error={Boolean(fieldErrors.avgCommercialMin)}
                       helperText={fieldErrors.avgCommercialMin}
                       fullWidth
@@ -348,10 +384,9 @@ export const ProfileOrganism: React.FC = () => {
 
                     <TextField
                       label="Avg Commercial Max (₹)"
-                      type="number"
                       placeholder="e.g. 25000"
                       value={commercialMax}
-                      onChange={(e) => setCommercialMax(e.target.value)}
+                      onChange={(e) => setCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
                       error={Boolean(fieldErrors.avgCommercialMax)}
                       helperText={fieldErrors.avgCommercialMax}
                       fullWidth

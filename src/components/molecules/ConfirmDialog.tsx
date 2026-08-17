@@ -36,7 +36,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={loading ? undefined : onCancel}
+      disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
       slotProps={{
@@ -45,6 +45,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '8px',
             backgroundImage: 'none',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         },
       }}
@@ -55,7 +58,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </Typography>
       </DialogTitle>
 
-      <DialogContent sx={{ py: 1 }}>
+      <DialogContent
+        sx={{
+          py: 1,
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+        }}
+      >
         {typeof body === 'string' ? (
           <Typography variant="body1" sx={{ color: theme.palette.tokens.textSecondary }}>
             {body}

@@ -42,6 +42,23 @@ export const UserMenu: React.FC<UserMenuProps> = ({
     setAnchorEl(null);
   };
 
+  const initials = (user.name || 'User')
+    .split(' ')
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'U';
+
+  const roleLabel =
+    user.roleCode === 'INFLUENCER'
+      ? 'Creator'
+      : user.roleCode === 'BRAND'
+      ? 'Brand'
+      : user.roleCode === 'AGENCY'
+      ? 'Agency'
+      : user.roleCode || '';
+
   return (
     <Box className={className}>
       <Box
@@ -49,45 +66,66 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.5,
-          padding: '6px 12px 6px 6px',
+          gap: 1.25,
+          padding: '5px 12px 5px 6px',
           borderRadius: `${theme.customRadii.pill}px`,
           backgroundColor: theme.palette.tokens.surface,
-          border: `1px solid ${theme.palette.tokens.divider}`,
+          border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
           cursor: 'pointer',
-          transition: 'all 0.15s ease',
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: open
+            ? `0 0 0 3px rgba(37, 99, 235, 0.12)`
+            : '0 1px 3px rgba(0, 0, 0, 0.04)',
           '&:hover': {
             backgroundColor: theme.palette.tokens.fieldBg,
+            borderColor: open ? theme.palette.primary.main : 'rgba(0,0,0,0.15)',
           },
         }}
       >
         <Avatar
           src={safeImageUrl(user.avatarUrl)}
           sx={{
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             backgroundColor: theme.palette.tokens.accentBg,
             color: theme.palette.tokens.accentText,
             fontWeight: 700,
             fontSize: '13px',
+            border: `1.5px solid #ffffff`,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           }}
         >
-          {user.name.charAt(0).toUpperCase()}
+          {initials}
         </Avatar>
 
-        <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'left' }}>
+        <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'left', minWidth: 0 }}>
           <Typography
             variant="body2"
-            sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary, lineHeight: 1.2 }}
+            sx={{
+              fontWeight: 600,
+              color: theme.palette.tokens.textPrimary,
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: 140,
+            }}
           >
             {user.name}
           </Typography>
-          {user.roleCode && (
+          {roleLabel && (
             <Typography
               variant="caption"
-              sx={{ color: theme.palette.tokens.textSecondary, display: 'block', fontSize: '11px' }}
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: 500,
+                letterSpacing: '0.02em',
+                lineHeight: 1.2,
+              }}
             >
-              {user.roleCode}
+              {roleLabel}
             </Typography>
           )}
         </Box>
@@ -97,7 +135,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({
             color: theme.palette.tokens.textSecondary,
             fontSize: '18px',
             transform: open ? 'rotate(180deg)' : 'none',
-            transition: 'transform 0.2s ease',
+            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            ml: 0.25,
           }}
         />
       </Box>
@@ -110,51 +149,135 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         slotProps={{
           paper: {
+            elevation: 0,
             sx: {
-              borderRadius: `${theme.customRadii.inner}px`,
+              borderRadius: '16px',
               border: `1px solid ${theme.palette.tokens.divider}`,
-              minWidth: 200,
-              padding: '6px 0',
-              mt: 1,
+              minWidth: 230,
+              padding: '6px',
+              mt: 1.25,
+              boxShadow:
+                '0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06)',
+              overflow: 'hidden',
             },
           },
         }}
       >
-        <Box sx={{ padding: '8px 16px 10px 16px' }}>
-          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-            {user.name}
-          </Typography>
-          {user.email && (
+        {/* User Identity Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            p: 1.5,
+            mb: 0.5,
+            borderRadius: '12px',
+            backgroundColor: 'rgba(241, 245, 249, 0.65)',
+          }}
+        >
+          <Avatar
+            src={safeImageUrl(user.avatarUrl)}
+            sx={{
+              width: 38,
+              height: 38,
+              backgroundColor: theme.palette.tokens.accentBg,
+              color: theme.palette.tokens.accentText,
+              fontWeight: 700,
+              fontSize: '14px',
+              flexShrink: 0,
+            }}
+          >
+            {initials}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
-              variant="caption"
-              sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+              variant="body2"
+              sx={{
+                fontWeight: 650,
+                color: theme.palette.tokens.textPrimary,
+                lineHeight: 1.25,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
             >
-              {user.email}
+              {user.name}
             </Typography>
-          )}
+            {user.email && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  display: 'block',
+                  fontSize: '11.5px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  mt: 0.25,
+                }}
+              >
+                {user.email}
+              </Typography>
+            )}
+          </Box>
         </Box>
-        <Divider sx={{ my: 0.5 }} />
+
+        <Divider sx={{ my: 0.75, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* Profile Item */}
         <MenuItem
           onClick={() => {
             handleClose();
             if (onProfileClick) onProfileClick();
           }}
-          sx={{ fontSize: '14px', py: 1 }}
+          sx={{
+            fontSize: '13.5px',
+            fontWeight: 500,
+            py: 1,
+            px: 1.5,
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            color: theme.palette.tokens.textPrimary,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+            },
+          }}
         >
-          <ListItemIcon sx={{ color: theme.palette.tokens.textPrimary, minWidth: '32px' }}>
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
             <PersonOutlineRoundedIcon fontSize="small" />
           </ListItemIcon>
           Profile
         </MenuItem>
-        <Divider sx={{ my: 0.5 }} />
+
+        <Divider sx={{ my: 0.75, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* Logout Item */}
         <MenuItem
           onClick={() => {
             handleClose();
             if (onLogoutClick) onLogoutClick();
           }}
-          sx={{ fontSize: '14px', py: 1, color: theme.palette.tokens.negative }}
+          sx={{
+            fontSize: '13.5px',
+            fontWeight: 500,
+            py: 1,
+            px: 1.5,
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            color: theme.palette.tokens.negative,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              color: theme.palette.tokens.negative,
+            },
+          }}
         >
-          <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: '32px' }}>
+          <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
             <LogoutRoundedIcon fontSize="small" />
           </ListItemIcon>
           Logout

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 // Imported from its own module rather than the '@molecules' barrel on purpose:
 // the barrel re-exports ChartCard, which pulls recharts into the entry chunk's
 // import graph and made every page preload the ~150kB chart bundle.
@@ -152,12 +152,19 @@ const withBoundary = (Component: React.ComponentType, skeleton: PageSkeletonVari
   </ErrorBoundary>
 );
 
+const RootLayout: React.FC = () => (
+  <Outlet />
+);
+
 const router = createBrowserRouter([
-  // Root Redirect
   {
-    path: '/',
-    element: <RootRedirect />,
-  },
+    element: <RootLayout />,
+    children: [
+      // Root Redirect
+      {
+        path: '/',
+        element: <RootRedirect />,
+      },
 
   // Public Routes
   {
@@ -375,6 +382,8 @@ const router = createBrowserRouter([
   {
     path: '*',
     element: <RootRedirect />,
+  },
+    ],
   },
 ]);
 
