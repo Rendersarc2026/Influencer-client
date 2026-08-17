@@ -13,7 +13,7 @@ import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
 import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
-import { CampaignResponse } from '@contracts';
+import { CampaignResponse, CampaignStatusCode, RateStatusCode, BrandStatusCode } from '@contracts';
 import { useAuth } from '@hooks';
 import { formatCurrency } from '@utils';
 
@@ -41,15 +41,18 @@ export const AgencyHomeOrganism: React.FC = () => {
   const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
   const { reports, isLoading: reportsLoading } = useCampaignReports(campaignIds);
 
-  const activeCampaignsCount = campaigns.filter((c) => c.status === 'ACTIVE').length;
+  const activeCampaignsCount = campaigns.filter(
+    (c) => c.status === CampaignStatusCode.ACTIVE,
+  ).length;
 
   // Every tile below is derived from the campaign report aggregates, which carry
   // the mapper rows with their current rate and brand statuses.
   const summary = useMemo(() => {
     const mappers = reports.flatMap((r) => r.mappers || []);
     return {
-      pendingRates: mappers.filter((m) => m?.rateStatus === 'SUBMITTED').length,
-      awaitingBrand: mappers.filter((m) => m?.brandStatus === 'PENDING_REVIEW').length,
+      pendingRates: mappers.filter((m) => m?.rateStatus === RateStatusCode.SUBMITTED).length,
+      awaitingBrand: mappers.filter((m) => m?.brandStatus === BrandStatusCode.PENDING_REVIEW)
+        .length,
       totalMargin: reports.reduce((sum, r) => sum + (r.totalMargin || 0), 0),
     };
   }, [reports]);
@@ -118,7 +121,7 @@ export const AgencyHomeOrganism: React.FC = () => {
       <Grid container spacing={2.5} alignItems="stretch">
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="lavender"
+            tint="butter"
             title="Active Campaigns"
             value={activeCampaignsCount}
             loading={campaignsLoading}
@@ -142,7 +145,7 @@ export const AgencyHomeOrganism: React.FC = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="sky"
+            tint="butter"
             title="Awaiting Brand"
             value={summary.awaitingBrand}
             loading={reportsLoading || campaignsLoading}
@@ -154,7 +157,7 @@ export const AgencyHomeOrganism: React.FC = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="mint"
+            tint="butter"
             title="Total Margin"
             value={formatCurrency(summary.totalMargin)}
             loading={reportsLoading || campaignsLoading}

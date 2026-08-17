@@ -199,7 +199,7 @@ export const AgencyReportsOrganism: React.FC = () => {
       <Grid container spacing={2.5} alignItems="stretch">
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="mint"
+            tint="butter"
             title="Total Client Billings"
             value={formatCurrency(totals.totalClientRate)}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
@@ -217,7 +217,7 @@ export const AgencyReportsOrganism: React.FC = () => {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="sky"
+            tint="butter"
             title="Total Deliverable Reach"
             value={compactNumber(totals.totalReach)}
             icon={<VisibilityRoundedIcon fontSize="small" />}
@@ -226,7 +226,7 @@ export const AgencyReportsOrganism: React.FC = () => {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="lavender"
+            tint="butter"
             title="Average Engagement Rate"
             value={`${totals.averageEr.toFixed(2)}%`}
             icon={<TrendingUpRoundedIcon fontSize="small" />}

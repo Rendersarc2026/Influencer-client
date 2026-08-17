@@ -13,7 +13,7 @@ import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
 import { useBrandCampaigns, useBrandPayments } from '@api';
-import { CampaignResponse } from '@contracts';
+import { CampaignResponse, CampaignStatusCode, PaymentStatusCode } from '@contracts';
 import { useAuth } from '@hooks';
 
 export const BrandHomeOrganism: React.FC = () => {
@@ -38,8 +38,10 @@ export const BrandHomeOrganism: React.FC = () => {
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
   const payments = paymentsData?.items || [];
 
-  const activeCampaigns = campaigns.filter((c) => c.status === 'ACTIVE').length;
-  const pendingPayments = payments.filter((p) => p.status === 'PENDING_APPROVAL').length;
+  const activeCampaigns = campaigns.filter((c) => c.status === CampaignStatusCode.ACTIVE).length;
+  const pendingPayments = payments.filter(
+    (p) => p.status === PaymentStatusCode.PENDING_APPROVAL,
+  ).length;
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -102,7 +104,7 @@ export const BrandHomeOrganism: React.FC = () => {
       <Grid container spacing={2.5} alignItems="stretch">
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="lavender"
+            tint="butter"
             title="Active Campaigns"
             value={activeCampaigns}
             loading={campaignsLoading}
@@ -125,7 +127,7 @@ export const BrandHomeOrganism: React.FC = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="mint"
+            tint="butter"
             title="Approved Influencers"
             value="14"
             icon={<CheckCircleOutlineRoundedIcon fontSize="small" />}
@@ -136,7 +138,7 @@ export const BrandHomeOrganism: React.FC = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="sky"
+            tint="butter"
             title="Pending Payments"
             value={pendingPayments}
             loading={paymentsLoading}

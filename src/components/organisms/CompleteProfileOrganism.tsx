@@ -11,7 +11,7 @@ import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
 import { useCategories } from '@api';
-import { UpdateProfileSchema } from '@contracts';
+import { UpdateProfileSchema, CategoryTypeCode } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
 import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
@@ -24,7 +24,7 @@ export const CompleteProfileOrganism: React.FC = () => {
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const isInfluencer = roleCode === 'INFLUENCER';
-  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');

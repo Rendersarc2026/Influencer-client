@@ -13,7 +13,7 @@ import { navConfig } from '@routes/navConfig';
 import { SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignment, useSubmitInfluencerRate } from '@api';
-import { SubmitRateRequest } from '@contracts';
+import { SubmitRateRequest, RateStatusCode } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 
 export const InfluencerAssignmentDetailOrganism: React.FC = () => {
@@ -41,7 +41,7 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
   };
 
   const isRateSubmitted = Boolean(assignment?.influencerRate);
-  const isApproved = assignment?.rateStatus === 'AGENCY_APPROVED';
+  const isApproved = assignment?.rateStatus === RateStatusCode.AGENCY_APPROVED;
 
   return (
     <DashboardLayout
@@ -86,7 +86,9 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
                 <Typography variant="h2">Campaign Deliverables Brief</Typography>
-                {assignment?.rateStatus && <StatusChip status={assignment.rateStatus} />}
+                {assignment?.rateStatus && (
+                  <StatusChip category="RATE_STATUS" code={assignment.rateStatus} />
+                )}
               </Box>
               <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
                 Assigned on{' '}

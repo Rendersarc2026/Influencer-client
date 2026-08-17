@@ -51,6 +51,7 @@ import {
 
 import { navConfig } from '@routes/navConfig';
 import { SidebarRail } from './SidebarRail';
+import { CampaignStatusCode, RateStatusCode, BrandStatusCode, PaymentStatusCode } from '@contracts';
 
 interface SampleCampaignRow extends Record<string, unknown> {
   id: string;
@@ -528,22 +529,32 @@ export const StyleGuideOrganism: React.FC = () => {
                 Atoms: StatusChip (State Mappings)
               </Typography>
               <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mb: 2 }}>
-                Automatic color and label mapping for rate_status, brand_status, and lifecycle
-                states.
+                A status is a code, and the same number means different things in different
+                categories — RATE_STATUS 1 is Pending Submission while CAMPAIGN_STATUS 1 is Draft.
+                The chip takes the category and the code, and owns the wording and colour.
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                <StatusChip status="PENDING_SUBMISSION" />
-                <StatusChip status="SUBMITTED" />
-                <StatusChip status="AGENCY_APPROVED" />
-                <StatusChip status="REVISION_REQUESTED" />
-                <StatusChip status="NOT_VISIBLE" />
-                <StatusChip status="PENDING_REVIEW" />
-                <StatusChip status="APPROVED" />
-                <StatusChip status="REJECTED" />
-                <StatusChip status="CORRECTION_REQUESTED" />
-                <StatusChip status="PAID" />
-                <StatusChip status="CANCELLED" />
-              </Box>
+              {(
+                [
+                  ['RATE_STATUS', RateStatusCode],
+                  ['BRAND_STATUS', BrandStatusCode],
+                  ['PAYMENT_STATUS', PaymentStatusCode],
+                  ['CAMPAIGN_STATUS', CampaignStatusCode],
+                ] as const
+              ).map(([category, codes]) => (
+                <Box key={category} sx={{ mb: 1.5 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, display: 'block', mb: 0.5 }}
+                  >
+                    {category}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                    {Object.values(codes).map((code) => (
+                      <StatusChip key={code} category={category} code={code} />
+                    ))}
+                  </Box>
+                </Box>
+              ))}
             </Card>
           </Grid>
         </Grid>

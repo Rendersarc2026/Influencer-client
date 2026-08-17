@@ -14,7 +14,15 @@ import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import { useTheme } from '@mui/material/styles';
-import { MoneyText, DeltaBadge, StatusChip, EmptyState, LoadingBlock, BusyOverlay } from '@atoms';
+import {
+  MoneyText,
+  DeltaBadge,
+  StatusChip,
+  StatusCategory,
+  EmptyState,
+  LoadingBlock,
+  BusyOverlay,
+} from '@atoms';
 import { safeImageUrl } from '@utils';
 
 export type ColumnType =
@@ -30,6 +38,11 @@ export interface DataTableColumn<T> {
   accessor?: keyof T | ((row: T) => unknown);
   subAccessor?: keyof T | ((row: T) => unknown);
   iconAccessor?: keyof T | ((row: T) => ReactNode | string);
+  /**
+   * Required by `type: 'status'`: the accessor yields a status code, and the code
+   * is only meaningful next to the category it was numbered within.
+   */
+  statusCategory?: StatusCategory;
   // Custom render
   render?: (row: T, index: number) => ReactNode;
   // Star click handler
@@ -273,7 +286,14 @@ export function DataTable<T extends Record<string, unknown>>({
         );
 
       case 'status':
-        return <StatusChip status={displayValue} />;
+        return column.statusCategory ? (
+          <StatusChip
+            category={column.statusCategory}
+            code={typeof value === 'number' ? value : null}
+          />
+        ) : (
+          <Typography variant="body2">{displayValue}</Typography>
+        );
 
       case 'star': {
         const starred = column.isStarred ? column.isStarred(row) : Boolean(value);

@@ -19,6 +19,7 @@ import {
   UpdateProfileSchema,
   UpdateProfileRequest,
   UserResponse,
+  CategoryTypeCode,
 } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,7 +34,7 @@ export const ProfileOrganism: React.FC = () => {
   const queryClient = useQueryClient();
 
   const isInfluencer = roleCode === 'INFLUENCER';
-  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');

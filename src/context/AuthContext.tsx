@@ -24,12 +24,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const response = await apiClient.get<CurrentUserResponse>('/auth/me');
         return response.data;
-      } catch {
-        return null;
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { status?: number } };
+        // Only return null if server explicitly responded with 401 (unauthorized / session expired)
+        if (axiosErr?.response?.status === 401) {
+          return null;
+        }
+        // If it's a network drop / laptop sleep wakeup / offline error, throw so React Query preserves cached session and retries
+        throw err;
       }
     },
-    retry: false,
-    staleTime: 1000 * 60 * 30, // 30 minutes — serve from cache, no shimmer on revisit
+    retry: (failureCount, error: unknown) => {
+      const axiosErr = error as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 401) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours — session cookie is 7 days
   });
 
   const requestOtpMutation = useMutation({

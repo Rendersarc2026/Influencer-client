@@ -19,7 +19,23 @@ export interface ApproveRateDialogProps {
   influencerRate?: number | null;
   currency?: string;
   loading?: boolean;
-  onApprove: (mapperId: string, margin: number, influencerRate?: number) => Promise<void> | void;
+  initialDeliverables?: string | null;
+  initialReachFromRegion?: string | null;
+  initialPreEvalEr?: number | null;
+  initialBrandFit?: string | null;
+  initialCommittedViews?: number | null;
+  onApprove: (
+    mapperId: string,
+    params: {
+      margin: number;
+      influencerRate?: number;
+      committedViews?: number;
+      preEvalEr?: number;
+      reachFromRegion?: string;
+      brandFit?: string;
+      deliverables?: string;
+    },
+  ) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -30,6 +46,11 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   influencerRate,
   currency = 'INR',
   loading = false,
+  initialDeliverables,
+  initialReachFromRegion,
+  initialPreEvalEr,
+  initialBrandFit,
+  initialCommittedViews,
   onApprove,
   onClose,
 }) => {
@@ -37,6 +58,11 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const [rateInput, setRateInput] = useState<string>('');
   const [marginInput, setMarginInput] = useState<string>('0');
   const [clientRateInput, setClientRateInput] = useState<string>('0');
+  const [deliverablesInput, setDeliverablesInput] = useState<string>('');
+  const [reachFromRegionInput, setReachFromRegionInput] = useState<string>('');
+  const [preEvalErInput, setPreEvalErInput] = useState<string>('');
+  const [committedViewsInput, setCommittedViewsInput] = useState<string>('');
+  const [brandFitInput, setBrandFitInput] = useState<string>('');
   const [rateError, setRateError] = useState('');
   const [marginError, setMarginError] = useState('');
 
@@ -54,10 +80,24 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
         setMarginInput('0');
         setClientRateInput('0');
       }
+      setDeliverablesInput(initialDeliverables || '');
+      setReachFromRegionInput(initialReachFromRegion || '');
+      setPreEvalErInput(initialPreEvalEr !== undefined && initialPreEvalEr !== null ? String(initialPreEvalEr) : '');
+      setCommittedViewsInput(initialCommittedViews !== undefined && initialCommittedViews !== null ? String(initialCommittedViews) : '');
+      setBrandFitInput(initialBrandFit || '');
       setRateError('');
       setMarginError('');
     }
-  }, [open, influencerRate, hasPresetRate]);
+  }, [
+    open,
+    influencerRate,
+    hasPresetRate,
+    initialDeliverables,
+    initialReachFromRegion,
+    initialPreEvalEr,
+    initialBrandFit,
+    initialCommittedViews,
+  ]);
 
   // When Creator Rate changes: recalculate Client Rate
   const handleRateChange = (val: string) => {
@@ -96,6 +136,8 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const effectiveRate = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
   const marginNum = parseFloat(marginInput) || 0;
   const clientRateNum = parseFloat(clientRateInput) || (effectiveRate + marginNum);
+  const committedViewsNum = parseInt(committedViewsInput, 10) || 0;
+  const cpv = committedViewsNum > 0 ? (clientRateNum / committedViewsNum).toFixed(2) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,14 +157,22 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
 
     setRateError('');
     setMarginError('');
-    await onApprove(mapperId, marginNum, !hasPresetRate ? effectiveRate : undefined);
+    await onApprove(mapperId, {
+      margin: marginNum,
+      influencerRate: !hasPresetRate ? effectiveRate : undefined,
+      committedViews: committedViewsNum > 0 ? committedViewsNum : undefined,
+      preEvalEr: preEvalErInput ? parseFloat(preEvalErInput) : undefined,
+      reachFromRegion: reachFromRegionInput.trim() || undefined,
+      brandFit: brandFitInput.trim() || undefined,
+      deliverables: deliverablesInput.trim() || undefined,
+    });
   };
 
   return (
     <Dialog
       open={open}
       disableEscapeKeyDown
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
       slotProps={{
         paper: {
@@ -137,12 +187,12 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ px: 1, pt: 1, pb: 0 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Set Margin & Client Rate
+            Set Margin & Pre-Evaluation
           </Typography>
           <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5 }}>
             {influencerName
-              ? `For: ${influencerName} · Review the price and set your agency margin to compute the final client rate.`
-              : "Review the influencer's price and set your agency margin to compute the final client rate."}
+              ? `For: ${influencerName} · Finalize commercial rate and pre-evaluation metrics for Brand approval.`
+              : 'Finalize commercial rate and pre-evaluation metrics for Brand approval.'}
           </Typography>
         </DialogTitle>
 
@@ -211,18 +261,78 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               value={clientRateInput}
               onChange={(e) => handleClientRateChange(e.target.value)}
               placeholder="e.g. 100000"
-              helperText="Total rate billed to the brand (Influencer Rate + Margin)"
+              helperText="Total commercial billed to brand (Influencer Rate + Margin)"
               fullWidth
               disabled={loading}
             />
 
             <Divider sx={{ my: 0.5 }} />
 
-            {/* Live Pricing Breakdown Card */}
+            {/* 4. Pre-Evaluation Metrics Section */}
+            <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: theme.palette.tokens.textSecondary }}>
+              Pre-Evaluation Base Metrics
+            </Typography>
+
+            <TextField
+              label="Deliverables"
+              value={deliverablesInput}
+              onChange={(e) => setDeliverablesInput(e.target.value)}
+              placeholder="e.g. 1 Reel + 2 Stories"
+              helperText="Agreed content format deliverables"
+              fullWidth
+              disabled={loading}
+            />
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <TextField
+                label="Committed Views"
+                type="text"
+                value={committedViewsInput}
+                onChange={(e) => setCommittedViewsInput(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="e.g. 50000"
+                helperText="Estimated view guarantee"
+                fullWidth
+                disabled={loading}
+              />
+              <TextField
+                label="Pre-Eval ER %"
+                type="text"
+                value={preEvalErInput}
+                onChange={(e) => setPreEvalErInput(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder="e.g. 4.5"
+                helperText="Avg ER% over last 10 posts"
+                fullWidth
+                disabled={loading}
+              />
+            </Box>
+
+            <TextField
+              label="Reach from Region"
+              value={reachFromRegionInput}
+              onChange={(e) => setReachFromRegionInput(e.target.value)}
+              placeholder="e.g. 85% Kerala, 10% Gulf"
+              helperText="Audience concentration in target market"
+              fullWidth
+              disabled={loading}
+            />
+
+            <TextField
+              label="Brand Fit (Qualitative Comments)"
+              value={brandFitInput}
+              onChange={(e) => setBrandFitInput(e.target.value)}
+              placeholder="e.g. High aesthetic tone, premium audience alignment"
+              multiline
+              rows={2}
+              helperText="Agency qualitative assessment for the brand"
+              fullWidth
+              disabled={loading}
+            />
+
+            {/* Live Pricing Breakdown & CPV Card */}
             <Box
               sx={{
                 padding: '16px 18px',
-                backgroundColor: theme.palette.tints.mint,
+                backgroundColor: theme.palette.tokens.fieldBg,
                 borderRadius: `${theme.customRadii.inner}px`,
                 display: 'flex',
                 flexDirection: 'column',
@@ -240,6 +350,22 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                   Agency Margin:
                 </Typography>
                 <MoneyText amount={marginNum} currency={currency} variant="body2" />
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Committed Views:
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {committedViewsNum > 0 ? committedViewsNum.toLocaleString() : 'Not specified'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Pre-Eval CPV (Cost / Views):
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                  {cpv ? `₹${cpv}` : '—'}
+                </Typography>
               </Box>
               <Divider sx={{ my: 0.5, borderColor: 'rgba(0,0,0,0.08)' }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

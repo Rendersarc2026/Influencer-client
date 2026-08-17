@@ -11,7 +11,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { useTheme } from '@mui/material/styles';
-import { StatusChip, MoneyText } from '@atoms';
+import { StatusChip, StatusCategory, MoneyText } from '@atoms';
 import { useToast } from '@hooks';
 import { safeImageUrl } from '@utils';
 
@@ -19,7 +19,13 @@ export interface OverviewField {
   label: string;
   value: ReactNode;
   copyable?: boolean;
+  /**
+   * Render `value` as a status chip. `value` must be the status code and
+   * `statusCategory` names the category it belongs to — a code alone is
+   * ambiguous, since RATE_STATUS 1 and CAMPAIGN_STATUS 1 are different states.
+   */
   isStatus?: boolean;
+  statusCategory?: StatusCategory;
   isMoney?: boolean;
   amount?: number | string | null;
   currency?: string;
@@ -58,7 +64,9 @@ export interface OverviewDrawerProps {
   onClose: () => void;
   title: string;
   subtitle?: string;
-  badge?: ReactNode | string;
+  /** A node is rendered as-is; a code renders as a chip and needs `badgeCategory`. */
+  badge?: ReactNode | number;
+  badgeCategory?: StatusCategory;
   avatarText?: string;
   avatarUrl?: string;
   avatarIcon?: ReactNode;
@@ -74,6 +82,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
   onClose,
   title,
   subtitle,
+  badgeCategory,
   badge,
   avatarText,
   avatarUrl,
@@ -176,13 +185,13 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               >
                 {title}
               </Typography>
-              {badge && (
-                typeof badge === 'string' ? (
-                  <StatusChip status={badge} />
+              {badge !== undefined &&
+                badge !== null &&
+                (typeof badge === 'number' && badgeCategory ? (
+                  <StatusChip category={badgeCategory} code={badge} />
                 ) : (
                   badge
-                )
-              )}
+                ))}
             </Box>
             {subtitle && (
               <Typography
@@ -342,8 +351,8 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                         width: field.fullWidth ? '100%' : 'auto',
                       }}
                     >
-                      {field.isStatus && typeof field.value === 'string' ? (
-                        <StatusChip status={field.value} />
+                      {field.isStatus && field.statusCategory && typeof field.value === 'number' ? (
+                        <StatusChip category={field.statusCategory} code={field.value} />
                       ) : field.isMoney ? (
                         <MoneyText
                           amount={field.amount !== undefined ? field.amount : (typeof field.value === 'number' || typeof field.value === 'string' ? field.value : null)}

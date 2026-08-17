@@ -12,7 +12,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useCategories } from '@api';
-import { CreateBrandRequest, UpdateBrandRequest, BrandResponse } from '@contracts';
+import { CreateBrandRequest, UpdateBrandRequest, BrandResponse, CategoryTypeCode} from '@contracts';
 import { capitalizeWords } from '@utils';
 
 export interface CreateBrandDialogProps {
@@ -43,7 +43,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
-  const { data: brandCategoriesData } = useCategories('BRAND');
+  const { data: brandCategoriesData } = useCategories(CategoryTypeCode.BRAND);
   const brandCategoryOptions = useMemo(
     () => (brandCategoriesData || []).map((c) => c.name),
     [brandCategoriesData],

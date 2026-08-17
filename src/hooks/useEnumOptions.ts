@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { z } from 'zod';
 import { useEnumCodes } from '@api';
 import { humanizeCode } from '@utils';
 
@@ -38,7 +39,13 @@ export function useEnumOptions(
   );
 }
 
-/** The same list, prefixed with an "All …" entry for a filter bar. */
+/**
+ * The same list, prefixed with an "All …" entry for a filter bar.
+ *
+ * A pill's `id` is the status *code* as a string, because that is what the filter
+ * is eventually sent as. 'ALL' stays symbolic — it is the absence of a filter,
+ * not a status.
+ */
 export function useEnumPills(
   category: string,
   allLabel: string,
@@ -47,7 +54,29 @@ export function useEnumPills(
   const options = useEnumOptions(category, overrides);
 
   return useMemo(
-    () => [{ id: 'ALL', label: allLabel }, ...options.map((o) => ({ id: o.value, label: o.label }))],
+    () => [
+      { id: 'ALL', label: allLabel },
+      ...options.map((o) => ({ id: String(o.code), label: o.label })),
+    ],
     [options, allLabel],
   );
+}
+
+/**
+ * The active pill as a status code, or undefined for "All".
+ *
+ * The schema does double duty: it narrows the parsed number to that category's
+ * code union, and it drops a stale pill whose code no longer exists — filter
+ * state is persisted, so a removed code can outlive the migration that removed
+ * it.
+ */
+export function usePillCode<T extends number>(
+  activePill: string,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+): T | undefined {
+  return useMemo(() => {
+    if (activePill === 'ALL') return undefined;
+    const parsed = schema.safeParse(Number(activePill));
+    return parsed.success ? parsed.data : undefined;
+  }, [activePill, schema]);
 }

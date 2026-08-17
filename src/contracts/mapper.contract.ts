@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { money, safeMultilineText } from './primitives';
-import { RateStatusEnum, BrandStatusEnum } from './enums';
+import { RateStatusEnum, BrandStatusEnum, RateStatusQuery, BrandStatusQuery } from './enums';
 
 // -------------------------------------------------------------
 // Response Shapes per Role
@@ -12,10 +12,20 @@ export const BrandMapperResponseSchema = z.object({
   campaignId: z.string().uuid(),
   influencerId: z.string().uuid(),
   influencerName: z.string(),
+  region: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  followers: z.number().nullable().optional(),
+  instagram: z.string().nullable().optional(),
+  youtube: z.string().nullable().optional(),
+  reachFromRegion: z.string().nullable().optional(),
+  preEvalEr: z.number().nullable().optional(),
+  brandFit: z.string().nullable().optional(),
+  deliverables: z.string().nullable().optional(),
   clientRate: z.number().nullable(),
+  committedViews: z.number().nullable().optional(),
+  preEvalCpv: z.number().nullable().optional(),
   currency: z.string(),
   brandStatus: BrandStatusEnum,
-  deliverables: z.string().nullable(),
   brandDecidedOn: z.date().nullable(),
   createdOn: z.date(),
 });
@@ -40,6 +50,17 @@ export const AgencyMapperResponseSchema = z.object({
   campaignId: z.string().uuid(),
   influencerId: z.string().uuid(),
   influencerName: z.string().optional(),
+  region: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  followers: z.number().nullable().optional(),
+  instagram: z.string().nullable().optional(),
+  youtube: z.string().nullable().optional(),
+  reachFromRegion: z.string().nullable().optional(),
+  preEvalEr: z.number().nullable().optional(),
+  brandFit: z.string().nullable().optional(),
+  deliverables: z.string().nullable().optional(),
+  committedViews: z.number().nullable().optional(),
+  preEvalCpv: z.number().nullable().optional(),
   influencerRate: z.number().nullable(),
   margin: z.number().nullable(),
   clientRate: z.number().nullable(),
@@ -50,7 +71,6 @@ export const AgencyMapperResponseSchema = z.object({
   rateApprovedBy: z.string().uuid().nullable(),
   rateApprovedOn: z.date().nullable(),
   brandDecidedOn: z.date().nullable(),
-  deliverables: z.string().nullable(),
   isActive: z.boolean(),
   createdOn: z.date(),
 });
@@ -80,8 +100,22 @@ export type RequestRateRevisionRequest = z.infer<typeof RequestRateRevisionReque
 export const ApproveRateRequestSchema = z.object({
   margin: money,
   influencerRate: money.optional(),
+  committedViews: z.number().int().min(0).optional(),
+  preEvalEr: z.number().min(0).max(100).optional(),
+  reachFromRegion: safeMultilineText(255).optional(),
+  brandFit: safeMultilineText(2000).optional(),
+  deliverables: safeMultilineText(2000).optional(),
 });
 export type ApproveRateRequest = z.infer<typeof ApproveRateRequestSchema>;
+
+export const UpdatePreEvalRequestSchema = z.object({
+  committedViews: z.number().int().min(0).nullable().optional(),
+  preEvalEr: z.number().min(0).max(100).nullable().optional(),
+  reachFromRegion: safeMultilineText(255).nullable().optional(),
+  brandFit: safeMultilineText(2000).nullable().optional(),
+  deliverables: safeMultilineText(2000).nullable().optional(),
+});
+export type UpdatePreEvalRequest = z.infer<typeof UpdatePreEvalRequestSchema>;
 
 export const BrandDecisionRequestSchema = z
   .object({
@@ -111,7 +145,7 @@ export const CampaignMapperListQuerySchema = z.object({
   search: z.string().max(100).optional(),
   campaignId: z.string().uuid().optional(),
   influencerId: z.string().uuid().optional(),
-  rateStatus: z.string().optional(),
-  brandStatus: z.string().optional(),
+  rateStatus: RateStatusQuery.optional(),
+  brandStatus: BrandStatusQuery.optional(),
 });
 export type CampaignMapperListQuery = z.infer<typeof CampaignMapperListQuerySchema>;

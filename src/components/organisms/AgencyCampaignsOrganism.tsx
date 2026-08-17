@@ -8,8 +8,8 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
 import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
-import { CampaignResponse, CreateCampaignRequest } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
+import { CampaignResponse, CreateCampaignRequest, CampaignStatusEnum } from '@contracts';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
 
 export const AgencyCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -30,13 +30,14 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     setRowsPerPage,
   } = useViewFilters('agencyCampaigns');
   const debouncedSearch = useDebounce(search, 300);
+  const statusFilter = usePillCode(activePill, CampaignStatusEnum);
 
   const {
     data: campaignsData,
     isLoading: campaignsLoading,
     isFetching: campaignsFetching,
   } = useAgencyCampaigns({
-    status: activePill !== 'ALL' ? activePill : undefined,
+    status: statusFilter,
     brandId: selectedBrand || undefined,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,

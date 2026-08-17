@@ -7,8 +7,8 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { useBrandCampaigns } from '@api';
-import { CampaignResponse } from '@contracts';
-import { useAuth, useDebounce, useEnumOptions, useViewFilters } from '@hooks';
+import { CampaignResponse, CampaignStatusEnum } from '@contracts';
+import { useAuth, useDebounce, useEnumOptions, useViewFilters, usePillCode } from '@hooks';
 
 export const BrandCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -26,13 +26,14 @@ export const BrandCampaignsOrganism: React.FC = () => {
     setRowsPerPage,
   } = useViewFilters('brandCampaigns');
   const debouncedSearch = useDebounce(search, 300);
+  const statusFilter = usePillCode(activePill, CampaignStatusEnum);
 
   const {
     data: campaignsData,
     isLoading,
     isFetching,
   } = useBrandCampaigns({
-    status: activePill !== 'ALL' ? activePill : undefined,
+    status: statusFilter,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,

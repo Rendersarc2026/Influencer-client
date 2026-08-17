@@ -13,8 +13,8 @@ import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { StatusChip } from '@atoms';
 import { useInfluencerCampaigns } from '@api';
-import { CampaignResponse } from '@contracts';
-import { useAuth, useDebounce, useViewFilters } from '@hooks';
+import { CampaignResponse, CampaignStatusEnum, CampaignStatusCode } from '@contracts';
+import { useAuth, useDebounce, useViewFilters, usePillCode } from '@hooks';
 
 export const InfluencerCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -32,13 +32,14 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     setRowsPerPage,
   } = useViewFilters('influencerCampaigns');
   const debouncedSearch = useDebounce(search, 300);
+  const statusFilter = usePillCode(activePill, CampaignStatusEnum);
 
   const {
     data: campaignsData,
     isLoading,
     isFetching,
   } = useInfluencerCampaigns({
-    status: activePill !== 'ALL' ? activePill : undefined,
+    status: statusFilter,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -47,14 +48,16 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
 
-  const activeCount = campaigns.filter((c) => c?.status === 'ACTIVE').length;
-  const completedCount = campaigns.filter((c) => c?.status === 'COMPLETED').length;
+  const activeCount = campaigns.filter((c) => c?.status === CampaignStatusCode.ACTIVE).length;
+  const completedCount = campaigns.filter((c) => c?.status === CampaignStatusCode.COMPLETED).length;
 
+  // Pill ids are status codes, the same as the ones useEnumPills emits — the
+  // filter is sent as a code, so a symbolic id here would simply never match.
   const filterPills = [
     { id: 'ALL', label: 'All Campaigns' },
-    { id: 'ACTIVE', label: 'Current & Active' },
-    { id: 'COMPLETED', label: 'Campaign History' },
-    { id: 'DRAFT', label: 'Draft / Scheduled' },
+    { id: String(CampaignStatusCode.ACTIVE), label: 'Current & Active' },
+    { id: String(CampaignStatusCode.COMPLETED), label: 'Campaign History' },
+    { id: String(CampaignStatusCode.DRAFT), label: 'Draft / Scheduled' },
   ];
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
@@ -69,7 +72,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
       id: 'status',
       header: 'Campaign Status',
       type: 'custom',
-      render: (row) => <StatusChip status={row.status} />,
+      render: (row) => <StatusChip category="CAMPAIGN_STATUS" code={row.status} />,
     },
     {
       id: 'timeline',
@@ -143,7 +146,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
         <Grid container spacing={{ xs: 1.5, sm: 2 }}>
           <Grid size={{ xs: 12, sm: 4 }}>
             <MetricCard
-              tint="lavender"
+              tint="butter"
               title="ACTIVE CAMPAIGNS"
               value={activeCount}
               subtitle="Current live briefs & deliverables"
@@ -153,7 +156,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <MetricCard
-              tint="mint"
+              tint="butter"
               title="CAMPAIGN HISTORY"
               value={completedCount}
               subtitle="Completed past collaborations"
@@ -163,7 +166,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <MetricCard
-              tint="sky"
+              tint="butter"
               title="TOTAL COLLABORATIONS"
               value={totalCampaigns}
               subtitle="All assigned brand campaigns"

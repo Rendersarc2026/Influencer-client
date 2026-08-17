@@ -13,7 +13,7 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
 import { useUpdateInfluencerProfile, useCategories } from '@api';
-import { UpdateProfileSchema, UpdateProfileRequest } from '@contracts';
+import { UpdateProfileSchema, UpdateProfileRequest, CategoryTypeCode} from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
 
@@ -24,7 +24,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
   const updateProfileMutation = useUpdateInfluencerProfile();
-  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');

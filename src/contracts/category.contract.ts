@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import { safeText, safeMultilineText, boolQuery, page, limit } from './primitives';
-
-export const CategoryTypeEnum = z.enum(['BRAND', 'INFLUENCER']);
-export type CategoryType = z.infer<typeof CategoryTypeEnum>;
+import { CategoryTypeEnum, CategoryTypeQuery } from './enums';
 
 export const CategoryResponseSchema = z.object({
   id: z.string().uuid(),
@@ -33,7 +31,7 @@ export const UpdateCategorySchema = z.object({
 export type UpdateCategoryRequest = z.infer<typeof UpdateCategorySchema>;
 
 export const CategoryListQuerySchema = z.object({
-  type: CategoryTypeEnum.optional(),
+  type: CategoryTypeQuery.optional(),
   search: safeText(100, 0).optional(),
   isActive: boolQuery.optional(),
   page: page,

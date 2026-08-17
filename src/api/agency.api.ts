@@ -16,6 +16,7 @@ import {
   ApproveRateRequest,
   RequestRateRevisionRequest,
   RecordMetricRequest,
+  UpdatePreEvalRequest,
   MetricResponse,
   InfluencerResponse,
   InfluencerListQuery,
@@ -308,13 +309,71 @@ export function useApproveRate(campaignId?: string) {
   return useMutation<
     AgencyMapperResponse,
     Error,
-    { mapperId: string; margin: number; influencerRate?: number }
+    {
+      mapperId: string;
+      margin: number;
+      influencerRate?: number;
+      committedViews?: number;
+      preEvalEr?: number;
+      reachFromRegion?: string;
+      brandFit?: string;
+      deliverables?: string;
+    }
   >({
-    mutationFn: async ({ mapperId, margin, influencerRate }) => {
-      const payload: ApproveRateRequest = { margin, influencerRate };
+    mutationFn: async ({
+      mapperId,
+      margin,
+      influencerRate,
+      committedViews,
+      preEvalEr,
+      reachFromRegion,
+      brandFit,
+      deliverables,
+    }) => {
+      const payload: ApproveRateRequest = {
+        margin,
+        influencerRate,
+        committedViews,
+        preEvalEr,
+        reachFromRegion,
+        brandFit,
+        deliverables,
+      };
       const response = await apiClient.post<AgencyMapperResponse>(
         `/agency/mappers/${mapperId}/approve-rate`,
         payload,
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (campaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['brand', 'campaigns', campaignId, 'influencers'],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
+    },
+  });
+}
+
+export function useUpdatePreEval(campaignId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation<
+    AgencyMapperResponse,
+    Error,
+    {
+      mapperId: string;
+      data: UpdatePreEvalRequest;
+    }
+  >({
+    mutationFn: async ({ mapperId, data }) => {
+      const response = await apiClient.patch<AgencyMapperResponse>(
+        `/agency/mappers/${mapperId}/pre-eval`,
+        data,
       );
       return response.data;
     },

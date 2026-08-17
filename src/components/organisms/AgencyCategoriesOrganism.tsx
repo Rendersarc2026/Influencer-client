@@ -29,7 +29,7 @@ import {
   useUpdateCategory,
   useDeactivateCategory,
 } from '@api';
-import { CategoryResponse, CategoryType } from '@contracts';
+import { CategoryResponse, CategoryType, CategoryTypeCode } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { capitalizeWords } from '@utils';
 
@@ -40,7 +40,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [activeTab, setActiveTab] = useState<CategoryType>('BRAND');
+  const [activeTab, setActiveTab] = useState<CategoryType>(CategoryTypeCode.BRAND);
 
   const {
     search,
@@ -70,9 +70,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   });
 
   // Query counts for tabs
-  const { data: brandCountData } = useCategoryList({ type: 'BRAND', page: 1, limit: 1 });
+  const { data: brandCountData } = useCategoryList({ type: CategoryTypeCode.BRAND, page: 1, limit: 1 });
   const { data: influencerCountData } = useCategoryList({
-    type: 'INFLUENCER',
+    type: CategoryTypeCode.INFLUENCER,
     page: 1,
     limit: 1,
   });
@@ -91,7 +91,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const [categoryToEdit, setCategoryToEdit] = useState<CategoryResponse | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryResponse | null>(null);
 
-  const [categoryType, setCategoryType] = useState<CategoryType>('BRAND');
+  const [categoryType, setCategoryType] = useState<CategoryType>(CategoryTypeCode.BRAND);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
@@ -158,7 +158,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           name: trimmedName,
           description: trimmedDesc || undefined,
         });
-        showSuccess(`${categoryType === 'BRAND' ? 'Brand' : 'Influencer'} category created.`);
+        showSuccess(`${categoryType === CategoryTypeCode.BRAND ? 'Brand' : 'Influencer'} category created.`);
       }
       setDialogOpen(false);
     } catch (err: unknown) {
@@ -195,7 +195,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       type: 'entity',
       accessor: (row) => row.name,
       subAccessor: (row) =>
-        row.type === 'BRAND' ? 'Brand Industry Classification' : 'Creator Niche / Specialization',
+        row.type === CategoryTypeCode.BRAND ? 'Brand Industry Classification' : 'Creator Niche / Specialization',
     },
     {
       id: 'type',
@@ -205,22 +205,22 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         <Chip
           size="small"
           icon={
-            row.type === 'BRAND' ? (
+            row.type === CategoryTypeCode.BRAND ? (
               <StorefrontRoundedIcon sx={{ fontSize: '14px !important' }} />
             ) : (
               <PeopleAltRoundedIcon sx={{ fontSize: '14px !important' }} />
             )
           }
-          label={row.type === 'BRAND' ? 'Brand Category' : 'Influencer Category'}
+          label={row.type === CategoryTypeCode.BRAND ? 'Brand Category' : 'Influencer Category'}
           sx={{
             fontWeight: 600,
             fontSize: '12px',
             backgroundColor:
-              row.type === 'BRAND'
+              row.type === CategoryTypeCode.BRAND
                 ? theme.palette.tokens.accentBg
                 : theme.palette.tokens.purpleBg,
             color:
-              row.type === 'BRAND'
+              row.type === CategoryTypeCode.BRAND
                 ? theme.palette.tokens.accentText
                 : theme.palette.tokens.purpleText,
           }}
@@ -312,15 +312,15 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         >
           <ButtonBase
             onClick={() => {
-              setActiveTab('BRAND');
+              setActiveTab(CategoryTypeCode.BRAND);
               setPage(0);
             }}
             sx={{
               px: 3,
               py: 1.25,
               borderRadius: `${theme.customRadii.pill}px`,
-              backgroundColor: activeTab === 'BRAND' ? theme.palette.tokens.rail : 'transparent',
-              color: activeTab === 'BRAND' ? '#FFFFFF' : theme.palette.tokens.textSecondary,
+              backgroundColor: activeTab === CategoryTypeCode.BRAND ? theme.palette.tokens.rail : 'transparent',
+              color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textSecondary,
               fontWeight: 600,
               fontSize: theme.typography.body2.fontSize,
               display: 'flex',
@@ -328,9 +328,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               gap: 1.25,
               transition: 'all 0.2s ease',
               '&:hover': {
-                color: activeTab === 'BRAND' ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textPrimary,
                 backgroundColor:
-                  activeTab === 'BRAND' ? theme.palette.tokens.rail : theme.palette.tokens.fieldBg,
+                  activeTab === CategoryTypeCode.BRAND ? theme.palette.tokens.rail : theme.palette.tokens.fieldBg,
               },
             }}
           >
@@ -344,15 +344,15 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 fontSize: '11px',
                 fontWeight: 700,
                 backgroundColor:
-                  activeTab === 'BRAND' ? 'rgba(255,255,255,0.2)' : theme.palette.tokens.fieldBg,
-                color: activeTab === 'BRAND' ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                  activeTab === CategoryTypeCode.BRAND ? 'rgba(255,255,255,0.2)' : theme.palette.tokens.fieldBg,
+                color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textPrimary,
               }}
             />
           </ButtonBase>
 
           <ButtonBase
             onClick={() => {
-              setActiveTab('INFLUENCER');
+              setActiveTab(CategoryTypeCode.INFLUENCER);
               setPage(0);
             }}
             sx={{
@@ -360,8 +360,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               py: 1.25,
               borderRadius: `${theme.customRadii.pill}px`,
               backgroundColor:
-                activeTab === 'INFLUENCER' ? theme.palette.tokens.rail : 'transparent',
-              color: activeTab === 'INFLUENCER' ? '#FFFFFF' : theme.palette.tokens.textSecondary,
+                activeTab === CategoryTypeCode.INFLUENCER ? theme.palette.tokens.rail : 'transparent',
+              color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textSecondary,
               fontWeight: 600,
               fontSize: theme.typography.body2.fontSize,
               display: 'flex',
@@ -369,9 +369,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               gap: 1.25,
               transition: 'all 0.2s ease',
               '&:hover': {
-                color: activeTab === 'INFLUENCER' ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textPrimary,
                 backgroundColor:
-                  activeTab === 'INFLUENCER'
+                  activeTab === CategoryTypeCode.INFLUENCER
                     ? theme.palette.tokens.rail
                     : theme.palette.tokens.fieldBg,
               },
@@ -387,10 +387,10 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 fontSize: '11px',
                 fontWeight: 700,
                 backgroundColor:
-                  activeTab === 'INFLUENCER'
+                  activeTab === CategoryTypeCode.INFLUENCER
                     ? 'rgba(255,255,255,0.2)'
                     : theme.palette.tokens.fieldBg,
-                color: activeTab === 'INFLUENCER' ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textPrimary,
               }}
             />
           </ButtonBase>
@@ -400,7 +400,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         <FilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder={`Search ${activeTab === 'BRAND' ? 'brand' : 'influencer'} categories...`}
+          searchPlaceholder={`Search ${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'} categories...`}
           pills={statusPillOptions}
           activePillId={statusFilter || 'ALL'}
           onPillChange={setStatusFilter}
@@ -450,10 +450,10 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               title={
                 categoryToEdit
                   ? 'Edit Category'
-                  : `Add ${categoryType === 'BRAND' ? 'Brand' : 'Influencer'} Category`
+                  : `Add ${categoryType === CategoryTypeCode.BRAND ? 'Brand' : 'Influencer'} Category`
               }
               subtitle={
-                categoryType === 'BRAND'
+                categoryType === CategoryTypeCode.BRAND
                   ? 'Industry classification for brands and client companies'
                   : 'Niche / content domain for content creators and influencers'
               }
@@ -472,7 +472,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 select
                 label="Category Scope *"
                 value={categoryType}
-                onChange={(e) => setCategoryType(e.target.value as CategoryType)}
+                onChange={(e) => setCategoryType(Number(e.target.value) as CategoryType)}
                 fullWidth
                 disabled={Boolean(categoryToEdit)}
                 helperText={
@@ -481,8 +481,10 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                     : 'Choose whether this category is for brands or influencers'
                 }
               >
-                <MenuItem value="BRAND">Brand Category (Industry)</MenuItem>
-                <MenuItem value="INFLUENCER">Influencer Category (Niche)</MenuItem>
+                <MenuItem value={CategoryTypeCode.BRAND}>Brand Category (Industry)</MenuItem>
+                <MenuItem value={CategoryTypeCode.INFLUENCER}>
+                  Influencer Category (Niche)
+                </MenuItem>
               </TextField>
 
               <TextField
@@ -496,12 +498,12 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 error={Boolean(nameError)}
                 helperText={
                   nameError ||
-                  (categoryType === 'BRAND'
+                  (categoryType === CategoryTypeCode.BRAND
                     ? 'e.g. Fashion & Apparel, Skincare, Technology & Electronics'
                     : 'e.g. Fashion Lifestyle, Tech Reviewer, Fitness & Wellness')
                 }
                 placeholder={
-                  categoryType === 'BRAND' ? 'e.g. Beauty & Personal Care' : 'e.g. Food Vlogger'
+                  categoryType === CategoryTypeCode.BRAND ? 'e.g. Beauty & Personal Care' : 'e.g. Food Vlogger'
                 }
                 fullWidth
                 autoFocus
@@ -565,7 +567,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         onClose={() => setSelectedCategory(null)}
         title={selectedCategory?.name || 'Category Details'}
         subtitle={
-          selectedCategory?.type === 'BRAND'
+          selectedCategory?.type === CategoryTypeCode.BRAND
             ? 'Brand Industry Category'
             : 'Influencer Niche Category'
         }
@@ -577,7 +579,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               {
                 label: 'Category Scope',
                 value:
-                  selectedCategory?.type === 'BRAND'
+                  selectedCategory?.type === CategoryTypeCode.BRAND
                     ? 'Brand Industry'
                     : 'Influencer Creator Niche',
               },

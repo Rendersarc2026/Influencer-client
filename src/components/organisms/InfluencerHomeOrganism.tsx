@@ -13,8 +13,13 @@ import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignments, useSubmitInfluencerRate } from '@api';
-import { InfluencerMapperResponse, SubmitRateRequest } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
+import {
+  InfluencerMapperResponse,
+  SubmitRateRequest,
+  RateStatusEnum,
+  RateStatusCode,
+} from '@contracts';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
 
 export const InfluencerHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -33,13 +38,14 @@ export const InfluencerHomeOrganism: React.FC = () => {
     setRowsPerPage,
   } = useViewFilters('influencerHome');
   const debouncedSearch = useDebounce(search, 300);
+  const rateStatusFilter = usePillCode(activePill, RateStatusEnum);
 
   const {
     data: assignmentsData,
     isLoading,
     isFetching,
   } = useInfluencerAssignments({
-    rateStatus: activePill !== 'ALL' ? activePill : undefined,
+    rateStatus: rateStatusFilter,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -54,9 +60,13 @@ export const InfluencerHomeOrganism: React.FC = () => {
     useState<InfluencerMapperResponse | null>(null);
 
   const pendingRatesCount = assignments.filter(
-    (a) => a?.rateStatus === 'PENDING_SUBMISSION' || a?.rateStatus === 'REVISION_REQUESTED',
+    (a) =>
+      a?.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
+      a?.rateStatus === RateStatusCode.REVISION_REQUESTED,
   ).length;
-  const approvedCount = assignments.filter((a) => a?.rateStatus === 'AGENCY_APPROVED').length;
+  const approvedCount = assignments.filter(
+    (a) => a?.rateStatus === RateStatusCode.AGENCY_APPROVED,
+  ).length;
 
   // The set comes from the registry; only the wording is creator-facing. This
   // also restores REVISION_REQUESTED, which the hardcoded list omitted — a
@@ -93,7 +103,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
       id: 'rateStatus',
       header: 'Rate Status',
       type: 'custom',
-      render: (row) => <StatusChip status={row.rateStatus} />,
+      render: (row) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
     },
     {
       id: 'influencerRate',
@@ -151,7 +161,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
       <Grid container spacing={2.5} alignItems="stretch">
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="lavender"
+            tint="butter"
             title="Active Campaigns"
             value={assignments.length}
             loading={isLoading}
@@ -173,7 +183,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="mint"
+            tint="butter"
             title="Approved Deals"
             value={approvedCount}
             loading={isLoading}
@@ -184,7 +194,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
-            tint="sky"
+            tint="butter"
             title="Total Earned (MTD)"
             value="₹2.45L"
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}

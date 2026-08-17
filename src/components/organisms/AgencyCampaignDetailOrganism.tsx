@@ -40,7 +40,7 @@ import {
   useRemoveInfluencerFromCampaign,
   useUpdateCampaign,
 } from '@api';
-import { AgencyMapperResponse, RecordMetricRequest, CampaignStatus } from '@contracts';
+import { AgencyMapperResponse, RecordMetricRequest, CampaignStatus, RateStatusCode } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl } from '@utils';
 
@@ -122,14 +122,21 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     }
   };
 
-  // 1. Handle Approve Rate (sends { mapperId, margin, influencerRate })
+  // 1. Handle Approve Rate (sends { mapperId, margin, influencerRate, ...preEval })
   const handleApproveRate = async (
     mapperId: string,
-    margin: number,
-    influencerRate?: number,
+    params: {
+      margin: number;
+      influencerRate?: number;
+      committedViews?: number;
+      preEvalEr?: number;
+      reachFromRegion?: string;
+      brandFit?: string;
+      deliverables?: string;
+    },
   ) => {
     try {
-      await approveRateMutation.mutateAsync({ mapperId, margin, influencerRate });
+      await approveRateMutation.mutateAsync({ mapperId, ...params });
       showSuccess('Influencer commercial rate approved and submitted for brand review.');
       setApproveDialogMapper(null);
     } catch (err: unknown) {
@@ -263,13 +270,13 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       id: 'rateStatus',
       header: 'Rate Status',
       type: 'custom',
-      render: (row) => <StatusChip status={row.rateStatus} />,
+      render: (row) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
     },
     {
       id: 'brandStatus',
       header: 'Brand Status',
       type: 'custom',
-      render: (row) => <StatusChip status={row.brandStatus} />,
+      render: (row) => <StatusChip category="BRAND_STATUS" code={row.brandStatus} />,
     },
     {
       id: 'actions',
@@ -279,7 +286,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
           {/* If rate is pending submission: agency can set price & margin to approve and send to brand */}
-          {row.rateStatus === 'PENDING_SUBMISSION' && (
+          {row.rateStatus === RateStatusCode.PENDING_SUBMISSION && (
             <Button
               variant="contained"
               size="small"
@@ -294,7 +301,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           )}
 
           {/* If rate is submitted by influencer: Approve or Request Revision */}
-          {row.rateStatus === 'SUBMITTED' && (
+          {row.rateStatus === RateStatusCode.SUBMITTED && (
             <>
               <Button
                 variant="contained"
@@ -322,7 +329,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           )}
 
           {/* If approved by agency and not yet visible: Submit to Brand */}
-          {row.rateStatus === 'AGENCY_APPROVED' && !row.budgetVisible && (
+          {row.rateStatus === RateStatusCode.AGENCY_APPROVED && !row.budgetVisible && (
             <Tooltip title="Send approved client rate for brand approval">
               <Button
                 variant="outlined"
@@ -415,7 +422,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
               <Typography variant="h2">{campaign?.name}</Typography>
-              {campaign?.status && <StatusChip status={campaign.status} />}
+              {campaign?.status && <StatusChip category="CAMPAIGN_STATUS" code={campaign.status} />}
             </Box>
             <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
               Client Brand:{' '}
@@ -551,6 +558,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           influencerName={approveDialogMapper.influencerName}
           influencerRate={approveDialogMapper.influencerRate}
           currency={approveDialogMapper.currency}
+          initialDeliverables={approveDialogMapper.deliverables}
+          initialReachFromRegion={approveDialogMapper.reachFromRegion}
+          initialPreEvalEr={approveDialogMapper.preEvalEr}
+          initialBrandFit={approveDialogMapper.brandFit}
+          initialCommittedViews={approveDialogMapper.committedViews}
           loading={approveRateMutation.isPending}
           onApprove={handleApproveRate}
           onClose={() => setApproveDialogMapper(null)}

@@ -9,8 +9,8 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { useBrandPayments, useApprovePayment } from '@api';
-import { PaymentResponse } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
+import { PaymentResponse, PaymentStatusEnum, PaymentStatusCode } from '@contracts';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
 
 export const BrandPaymentsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -29,13 +29,14 @@ export const BrandPaymentsOrganism: React.FC = () => {
     setRowsPerPage,
   } = useViewFilters('brandPayments');
   const debouncedSearch = useDebounce(search, 300);
+  const statusFilter = usePillCode(activePill, PaymentStatusEnum);
 
   const {
     data: paymentsData,
     isLoading: paymentsLoading,
     isFetching: paymentsFetching,
   } = useBrandPayments({
-    status: activePill !== 'ALL' ? activePill : undefined,
+    status: statusFilter,
     search: debouncedSearch.trim() || undefined,
     page: page + 1,
     limit: rowsPerPage,
@@ -95,7 +96,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => {
-        const isPending = row.status === 'PENDING_APPROVAL';
+        const isPending = row.status === PaymentStatusCode.PENDING_APPROVAL;
         return isPending ? (
           <Button
             variant="contained"

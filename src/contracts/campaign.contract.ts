@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { httpUrl, safeMultilineText, safeText } from './primitives';
-import { CampaignStatusEnum } from './enums';
+import { CampaignStatusEnum, CampaignStatusQuery } from './enums';
 
 export const CampaignResponseSchema = z.object({
   id: z.string().uuid(),
@@ -44,7 +44,7 @@ export const CampaignListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   search: z.string().max(100).optional(),
   brandId: z.string().uuid().optional(),
-  status: z.string().optional(),
+  status: CampaignStatusQuery.optional(),
   isActive: z.coerce.boolean().optional(),
 });
 export type CampaignListQuery = z.infer<typeof CampaignListQuerySchema>;

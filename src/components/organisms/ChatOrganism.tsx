@@ -27,7 +27,7 @@ import {
   useDeleteMessage,
   useMarkChatAsRead,
 } from '@api';
-import { ChatResponse, MessageResponse } from '@contracts';
+import { ChatResponse, MessageResponse, ChatTypeCode, ChatTypeName} from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { safeUrl } from '@utils';
 
@@ -130,7 +130,7 @@ export const ChatOrganism: React.FC = () => {
 
   const getChatPartnerName = (chat: ChatResponse) => {
     if (roleCode === 'AGENCY') {
-      if (chat.type === 'AGENCY_BRAND') return 'Brand Partner';
+      if (chat.type === ChatTypeCode.AGENCY_BRAND) return 'Brand Partner';
       return 'Creator Studio';
     }
     return 'Agency Partner';
@@ -283,7 +283,7 @@ export const ChatOrganism: React.FC = () => {
                             textOverflow: 'ellipsis',
                           }}
                         >
-                          {chat.type.replace('_', ' · ')}
+                          {ChatTypeName[chat.type].replace('_', ' · ')}
                         </Typography>
                       </Box>
                     </Box>
@@ -341,7 +341,7 @@ export const ChatOrganism: React.FC = () => {
                         variant="caption"
                         sx={{ color: theme.palette.tokens.accent, fontWeight: 600 }}
                       >
-                        {activeChat.type.replace('_', ' ')}
+                        {ChatTypeName[activeChat.type].replace('_', ' ')}
                       </Typography>
                     </Box>
                   </Box>

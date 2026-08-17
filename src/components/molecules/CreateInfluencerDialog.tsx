@@ -12,7 +12,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useCategories } from '@api';
-import { CreateInfluencerRequest } from '@contracts';
+import { CreateInfluencerRequest, CategoryTypeCode } from '@contracts';
 import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export interface CreateInfluencerDialogProps {
@@ -29,7 +29,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
-  const { data: influencerCategoriesData } = useCategories('INFLUENCER');
+  const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
   const [name, setName] = useState('');
