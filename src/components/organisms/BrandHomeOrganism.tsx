@@ -78,7 +78,7 @@ export const BrandHomeOrganism: React.FC = () => {
           onClick={() => navigate(`/brand/campaigns/${row.id}`)}
           endIcon={<ArrowForwardRoundedIcon fontSize="small" />}
         >
-          Review Creators
+          Review Influencers
         </Button>
       ),
     },
@@ -87,7 +87,7 @@ export const BrandHomeOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Brand Portal"
-      subtitle="Campaign rosters, creator approvals, and deliverable disbursements"
+      subtitle="Campaign rosters, influencer approvals, and deliverable disbursements"
       navItems={navConfig.BRAND}
       activePath={location.pathname}
       user={{
@@ -118,7 +118,7 @@ export const BrandHomeOrganism: React.FC = () => {
             title="Awaiting My Approval"
             value="3"
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
-            deltaLabel="creators pending review"
+            deltaLabel="influencers pending review"
             onClick={() => navigate('/brand/campaigns')}
           />
         </Grid>
@@ -126,7 +126,7 @@ export const BrandHomeOrganism: React.FC = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             tint="mint"
-            title="Approved Creators"
+            title="Approved Influencers"
             value="14"
             icon={<CheckCircleOutlineRoundedIcon fontSize="small" />}
             subtitle="Active across campaigns"
@@ -151,7 +151,7 @@ export const BrandHomeOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <SectionHeading
           title="Campaigns Needing Review"
-          subtitle="Review creator proposals and approved rates from your agency partner"
+          subtitle="Review influencer proposals and approved rates from your agency partner"
           action={
             <Button
               variant="text"

@@ -133,18 +133,18 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const handleCreateInfluencer = async (data: CreateInfluencerRequest) => {
     try {
       await createInfluencerMutation.mutateAsync(data);
-      showSuccess('Creator added to your roster.');
+      showSuccess('Influencer added to your roster.');
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add creator.');
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.');
     }
   };
 
   const columns: Array<DataTableColumn<InfluencerResponse>> = [
     {
       id: 'name',
-      header: 'Creator',
+      header: 'Influencer',
       type: 'entity',
       accessor: (row) => row.name,
       subAccessor: (row) => row.instagram || row.youtube || '—',

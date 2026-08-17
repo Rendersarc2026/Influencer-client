@@ -122,12 +122,12 @@ export const InfluencerProfileOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Creator Profile & Handles"
+      title="Influencer Profile & Handles"
       subtitle="Manage your public handle representation, audience size, and commercial bio"
       navItems={navConfig.INFLUENCER}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Creator',
+        name: user?.profile?.fullName || 'Influencer',
         email: user?.email,
         roleCode: 'INFLUENCER',
       }}

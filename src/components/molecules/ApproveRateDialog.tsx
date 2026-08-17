@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
-import { MoneyText, SectionHeading } from '@atoms';
+import { MoneyText } from '@atoms';
 
 export interface ApproveRateDialogProps {
   open: boolean;
@@ -46,11 +46,9 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   useEffect(() => {
     if (open) {
       if (hasPresetRate) {
-        const baseRate = influencerRate || 0;
-        const defaultMargin = Math.round(baseRate * 0.2);
-        setRateInput(String(baseRate));
-        setMarginInput(String(defaultMargin));
-        setClientRateInput(String(baseRate + defaultMargin));
+        setRateInput(String(influencerRate));
+        setMarginInput('0');
+        setClientRateInput(String(influencerRate));
       } else {
         setRateInput('');
         setMarginInput('0');
@@ -62,34 +60,37 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   }, [open, influencerRate, hasPresetRate]);
 
   // When Creator Rate changes: recalculate Client Rate
-  const handleRateChange = (newRateStr: string) => {
-    const sanitized = newRateStr.replace(/[^0-9.]/g, '');
-    setRateInput(sanitized);
-    setRateError('');
-    const rateVal = parseFloat(sanitized) || 0;
-    const marginVal = parseFloat(marginInput) || 0;
-    setClientRateInput(String(rateVal + marginVal));
+  const handleRateChange = (val: string) => {
+    const numeric = val.replace(/[^0-9.]/g, '');
+    setRateInput(numeric);
+    if (rateError) setRateError('');
+
+    const r = parseFloat(numeric) || 0;
+    const m = parseFloat(marginInput) || 0;
+    setClientRateInput(String(r + m));
   };
 
   // When Margin changes: recalculate Client Rate
-  const handleMarginChange = (newMarginStr: string) => {
-    const sanitized = newMarginStr.replace(/[^0-9.]/g, '');
-    setMarginInput(sanitized);
-    setMarginError('');
-    const rateVal = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
-    const marginVal = parseFloat(sanitized) || 0;
-    setClientRateInput(String(rateVal + marginVal));
+  const handleMarginChange = (val: string) => {
+    const numeric = val.replace(/[^0-9.]/g, '');
+    setMarginInput(numeric);
+    if (marginError) setMarginError('');
+
+    const r = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
+    const m = parseFloat(numeric) || 0;
+    setClientRateInput(String(r + m));
   };
 
   // When Client Rate is typed directly: recalculate Margin (Client Rate - Creator Rate)
-  const handleClientRateChange = (newClientRateStr: string) => {
-    const sanitized = newClientRateStr.replace(/[^0-9.]/g, '');
-    setClientRateInput(sanitized);
-    setMarginError('');
-    const clientVal = parseFloat(sanitized) || 0;
-    const rateVal = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
-    const calculatedMargin = Math.max(0, clientVal - rateVal);
-    setMarginInput(String(calculatedMargin));
+  const handleClientRateChange = (val: string) => {
+    const numeric = val.replace(/[^0-9.]/g, '');
+    setClientRateInput(numeric);
+
+    const cr = parseFloat(numeric) || 0;
+    const r = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
+    const newMargin = Math.max(0, cr - r);
+    setMarginInput(String(newMargin));
+    if (marginError) setMarginError('');
   };
 
   const effectiveRate = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
@@ -101,7 +102,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     let hasErr = false;
 
     if (!hasPresetRate && (!effectiveRate || effectiveRate <= 0)) {
-      setRateError('Please enter a valid positive creator price');
+      setRateError('Please enter a valid positive influencer rate');
       hasErr = true;
     }
 
@@ -128,22 +129,21 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           sx: {
             borderRadius: `${theme.customRadii.card}px`,
             padding: '16px',
-            backgroundImage: 'none',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
+            boxShadow: '0 24px 48px -12px rgba(15, 23, 42, 0.25)',
           },
         },
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1, px: 1 }}>
-          <SectionHeading
-            title="Approve Rate & Set Margin"
-            subtitle={
-              influencerName ? `For: ${influencerName}` : 'Set agency margin before forwarding to brand'
-            }
-          />
+        <DialogTitle sx={{ px: 1, pt: 1, pb: 0 }}>
+          <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
+            Set Margin & Client Rate
+          </Typography>
+          <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5 }}>
+            {influencerName
+              ? `For: ${influencerName} · Review the price and set your agency margin to compute the final client rate.`
+              : "Review the influencer's price and set your agency margin to compute the final client rate."}
+          </Typography>
         </DialogTitle>
 
         <DialogContent
@@ -155,7 +155,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            {/* 1. Creator Rate Section */}
+            {/* 1. Influencer Rate Section */}
             {hasPresetRate ? (
               <Box
                 sx={{
@@ -169,23 +169,23 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               >
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}>
-                    Creator Quoted Rate
+                    Influencer Quoted Rate
                   </Typography>
                   <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Amount paid to creator
+                    Amount paid to influencer
                   </Typography>
                 </Box>
                 <MoneyText amount={influencerRate || 0} currency={currency} variant="h3" />
               </Box>
             ) : (
               <TextField
-                label="1. Creator Price / Influencer Rate (₹) *"
+                label="1. Influencer Rate (₹) *"
                 type="text"
                 value={rateInput}
                 onChange={(e) => handleRateChange(e.target.value)}
                 placeholder="e.g. 80000"
                 error={Boolean(rateError)}
-                helperText={rateError || 'Amount paid to the creator for this deliverable'}
+                helperText={rateError || 'Amount paid to the influencer for this deliverable'}
                 fullWidth
                 disabled={loading}
               />
@@ -211,7 +211,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               value={clientRateInput}
               onChange={(e) => handleClientRateChange(e.target.value)}
               placeholder="e.g. 100000"
-              helperText="Total rate billed to the brand (Creator Rate + Margin)"
+              helperText="Total rate billed to the brand (Influencer Rate + Margin)"
               fullWidth
               disabled={loading}
             />
@@ -231,7 +231,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                  Creator Payout:
+                  Influencer Payout:
                 </Typography>
                 <MoneyText amount={effectiveRate} currency={currency} variant="body2" />
               </Box>

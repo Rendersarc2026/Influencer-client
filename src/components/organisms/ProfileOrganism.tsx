@@ -160,7 +160,7 @@ export const ProfileOrganism: React.FC = () => {
   const getPageTitle = () => {
     switch (roleCode) {
       case 'INFLUENCER':
-        return 'Creator Profile & Handles';
+        return 'Influencer Profile & Handles';
       case 'BRAND':
         return 'Brand Manager Profile';
       case 'AGENCY':
@@ -254,7 +254,7 @@ export const ProfileOrganism: React.FC = () => {
                 <TextField
                   label="Public Display Name"
                   value={displayName}
-                  placeholder="e.g. Alex Creator"
+                  placeholder="e.g. Alex Influencer"
                   onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
                   error={Boolean(fieldErrors.displayName)}
                   helperText={fieldErrors.displayName}
@@ -300,7 +300,7 @@ export const ProfileOrganism: React.FC = () => {
                           label="Influencer Category"
                           placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
                           error={Boolean(fieldErrors.category)}
-                          helperText={fieldErrors.category || 'Creator niche / content domain'}
+                          helperText={fieldErrors.category || 'Influencer niche / content domain'}
                           fullWidth
                         />
                       )}

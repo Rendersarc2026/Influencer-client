@@ -145,7 +145,7 @@ export const ChatOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Direct Messages"
-      subtitle="Secure communications between agencies, brands, and creators"
+      subtitle="Secure communications between agencies, brands, and influencers"
       navItems={getNavItems()}
       activePath={location.pathname}
       user={{

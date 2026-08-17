@@ -88,7 +88,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
           onClick={() => navigate(`/brand/campaigns/${row.id}`)}
           endIcon={<ArrowForwardRoundedIcon fontSize="small" />}
         >
-          View Creators
+          View Influencers
         </Button>
       ),
     },
@@ -97,7 +97,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Brand Campaigns"
-      subtitle="Campaign rosters and creator deliverables managed by your agency partner"
+      subtitle="Campaign rosters and influencer deliverables managed by your agency partner"
       navItems={navConfig.BRAND}
       activePath={location.pathname}
       user={{

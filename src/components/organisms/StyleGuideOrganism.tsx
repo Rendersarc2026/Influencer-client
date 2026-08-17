@@ -487,7 +487,7 @@ export const StyleGuideOrganism: React.FC = () => {
               subtitle="Card with custom tint prop, title slot, and bold StatValue figures"
             >
               <Box sx={{ display: 'flex', gap: 4, my: 2 }}>
-                <StatValue value="1,248" label="Registered Creators" />
+                <StatValue value="1,248" label="Registered Influencers" />
                 <StatValue
                   value="99.4%"
                   label="Platform Uptime"
@@ -639,7 +639,7 @@ export const StyleGuideOrganism: React.FC = () => {
           <Grid size={{ xs: 12, md: 6 }}>
             <EmptyState
               title="No active submissions"
-              description="When creators submit their rates and deliverables for approval, they will appear here."
+              description="When influencers submit their rates and deliverables for approval, they will appear here."
               action={
                 <Button
                   variant="contained"
@@ -731,7 +731,7 @@ export const StyleGuideOrganism: React.FC = () => {
       <CommentDialog
         open={commentOpen}
         title={commentVariant === 'destructive' ? 'Reject Deliverable' : 'Request Rate Correction'}
-        subtitle="Please specify detailed feedback for the creator or brand manager."
+        subtitle="Please specify detailed feedback for the influencer or brand manager."
         placeholder="Type clear and concise feedback..."
         confirmText={
           commentVariant === 'destructive' ? 'Reject with Reason' : 'Send Correction Request'

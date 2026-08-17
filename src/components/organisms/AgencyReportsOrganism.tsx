@@ -184,7 +184,7 @@ export const AgencyReportsOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Performance Reports"
-      subtitle="Per campaign and per creator metrics, engagement analytics, and margin realizations"
+      subtitle="Per campaign and per influencer metrics, engagement analytics, and margin realizations"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{

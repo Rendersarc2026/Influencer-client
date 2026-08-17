@@ -226,7 +226,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 380, lineHeight: 1.5 }}
             >
               Campaign reach and deliverable metrics will graph here automatically once deliverables
-              are recorded by creators.
+              are recorded by influencers.
             </Typography>
           </Box>
         )}

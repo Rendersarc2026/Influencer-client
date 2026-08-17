@@ -276,7 +276,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Categories"
-      subtitle="Manage taxonomy for brand industry classifications and creator niche categories"
+      subtitle="Manage taxonomy for brand industry classifications and influencer niche categories"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -511,7 +511,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 label="Description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional explanation of what brands or creators belong in this category..."
+                placeholder="Optional explanation of what brands or influencers belong in this category..."
                 multiline
                 rows={3}
                 fullWidth

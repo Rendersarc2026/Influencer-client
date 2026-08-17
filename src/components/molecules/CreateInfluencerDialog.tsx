@@ -97,7 +97,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     const trimmedPhone = contactPhone.trim();
 
     if (!trimmedName) {
-      setError('Creator name is required');
+      setError('Influencer name is required');
       return;
     }
 
@@ -166,7 +166,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const msg =
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to add creator.';
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.';
       if (msg.toLowerCase().includes('email')) {
         setEmailError(msg);
       }
@@ -196,8 +196,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
           <SectionHeading
-            title="Add Creator"
-            subtitle="Added to the creators you represent; no login is needed until they first sign in"
+            title="Add Influencer"
+            subtitle="Added to the influencers you represent; no login is needed until they first sign in"
           />
         </DialogTitle>
 
@@ -210,7 +210,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
-              label="Creator Name *"
+              label="Influencer Name *"
               value={name}
               onChange={(e) => setName(capitalizeWords(e.target.value))}
               placeholder="e.g. Riya Malhotra"
@@ -239,7 +239,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 }}
                 error={Boolean(emailError)}
                 helperText={
-                  emailError || 'Required: Creator will use this email address to log in'
+                  emailError || 'Required: Influencer will use this email address to log in'
                 }
                 placeholder="e.g. riya@gmail.com"
                 fullWidth
@@ -265,7 +265,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   }
                 }}
                 error={Boolean(phoneError)}
-                helperText={phoneError || 'Required: the creator\u2019s direct line'}
+                helperText={phoneError || 'Required: the influencer\u2019s direct line'}
                 placeholder="e.g. +91 9876543210"
                 fullWidth
                 disabled={loading}
@@ -286,7 +286,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   {...params}
                   label="Influencer Category"
                   placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
-                  helperText="Creator niche / content domain"
+                  helperText="Influencer niche / content domain"
                   fullWidth
                 />
               )}
@@ -401,7 +401,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
             disabled={loading || !name.trim() || !email.trim() || !contactPhone.trim()}
             sx={{ minWidth: 120 }}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Add Creator'}
+            {loading ? <CircularProgress size={20} color="inherit" /> : 'Add Influencer'}
           </Button>
         </DialogActions>
       </form>

@@ -135,12 +135,12 @@ export const InfluencerHomeOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Creator Studio"
+      title="Influencer Hub"
       subtitle="Campaign assignments, commercial rate cards, and delivery milestones"
       navItems={navConfig.INFLUENCER}
       activePath={location.pathname}
       user={{
-        name: user?.profile?.fullName || 'Creator',
+        name: user?.profile?.fullName || 'Influencer',
         email: user?.email,
         roleCode: 'INFLUENCER',
       }}

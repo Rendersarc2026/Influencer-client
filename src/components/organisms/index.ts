@@ -22,3 +22,5 @@ export * from './AcceptTermsOrganism';
 export * from './CompleteProfileOrganism';
 export * from './ChatOrganism';
 export * from './ProfileOrganism';
+export * from './InfluencerCampaignsOrganism';
+

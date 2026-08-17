@@ -6,7 +6,6 @@ import Grid from '@mui/material/Grid2';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks';
-import { getNavItemsForRole } from '@routes/navConfig';
 import { SidebarRail } from '../organisms/SidebarRail';
 
 export type PageSkeletonVariant =
@@ -541,7 +540,7 @@ function resolveVariant(pathname: string, requested?: PageSkeletonVariant): Page
 export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' }) => {
   const theme = useTheme();
   const location = useLocation();
-  const { roleCode: authRoleCode, logout } = useAuth();
+  const { logout } = useAuth();
 
   const resolved = resolveVariant(location.pathname, variant);
 
@@ -549,15 +548,6 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' })
     return <AuthSkeleton />;
   }
 
-  const roleCode =
-    authRoleCode ||
-    (location.pathname.startsWith('/brand')
-      ? 'BRAND'
-      : location.pathname.startsWith('/influencer')
-      ? 'INFLUENCER'
-      : 'AGENCY');
-
-  const navItems = getNavItemsForRole(roleCode);
   const Body = bodies[resolved as Exclude<PageSkeletonVariant, 'auth' | 'shell'>] || ListBody;
 
   return (
@@ -573,7 +563,7 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' })
       }}
     >
       <SidebarRail
-        items={navItems}
+        loading={true}
         activePath={location.pathname}
         onNavigate={() => {}}
         onLogout={logout}

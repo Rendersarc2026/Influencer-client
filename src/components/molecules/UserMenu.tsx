@@ -52,7 +52,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
 
   const roleLabel =
     user.roleCode === 'INFLUENCER'
-      ? 'Creator'
+      ? 'Influencer'
       : user.roleCode === 'BRAND'
       ? 'Brand'
       : user.roleCode === 'AGENCY'

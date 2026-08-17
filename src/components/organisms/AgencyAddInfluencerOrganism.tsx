@@ -242,11 +242,11 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const handleCreateInfluencer = async (data: CreateInfluencerRequest) => {
     try {
       await createInfluencerMutation.mutateAsync(data);
-      showSuccess('Creator added to your roster.');
+      showSuccess('Influencer added to your roster.');
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add creator.');
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.');
     }
   };
 
@@ -254,7 +254,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
     <DashboardLayout
       title="Add Influencers to Campaign"
       subtitle={
-        campaign ? `Assigning creators from your roster to ${campaign.name}` : 'Your creator roster'
+        campaign ? `Assigning influencers from your roster to ${campaign.name}` : 'Your influencer roster'
       }
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
@@ -277,7 +277,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          New Creator
+          New Influencer
         </Button>
       }
     >
@@ -296,18 +296,18 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
         />
 
         <SectionHeading
-          title="Creator Directory"
-          subtitle="Select creators and specify required campaign deliverables — assigning someone new adds them to your roster"
+          title="Influencer Directory"
+          subtitle="Select influencers and specify required campaign deliverables — assigning someone new adds them to your roster"
         />
 
         {!influencersLoading && creators.length === 0 && (
           <EmptyState
             icon={<PersonSearchRoundedIcon sx={{ fontSize: 40 }} />}
-            title="No creators found"
+            title="No influencers found"
             description={
               debouncedSearch.trim()
-                ? 'No creators match your search. Try a different name, category or location.'
-                : 'There are no creators on the platform yet. Add one to get started.'
+                ? 'No influencers match your search. Try a different name, category or location.'
+                : 'There are no influencers on the platform yet. Add one to get started.'
             }
           />
         )}
@@ -518,9 +518,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
           detailCreator
             ? [
                 {
-                  title: 'Creator Profile',
+                  title: 'Influencer Profile',
                   fields: [
-                    { label: 'Creator Name', value: detailCreator.name },
+                    { label: 'Influencer Name', value: detailCreator.name },
                     { label: 'Category / Niche', value: detailCreator.category || '—' },
                     { label: 'Location', value: detailCreator.location || 'Global' },
                     { label: 'Follower Reach', value: formatFollowers(detailCreator.followers) },
@@ -589,8 +589,8 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
       <ConfirmDialog
         open={Boolean(removeDialogCreator)}
         title="Remove from Campaign?"
-        body={`${removeDialogCreator?.name ?? 'This creator'} will be taken off this campaign. Any rate they submitted is discarded — adding them back starts the rate approval over.`}
-        confirmText="Remove Creator"
+        body={`${removeDialogCreator?.name ?? 'This influencer'} will be taken off this campaign. Any rate they submitted is discarded — adding them back starts the rate approval over.`}
+        confirmText="Remove Influencer"
         variant="destructive"
         loading={removeInfluencerMutation.isPending}
         onConfirm={handleRemoveCreator}

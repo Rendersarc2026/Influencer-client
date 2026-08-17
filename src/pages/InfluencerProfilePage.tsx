@@ -1,6 +1,7 @@
 import React from 'react';
-import { InfluencerProfileOrganism } from '@organisms';
+import { ProfileOrganism } from '@organisms';
 
 export const InfluencerProfilePage: React.FC = () => {
-  return <InfluencerProfileOrganism />;
+  return <ProfileOrganism />;
 };
+

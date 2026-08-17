@@ -43,12 +43,18 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
       iconName: 'Assignment',
     },
     {
+      id: 'influencer-campaigns',
+      label: 'Campaigns',
+      path: '/influencer/campaigns',
+      iconName: 'Campaign',
+    },
+    { id: 'influencer-messages', label: 'Messages', path: '/influencer/chats', iconName: 'Chat' },
+    {
       id: 'influencer-profile',
       label: 'Profile',
       path: '/influencer/profile',
       iconName: 'People',
     },
-    { id: 'influencer-messages', label: 'Messages', path: '/influencer/chats', iconName: 'Chat' },
   ],
 };
 

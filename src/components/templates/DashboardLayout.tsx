@@ -45,7 +45,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   backLabel,
   navItems = [],
   activePath = '',
-  user = { name: 'User', roleCode: 'AGENCY' },
+  user = { name: 'User' },
   onNavigate,
   onLogout,
   onSearchClick,
@@ -56,7 +56,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { data: dbNavItems } = useNavigation();
+  const { data: dbNavItems, isLoading: isNavLoading } = useNavigation();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
@@ -72,7 +72,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         }))
       : navItems.length > 0
         ? navItems
-        : (navConfig[user?.roleCode as RoleCode] || []);
+        : user?.roleCode && user.roleCode in navConfig
+          ? navConfig[user.roleCode as RoleCode]
+          : [];
+
+  const isSidebarLoading = isNavLoading && effectiveNavItems.length === 0;
 
   const handleLogoutClick = () => {
     setLogoutConfirmOpen(true);
@@ -99,6 +103,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     >
       {/* 1. Floating Sidebar Rail / Bottom Bar */}
       <SidebarRail
+        loading={isSidebarLoading}
         items={effectiveNavItems}
         activePath={activePath}
         onNavigate={effectiveNavigate}

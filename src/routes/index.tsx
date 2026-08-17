@@ -70,6 +70,9 @@ const InfluencerAssignmentDetailPage = lazy(() =>
     default: m.InfluencerAssignmentDetailPage,
   })),
 );
+const InfluencerCampaignsPage = lazy(() =>
+  import('../pages/InfluencerCampaignsPage').then((m) => ({ default: m.InfluencerCampaignsPage })),
+);
 const InfluencerProfilePage = lazy(() =>
   import('../pages/InfluencerProfilePage').then((m) => ({ default: m.InfluencerProfilePage })),
 );
@@ -110,6 +113,7 @@ const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
   ],
   INFLUENCER: [
     () => import('../pages/InfluencerHome'),
+    () => import('../pages/InfluencerCampaignsPage'),
     () => import('../pages/InfluencerAssignmentDetailPage'),
     () => import('../pages/InfluencerProfilePage'),
   ],
@@ -330,6 +334,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="dashboard">
         {withBoundary(InfluencerHome, 'dashboard')}
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/influencer/campaigns',
+    element: (
+      <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="list">
+        {withBoundary(InfluencerCampaignsPage, 'list')}
       </ProtectedRoute>
     ),
   },

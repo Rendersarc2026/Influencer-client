@@ -126,7 +126,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Campaigns"
-      subtitle="Brand campaigns, creator assignments, and rate approval pipeline"
+      subtitle="Brand campaigns, influencer assignments, and rate approval pipeline"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{

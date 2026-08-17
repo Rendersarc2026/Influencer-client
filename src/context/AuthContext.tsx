@@ -44,6 +44,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await apiClient.post('/auth/logout');
     },
     onSettled: () => {
+      try {
+        localStorage.removeItem('app_role_code');
+      } catch {}
       queryClient.setQueryData(['auth', 'me'], null);
       queryClient.clear();
       window.location.href = '/login';
@@ -57,6 +60,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const verifyOtp = async (email: string, code: string): Promise<CurrentUserResponse> => {
     await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', { email, code });
     const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
+    if (meRes.data?.roleCode) {
+      try {
+        localStorage.setItem('app_role_code', meRes.data.roleCode);
+      } catch {}
+    }
     queryClient.setQueryData(['auth', 'me'], meRes.data);
     return meRes.data;
   };
@@ -92,7 +100,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const user = authData?.user ?? null;
-  const roleCode = (authData?.roleCode as RoleCode) ?? null;
+  const cachedRole = typeof window !== 'undefined' ? (localStorage.getItem('app_role_code') as RoleCode | null) : null;
+  const roleCode = (authData?.roleCode as RoleCode) ?? cachedRole ?? null;
+
+  React.useEffect(() => {
+    if (authData?.roleCode) {
+      try {
+        localStorage.setItem('app_role_code', authData.roleCode);
+      } catch {}
+    }
+  }, [authData?.roleCode]);
   const profileComplete = authData?.profileComplete ?? false;
   const termsAccepted = authData?.termsAccepted ?? false;
   const isAuthenticated = Boolean(user && roleCode);

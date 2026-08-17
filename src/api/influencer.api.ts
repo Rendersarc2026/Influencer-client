@@ -3,11 +3,41 @@ import { apiClient } from './axios.client';
 import {
   InfluencerMapperResponse,
   CampaignMapperListQuery,
+  CampaignResponse,
+  CampaignListQuery,
   SubmitRateRequest,
   UpdateProfileRequest,
   UserResponse,
   PaginatedResult,
 } from '@contracts';
+
+export function useInfluencerCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    queryKey: ['influencer', 'campaigns', params],
+    queryFn: async () => {
+      const response = await apiClient.get<PaginatedResult<CampaignResponse>>(
+        '/influencer/campaigns',
+        { params },
+      );
+      return response.data;
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useInfluencerCampaign(campaignId: string | undefined) {
+  return useQuery<CampaignResponse>({
+    queryKey: ['influencer', 'campaigns', campaignId],
+    queryFn: async () => {
+      if (!campaignId) throw new Error('Campaign ID required');
+      const response = await apiClient.get<CampaignResponse>(
+        `/influencer/campaigns/${campaignId}`,
+      );
+      return response.data;
+    },
+    enabled: Boolean(campaignId),
+  });
+}
 
 export function useInfluencerAssignments(params?: CampaignMapperListQuery) {
   return useQuery<PaginatedResult<InfluencerMapperResponse>>({

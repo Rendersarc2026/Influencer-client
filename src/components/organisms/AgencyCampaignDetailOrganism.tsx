@@ -130,7 +130,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   ) => {
     try {
       await approveRateMutation.mutateAsync({ mapperId, margin, influencerRate });
-      showSuccess('Creator commercial rate approved and submitted for brand review.');
+      showSuccess('Influencer commercial rate approved and submitted for brand review.');
       setApproveDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -372,7 +372,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   return (
     <DashboardLayout
       title={campaign?.name || 'Campaign Management'}
-      subtitle="Manage assigned creator rosters, commercial margins, and deliverable approvals"
+      subtitle="Manage assigned influencer rosters, commercial margins, and deliverable approvals"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -496,7 +496,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               variant="caption"
               sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
             >
-              CREATORS ASSIGNED
+              INFLUENCERS ASSIGNED
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {mappers.length} Influencers
@@ -517,7 +517,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               startIcon={<PersonAddRoundedIcon fontSize="small" />}
               onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
             >
-              Add Creator
+              Add Influencer
             </Button>
           }
         />
@@ -561,7 +561,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       <CommentDialog
         open={Boolean(revisionDialogMapper)}
         title="Request Rate Revision"
-        subtitle="Explain the reason or requested target rate to the creator"
+        subtitle="Explain the reason or requested target rate to the influencer"
         confirmText="Send Revision Request"
         loading={requestRevisionMutation.isPending}
         onConfirm={handleRequestRevision}
@@ -584,8 +584,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       <ConfirmDialog
         open={Boolean(deleteDialogMapper)}
         title="Remove Influencer from Campaign?"
-        body={`Are you sure you want to remove this creator from ${campaign?.name || 'the campaign'}? Any submitted rates or draft workflows will be unassigned.`}
-        confirmText="Remove Creator"
+        body={`Are you sure you want to remove this influencer from ${campaign?.name || 'the campaign'}? Any submitted rates or draft workflows will be unassigned.`}
+        confirmText="Remove Influencer"
         variant="destructive"
         loading={removeInfluencerMutation.isPending}
         onConfirm={handleRemoveInfluencer}

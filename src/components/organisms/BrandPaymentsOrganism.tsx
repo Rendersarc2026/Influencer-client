@@ -118,7 +118,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Payment Authorization Queue"
-      subtitle="Verify and authorize deliverable disbursements for campaign creators"
+      subtitle="Verify and authorize deliverable disbursements for campaign influencers"
       navItems={navConfig.BRAND}
       activePath={location.pathname}
       user={{
@@ -132,7 +132,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <SectionHeading
           title="Deliverable Payments"
-          subtitle="Pending creator disbursements verified by your agency"
+          subtitle="Pending influencer disbursements verified by your agency"
         />
 
         <FilterBar

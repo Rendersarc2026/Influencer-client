@@ -75,7 +75,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
     };
     try {
       await brandDecisionMutation.mutateAsync({ mapperId, decision });
-      showSuccess('Creator commercial proposal approved.');
+      showSuccess('Influencer commercial proposal approved.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
@@ -89,8 +89,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
     setActiveDialog({
       mapperId,
       action: 'REJECT',
-      title: 'Reject Creator Proposal',
-      subtitle: 'Provide the reason for rejecting this creator from the campaign roster',
+      title: 'Reject Influencer Proposal',
+      subtitle: 'Provide the reason for rejecting this influencer from the campaign roster',
       confirmText: 'Confirm Rejection',
     });
   };
@@ -120,7 +120,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       });
       showSuccess(
         activeDialog.action === 'REJECT'
-          ? 'Creator proposal rejected.'
+          ? 'Influencer proposal rejected.'
           : 'Correction request sent to agency.',
       );
       setActiveDialog(null);
@@ -220,7 +220,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   return (
     <DashboardLayout
       title={campaign?.name || 'Campaign Review'}
-      subtitle="Review creator rates and deliverable proposals from your agency"
+      subtitle="Review influencer rates and deliverable proposals from your agency"
       navItems={navConfig.BRAND}
       activePath={location.pathname}
       user={{
@@ -304,7 +304,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               variant="caption"
               sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
             >
-              PROPOSED CREATORS
+              PROPOSED INFLUENCERS
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {totalMappers} {totalMappers === 1 ? 'Influencer' : 'Influencers'}
@@ -316,8 +316,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       {/* 2. Influencer Table (Rate = Client Rate only) */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
         <SectionHeading
-          title="Creator Deliverables & Commercial Proposals"
-          subtitle="Review and authorize proposed creator commercial deliverables"
+          title="Influencer Deliverables & Commercial Proposals"
+          subtitle="Review and authorize proposed influencer commercial deliverables"
         />
 
         <FilterBar
