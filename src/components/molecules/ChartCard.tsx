@@ -167,8 +167,8 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                   fontSize: '11px',
                   marginBottom: '2px',
                 }}
-                formatter={(v: any) => [
-                  typeof v === 'number' ? v.toLocaleString('en-IN') : v,
+                formatter={(v: unknown) => [
+                  typeof v === 'number' ? v.toLocaleString('en-IN') : String(v ?? ''),
                   'Reach',
                 ]}
               />

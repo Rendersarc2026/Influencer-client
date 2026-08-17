@@ -24,21 +24,28 @@ export default defineConfig({
     },
   },
   build: {
-    chunkSizeWarningLimit: 600,
-    // Source maps are emitted so a production stack trace is readable. Serve or
-    // withhold the .map files independently of the bundle.
+    chunkSizeWarningLimit: 1000,
     sourcemap: true,
-    // No manualChunks map here on purpose.
-    //
-    // A hand-written package->chunk map kept producing circular chunks
-    // (vendor-charts <-> vendor-mui), and because the MUI chunk loads on every
-    // page, the cycle pulled the ~150kB chart bundle into every initial load —
-    // for roles that never render a chart. Shared transitive dependencies are
-    // exactly what a static map gets wrong.
-    //
-    // Rollup's own grouping handles this correctly once the heavy dependency is
-    // behind a dynamic import, which is what molecules/LazyChartCard does for
-    // recharts.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('@tanstack') || id.includes('axios') || id.includes('@reduxjs') || id.includes('react-redux')) {
+              return 'vendor-data';
+            }
+            if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) {
+              return 'vendor-forms';
+            }
+            if (id.includes('@mui') || id.includes('@emotion') || id.includes('react')) {
+              return 'vendor-ui';
+            }
+          }
+        },
+      },
+    },
   },
   server: {
     port: 5173,

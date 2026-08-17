@@ -61,7 +61,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     onSettled: () => {
       try {
         localStorage.removeItem('app_role_code');
-      } catch {}
+      } catch (_err) {
+        // Ignore localStorage errors in private browsing/restricted environments
+      }
       queryClient.setQueryData(['auth', 'me'], null);
       queryClient.clear();
       window.location.href = '/login';
@@ -78,7 +80,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (meRes.data?.roleCode) {
       try {
         localStorage.setItem('app_role_code', meRes.data.roleCode);
-      } catch {}
+      } catch (_err) {
+        // Ignore localStorage errors
+      }
     }
     queryClient.setQueryData(['auth', 'me'], meRes.data);
     return meRes.data;
@@ -122,7 +126,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (authData?.roleCode) {
       try {
         localStorage.setItem('app_role_code', authData.roleCode);
-      } catch {}
+      } catch (_err) {
+        // Ignore localStorage errors
+      }
     }
   }, [authData?.roleCode]);
   const profileComplete = authData?.profileComplete ?? false;

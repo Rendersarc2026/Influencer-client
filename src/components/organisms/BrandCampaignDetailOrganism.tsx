@@ -69,7 +69,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
     limit: rowsPerPage,
   });
 
-  const mappers = mappersData?.items || [];
+  const mappers = useMemo(() => mappersData?.items || [], [mappersData?.items]);
   const totalMappers = mappersData?.total ?? mappers.length;
 
   const brandDecisionMutation = useBrandDecision(campaignId);

@@ -67,7 +67,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           id: item.code,
           label: item.label,
           path: item.path,
-          iconName: item.iconName as any,
+          iconName: item.iconName || 'Dashboard',
           badge: item.badge || undefined,
         }))
       : navItems.length > 0
