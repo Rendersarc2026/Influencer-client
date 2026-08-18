@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,8 +12,13 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useBrandCampaigns, useBrandPayments } from '@api';
-import { CampaignResponse, CampaignStatusCode, PaymentStatusCode } from '@contracts';
+import { useBrandCampaigns, useBrandPayments, useBrandCampaignsInfluencers } from '@api';
+import {
+  CampaignResponse,
+  CampaignStatusCode,
+  PaymentStatusCode,
+  BrandStatusCode,
+} from '@contracts';
 import { useAuth } from '@hooks';
 
 export const BrandHomeOrganism: React.FC = () => {
@@ -32,13 +37,24 @@ export const BrandHomeOrganism: React.FC = () => {
     page: page + 1,
     limit: rowsPerPage,
   });
+  const { data: allCampaignsData, isLoading: allCampaignsLoading } = useBrandCampaigns();
   const { data: paymentsData, isLoading: paymentsLoading } = useBrandPayments();
 
   const campaigns = campaignsData?.items || [];
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
+  const allCampaigns = allCampaignsData?.items || [];
   const payments = paymentsData?.items || [];
 
-  const activeCampaigns = campaigns.filter((c) => c.status === CampaignStatusCode.ACTIVE).length;
+  const campaignIds = useMemo(() => allCampaigns.map((c) => c.id), [allCampaigns]);
+  const { mappers, isLoading: mappersLoading } = useBrandCampaignsInfluencers(campaignIds);
+
+  const activeCampaigns = allCampaigns.filter((c) => c.status === CampaignStatusCode.ACTIVE).length;
+  const pendingApprovalCount = mappers.filter(
+    (m) => m.brandStatus === BrandStatusCode.PENDING_REVIEW,
+  ).length;
+  const approvedInfluencersCount = mappers.filter(
+    (m) => m.brandStatus === BrandStatusCode.APPROVED,
+  ).length;
   const pendingPayments = payments.filter(
     (p) => p.status === PaymentStatusCode.PENDING_APPROVAL,
   ).length;
@@ -107,7 +123,7 @@ export const BrandHomeOrganism: React.FC = () => {
             tint="butter"
             title="Active Campaigns"
             value={activeCampaigns}
-            loading={campaignsLoading}
+            loading={allCampaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="In progress with agency"
             onClick={() => navigate('/brand/campaigns')}
@@ -118,7 +134,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Awaiting My Approval"
-            value="3"
+            value={pendingApprovalCount}
+            loading={allCampaignsLoading || mappersLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
             deltaLabel="influencers pending review"
             onClick={() => navigate('/brand/campaigns')}
@@ -129,7 +146,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Approved Influencers"
-            value="14"
+            value={approvedInfluencersCount}
+            loading={allCampaignsLoading || mappersLoading}
             icon={<CheckCircleOutlineRoundedIcon fontSize="small" />}
             subtitle="Active across campaigns"
             onClick={() => navigate('/brand/campaigns')}

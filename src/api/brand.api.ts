@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQuery, useQueries, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   CampaignResponse,
@@ -62,6 +63,30 @@ export function useBrandCampaignInfluencers(
     enabled: Boolean(campaignId),
     placeholderData: keepPreviousData,
   });
+}
+
+export function useBrandCampaignsInfluencers(campaignIds: Array<string>) {
+  const queries = useQueries({
+    queries: campaignIds.map((campaignId) => ({
+      queryKey: ['brand', 'campaigns', campaignId, 'influencers', undefined] as const,
+      queryFn: async () => {
+        const response = await apiClient.get<PaginatedResult<BrandMapperResponse>>(
+          `/brand/campaigns/${campaignId}/influencers`,
+        );
+        return response.data;
+      },
+      enabled: Boolean(campaignId),
+    })),
+  });
+
+  const isLoading = queries.some((q) => q.isLoading);
+  const isFetching = queries.some((q) => q.isFetching);
+  const mappers = useMemo(
+    () => queries.flatMap((q) => q.data?.items || []),
+    [queries],
+  );
+
+  return { mappers, isLoading, isFetching };
 }
 
 export function useBrandDecision(campaignId?: string) {

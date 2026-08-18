@@ -20,6 +20,7 @@ import {
   RateStatusCode,
 } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
+import { formatCurrency } from '@utils';
 
 export const InfluencerHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
 
   const {
     data: assignmentsData,
-    isLoading,
+    isLoading: isTableLoading,
     isFetching,
   } = useInfluencerAssignments({
     rateStatus: rateStatusFilter,
@@ -51,22 +52,33 @@ export const InfluencerHomeOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
+  const { data: allAssignmentsData, isLoading: isSummaryLoading } = useInfluencerAssignments();
+
   const assignments = assignmentsData?.items || [];
   const totalAssignments = assignmentsData?.total ?? assignments.length;
+  const allAssignments = allAssignmentsData?.items || [];
 
   const submitRateMutation = useSubmitInfluencerRate();
 
   const [activeRateDialogMapper, setActiveRateDialogMapper] =
     useState<InfluencerMapperResponse | null>(null);
 
-  const pendingRatesCount = assignments.filter(
+  const pendingRatesCount = allAssignments.filter(
     (a) =>
       a?.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
       a?.rateStatus === RateStatusCode.REVISION_REQUESTED,
   ).length;
-  const approvedCount = assignments.filter(
+  const approvedCount = allAssignments.filter(
     (a) => a?.rateStatus === RateStatusCode.AGENCY_APPROVED,
   ).length;
+
+  const totalEarned = allAssignments
+    .filter(
+      (a) =>
+        a?.rateStatus === RateStatusCode.AGENCY_APPROVED &&
+        typeof a.influencerRate === 'number',
+    )
+    .reduce((sum, a) => sum + (a.influencerRate || 0), 0);
 
   // The set comes from the registry; only the wording is creator-facing. This
   // also restores REVISION_REQUESTED, which the hardcoded list omitted — a
@@ -163,8 +175,8 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Active Campaigns"
-            value={assignments.length}
-            loading={isLoading}
+            value={allAssignments.length}
+            loading={isSummaryLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Invited & assigned briefs"
           />
@@ -175,7 +187,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             tint="butter"
             title="Awaiting My Rate"
             value={pendingRatesCount}
-            loading={isLoading}
+            loading={isSummaryLoading}
             icon={<EditNoteRoundedIcon fontSize="small" />}
             deltaLabel="quotes needed"
           />
@@ -186,7 +198,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             tint="butter"
             title="Approved Deals"
             value={approvedCount}
-            loading={isLoading}
+            loading={isSummaryLoading}
             icon={<CheckCircleRoundedIcon fontSize="small" />}
             subtitle="Agency approved rates"
           />
@@ -195,11 +207,11 @@ export const InfluencerHomeOrganism: React.FC = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Total Earned (MTD)"
-            value="₹2.45L"
+            title="Total Earned"
+            value={formatCurrency(totalEarned)}
+            loading={isSummaryLoading}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
-            delta={24.0}
-            deltaLabel="from completed deliverables"
+            subtitle="From approved collaborations"
           />
         </Grid>
       </Grid>
@@ -230,7 +242,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             setRowsPerPage(limit);
             setPage(0);
           }}
-          loading={isLoading}
+          loading={isTableLoading}
           isFetching={isFetching}
           onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
         />

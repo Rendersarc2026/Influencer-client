@@ -33,15 +33,17 @@ export const AgencyHomeOrganism: React.FC = () => {
     page: page + 1,
     limit: rowsPerPage,
   });
+  const { data: allCampaignsData, isLoading: allCampaignsLoading } = useAgencyCampaigns();
   const { data: brandsData } = useAgencyBrands();
   const campaigns = useMemo(() => campaignsData?.items || [], [campaignsData?.items]);
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
+  const allCampaigns = useMemo(() => allCampaignsData?.items || [], [allCampaignsData?.items]);
   const brands = brandsData?.items || [];
 
-  const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
+  const campaignIds = useMemo(() => allCampaigns.map((c) => c.id), [allCampaigns]);
   const { reports, isLoading: reportsLoading } = useCampaignReports(campaignIds);
 
-  const activeCampaignsCount = campaigns.filter(
+  const activeCampaignsCount = allCampaigns.filter(
     (c) => c.status === CampaignStatusCode.ACTIVE,
   ).length;
 
@@ -124,7 +126,7 @@ export const AgencyHomeOrganism: React.FC = () => {
             tint="butter"
             title="Active Campaigns"
             value={activeCampaignsCount}
-            loading={campaignsLoading}
+            loading={allCampaignsLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Currently in market"
             onClick={() => navigate('/agency/campaigns')}
@@ -136,7 +138,7 @@ export const AgencyHomeOrganism: React.FC = () => {
             tint="butter"
             title="Pending Rates"
             value={summary.pendingRates}
-            loading={reportsLoading || campaignsLoading}
+            loading={allCampaignsLoading || reportsLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
             subtitle="Submitted, awaiting your approval"
             onClick={() => navigate('/agency/campaigns')}
@@ -148,7 +150,7 @@ export const AgencyHomeOrganism: React.FC = () => {
             tint="butter"
             title="Awaiting Brand"
             value={summary.awaitingBrand}
-            loading={reportsLoading || campaignsLoading}
+            loading={allCampaignsLoading || reportsLoading}
             icon={<VisibilityRoundedIcon fontSize="small" />}
             subtitle="Rates submitted to brand"
             onClick={() => navigate('/agency/campaigns')}
@@ -160,7 +162,7 @@ export const AgencyHomeOrganism: React.FC = () => {
             tint="butter"
             title="Total Margin"
             value={formatCurrency(summary.totalMargin)}
-            loading={reportsLoading || campaignsLoading}
+            loading={allCampaignsLoading || reportsLoading}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             subtitle="Approved rates across campaigns"
             onClick={() => navigate('/agency/reports')}

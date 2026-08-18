@@ -45,11 +45,14 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
+  const { data: allCampaignsData, isLoading: isAllCampaignsLoading } = useInfluencerCampaigns();
+
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
+  const allCampaigns = allCampaignsData?.items || [];
 
-  const activeCount = campaigns.filter((c) => c?.status === CampaignStatusCode.ACTIVE).length;
-  const completedCount = campaigns.filter((c) => c?.status === CampaignStatusCode.COMPLETED).length;
+  const activeCount = allCampaigns.filter((c) => c?.status === CampaignStatusCode.ACTIVE).length;
+  const completedCount = allCampaigns.filter((c) => c?.status === CampaignStatusCode.COMPLETED).length;
 
   // Pill ids are status codes, the same as the ones useEnumPills emits — the
   // filter is sent as a code, so a symbolic id here would simply never match.
@@ -151,7 +154,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
               value={activeCount}
               subtitle="Current live briefs & deliverables"
               icon={<CampaignRoundedIcon fontSize="small" />}
-              loading={isLoading}
+              loading={isAllCampaignsLoading}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
@@ -161,17 +164,17 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
               value={completedCount}
               subtitle="Completed past collaborations"
               icon={<HistoryRoundedIcon fontSize="small" />}
-              loading={isLoading}
+              loading={isAllCampaignsLoading}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <MetricCard
               tint="butter"
               title="TOTAL COLLABORATIONS"
-              value={totalCampaigns}
+              value={allCampaigns.length}
               subtitle="All assigned brand campaigns"
               icon={<CheckCircleRoundedIcon fontSize="small" />}
-              loading={isLoading}
+              loading={isAllCampaignsLoading}
             />
           </Grid>
         </Grid>
