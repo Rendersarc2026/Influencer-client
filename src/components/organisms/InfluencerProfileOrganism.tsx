@@ -15,7 +15,7 @@ import { SectionHeading } from '@atoms';
 import { useUpdateInfluencerProfile, useCategories } from '@api';
 import { UpdateProfileSchema, UpdateProfileRequest, CategoryTypeCode} from '@contracts';
 import { useAuth, useToast } from '@hooks';
-import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
+import { capitalizeWords, parseShorthandNumber, formatShorthandNumber, getInfluencerTier, getTierInfo } from '@utils';
 
 export const InfluencerProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -151,7 +151,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
 
         <form onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Full Legal Name *"
                 value={fullName}
@@ -173,7 +173,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Instagram Handle"
                 placeholder="@handle"
@@ -197,7 +197,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Estimated Followers"
                 placeholder="e.g. 10k, 100k, 1m"
@@ -230,7 +230,7 @@ export const InfluencerProfileOrganism: React.FC = () => {
                 helperText={
                   fieldErrors.followers ||
                   (followers && parseShorthandNumber(followers) !== null
-                    ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
+                    ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers (${getTierInfo(getInfluencerTier(parseShorthandNumber(followers)))?.label || ''} Tier)`
                     : 'Format: 10k, 100k, 1m')
                 }
                 fullWidth

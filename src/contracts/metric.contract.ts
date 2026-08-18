@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { count, httpUrl, safeText } from './primitives';
+import { count, httpUrls, safeText } from './primitives';
 
 export const MetricResponseSchema = z.object({
   id: z.string().uuid(),
@@ -51,7 +51,7 @@ export const RecordMetricRequestSchema = z
     totalViews: count.optional(),
     likes: count.optional(),
     skipRate: z.number().min(0).max(100).optional(),
-    liveLink: httpUrl.optional(),
+    liveLink: httpUrls.optional(),
     recordedFor: z.coerce.date(),
   })
   .refine((d) => d.engagements <= d.reach, {

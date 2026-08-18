@@ -18,25 +18,38 @@ export const CampaignResponseSchema = z.object({
 });
 export type CampaignResponse = z.infer<typeof CampaignResponseSchema>;
 
-export const CreateCampaignSchema = z.object({
-  brandId: z.string().uuid(),
-  name: safeText(200),
-  description: safeMultilineText(5000).optional(),
-  briefUrl: httpUrl.optional(),
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
-});
+export const CreateCampaignSchema = z
+  .object({
+    brandId: z.string().uuid(),
+    name: safeText(200),
+    description: safeMultilineText(5000, 0).optional(),
+    briefUrl: httpUrl.optional().or(z.literal('')),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+  })
+  .refine((data) => data.endDate >= data.startDate, {
+    message: 'End date must be on or after start date',
+    path: ['endDate'],
+  });
 export type CreateCampaignRequest = z.infer<typeof CreateCampaignSchema>;
 
-export const UpdateCampaignSchema = z.object({
-  name: safeText(200).optional(),
-  description: safeMultilineText(5000).optional(),
-  briefUrl: httpUrl.optional(),
-  status: CampaignStatusEnum.optional(),
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
-  isActive: z.boolean().optional(),
-});
+export const UpdateCampaignSchema = z
+  .object({
+    name: safeText(200).optional(),
+    description: safeMultilineText(5000, 0).optional().nullable(),
+    briefUrl: httpUrl.optional().nullable().or(z.literal('')),
+    status: CampaignStatusEnum.optional(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine(
+    (data) => !data.startDate || !data.endDate || data.endDate >= data.startDate,
+    {
+      message: 'End date must be on or after start date',
+      path: ['endDate'],
+    },
+  );
 export type UpdateCampaignRequest = z.infer<typeof UpdateCampaignSchema>;
 
 export const CampaignListQuerySchema = z.object({

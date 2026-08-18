@@ -23,6 +23,7 @@ import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded';
 import PercentRoundedIcon from '@mui/icons-material/PercentRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -193,6 +194,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Sr No',
       type: 'custom',
       align: 'center',
+      width: 70,
+      minWidth: 70,
       render: (_row, index) => (
         <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary }}>
           {page * rowsPerPage + index + 1}
@@ -204,6 +207,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       id: 'region',
       header: 'Region',
       type: 'custom',
+      minWidth: 110,
       render: (row) => (
         <Chip
           label={row.region || row.reachFromRegion || 'India'}
@@ -222,6 +226,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       id: 'username',
       header: 'Username',
       type: 'custom',
+      minWidth: 160,
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box>
@@ -243,6 +248,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Influencer Link',
       type: 'custom',
       align: 'center',
+      minWidth: 120,
       render: (row) => {
         const link = row.instagram || row.youtube;
         if (!link) {
@@ -280,6 +286,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       id: 'category',
       header: 'Category',
       type: 'custom',
+      minWidth: 120,
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.tokens.textPrimary }}>
           {row.category || 'General'}
@@ -292,20 +299,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Followers',
       type: 'custom',
       align: 'right',
+      minWidth: 110,
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {row.followers ? row.followers.toLocaleString() : '—'}
-        </Typography>
-      ),
-    },
-    // 7. Reach from the region
-    {
-      id: 'reachFromRegion',
-      header: 'Reach from Region',
-      type: 'custom',
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary }}>
-          {row.reachFromRegion || '—'}
         </Typography>
       ),
     },
@@ -315,6 +312,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Pre Eval-ER%',
       type: 'custom',
       align: 'right',
+      minWidth: 120,
       render: (row) => (
         <Typography
           variant="body2"
@@ -332,6 +330,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       id: 'brandFit',
       header: 'Brand Fit',
       type: 'custom',
+      minWidth: 160,
       render: (row) => (
         <Tooltip title={row.brandFit || 'No qualitative comments entered'}>
           <Typography
@@ -356,6 +355,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       id: 'deliverables',
       header: 'Deliverables',
       type: 'custom',
+      minWidth: 140,
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 500 }}>
           {row.deliverables || 'Pending'}
@@ -368,6 +368,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Final Commercials',
       type: 'custom',
       align: 'right',
+      minWidth: 140,
       render: (row) =>
         row.clientRate !== null ? (
           <MoneyText amount={row.clientRate} currency={row.currency} variant="body2" />
@@ -383,6 +384,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Committed Views',
       type: 'custom',
       align: 'right',
+      minWidth: 140,
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {row.committedViews ? row.committedViews.toLocaleString() : '—'}
@@ -395,6 +397,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Pre Eval CPV',
       type: 'custom',
       align: 'right',
+      minWidth: 120,
       render: (row) => (
         <Typography
           variant="body2"
@@ -413,6 +416,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Status',
       type: 'custom',
       align: 'center',
+      minWidth: 150,
       render: (row) => <StatusChip category="BRAND_STATUS" code={row.brandStatus} />,
     },
     // Workflow Actions
@@ -421,6 +425,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Actions',
       type: 'actions',
       align: 'right',
+      minWidth: 220,
       render: (row) => {
         const isPending = row.brandStatus === BrandStatusCode.PENDING_REVIEW;
         return (
@@ -500,13 +505,21 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,
           boxShadow: 'none',
+          flexShrink: 0,
         }}
       >
         <Box
-          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+            mb: 2,
+          }}
         >
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
               <Typography variant="h2">{campaign?.name}</Typography>
               {campaign?.status && <StatusChip category="CAMPAIGN_STATUS" code={campaign.status} />}
             </Box>
@@ -515,18 +528,31 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             </Typography>
           </Box>
 
-          {safeUrl(campaign?.briefUrl) && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             <Button
               variant="outlined"
               size="small"
-              href={safeUrl(campaign?.briefUrl) as string}
-              target="_blank"
-              rel="noopener noreferrer"
-              endIcon={<LaunchRoundedIcon fontSize="small" />}
+              startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+              onClick={() => navigate(`/brand/chats?campaignId=${campaignId}`)}
+              sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
             >
-              Open Campaign Brief
+              Message Agency
             </Button>
-          )}
+
+            {safeUrl(campaign?.briefUrl) && (
+              <Button
+                variant="outlined"
+                size="small"
+                href={safeUrl(campaign?.briefUrl) as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                endIcon={<LaunchRoundedIcon fontSize="small" />}
+                sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
+              >
+                Open Campaign Brief
+              </Button>
+            )}
+          </Box>
         </Box>
 
         {campaign?.description && (
@@ -538,7 +564,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         <Box
           sx={{
             display: 'flex',
-            gap: 4,
+            flexWrap: 'wrap',
+            gap: { xs: 2.5, sm: 4 },
             pt: 1.5,
             borderTop: `1px solid ${theme.palette.tokens.divider}`,
           }}
@@ -575,8 +602,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' },
-          gap: 2,
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' },
+          gap: { xs: 1.5, sm: 2 },
+          flexShrink: 0,
         }}
       >
         <Card
@@ -722,7 +750,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       </Box>
 
       {/* 3. 13-Column Pre-Evaluation Table */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flexShrink: 0 }}>
         <SectionHeading
           title="Influencer Pre-Evaluation & Commercial Proposals"
           subtitle="Detailed pre-evaluation metrics across all 13 standard assessment dimensions"
@@ -746,7 +774,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           }}
           loading={mappersLoading || campaignLoading}
           isFetching={mappersFetching}
-          fillHeight
+          fillHeight={false}
+          minHeight={360}
         />
       </Box>
 
@@ -817,14 +846,6 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {selectedInfluencer.followers ? selectedInfluencer.followers.toLocaleString() : '—'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Reach from Region
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {selectedInfluencer.reachFromRegion || '—'}
                   </Typography>
                 </Box>
                 <Box>

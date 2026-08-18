@@ -67,6 +67,28 @@ export const httpUrl = z
     return HTTP_SCHEMES.includes(parsed.protocol) && parsed.hostname.length > 0;
   }, 'Must be an absolute http(s) URL');
 
+/**
+ * One or more absolute http(s) URLs separated by newlines, commas, or whitespace.
+ */
+export const httpUrls = z
+  .string()
+  .max(4096, 'URLs must be at most 4096 characters')
+  .refine((value) => {
+    const urls = value
+      .split(/[\n,\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (urls.length === 0) return true;
+    return urls.every((u) => {
+      try {
+        const parsed = new URL(u);
+        return HTTP_SCHEMES.includes(parsed.protocol) && parsed.hostname.length > 0;
+      } catch {
+        return false;
+      }
+    });
+  }, 'Each entry must be a valid http(s) URL');
+
 /** Money amounts: finite, non-negative, at most 2 decimal places, sane ceiling. */
 export const money = z
   .number()

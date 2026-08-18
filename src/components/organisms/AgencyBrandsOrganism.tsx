@@ -3,8 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawer } from '@molecules';
@@ -101,15 +103,34 @@ export const AgencyBrandsOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => (
-        <IconButton
-          size="small"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenEdit(row);
-          }}
-        >
-          <EditRoundedIcon fontSize="small" />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+          <Tooltip title="Message Brand">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/agency/chats?participantId=${row.id}&type=BRAND`);
+              }}
+              sx={{
+                color: 'text.secondary',
+                '&:hover': { color: 'primary.main' },
+              }}
+            >
+              <ChatBubbleOutlineRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Edit Brand">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenEdit(row);
+              }}
+            >
+              <EditRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       ),
     },
   ];
@@ -239,8 +260,17 @@ export const AgencyBrandsOrganism: React.FC = () => {
           selectedBrand
             ? [
                 {
-                  label: 'Edit Brand',
+                  label: 'Message Brand',
                   variant: 'contained',
+                  onClick: () => {
+                    const id = selectedBrand.id;
+                    setSelectedBrand(null);
+                    navigate(`/agency/chats?participantId=${id}&type=BRAND`);
+                  },
+                },
+                {
+                  label: 'Edit Brand',
+                  variant: 'outlined',
                   onClick: () => {
                     const b = selectedBrand;
                     setSelectedBrand(null);

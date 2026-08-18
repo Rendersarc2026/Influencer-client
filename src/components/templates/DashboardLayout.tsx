@@ -96,7 +96,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         height: '100vh',          // hard lock — never grows past viewport
         overflow: 'hidden',
         backgroundColor: theme.palette.tokens.pageBg,
-        padding: { xs: '8px 8px 76px 8px', sm: '12px 12px 84px 12px', md: '16px' },
+        padding: {
+          xs: '6px 6px calc(76px + env(safe-area-inset-bottom, 0px)) 6px',
+          sm: '10px 10px 84px 10px',
+          md: '16px',
+        },
         gap: { xs: 0, md: '20px' },
         position: 'relative',
       }}
@@ -117,7 +121,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           flexGrow: 1,
           minHeight: 0,           // must shrink inside flex parent
           backgroundColor: theme.palette.tokens.surface,
-          borderRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
+          borderRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
           border: `1px solid ${theme.palette.tokens.divider}`,
           marginLeft: { xs: 0, md: '260px' },
           display: 'flex',
@@ -149,8 +153,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <Box
           sx={{
             padding: {
-              xs: '14px 12px',
-              sm: '18px 20px',
+              xs: '14px 10px',
+              sm: '18px 18px',
               md: `${theme.customSpacing.cardPadding}px`,
             },
             flexGrow: 1,

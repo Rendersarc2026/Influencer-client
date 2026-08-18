@@ -11,53 +11,59 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { CreateCampaignRequest, BrandResponse } from '@contracts';
+import {
+  CampaignResponse,
+  UpdateCampaignRequest,
+  CampaignStatus,
+  CampaignStatusCode,
+} from '@contracts';
 import { capitalizeWords } from '@utils';
 
-export interface CreateCampaignDialogProps {
+export interface EditCampaignDialogProps {
   open: boolean;
-  brands: BrandResponse[];
-  defaultBrandId?: string;
+  campaign: CampaignResponse | null;
   loading?: boolean;
-  onSubmit: (data: CreateCampaignRequest) => Promise<void> | void;
+  onSubmit: (data: UpdateCampaignRequest) => Promise<void> | void;
   onClose: () => void;
 }
 
-export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
+function toDateInputValue(date?: string | Date | null): string {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+}
+
+export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
   open,
-  brands,
-  defaultBrandId,
+  campaign,
   loading = false,
   onSubmit,
   onClose,
 }) => {
   const theme = useTheme();
-  const [brandId, setBrandId] = useState(defaultBrandId || '');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [briefUrl, setBriefUrl] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [status, setStatus] = useState<CampaignStatus>(CampaignStatusCode.DRAFT);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (open) {
-      setBrandId(defaultBrandId || (brands.length > 0 ? brands[0].id : ''));
-      setName('');
-      setDescription('');
-      setBriefUrl('');
-      setStartDate('');
-      setEndDate('');
+    if (open && campaign) {
+      setName(campaign.name || '');
+      setDescription(campaign.description || '');
+      setBriefUrl(campaign.briefUrl || '');
+      setStartDate(toDateInputValue(campaign.startDate));
+      setEndDate(toDateInputValue(campaign.endDate));
+      setStatus(campaign.status ?? CampaignStatusCode.DRAFT);
       setError('');
     }
-  }, [open, defaultBrandId, brands]);
+  }, [open, campaign]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!brandId) {
-      setError('Please select a brand');
-      return;
-    }
     if (!name.trim()) {
       setError('Campaign name is required');
       return;
@@ -76,13 +82,13 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
     }
 
     setError('');
-    const payload: CreateCampaignRequest = {
-      brandId,
+    const payload: UpdateCampaignRequest = {
       name: name.trim(),
-      description: description.trim() || undefined,
-      briefUrl: briefUrl.trim() || undefined,
+      description: description.trim() || null,
+      briefUrl: briefUrl.trim() || null,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
+      status,
     };
 
     await onSubmit(payload);
@@ -110,8 +116,8 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
           <SectionHeading
-            title="Create New Campaign"
-            subtitle="Setup campaign parameters under one of your client brands"
+            title="Edit Campaign Details"
+            subtitle="Update campaign parameters, timeline, briefs, and deliverables"
           />
         </DialogTitle>
 
@@ -124,29 +130,6 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <TextField
-              select
-              label="Select Brand *"
-              value={brandId}
-              onChange={(e) => setBrandId(e.target.value)}
-              fullWidth
-              disabled={loading || Boolean(defaultBrandId) || brands.length === 0}
-              // The picker now lists only this agency's own brands, so an
-              // agency with none yet would otherwise face an empty dropdown
-              // with nothing explaining why.
-              helperText={
-                brands.length === 0
-                  ? 'No client brands yet — add one from the Brands page first'
-                  : undefined
-              }
-            >
-              {brands.map((b) => (
-                <MenuItem key={b.id} value={b.id}>
-                  {b.name}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
               label="Campaign Name *"
               value={name}
               onChange={(e) => setName(capitalizeWords(e.target.value))}
@@ -155,14 +138,30 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
               disabled={loading}
             />
 
-            <TextField
-              label="Brief URL (Optional)"
-              value={briefUrl}
-              onChange={(e) => setBriefUrl(e.target.value)}
-              placeholder="https://drive.google.com/brief.pdf"
-              fullWidth
-              disabled={loading}
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <TextField
+                select
+                label="Campaign Status"
+                value={status}
+                onChange={(e) => setStatus(Number(e.target.value) as CampaignStatus)}
+                fullWidth
+                disabled={loading}
+              >
+                <MenuItem value={CampaignStatusCode.DRAFT}>Draft</MenuItem>
+                <MenuItem value={CampaignStatusCode.ACTIVE}>Active</MenuItem>
+                <MenuItem value={CampaignStatusCode.COMPLETED}>Completed</MenuItem>
+                <MenuItem value={CampaignStatusCode.CANCELLED}>Cancelled</MenuItem>
+              </TextField>
+
+              <TextField
+                label="Brief URL (Optional)"
+                value={briefUrl}
+                onChange={(e) => setBriefUrl(e.target.value)}
+                placeholder="https://drive.google.com/brief.pdf"
+                fullWidth
+                disabled={loading}
+              />
+            </Box>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
@@ -211,10 +210,10 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || !brandId || !name.trim() || !startDate || !endDate}
+            disabled={loading || !name.trim() || !startDate || !endDate}
             sx={{ minWidth: 140 }}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Create Campaign'}
+            {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </form>

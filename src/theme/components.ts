@@ -421,4 +421,23 @@ export const components: Components<Theme> = {
       },
     },
   },
+  MuiTooltip: {
+    defaultProps: {
+      arrow: true,
+    },
+    styleOverrides: {
+      tooltip: {
+        backgroundColor: '#1E293B',
+        color: '#FFFFFF',
+        fontSize: '12px',
+        fontWeight: 600,
+        padding: '6px 12px',
+        borderRadius: `${tokens.radii.inner}px`,
+        boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+      },
+      arrow: {
+        color: '#1E293B',
+      },
+    },
+  },
 };

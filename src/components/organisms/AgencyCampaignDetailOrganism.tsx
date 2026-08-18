@@ -16,6 +16,9 @@ import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -23,9 +26,11 @@ import {
   DataTable,
   DataTableColumn,
   ApproveRateDialog,
+  EditPreEvalDialog,
   RecordMetricsDialog,
   CommentDialog,
   ConfirmDialog,
+  EditCampaignDialog,
 } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { FilterBar } from '@molecules';
@@ -39,10 +44,20 @@ import {
   useRecordMetric,
   useRemoveInfluencerFromCampaign,
   useUpdateCampaign,
+  useUpdatePreEval,
 } from '@api';
-import { AgencyMapperResponse, RecordMetricRequest, CampaignStatus, RateStatusCode } from '@contracts';
+import {
+  AgencyMapperResponse,
+  RecordMetricRequest,
+  CampaignStatus,
+  CampaignStatusCode,
+  CampaignStatusName,
+  RateStatusCode,
+  UpdateCampaignRequest,
+  UpdatePreEvalRequest,
+} from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl } from '@utils';
+import { safeUrl, humanizeCode } from '@utils';
 
 interface AgencyCampaignDetailOrganismProps {
   campaignId?: string;
@@ -87,6 +102,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   // Mutations
   const updateCampaignMutation = useUpdateCampaign();
+  const updatePreEvalMutation = useUpdatePreEval(campaignId);
   const approveRateMutation = useApproveRate(campaignId);
   const requestRevisionMutation = useRequestRevision(campaignId);
   const submitBrandReviewMutation = useSubmitForBrandReview(campaignId);
@@ -98,12 +114,48 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const [revisionDialogMapper, setRevisionDialogMapper] = useState<AgencyMapperResponse | null>(
     null,
   );
+  const [preEvalDialogMapper, setPreEvalDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [metricsDialogMapper, setMetricsDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [deleteDialogMapper, setDeleteDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [editCampaignOpen, setEditCampaignOpen] = useState(false);
 
   const brand = brands.find((b) => b.id === campaign?.brandId);
 
-  // 0. Handle Update Campaign Status
+  // 0. Handle Update Campaign Details & Status
+  const handleEditCampaign = async (data: UpdateCampaignRequest) => {
+    if (!campaignId) return;
+    try {
+      await updateCampaignMutation.mutateAsync({
+        id: campaignId,
+        data,
+      });
+      showSuccess('Campaign details updated successfully.');
+      setEditCampaignOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update campaign details.',
+      );
+    }
+  };
+
+  const handleUpdatePreEval = async (mapperId: string, data: UpdatePreEvalRequest) => {
+    try {
+      await updatePreEvalMutation.mutateAsync({ mapperId, data });
+      showSuccess('Pre-evaluation details updated successfully.');
+      setPreEvalDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update pre-evaluation details.',
+      );
+    }
+  };
+
   const handleUpdateCampaignStatus = async (newStatus: CampaignStatus) => {
     if (!campaignId) return;
     try {
@@ -111,7 +163,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         id: campaignId,
         data: { status: newStatus },
       });
-      showSuccess(`Campaign status updated to ${newStatus}.`);
+      showSuccess(
+        `Campaign status updated to ${humanizeCode(CampaignStatusName[newStatus] || String(newStatus))}.`,
+      );
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
@@ -345,6 +399,19 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             </Tooltip>
           )}
 
+          {/* Edit Pre-Evaluation Details */}
+          <Tooltip title="Edit Pre-Evaluation Details">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreEvalDialogMapper(row);
+              }}
+            >
+              <TuneRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
           {/* Record Deliverable Metrics */}
           <Tooltip title="Record Reach & Engagements">
             <IconButton
@@ -355,6 +422,25 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               }}
             >
               <InsightsRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          {/* Message Influencer */}
+          <Tooltip title="Message Influencer">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(
+                  `/agency/chats?participantId=${row.influencerId}&type=INFLUENCER&campaignId=${campaignId}`,
+                );
+              }}
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                '&:hover': { color: theme.palette.primary.main },
+              }}
+            >
+              <ChatBubbleOutlineRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
 
@@ -417,29 +503,68 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         }}
       >
         <Box
-          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'flex-start' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+            mb: 2,
+          }}
         >
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
               <Typography variant="h2">{campaign?.name}</Typography>
               {campaign?.status && <StatusChip category="CAMPAIGN_STATUS" code={campaign.status} />}
             </Box>
-            <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-              Client Brand:{' '}
-              <Box
-                component="span"
-                sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}
-              >
-                {brand?.name || 'Brand Account'}
-              </Box>
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                Client Brand:{' '}
+                <Box
+                  component="span"
+                  sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}
+                >
+                  {brand?.name || 'Brand Account'}
+                </Box>
+              </Typography>
+              {brand && (
+                <Tooltip title="Message Client Brand">
+                  <IconButton
+                    size="small"
+                    onClick={() =>
+                      navigate(
+                        `/agency/chats?participantId=${brand.id}&type=BRAND&campaignId=${campaignId}`,
+                      )
+                    }
+                    sx={{
+                      p: 0.5,
+                      color: theme.palette.tokens.textSecondary,
+                      '&:hover': { color: theme.palette.primary.main },
+                    }}
+                  >
+                    <ChatBubbleOutlineRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditRoundedIcon fontSize="small" />}
+              onClick={() => setEditCampaignOpen(true)}
+              disabled={campaignLoading}
+              sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
+            >
+              Edit Campaign
+            </Button>
+
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <Select
-                value={campaign?.status || 'DRAFT'}
-                onChange={(e) => handleUpdateCampaignStatus(e.target.value as CampaignStatus)}
+                value={campaign?.status ?? CampaignStatusCode.DRAFT}
+                onChange={(e) => handleUpdateCampaignStatus(Number(e.target.value) as CampaignStatus)}
                 disabled={updateCampaignMutation.isPending}
                 sx={{
                   height: 34,
@@ -448,10 +573,10 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                   borderRadius: `${theme.customRadii.inner}px`,
                 }}
               >
-                <MenuItem value="DRAFT">Draft</MenuItem>
-                <MenuItem value="ACTIVE">Active</MenuItem>
-                <MenuItem value="COMPLETED">Completed</MenuItem>
-                <MenuItem value="CANCELLED">Cancelled</MenuItem>
+                <MenuItem value={CampaignStatusCode.DRAFT}>Draft</MenuItem>
+                <MenuItem value={CampaignStatusCode.ACTIVE}>Active</MenuItem>
+                <MenuItem value={CampaignStatusCode.COMPLETED}>Completed</MenuItem>
+                <MenuItem value={CampaignStatusCode.CANCELLED}>Cancelled</MenuItem>
               </Select>
             </FormControl>
 
@@ -463,6 +588,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 target="_blank"
                 rel="noopener noreferrer"
                 endIcon={<LaunchRoundedIcon fontSize="small" />}
+                sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
               >
                 Open Campaign Brief
               </Button>
@@ -479,7 +605,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         <Box
           sx={{
             display: 'flex',
-            gap: 4,
+            flexWrap: 'wrap',
+            gap: { xs: 2.5, sm: 4 },
             pt: 1,
             borderTop: `1px solid ${theme.palette.tokens.divider}`,
           }}
@@ -559,7 +686,6 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           influencerRate={approveDialogMapper.influencerRate}
           currency={approveDialogMapper.currency}
           initialDeliverables={approveDialogMapper.deliverables}
-          initialReachFromRegion={approveDialogMapper.reachFromRegion}
           initialPreEvalEr={approveDialogMapper.preEvalEr}
           initialBrandFit={approveDialogMapper.brandFit}
           initialCommittedViews={approveDialogMapper.committedViews}
@@ -580,6 +706,17 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         onCancel={() => setRevisionDialogMapper(null)}
       />
 
+      {/* Edit Pre-Evaluation Dialog */}
+      {preEvalDialogMapper && (
+        <EditPreEvalDialog
+          open={Boolean(preEvalDialogMapper)}
+          mapper={preEvalDialogMapper}
+          loading={updatePreEvalMutation.isPending}
+          onSubmit={handleUpdatePreEval}
+          onClose={() => setPreEvalDialogMapper(null)}
+        />
+      )}
+
       {/* Record Metrics Dialog */}
       {metricsDialogMapper && (
         <RecordMetricsDialog
@@ -591,6 +728,15 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           onClose={() => setMetricsDialogMapper(null)}
         />
       )}
+
+      {/* Edit Campaign Details Dialog */}
+      <EditCampaignDialog
+        open={editCampaignOpen}
+        campaign={campaign || null}
+        loading={updateCampaignMutation.isPending}
+        onSubmit={handleEditCampaign}
+        onClose={() => setEditCampaignOpen(false)}
+      />
 
       {/* Confirm Remove Influencer Dialog */}
       <ConfirmDialog

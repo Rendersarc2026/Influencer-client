@@ -49,7 +49,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
     { id: 'ALL', label: 'All Campaigns' },
     ...campaignStatuses
       .filter((s) => s.value === 'ACTIVE' || s.value === 'COMPLETED')
-      .map((s) => ({ id: s.value, label: s.label })),
+      .map((s) => ({ id: String(s.code), label: s.label })),
   ];
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [

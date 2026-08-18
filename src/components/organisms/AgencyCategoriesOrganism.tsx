@@ -302,12 +302,12 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1.5,
+            gap: 1,
             p: 0.75,
             backgroundColor: theme.palette.tokens.surface,
             borderRadius: `${theme.customRadii.pill}px`,
             border: `1px solid ${theme.palette.tokens.divider}`,
-            width: 'fit-content',
+            width: { xs: '100%', sm: 'fit-content' },
           }}
         >
           <ButtonBase
@@ -316,16 +316,18 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               setPage(0);
             }}
             sx={{
-              px: 3,
+              flex: { xs: 1, sm: 'initial' },
+              px: { xs: 1.5, sm: 3 },
               py: 1.25,
               borderRadius: `${theme.customRadii.pill}px`,
               backgroundColor: activeTab === CategoryTypeCode.BRAND ? theme.palette.tokens.rail : 'transparent',
               color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textSecondary,
               fontWeight: 600,
-              fontSize: theme.typography.body2.fontSize,
+              fontSize: { xs: '12px', sm: theme.typography.body2.fontSize },
               display: 'flex',
               alignItems: 'center',
-              gap: 1.25,
+              justifyContent: 'center',
+              gap: { xs: 0.75, sm: 1.25 },
               transition: 'all 0.2s ease',
               '&:hover': {
                 color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textPrimary,
@@ -340,7 +342,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               size="small"
               label={brandTotal}
               sx={{
-                height: 22,
+                height: 20,
                 fontSize: '11px',
                 fontWeight: 700,
                 backgroundColor:
@@ -356,17 +358,19 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               setPage(0);
             }}
             sx={{
-              px: 3,
+              flex: { xs: 1, sm: 'initial' },
+              px: { xs: 1.5, sm: 3 },
               py: 1.25,
               borderRadius: `${theme.customRadii.pill}px`,
               backgroundColor:
                 activeTab === CategoryTypeCode.INFLUENCER ? theme.palette.tokens.rail : 'transparent',
               color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textSecondary,
               fontWeight: 600,
-              fontSize: theme.typography.body2.fontSize,
+              fontSize: { xs: '12px', sm: theme.typography.body2.fontSize },
               display: 'flex',
               alignItems: 'center',
-              gap: 1.25,
+              justifyContent: 'center',
+              gap: { xs: 0.75, sm: 1.25 },
               transition: 'all 0.2s ease',
               '&:hover': {
                 color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textPrimary,
@@ -383,14 +387,17 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               size="small"
               label={influencerTotal}
               sx={{
-                height: 22,
+                height: 20,
                 fontSize: '11px',
                 fontWeight: 700,
                 backgroundColor:
                   activeTab === CategoryTypeCode.INFLUENCER
                     ? 'rgba(255,255,255,0.2)'
                     : theme.palette.tokens.fieldBg,
-                color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                color:
+                  activeTab === CategoryTypeCode.INFLUENCER
+                    ? '#FFFFFF'
+                    : theme.palette.tokens.textPrimary,
               }}
             />
           </ButtonBase>

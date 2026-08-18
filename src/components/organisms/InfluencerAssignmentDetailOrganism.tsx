@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -79,12 +80,14 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
             sx={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-start',
+              alignItems: { xs: 'stretch', sm: 'flex-start' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
               mb: 2,
             }}
           >
             <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
                 <Typography variant="h2">Campaign Deliverables Brief</Typography>
                 {assignment?.rateStatus && (
                   <StatusChip category="RATE_STATUS" code={assignment.rateStatus} />
@@ -98,14 +101,27 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               </Typography>
             </Box>
 
-            <Button
-              variant={isRateSubmitted ? 'outlined' : 'contained'}
-              startIcon={<EditNoteRoundedIcon fontSize="small" />}
-              onClick={() => setRateDialogOpen(true)}
-              disabled={isLoading}
-            >
-              {isRateSubmitted ? 'Revise Rate Quote' : 'Submit Commercial Rate'}
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+                onClick={() =>
+                  navigate(`/influencer/chats?campaignId=${assignment?.campaignId}`)
+                }
+              >
+                Message Agency
+              </Button>
+
+              <Button
+                variant={isRateSubmitted ? 'outlined' : 'contained'}
+                startIcon={<EditNoteRoundedIcon fontSize="small" />}
+                onClick={() => setRateDialogOpen(true)}
+                disabled={isLoading}
+                sx={{ minWidth: 160 }}
+              >
+                {isRateSubmitted ? 'Revise Rate Quote' : 'Submit Commercial Rate'}
+              </Button>
+            </Box>
           </Box>
 
           <Box
@@ -132,7 +148,8 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
           <Box
             sx={{
               display: 'flex',
-              gap: 4,
+              flexWrap: 'wrap',
+              gap: { xs: 2.5, sm: 4 },
               pt: 1,
               borderTop: `1px solid ${theme.palette.tokens.divider}`,
             }}

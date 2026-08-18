@@ -20,7 +20,6 @@ export interface ApproveRateDialogProps {
   currency?: string;
   loading?: boolean;
   initialDeliverables?: string | null;
-  initialReachFromRegion?: string | null;
   initialPreEvalEr?: number | null;
   initialBrandFit?: string | null;
   initialCommittedViews?: number | null;
@@ -31,7 +30,6 @@ export interface ApproveRateDialogProps {
       influencerRate?: number;
       committedViews?: number;
       preEvalEr?: number;
-      reachFromRegion?: string;
       brandFit?: string;
       deliverables?: string;
     },
@@ -47,7 +45,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   currency = 'INR',
   loading = false,
   initialDeliverables,
-  initialReachFromRegion,
   initialPreEvalEr,
   initialBrandFit,
   initialCommittedViews,
@@ -59,7 +56,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const [marginInput, setMarginInput] = useState<string>('0');
   const [clientRateInput, setClientRateInput] = useState<string>('0');
   const [deliverablesInput, setDeliverablesInput] = useState<string>('');
-  const [reachFromRegionInput, setReachFromRegionInput] = useState<string>('');
   const [preEvalErInput, setPreEvalErInput] = useState<string>('');
   const [committedViewsInput, setCommittedViewsInput] = useState<string>('');
   const [brandFitInput, setBrandFitInput] = useState<string>('');
@@ -81,52 +77,33 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
         setClientRateInput('0');
       }
       setDeliverablesInput(initialDeliverables || '');
-      setReachFromRegionInput(initialReachFromRegion || '');
-      setPreEvalErInput(initialPreEvalEr !== undefined && initialPreEvalEr !== null ? String(initialPreEvalEr) : '');
-      setCommittedViewsInput(initialCommittedViews !== undefined && initialCommittedViews !== null ? String(initialCommittedViews) : '');
+      setPreEvalErInput(initialPreEvalEr !== null && initialPreEvalEr !== undefined ? String(initialPreEvalEr) : '');
+      setCommittedViewsInput(initialCommittedViews !== null && initialCommittedViews !== undefined ? String(initialCommittedViews) : '');
       setBrandFitInput(initialBrandFit || '');
       setRateError('');
       setMarginError('');
     }
-  }, [
-    open,
-    influencerRate,
-    hasPresetRate,
-    initialDeliverables,
-    initialReachFromRegion,
-    initialPreEvalEr,
-    initialBrandFit,
-    initialCommittedViews,
-  ]);
+  }, [open, influencerRate, hasPresetRate, initialDeliverables, initialPreEvalEr, initialBrandFit, initialCommittedViews]);
 
-  // When Creator Rate changes: recalculate Client Rate
   const handleRateChange = (val: string) => {
-    const numeric = val.replace(/[^0-9.]/g, '');
-    setRateInput(numeric);
-    if (rateError) setRateError('');
-
-    const r = parseFloat(numeric) || 0;
+    setRateInput(val);
+    const r = parseFloat(val) || 0;
     const m = parseFloat(marginInput) || 0;
     setClientRateInput(String(r + m));
+    if (rateError) setRateError('');
   };
 
-  // When Margin changes: recalculate Client Rate
   const handleMarginChange = (val: string) => {
-    const numeric = val.replace(/[^0-9.]/g, '');
-    setMarginInput(numeric);
-    if (marginError) setMarginError('');
-
+    setMarginInput(val);
+    const m = parseFloat(val) || 0;
     const r = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
-    const m = parseFloat(numeric) || 0;
     setClientRateInput(String(r + m));
+    if (marginError) setMarginError('');
   };
 
-  // When Client Rate is typed directly: recalculate Margin (Client Rate - Creator Rate)
   const handleClientRateChange = (val: string) => {
-    const numeric = val.replace(/[^0-9.]/g, '');
-    setClientRateInput(numeric);
-
-    const cr = parseFloat(numeric) || 0;
+    setClientRateInput(val);
+    const cr = parseFloat(val) || 0;
     const r = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
     const newMargin = Math.max(0, cr - r);
     setMarginInput(String(newMargin));
@@ -162,7 +139,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
       influencerRate: !hasPresetRate ? effectiveRate : undefined,
       committedViews: committedViewsNum > 0 ? committedViewsNum : undefined,
       preEvalEr: preEvalErInput ? parseFloat(preEvalErInput) : undefined,
-      reachFromRegion: reachFromRegionInput.trim() || undefined,
       brandFit: brandFitInput.trim() || undefined,
       deliverables: deliverablesInput.trim() || undefined,
     });
@@ -283,14 +259,14 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               disabled={loading}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
-                label="Committed Views"
+                label="Committed Views (Optional)"
                 type="text"
                 value={committedViewsInput}
                 onChange={(e) => setCommittedViewsInput(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 50000"
-                helperText="Estimated view guarantee"
+                helperText="Optional estimated view guarantee"
                 fullWidth
                 disabled={loading}
               />
@@ -305,16 +281,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 disabled={loading}
               />
             </Box>
-
-            <TextField
-              label="Reach from Region"
-              value={reachFromRegionInput}
-              onChange={(e) => setReachFromRegionInput(e.target.value)}
-              placeholder="e.g. 85% Kerala, 10% Gulf"
-              helperText="Audience concentration in target market"
-              fullWidth
-              disabled={loading}
-            />
 
             <TextField
               label="Brand Fit (Qualitative Comments)"

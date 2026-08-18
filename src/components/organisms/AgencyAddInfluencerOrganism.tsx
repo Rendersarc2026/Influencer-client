@@ -29,7 +29,7 @@ import {
   useCreateInfluencer,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeImageUrl } from '@utils';
+import { safeImageUrl, getInfluencerTier, getTierInfo } from '@utils';
 import { AgencyMapperResponse, CreateInfluencerRequest, InfluencerResponse } from '@contracts';
 
 /** "64.7k" reads better than "64700" in a list of reach numbers. */
@@ -52,16 +52,20 @@ interface AvailableCreator {
   handle: string;
   category: string;
   followers: string;
+  tier?: string;
   avatarUrl?: string;
 }
 
 function toAvailableCreator(influencer: InfluencerResponse): AvailableCreator {
+  const tier = getInfluencerTier(influencer.followers);
+  const tierInfo = getTierInfo(tier);
   return {
     id: influencer.id,
     name: influencer.name,
     handle: influencer.instagram || influencer.youtube || '—',
     category: influencer.category || 'Uncategorized',
     followers: formatFollowers(influencer.followers),
+    tier: tierInfo?.label,
   };
 }
 
@@ -322,21 +326,20 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
               <Card
                 key={creator.id}
                 sx={{
-                  padding: '20px',
+                  padding: { xs: '14px', sm: '20px' },
                   borderRadius: `${theme.customRadii.card}px`,
                   backgroundColor: theme.palette.tokens.surface,
                   border: `1px solid ${theme.palette.tokens.divider}`,
                   boxShadow: 'none',
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: { xs: 'stretch', sm: 'center' },
                   justifyContent: 'space-between',
-                  gap: 3,
+                  gap: { xs: 2, sm: 3 },
+                  flexDirection: { xs: 'column', sm: 'row' },
                   flexWrap: 'wrap',
                 }}
               >
-                {/* Creator Bio — opens the details drawer. The row's other
-                    controls are separate targets, so this stays scoped to the
-                    identity block rather than the whole card. */}
+                {/* Creator Bio */}
                 <Box
                   role="button"
                   tabIndex={0}
@@ -352,7 +355,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 2,
-                    minWidth: 260,
+                    minWidth: { xs: '100%', sm: 240 },
                     cursor: 'pointer',
                     borderRadius: `${theme.customRadii.inner}px`,
                     padding: '4px 8px',
@@ -380,7 +383,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                       variant="caption"
                       sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
                     >
-                      {creator.handle} · {creator.followers} followers
+                      {creator.handle} · {creator.followers} followers {creator.tier ? `(${creator.tier})` : ''}
                     </Typography>
                     <Typography
                       variant="caption"
@@ -392,7 +395,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                 </Box>
 
                 {/* Deliverables Input */}
-                <Box sx={{ flex: 1, minWidth: 240 }}>
+                <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 } }}>
                   <TextField
                     size="small"
                     label="Requested Deliverables"
@@ -408,7 +411,12 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
                 {/* Add Action */}
                 <Box
-                  sx={{ minWidth: 160, display: 'flex', justifyContent: 'flex-end', gap: 1 }}
+                  sx={{
+                    minWidth: { xs: '100%', sm: 160 },
+                    display: 'flex',
+                    justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                    gap: 1,
+                  }}
                 >
                   {assigned ? (
                     <>
@@ -522,6 +530,12 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                   fields: [
                     { label: 'Influencer Name', value: detailCreator.name },
                     { label: 'Category / Niche', value: detailCreator.category || '—' },
+                    {
+                      label: 'Influencer Tier',
+                      value: getTierInfo(getInfluencerTier(detailCreator.followers))
+                        ? `${getTierInfo(getInfluencerTier(detailCreator.followers))?.label} (${getTierInfo(getInfluencerTier(detailCreator.followers))?.rangeLabel})`
+                        : '—',
+                    },
                     { label: 'Location', value: detailCreator.location || 'Global' },
                     { label: 'Follower Reach', value: formatFollowers(detailCreator.followers) },
                   ],

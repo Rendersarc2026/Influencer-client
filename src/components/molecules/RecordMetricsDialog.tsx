@@ -5,9 +5,12 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { RecordMetricRequest } from '@contracts';
@@ -21,6 +24,8 @@ export interface RecordMetricsDialogProps {
   onSubmit: (mapperId: string, data: RecordMetricRequest) => Promise<void> | void;
   onClose: () => void;
 }
+
+const MAX_POST_URLS = 10;
 
 export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   open,
@@ -38,7 +43,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   const [likes, setLikes] = useState<string>('');
   const [watchTime, setWatchTime] = useState<string>('');
   const [skipRate, setSkipRate] = useState<string>('');
-  const [liveLink, setLiveLink] = useState<string>('');
+  const [postUrls, setPostUrls] = useState<string[]>(['']);
   const [recordedFor, setRecordedFor] = useState<string>(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState('');
 
@@ -51,11 +56,31 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       setLikes('');
       setWatchTime('');
       setSkipRate('');
-      setLiveLink('');
+      setPostUrls(['']);
       setRecordedFor(new Date().toISOString().split('T')[0]);
       setError('');
     }
   }, [open]);
+
+  const handleAddPostUrl = () => {
+    if (postUrls.length >= MAX_POST_URLS) return;
+    setPostUrls((prev) => (prev.length < MAX_POST_URLS ? [...prev, ''] : prev));
+  };
+
+  const handleRemovePostUrl = (index: number) => {
+    setPostUrls((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [''];
+    });
+  };
+
+  const handlePostUrlChange = (index: number, val: string) => {
+    setPostUrls((prev) => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,9 +121,16 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       return;
     }
 
-    if (liveLink.trim() && !/^https?:\/\//i.test(liveLink.trim())) {
-      setError('Live link must begin with http:// or https://');
-      return;
+    const validUrls: string[] = [];
+    for (let i = 0; i < postUrls.length; i++) {
+      const raw = postUrls[i].trim();
+      if (raw) {
+        if (!/^https?:\/\//i.test(raw)) {
+          setError(`Post URL ${postUrls.length > 1 ? `#${i + 1} ` : ''}must begin with http:// or https://`);
+          return;
+        }
+        validUrls.push(raw);
+      }
     }
 
     setError('');
@@ -110,7 +142,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       likes: likesParsed ?? undefined,
       watchTime: watchTime.trim() || undefined,
       skipRate: skipRateParsed ?? undefined,
-      liveLink: liveLink.trim() || undefined,
+      liveLink: validUrls.length > 0 ? validUrls.join('\n') : undefined,
       recordedFor: new Date(recordedFor),
     };
 
@@ -129,15 +161,15 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
             borderRadius: `${theme.customRadii.card}px`,
             padding: '16px',
             backgroundImage: 'none',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
           },
         },
       }}
     >
-      <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1, px: 1 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <DialogTitle sx={{ pb: 1, px: 1, flexShrink: 0 }}>
           <SectionHeading
             title="Record Post-Evaluation Performance"
             subtitle={
@@ -149,13 +181,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         <DialogContent
           sx={{
             px: 1,
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
+            flex: 1,
+            overflowY: 'auto',
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Post Eval - Reach (Unique) *"
                 value={reach}
@@ -193,7 +224,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Post Eval - Engagements *"
                 value={engagements}
@@ -226,7 +257,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Post Eval - Impressions"
                 value={impressions}
@@ -250,7 +281,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Post Eval - Skip Rate %"
                 type="number"
@@ -272,14 +303,65 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               />
             </Box>
 
-            <TextField
-              label="Live Post URL"
-              value={liveLink}
-              onChange={(e) => setLiveLink(e.target.value)}
-              placeholder="https://www.instagram.com/reel/..."
-              fullWidth
-              disabled={loading}
-            />
+            {/* Post URLs section */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: theme.palette.tokens.textSecondary,
+                  }}
+                >
+                  Post URLs (Published Deliverables)
+                </Typography>
+                <Button
+                  size="small"
+                  startIcon={<AddRoundedIcon fontSize="small" />}
+                  onClick={handleAddPostUrl}
+                  disabled={loading || postUrls.length >= MAX_POST_URLS}
+                  sx={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    py: 0.25,
+                    px: 1,
+                  }}
+                >
+                  Add Post URL {postUrls.length >= MAX_POST_URLS ? '(Max 10)' : `(${postUrls.length}/${MAX_POST_URLS})`}
+                </Button>
+              </Box>
+
+              {postUrls.map((url, idx) => (
+                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TextField
+                    label={postUrls.length > 1 ? `Post URL #${idx + 1}` : 'Post URL'}
+                    value={url}
+                    onChange={(e) => handlePostUrlChange(idx, e.target.value)}
+                    placeholder="https://www.instagram.com/reel/..."
+                    fullWidth
+                    disabled={loading}
+                  />
+                  {postUrls.length > 1 && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemovePostUrl(idx)}
+                      disabled={loading}
+                      title="Remove URL"
+                      sx={{
+                        color: theme.palette.tokens.textSecondary,
+                        '&:hover': { color: theme.palette.tokens.negative },
+                        p: 1,
+                      }}
+                    >
+                      <DeleteOutlineRoundedIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              ))}
+            </Box>
 
             <Box
               sx={{

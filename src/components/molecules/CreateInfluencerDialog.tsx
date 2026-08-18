@@ -5,6 +5,8 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import ButtonBase from '@mui/material/ButtonBase';
+import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
@@ -13,7 +15,15 @@ import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useCategories } from '@api';
 import { CreateInfluencerRequest, CategoryTypeCode } from '@contracts';
-import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
+import {
+  capitalizeWords,
+  parseShorthandNumber,
+  formatShorthandNumber,
+  INFLUENCER_TIERS,
+  getInfluencerTier,
+  getTierInfo,
+  InfluencerTier,
+} from '@utils';
 
 export interface CreateInfluencerDialogProps {
   open: boolean;
@@ -35,6 +45,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [category, setCategory] = useState('');
+  const [selectedTier, setSelectedTier] = useState<InfluencerTier | null>(null);
   const [location, setLocation] = useState('');
   const [followers, setFollowers] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -71,6 +82,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       setName('');
       setEmail('');
       setCategory('');
+      setSelectedTier(null);
       setLocation('');
       setFollowers('');
       setContactPhone('');
@@ -84,6 +96,40 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       setFollowersError('');
     }
   }, [open]);
+
+  const handleSelectTier = (tierKey: InfluencerTier) => {
+    setSelectedTier(tierKey);
+    const tierInfo = getTierInfo(tierKey);
+    if (!tierInfo) return;
+
+    const currentParsed = parseShorthandNumber(followers);
+    if (
+      currentParsed === null ||
+      currentParsed < tierInfo.min ||
+      (tierInfo.max !== Infinity && currentParsed >= tierInfo.max)
+    ) {
+      setFollowers(formatShorthandNumber(tierInfo.defaultFollowers));
+      setFollowersError('');
+    }
+  };
+
+  const handleFollowersChange = (val: string) => {
+    const cleaned = val.replace(/-/g, '');
+    setFollowers(cleaned);
+    if (cleaned.trim()) {
+      const parsed = parseShorthandNumber(cleaned);
+      if (parsed === null) {
+        setFollowersError('Enter valid followers (e.g. 10k, 100k, 1m)');
+        setSelectedTier(null);
+      } else {
+        setFollowersError('');
+        setSelectedTier(getInfluencerTier(parsed));
+      }
+    } else {
+      setFollowersError('');
+      setSelectedTier(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,7 +264,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               disabled={loading}
             />
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Login / Contact Email *"
                 value={email}
@@ -244,7 +290,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. riya@gmail.com"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
               <TextField
                 label="Contact Phone *"
@@ -265,11 +310,10 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   }
                 }}
                 error={Boolean(phoneError)}
-                helperText={phoneError || 'Required: the influencer\u2019s direct line'}
+                helperText={phoneError || 'Required: the influencer’s direct line'}
                 placeholder="e.g. +91 9876543210"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
             </Box>
 
@@ -284,15 +328,103 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Influencer Category"
+                  label="Influencer Niche / Category"
                   placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
-                  helperText="Influencer niche / content domain"
+                  helperText="Influencer content niche / domain"
                   fullWidth
                 />
               )}
             />
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* Influencer Tier / Follower Category (Nano, Micro, Macro, Mega) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 600,
+                    color: theme.palette.tokens.textSecondary,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Influencer Tier & Category
+                </Typography>
+                {selectedTier && (
+                  <Chip
+                    size="small"
+                    label={`${getTierInfo(selectedTier)?.label} (${getTierInfo(selectedTier)?.rangeLabel})`}
+                    sx={{
+                      height: 22,
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: getTierInfo(selectedTier)?.color.bg,
+                      color: getTierInfo(selectedTier)?.color.text,
+                      border: `1px solid ${getTierInfo(selectedTier)?.color.border}`,
+                    }}
+                  />
+                )}
+              </Box>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                  gap: 1.25,
+                }}
+              >
+                {INFLUENCER_TIERS.map((t) => {
+                  const isSelected = selectedTier === t.key;
+                  return (
+                    <ButtonBase
+                      key={t.key}
+                      onClick={() => handleSelectTier(t.key)}
+                      disabled={loading}
+                      type="button"
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '10px 8px',
+                        borderRadius: `${theme.customRadii.inner}px`,
+                        border: `1.5px solid ${isSelected ? t.color.border : theme.palette.tokens.divider}`,
+                        backgroundColor: isSelected ? t.color.bg : theme.palette.tokens.fieldBg,
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          borderColor: t.color.border,
+                          backgroundColor: isSelected ? t.color.bg : 'rgba(0, 0, 0, 0.02)',
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color: isSelected ? t.color.text : theme.palette.tokens.textPrimary,
+                        }}
+                      >
+                        {t.label}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontSize: '11px',
+                          color: isSelected ? t.color.text : theme.palette.tokens.textSecondary,
+                          fontWeight: isSelected ? 600 : 400,
+                          mt: 0.25,
+                        }}
+                      >
+                        {t.rangeLabel}
+                      </Typography>
+                    </ButtonBase>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Location"
                 value={location}
@@ -300,25 +432,11 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. Mumbai"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
               <TextField
                 label="Followers"
                 value={followers}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/-/g, '');
-                  setFollowers(cleaned);
-                  if (cleaned.trim()) {
-                    const parsed = parseShorthandNumber(cleaned);
-                    if (parsed === null) {
-                      setFollowersError('Enter valid followers (e.g. 10k, 100k, 1m)');
-                    } else {
-                      setFollowersError('');
-                    }
-                  } else {
-                    setFollowersError('');
-                  }
-                }}
+                onChange={(e) => handleFollowersChange(e.target.value)}
                 onBlur={() => {
                   if (followers.trim()) {
                     const parsed = parseShorthandNumber(followers);
@@ -332,16 +450,15 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 helperText={
                   followersError ||
                   (followers && parseShorthandNumber(followers) !== null
-                    ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
-                    : 'Format: 10k, 100k, 1m')
+                    ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers (${getTierInfo(selectedTier)?.label || ''} Tier)`
+                    : 'Format: 10k, 100k, 1m or select a tier above')
                 }
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Instagram Handle"
                 value={instagram}
@@ -349,7 +466,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. @riya.malhotra"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
               <TextField
                 label="YouTube Handle"
@@ -358,11 +474,10 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. @riyamalhotra"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 label="Indicative Rate — Min (₹)"
                 value={avgCommercialMin}
@@ -370,7 +485,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. 5000"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
               <TextField
                 label="Indicative Rate — Max (₹)"
@@ -379,7 +493,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 placeholder="e.g. 15000"
                 fullWidth
                 disabled={loading}
-                sx={{ flex: 1 }}
               />
             </Box>
 

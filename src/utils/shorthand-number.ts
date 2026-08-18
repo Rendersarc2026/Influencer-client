@@ -60,3 +60,95 @@ export function formatFollowersDisplay(value: number | null | undefined): string
   if (value === 0) return '0';
   return formatShorthandNumber(value);
 }
+
+export type InfluencerTier = 'NANO' | 'MICRO' | 'MACRO' | 'MEGA';
+
+export interface InfluencerTierInfo {
+  key: InfluencerTier;
+  label: string;
+  rangeLabel: string;
+  min: number;
+  max: number;
+  defaultFollowers: number;
+  description: string;
+  color: {
+    bg: string;
+    text: string;
+    border: string;
+  };
+}
+
+export const INFLUENCER_TIERS: InfluencerTierInfo[] = [
+  {
+    key: 'NANO',
+    label: 'Nano',
+    rangeLabel: '1k – 10k',
+    min: 1_000,
+    max: 10_000,
+    defaultFollowers: 5_000,
+    description: '1k – 10k followers',
+    color: {
+      bg: '#EEF2FF',
+      text: '#4F46E5',
+      border: '#C7D2FE',
+    },
+  },
+  {
+    key: 'MICRO',
+    label: 'Micro',
+    rangeLabel: '10k – 100k',
+    min: 10_000,
+    max: 100_000,
+    defaultFollowers: 50_000,
+    description: '10k – 100k followers',
+    color: {
+      bg: '#ECFDF5',
+      text: '#059669',
+      border: '#A7F3D0',
+    },
+  },
+  {
+    key: 'MACRO',
+    label: 'Macro',
+    rangeLabel: '100k – 1M',
+    min: 100_000,
+    max: 1_000_000,
+    defaultFollowers: 250_000,
+    description: '100k – 1M followers',
+    color: {
+      bg: '#FFFBEB',
+      text: '#D97706',
+      border: '#FDE68A',
+    },
+  },
+  {
+    key: 'MEGA',
+    label: 'Mega',
+    rangeLabel: '1M+',
+    min: 1_000_000,
+    max: Infinity,
+    defaultFollowers: 1_500_000,
+    description: '1M+ followers',
+    color: {
+      bg: '#FAF5FF',
+      text: '#9333EA',
+      border: '#E9D5FF',
+    },
+  },
+];
+
+export function getInfluencerTier(followers: number | null | undefined): InfluencerTier | null {
+  if (followers === null || followers === undefined || isNaN(followers) || followers <= 0) {
+    return null;
+  }
+  if (followers < 10_000) return 'NANO';
+  if (followers < 100_000) return 'MICRO';
+  if (followers < 1_000_000) return 'MACRO';
+  return 'MEGA';
+}
+
+export function getTierInfo(tier: InfluencerTier | string | null | undefined): InfluencerTierInfo | null {
+  if (!tier) return null;
+  const upper = tier.toUpperCase();
+  return INFLUENCER_TIERS.find((t) => t.key === upper || t.label.toUpperCase() === upper) || null;
+}

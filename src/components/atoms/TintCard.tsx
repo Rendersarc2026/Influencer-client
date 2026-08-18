@@ -37,7 +37,7 @@ export const TintCard: React.FC<TintCardProps> = ({
       className={className}
       onClick={onClick}
       sx={{
-        padding: `${theme.customSpacing.cardPadding}px`,
+        padding: { xs: '14px 12px', sm: '18px 16px', md: `${theme.customSpacing.cardPadding}px` },
         display: 'flex',
         flexDirection: 'column',
         cursor: onClick ? 'pointer' : 'default',

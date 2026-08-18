@@ -34,6 +34,7 @@ export interface DataTableColumn<T> {
   type?: ColumnType;
   align?: 'left' | 'center' | 'right';
   width?: string | number;
+  minWidth?: string | number;
   // Field accessors
   accessor?: keyof T | ((row: T) => unknown);
   subAccessor?: keyof T | ((row: T) => unknown);
@@ -368,7 +369,7 @@ export function DataTable<T extends Record<string, unknown>>({
     <Box
       sx={{
         flex: 1,
-        minHeight: 0,
+        minHeight: typeof minHeight === 'number' ? `${Math.min(minHeight, 320)}px` : 240,
         p: 4,
         display: 'flex',
         alignItems: 'center',
@@ -396,7 +397,7 @@ export function DataTable<T extends Record<string, unknown>>({
         sx={{
           padding: { xs: '14px 12px', sm: '18px 16px', md: `${theme.customSpacing.cardPadding}px` },
           flex: 1,
-          minHeight: 0,
+          minHeight: minTableContainerHeight,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -460,7 +461,7 @@ export function DataTable<T extends Record<string, unknown>>({
               },
             }}
           >
-            <Table stickyHeader sx={{ minWidth: 600 }}>
+            <Table stickyHeader sx={{ minWidth: 'max-content', width: '100%' }}>
               <TableHead>
                 <TableRow>
                   {columns.map((col) => (
@@ -469,6 +470,8 @@ export function DataTable<T extends Record<string, unknown>>({
                       align={col.align || 'left'}
                       sx={{
                         width: col.width,
+                        minWidth: col.minWidth || col.width,
+                        whiteSpace: 'nowrap',
                         // stickyHeader uses position:sticky — keep bg consistent
                         backgroundColor: theme.palette.tokens.surface,
                       }}
@@ -497,7 +500,11 @@ export function DataTable<T extends Record<string, unknown>>({
                             <TableCell
                               key={col.id}
                               align={col.align || 'left'}
-                              sx={{ width: col.width }}
+                              sx={{
+                                width: col.width,
+                                minWidth: col.minWidth || col.width,
+                                whiteSpace: 'nowrap',
+                              }}
                             >
                               {renderCellContent(row, col, globalIndex)}
                             </TableCell>
@@ -523,7 +530,20 @@ export function DataTable<T extends Record<string, unknown>>({
             page={page}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
-            sx={{ flexShrink: 0, borderTop: `1px solid ${theme.palette.tokens.divider}` }}
+            sx={{
+              flexShrink: 0,
+              borderTop: `1px solid ${theme.palette.tokens.divider}`,
+              '& .MuiTablePagination-toolbar': {
+                paddingLeft: { xs: 1, sm: 2 },
+                paddingRight: { xs: 1, sm: 2 },
+                minHeight: { xs: 44, sm: 52 },
+                flexWrap: 'wrap',
+                justifyContent: { xs: 'center', sm: 'flex-end' },
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-input': {
+                display: { xs: 'none', sm: 'inline-flex' },
+              },
+            }}
           />
         )}
       </Card>
@@ -575,13 +595,32 @@ export function DataTable<T extends Record<string, unknown>>({
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'flex-start',
+            overflowX: 'auto',
+            // Custom scrollbar styling
+            '&::-webkit-scrollbar': { width: 6, height: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: theme.palette.tokens.divider,
+              borderRadius: 3,
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: theme.palette.tokens.textSecondary,
+            },
           }}
         >
-          <Table sx={{ minWidth: 600 }}>
+          <Table sx={{ minWidth: 'max-content', width: '100%' }}>
             <TableHead>
               <TableRow>
                 {columns.map((col) => (
-                  <TableCell key={col.id} align={col.align || 'left'} sx={{ width: col.width }}>
+                  <TableCell
+                    key={col.id}
+                    align={col.align || 'left'}
+                    sx={{
+                      width: col.width,
+                      minWidth: col.minWidth || col.width,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {col.header}
                   </TableCell>
                 ))}
@@ -606,7 +645,11 @@ export function DataTable<T extends Record<string, unknown>>({
                           <TableCell
                             key={col.id}
                             align={col.align || 'left'}
-                            sx={{ width: col.width }}
+                            sx={{
+                              width: col.width,
+                              minWidth: col.minWidth || col.width,
+                              whiteSpace: 'nowrap',
+                            }}
                           >
                             {renderCellContent(row, col, globalIndex)}
                           </TableCell>
@@ -631,6 +674,20 @@ export function DataTable<T extends Record<string, unknown>>({
           page={page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
+          sx={{
+            flexShrink: 0,
+            borderTop: `1px solid ${theme.palette.tokens.divider}`,
+            '& .MuiTablePagination-toolbar': {
+              paddingLeft: { xs: 1, sm: 2 },
+              paddingRight: { xs: 1, sm: 2 },
+              minHeight: { xs: 44, sm: 52 },
+              flexWrap: 'wrap',
+              justifyContent: { xs: 'center', sm: 'flex-end' },
+            },
+            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-input': {
+              display: { xs: 'none', sm: 'inline-flex' },
+            },
+          }}
         />
       )}
     </Card>

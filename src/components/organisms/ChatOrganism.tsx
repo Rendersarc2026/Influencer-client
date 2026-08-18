@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -8,26 +8,39 @@ import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
+import InputAdornment from '@mui/material/InputAdornment';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
-import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
-import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { CommentDialog } from '@molecules';
+import { StartChatDialog } from '@molecules';
+import { EmptyState } from '@atoms';
 import {
   useChats,
   useChatMessages,
   useSendMessage,
-  useEditMessage,
-  useDeleteMessage,
   useMarkChatAsRead,
+  useCreateOrFindChat,
+  useAgencyInfluencers,
+  useAgencyBrands,
+  useAgencyCampaigns,
 } from '@api';
-import { ChatResponse, MessageResponse, ChatTypeCode, ChatTypeName} from '@contracts';
+import {
+  ChatResponse,
+  ChatTypeCode,
+  ChatTypeName,
+  InfluencerResponse,
+  BrandResponse,
+  CampaignResponse,
+} from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { safeUrl } from '@utils';
 
@@ -35,19 +48,47 @@ export const ChatOrganism: React.FC = () => {
   const theme = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, roleCode, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const { data: chats = [], isLoading: chatsLoading } = useChats();
+  const queryChatId = searchParams.get('chatId');
+  const queryParticipantId = searchParams.get('participantId');
+  const queryType = (searchParams.get('type') as 'INFLUENCER' | 'BRAND') || undefined;
+  const queryCampaignId = searchParams.get('campaignId') || undefined;
 
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const { data: chats = [], isLoading: chatsLoading } = useChats();
+  const { data: influencersData } = useAgencyInfluencers({ limit: 100 });
+  const { data: brandsData } = useAgencyBrands({ limit: 100 });
+  const { data: campaignsData } = useAgencyCampaigns({ limit: 100 });
+
+  const influencers: InfluencerResponse[] = useMemo(
+    () => influencersData?.items || [],
+    [influencersData],
+  );
+  const brands: BrandResponse[] = useMemo(
+    () => brandsData?.items || [],
+    [brandsData],
+  );
+  const campaigns: CampaignResponse[] = useMemo(
+    () => campaignsData?.items || [],
+    [campaignsData],
+  );
+
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(queryChatId || null);
+  const [searchFilter, setSearchFilter] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [attachmentInput, setAttachmentInput] = useState('');
   const [showAttachmentField, setShowAttachmentField] = useState(false);
 
-  // Edit dialog state
-  const [messageToEdit, setMessageToEdit] = useState<MessageResponse | null>(null);
+  // New Chat Dialog state
+  const [startChatOpen, setStartChatOpen] = useState(false);
+  const [dialogParticipantId, setDialogParticipantId] = useState<string | undefined>(queryParticipantId || undefined);
+  const [dialogType, setDialogType] = useState<'INFLUENCER' | 'BRAND'>(queryType || 'INFLUENCER');
+  const [dialogCampaignId, setDialogCampaignId] = useState<string | undefined>(queryCampaignId || undefined);
+
+  const createChatMutation = useCreateOrFindChat();
 
   // Active chat & messages
   const activeChat =
@@ -56,11 +97,31 @@ export const ChatOrganism: React.FC = () => {
 
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(effectiveChatId);
   const sendMessageMutation = useSendMessage(effectiveChatId, user?.id);
-  const editMessageMutation = useEditMessage(effectiveChatId);
-  const deleteMessageMutation = useDeleteMessage(effectiveChatId);
   const markReadMutation = useMarkChatAsRead();
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Filter out any soft-deleted messages for a clean chat feed
+  const activeMessages = useMemo(
+    () => messages.filter((m) => m.isActive !== false),
+    [messages],
+  );
+
+  // Handle URL query parameter changes
+  useEffect(() => {
+    if (queryChatId) {
+      setSelectedChatId(queryChatId);
+    }
+  }, [queryChatId]);
+
+  useEffect(() => {
+    if (queryParticipantId) {
+      setDialogParticipantId(queryParticipantId);
+      setDialogType(queryType || 'INFLUENCER');
+      setDialogCampaignId(queryCampaignId || undefined);
+      setStartChatOpen(true);
+    }
+  }, [queryParticipantId, queryType, queryCampaignId]);
 
   // Auto select first chat on desktop if none selected
   useEffect(() => {
@@ -80,11 +141,30 @@ export const ChatOrganism: React.FC = () => {
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [activeMessages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim() || !effectiveChatId) return;
+  const handleStartChat = async (
+    participantId: string,
+    campaignId?: string,
+  ) => {
+    try {
+      const newChat = await createChatMutation.mutateAsync({
+        participantId,
+        campaignId,
+      });
+      setSelectedChatId(newChat.id);
+      setStartChatOpen(false);
+      setSearchParams({});
+      showSuccess('Conversation started.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.');
+    }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!messageInput.trim() || !effectiveChatId || sendMessageMutation.isPending) return;
 
     const payload = {
       body: messageInput.trim(),
@@ -103,37 +183,62 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
-  const handleEditConfirm = async (newBody: string) => {
-    if (!messageToEdit) return;
-    try {
-      await editMessageMutation.mutateAsync({
-        messageId: messageToEdit.id,
-        data: { body: newBody },
-      });
-      showSuccess('Message edited.');
-      setMessageToEdit(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to edit message.');
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      await deleteMessageMutation.mutateAsync(messageId);
-      showSuccess('Message deleted.');
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to delete message.');
+  const getChatPartnerName = React.useCallback((chat: ChatResponse) => {
+    if (chat.type === ChatTypeCode.AGENCY_BRAND) {
+      if (chat.brandUserId) {
+        const matchedBrand = brands.find((b: BrandResponse) => b.id === chat.brandUserId);
+        if (matchedBrand) return matchedBrand.name;
+      }
+      return roleCode === 'BRAND' ? 'Agency Account Manager' : 'Brand Partner';
     }
+
+    if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
+      if (chat.influencerId) {
+        const matchedInfluencer = influencers.find((i: InfluencerResponse) => i.id === chat.influencerId);
+        if (matchedInfluencer) return matchedInfluencer.name;
+      }
+      return roleCode === 'INFLUENCER' ? 'Agency Manager' : 'Creator Studio';
+    }
+
+    return 'Direct Message';
+  }, [brands, influencers, roleCode]);
+
+  const getCampaignName = React.useCallback((campaignId: string | null | undefined) => {
+    if (!campaignId) return null;
+    const matched = campaigns.find((c) => c.id === campaignId);
+    return matched ? matched.name : null;
+  }, [campaigns]);
+
+  const formatMessageTime = (dateInput?: Date | string | null) => {
+    if (!dateInput) return '';
+    const d = new Date(dateInput);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getChatPartnerName = (chat: ChatResponse) => {
-    if (roleCode === 'AGENCY') {
-      if (chat.type === ChatTypeCode.AGENCY_BRAND) return 'Brand Partner';
-      return 'Creator Studio';
+  const formatMessageDateGroup = (dateInput: Date | string) => {
+    const d = new Date(dateInput);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (d.toDateString() === today.toDateString()) {
+      return 'Today';
     }
-    return 'Agency Partner';
+    if (d.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+    return d.toLocaleDateString([], {
+      month: 'short',
+      day: 'numeric',
+      year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+    });
   };
 
   const getNavItems = () => {
@@ -141,6 +246,18 @@ export const ChatOrganism: React.FC = () => {
     if (roleCode === 'BRAND') return navConfig.BRAND;
     return navConfig.INFLUENCER;
   };
+
+  // Filtered conversation list
+  const filteredChats = useMemo(() => {
+    if (!searchFilter.trim()) return chats;
+    const term = searchFilter.toLowerCase();
+    return chats.filter((c) => {
+      const partner = getChatPartnerName(c).toLowerCase();
+      const campaign = (getCampaignName(c.campaignId) || '').toLowerCase();
+      const typeLabel = ChatTypeName[c.type]?.toLowerCase() || '';
+      return partner.includes(term) || campaign.includes(term) || typeLabel.includes(term);
+    });
+  }, [chats, searchFilter, getChatPartnerName, getCampaignName]);
 
   return (
     <DashboardLayout
@@ -155,11 +272,26 @@ export const ChatOrganism: React.FC = () => {
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
+      rightAction={
+        roleCode === 'AGENCY' ? (
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon fontSize="small" />}
+            onClick={() => {
+              setDialogParticipantId(undefined);
+              setDialogCampaignId(undefined);
+              setStartChatOpen(true);
+            }}
+          >
+            New Conversation
+          </Button>
+        ) : undefined
+      }
     >
       <Card
         sx={{
           height: 'calc(100vh - 180px)',
-          minHeight: 520,
+          minHeight: 560,
           borderRadius: `${theme.customRadii.card}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,
@@ -172,23 +304,124 @@ export const ChatOrganism: React.FC = () => {
         {(!isMobile || !selectedChatId) && (
           <Box
             sx={{
-              width: isMobile ? '100%' : 320,
-              minWidth: isMobile ? '100%' : 320,
+              width: isMobile ? '100%' : 340,
+              minWidth: isMobile ? '100%' : 340,
               borderRight: `1px solid ${theme.palette.tokens.divider}`,
               display: 'flex',
               flexDirection: 'column',
               backgroundColor: theme.palette.tokens.fieldBg,
             }}
           >
-            <Box sx={{ p: 2.5, borderBottom: `1px solid ${theme.palette.tokens.divider}` }}>
-              <Typography variant="h3" sx={{ fontSize: '18px' }}>
-                Conversations
-              </Typography>
-              <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                {chats.length} active channel{chats.length === 1 ? '' : 's'}
-              </Typography>
+            {/* Header + Search */}
+            <Box
+              sx={{
+                p: 2,
+                borderBottom: `1px solid ${theme.palette.tokens.divider}`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h3" sx={{ fontSize: '17px', fontWeight: 700 }}>
+                    Conversations
+                  </Typography>
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: `${theme.customRadii.pill}px`,
+                      backgroundColor: theme.palette.tokens.accentBg,
+                      color: theme.palette.tokens.accentText,
+                      fontSize: '11px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {chats.length}
+                  </Box>
+                </Box>
+                {roleCode === 'AGENCY' && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddRoundedIcon fontSize="small" />}
+                    onClick={() => {
+                      setDialogParticipantId(undefined);
+                      setDialogCampaignId(undefined);
+                      setStartChatOpen(true);
+                    }}
+                    sx={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      height: 32,
+                      px: 1.5,
+                      borderRadius: `${theme.customRadii.pill}px`,
+                    }}
+                  >
+                    New
+                  </Button>
+                )}
+              </Box>
+
+              {/* Search conversations */}
+              {chats.length > 0 && (
+                <TextField
+                  size="small"
+                  placeholder="Filter conversations..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRoundedIcon
+                          sx={{ fontSize: '18px', color: theme.palette.tokens.textSecondary }}
+                        />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchFilter ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => setSearchFilter('')}
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            p: 0,
+                            backgroundColor: 'transparent',
+                            color: theme.palette.tokens.textSecondary,
+                            '&:hover': { backgroundColor: 'transparent' },
+                          }}
+                        >
+                          <CloseRoundedIcon sx={{ fontSize: '14px' }} />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null,
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: theme.palette.tokens.surface,
+                      borderRadius: `${theme.customRadii.inner}px`,
+                      height: 36,
+                    },
+                    '& input': {
+                      fontSize: '13px',
+                      py: 0.5,
+                    },
+                  }}
+                />
+              )}
             </Box>
 
+            {/* Conversation Items List */}
             <Box
               sx={{
                 flex: 1,
@@ -204,15 +437,40 @@ export const ChatOrganism: React.FC = () => {
                   <CircularProgress size={24} />
                 </Box>
               ) : chats.length === 0 ? (
+                <Box sx={{ p: 2, textAlign: 'center', my: 'auto' }}>
+                  <EmptyState
+                    icon={<ChatBubbleOutlineRoundedIcon />}
+                    title="No conversations"
+                    description="Start a direct thread with a brand or creator to collaborate."
+                    action={
+                      roleCode === 'AGENCY' ? (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<AddRoundedIcon fontSize="small" />}
+                          onClick={() => {
+                            setDialogParticipantId(undefined);
+                            setDialogCampaignId(undefined);
+                            setStartChatOpen(true);
+                          }}
+                        >
+                          Start a Chat
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                </Box>
+              ) : filteredChats.length === 0 ? (
                 <Box sx={{ p: 3, textAlign: 'center' }}>
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    No conversations yet.
+                    No conversations match &ldquo;{searchFilter}&rdquo;
                   </Typography>
                 </Box>
               ) : (
-                chats.map((chat) => {
+                filteredChats.map((chat) => {
                   const isSelected = chat.id === effectiveChatId;
                   const partnerName = getChatPartnerName(chat);
+                  const campaignName = getCampaignName(chat.campaignId);
 
                   return (
                     <Box
@@ -221,13 +479,19 @@ export const ChatOrganism: React.FC = () => {
                       sx={{
                         p: 1.5,
                         borderRadius: `${theme.customRadii.inner}px`,
-                        backgroundColor: isSelected ? theme.palette.tokens.surface : 'transparent',
-                        border: `1px solid ${isSelected ? theme.palette.tokens.divider : 'transparent'}`,
+                        backgroundColor: isSelected
+                          ? theme.palette.tokens.surface
+                          : 'transparent',
+                        border: `1px solid ${isSelected ? theme.palette.tokens.accent : 'transparent'}`,
+                        borderLeft: isSelected
+                          ? `4px solid ${theme.palette.tokens.accent}`
+                          : '4px solid transparent',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1.5,
                         transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 2px 8px rgba(0, 0, 0, 0.04)' : 'none',
                         '&:hover': {
                           backgroundColor: theme.palette.tokens.surface,
                         },
@@ -235,8 +499,8 @@ export const ChatOrganism: React.FC = () => {
                     >
                       <Avatar
                         sx={{
-                          width: 40,
-                          height: 40,
+                          width: 42,
+                          height: 42,
                           bgcolor: isSelected
                             ? theme.palette.tokens.rail
                             : theme.palette.tokens.divider,
@@ -244,10 +508,11 @@ export const ChatOrganism: React.FC = () => {
                             ? theme.palette.tints.butter
                             : theme.palette.tokens.textPrimary,
                           fontWeight: 700,
-                          fontSize: '14px',
+                          fontSize: '15px',
+                          flexShrink: 0,
                         }}
                       >
-                        {partnerName[0]}
+                        {partnerName[0]?.toUpperCase() || 'C'}
                       </Avatar>
 
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -256,35 +521,65 @@ export const ChatOrganism: React.FC = () => {
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
+                            mb: 0.25,
                           }}
                         >
-                          <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>
+                          <Typography
+                            variant="body2"
+                            noWrap
+                            sx={{
+                              fontWeight: isSelected ? 700 : 600,
+                              color: theme.palette.tokens.textPrimary,
+                            }}
+                          >
                             {partnerName}
                           </Typography>
                           <Typography
                             variant="caption"
-                            sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}
+                            sx={{
+                              color: theme.palette.tokens.textSecondary,
+                              fontSize: '11px',
+                              flexShrink: 0,
+                              ml: 1,
+                            }}
                           >
-                            {chat.lastMessageOn
-                              ? new Date(chat.lastMessageOn).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : ''}
+                            {formatMessageTime(chat.lastMessageOn)}
                           </Typography>
                         </Box>
-                        <Typography
-                          variant="caption"
-                          noWrap
-                          sx={{
-                            color: theme.palette.tokens.textSecondary,
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {ChatTypeName[chat.type].replace('_', ' · ')}
-                        </Typography>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'nowrap' }}>
+                          <Box
+                            sx={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              px: 0.75,
+                              py: 0.15,
+                              borderRadius: '4px',
+                              backgroundColor: theme.palette.tokens.accentBg,
+                              color: theme.palette.tokens.accentText,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {chat.type === ChatTypeCode.AGENCY_INFLUENCER ? 'Creator' : 'Brand'}
+                          </Box>
+
+                          {campaignName && (
+                            <Typography
+                              variant="caption"
+                              noWrap
+                              sx={{
+                                color: theme.palette.tokens.textSecondary,
+                                fontSize: '11px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              📁 {campaignName}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
                     </Box>
                   );
@@ -303,6 +598,7 @@ export const ChatOrganism: React.FC = () => {
               flexDirection: 'column',
               height: '100%',
               backgroundColor: theme.palette.tokens.surface,
+              minWidth: 0,
             }}
           >
             {activeChat ? (
@@ -310,38 +606,82 @@ export const ChatOrganism: React.FC = () => {
                 {/* Thread Header */}
                 <Box
                   sx={{
-                    p: 2,
+                    px: 3,
+                    py: 1.75,
                     borderBottom: `1px solid ${theme.palette.tokens.divider}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    backgroundColor: theme.palette.tokens.surface,
+                    zIndex: 1,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
                     {isMobile && (
-                      <IconButton size="small" onClick={() => setSelectedChatId(null)}>
+                      <IconButton
+                        size="small"
+                        onClick={() => setSelectedChatId(null)}
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          backgroundColor: theme.palette.tokens.fieldBg,
+                          color: theme.palette.tokens.textPrimary,
+                        }}
+                      >
                         <ArrowBackRoundedIcon fontSize="small" />
                       </IconButton>
                     )}
+
                     <Avatar
                       sx={{
-                        width: 36,
-                        height: 36,
+                        width: 40,
+                        height: 40,
                         bgcolor: theme.palette.tokens.rail,
                         color: theme.palette.tints.butter,
+                        fontWeight: 700,
+                        fontSize: '15px',
+                        flexShrink: 0,
                       }}
                     >
-                      {getChatPartnerName(activeChat)[0]}
+                      {getChatPartnerName(activeChat)[0]?.toUpperCase() || 'C'}
                     </Avatar>
-                    <Box>
-                      <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                        {getChatPartnerName(activeChat)}
-                      </Typography>
+
+                    <Box sx={{ minWidth: 0 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 700 }} noWrap>
+                          {getChatPartnerName(activeChat)}
+                        </Typography>
+                        {getCampaignName(activeChat.campaignId) && (
+                          <Box
+                            sx={{
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              px: 1,
+                              py: 0.25,
+                              borderRadius: `${theme.customRadii.pill}px`,
+                              backgroundColor: theme.palette.tokens.fieldBg,
+                              color: theme.palette.tokens.textSecondary,
+                              border: `1px solid ${theme.palette.tokens.divider}`,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                            }}
+                          >
+                            📁 {getCampaignName(activeChat.campaignId)}
+                          </Box>
+                        )}
+                      </Box>
                       <Typography
                         variant="caption"
-                        sx={{ color: theme.palette.tokens.accent, fontWeight: 600 }}
+                        sx={{
+                          color: theme.palette.tokens.accentText,
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
                       >
-                        {ChatTypeName[activeChat.type].replace('_', ' ')}
+                        {ChatTypeName[activeChat.type]?.replace('_', ' • ')}
                       </Typography>
                     </Box>
                   </Box>
@@ -355,140 +695,201 @@ export const ChatOrganism: React.FC = () => {
                     p: 3,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 2,
+                    backgroundColor: theme.palette.tokens.surface,
                   }}
                 >
                   {messagesLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                      <CircularProgress size={24} />
+                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 'auto' }}>
+                      <CircularProgress size={28} />
                     </Box>
-                  ) : messages.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 8 }}>
+                  ) : activeMessages.length === 0 ? (
+                    <Box
+                      sx={{
+                        my: 'auto',
+                        textAlign: 'center',
+                        py: 6,
+                        px: 3,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: `${theme.customRadii.pill}px`,
+                          backgroundColor: theme.palette.tokens.fieldBg,
+                          color: theme.palette.tokens.accentText,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mb: 1,
+                        }}
+                      >
+                        <ChatBubbleOutlineRoundedIcon sx={{ fontSize: '26px' }} />
+                      </Box>
+                      <Typography variant="h3" sx={{ fontSize: '16px', fontWeight: 700 }}>
+                        Start of your conversation
+                      </Typography>
                       <Typography
                         variant="body2"
-                        sx={{ color: theme.palette.tokens.textSecondary }}
+                        sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 360 }}
                       >
-                        No messages in this conversation yet. Send a message to start communicating.
+                        Messages sent here are encrypted and delivered directly to{' '}
+                        {getChatPartnerName(activeChat)}.
                       </Typography>
                     </Box>
                   ) : (
-                    messages.map((msg) => {
+                    activeMessages.map((msg, index) => {
                       const isMine = msg.senderId === user?.id || msg.id.startsWith('temp-');
-                      const isDeleted = !msg.isActive;
-                      const isEdited = Boolean(msg.editedFromId);
+
+                      // Date grouping
+                      const currentDateGroup = formatMessageDateGroup(msg.createdOn);
+                      const prevMessage = index > 0 ? activeMessages[index - 1] : null;
+                      const prevDateGroup = prevMessage
+                        ? formatMessageDateGroup(prevMessage.createdOn)
+                        : null;
+                      const showDateHeader = currentDateGroup !== prevDateGroup;
 
                       return (
-                        <Box
-                          key={msg.id}
-                          sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: isMine ? 'flex-end' : 'flex-start',
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              maxWidth: '75%',
-                              p: 2,
-                              borderRadius: `${theme.customRadii.inner}px`,
-                              backgroundColor: isDeleted
-                                ? theme.palette.tokens.fieldBg
-                                : isMine
-                                  ? theme.palette.tokens.rail
-                                  : theme.palette.tokens.fieldBg,
-                              color: isDeleted
-                                ? theme.palette.tokens.textSecondary
-                                : isMine
-                                  ? '#FFFFFF'
-                                  : theme.palette.tokens.textPrimary,
-                              position: 'relative',
-                            }}
-                          >
-                            {isDeleted ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <BlockRoundedIcon fontSize="small" sx={{ opacity: 0.6 }} />
-                                <Typography
-                                  variant="body2"
-                                  sx={{ fontStyle: 'italic', opacity: 0.8 }}
-                                >
-                                  This message was deleted
-                                </Typography>
-                              </Box>
-                            ) : (
-                              <>
-                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                                  {msg.body}
-                                </Typography>
-                                {safeUrl(msg.attachmentUrl) && (
-                                  <Box sx={{ mt: 1 }}>
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      href={safeUrl(msg.attachmentUrl) as string}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      sx={{
-                                        color: isMine
-                                          ? theme.palette.tints.butter
-                                          : theme.palette.tokens.accent,
-                                        borderColor: isMine
-                                          ? theme.palette.tints.butter
-                                          : theme.palette.tokens.accent,
-                                      }}
-                                    >
-                                      View Attachment
-                                    </Button>
-                                  </Box>
-                                )}
-                              </>
-                            )}
-
-                            {/* Message Footer: Time + Edited marker + Actions */}
+                        <React.Fragment key={msg.id}>
+                          {showDateHeader && (
                             <Box
                               sx={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'flex-end',
-                                gap: 1,
-                                mt: 0.5,
-                                opacity: 0.8,
+                                justifyContent: 'center',
+                                my: 2,
                               }}
                             >
-                              {isEdited && !isDeleted && (
-                                <Typography
-                                  variant="caption"
-                                  sx={{ fontSize: '10px', fontStyle: 'italic' }}
-                                >
-                                  (edited)
-                                </Typography>
-                              )}
-                              <Typography variant="caption" sx={{ fontSize: '10px' }}>
-                                {new Date(msg.createdOn).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  px: 1.5,
+                                  py: 0.4,
+                                  borderRadius: `${theme.customRadii.pill}px`,
+                                  backgroundColor: theme.palette.tokens.fieldBg,
+                                  color: theme.palette.tokens.textSecondary,
+                                  fontWeight: 600,
+                                  fontSize: '11px',
+                                  border: `1px solid ${theme.palette.tokens.divider}`,
+                                }}
+                              >
+                                {currentDateGroup}
                               </Typography>
-                              {isMine && !isDeleted && (
-                                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => setMessageToEdit(msg)}
-                                    sx={{ p: '2px', color: 'inherit' }}
-                                  >
-                                    <EditRoundedIcon sx={{ fontSize: '12px' }} />
-                                  </IconButton>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleDeleteMessage(msg.id)}
-                                    sx={{ p: '2px', color: 'inherit' }}
-                                  >
-                                    <DeleteOutlineRoundedIcon sx={{ fontSize: '12px' }} />
-                                  </IconButton>
+                            </Box>
+                          )}
+
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: isMine ? 'flex-end' : 'flex-start',
+                              mb: 1.5,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                maxWidth: '72%',
+                                minWidth: '80px',
+                                px: 2,
+                                py: 1.5,
+                                borderRadius: isMine
+                                  ? `${theme.customRadii.inner}px ${theme.customRadii.inner}px 4px ${theme.customRadii.inner}px`
+                                  : `${theme.customRadii.inner}px ${theme.customRadii.inner}px ${theme.customRadii.inner}px 4px`,
+                                backgroundColor: isMine
+                                  ? theme.palette.tokens.rail
+                                  : theme.palette.tokens.fieldBg,
+                                border: isMine
+                                  ? 'none'
+                                  : `1px solid ${theme.palette.tokens.divider}`,
+                                color: isMine
+                                  ? '#FFFFFF'
+                                  : theme.palette.tokens.textPrimary,
+                                wordBreak: 'break-word',
+                                boxShadow: isMine
+                                  ? '0 2px 6px rgba(0, 0, 0, 0.08)'
+                                  : 'none',
+                              }}
+                            >
+                              {/* Message text */}
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontSize: '13.5px',
+                                  lineHeight: 1.5,
+                                  whiteSpace: 'pre-wrap',
+                                  color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                                }}
+                              >
+                                {msg.body}
+                              </Typography>
+
+                              {/* Message attachment link if present */}
+                              {safeUrl(msg.attachmentUrl) && (
+                                <Box
+                                  component="a"
+                                  href={safeUrl(msg.attachmentUrl) as string}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{
+                                    mt: 1,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 0.75,
+                                    px: 1.25,
+                                    py: 0.75,
+                                    borderRadius: `${theme.customRadii.inner - 4}px`,
+                                    backgroundColor: isMine
+                                      ? 'rgba(255, 255, 255, 0.12)'
+                                      : theme.palette.tokens.surface,
+                                    border: `1px solid ${
+                                      isMine ? 'rgba(255, 255, 255, 0.2)' : theme.palette.tokens.divider
+                                    }`,
+                                    color: isMine ? '#FFFFFF' : theme.palette.tokens.accentText,
+                                    textDecoration: 'none',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    transition: 'all 0.15s ease',
+                                    '&:hover': {
+                                      backgroundColor: isMine
+                                        ? 'rgba(255, 255, 255, 0.22)'
+                                        : theme.palette.tokens.fieldBg,
+                                    },
+                                  }}
+                                >
+                                  <AttachFileRoundedIcon sx={{ fontSize: '14px' }} />
+                                  <span>View Attachment</span>
+                                  <OpenInNewRoundedIcon sx={{ fontSize: '12px', opacity: 0.8 }} />
                                 </Box>
                               )}
+
+                              {/* Message Footer: Timestamp only (Clean & Minimal) */}
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'flex-end',
+                                  mt: 0.5,
+                                }}
+                              >
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    fontSize: '10.5px',
+                                    color: isMine
+                                      ? 'rgba(255, 255, 255, 0.65)'
+                                      : theme.palette.tokens.textSecondary,
+                                    userSelect: 'none',
+                                  }}
+                                >
+                                  {formatMessageTime(msg.createdOn)}
+                                </Typography>
+                              </Box>
                             </Box>
                           </Box>
-                        </Box>
+                        </React.Fragment>
                       );
                     })
                   )}
@@ -502,50 +903,148 @@ export const ChatOrganism: React.FC = () => {
                   sx={{
                     p: 2,
                     borderTop: `1px solid ${theme.palette.tokens.divider}`,
-                    backgroundColor: theme.palette.tokens.fieldBg,
+                    backgroundColor: theme.palette.tokens.surface,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 1.5,
+                    gap: 1,
                   }}
                 >
+                  {/* Attachment input bar if toggled */}
                   {showAttachmentField && (
-                    <TextField
-                      size="small"
-                      label="Attachment Link (Optional URL)"
-                      placeholder="https://drive.google.com/..."
-                      value={attachmentInput}
-                      onChange={(e) => setAttachmentInput(e.target.value)}
-                      fullWidth
-                    />
+                    <Box
+                      sx={{
+                        p: 1,
+                        px: 1.5,
+                        borderRadius: `${theme.customRadii.inner}px`,
+                        backgroundColor: theme.palette.tokens.fieldBg,
+                        border: `1px solid ${theme.palette.tokens.divider}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                      }}
+                    >
+                      <AttachFileRoundedIcon
+                        fontSize="small"
+                        sx={{ color: theme.palette.tokens.accentText }}
+                      />
+                      <TextField
+                        size="small"
+                        placeholder="Paste attachment URL (e.g. Google Drive link)..."
+                        value={attachmentInput}
+                        onChange={(e) => setAttachmentInput(e.target.value)}
+                        variant="standard"
+                        InputProps={{ disableUnderline: true }}
+                        fullWidth
+                        sx={{
+                          '& input': {
+                            fontSize: '13px',
+                            py: 0.5,
+                            color: theme.palette.tokens.textPrimary,
+                          },
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setShowAttachmentField(false);
+                          setAttachmentInput('');
+                        }}
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          p: 0,
+                          backgroundColor: 'transparent',
+                          color: theme.palette.tokens.textSecondary,
+                          '&:hover': { backgroundColor: theme.palette.tokens.divider },
+                        }}
+                      >
+                        <CloseRoundedIcon sx={{ fontSize: '16px' }} />
+                      </IconButton>
+                    </Box>
                   )}
 
-                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                  {/* Main Message Bar */}
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      p: 0.75,
+                      pl: 1,
+                      borderRadius: `${theme.customRadii.pill}px`,
+                      backgroundColor: theme.palette.tokens.fieldBg,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                    }}
+                  >
                     <IconButton
                       size="small"
                       onClick={() => setShowAttachmentField(!showAttachmentField)}
-                      color={showAttachmentField ? 'primary' : 'default'}
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        backgroundColor: showAttachmentField
+                          ? theme.palette.tokens.accentBg
+                          : 'transparent',
+                        color: showAttachmentField
+                          ? theme.palette.tokens.accentText
+                          : theme.palette.tokens.textSecondary,
+                        borderRadius: `${theme.customRadii.pill}px`,
+                        transition: 'all 0.15s ease',
+                        '&:hover': {
+                          backgroundColor: theme.palette.tokens.divider,
+                        },
+                      }}
                     >
                       <AttachFileRoundedIcon fontSize="small" />
                     </IconButton>
 
                     <TextField
                       size="small"
-                      placeholder="Type your message..."
+                      placeholder="Type your message... (Press Enter to send)"
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      variant="standard"
+                      InputProps={{ disableUnderline: true }}
                       fullWidth
                       disabled={sendMessageMutation.isPending}
+                      sx={{
+                        '& input': {
+                          fontSize: '14px',
+                          color: theme.palette.tokens.textPrimary,
+                          py: 0.5,
+                        },
+                      }}
                     />
 
-                    <Button
+                    <IconButton
                       type="submit"
-                      variant="contained"
                       disabled={!messageInput.trim() || sendMessageMutation.isPending}
-                      startIcon={<SendRoundedIcon fontSize="small" />}
-                      sx={{ height: 40, px: 2.5 }}
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: `${theme.customRadii.pill}px`,
+                        backgroundColor: messageInput.trim()
+                          ? theme.palette.tokens.accent
+                          : theme.palette.tokens.divider,
+                        color: messageInput.trim()
+                          ? '#FFFFFF'
+                          : theme.palette.tokens.textSecondary,
+                        transition: 'all 0.15s ease',
+                        '&:hover': {
+                          backgroundColor: messageInput.trim()
+                            ? theme.palette.tokens.accentHover
+                            : theme.palette.tokens.divider,
+                        },
+                        '&.Mui-disabled': {
+                          backgroundColor: theme.palette.tokens.divider,
+                          color: theme.palette.tokens.textSecondary,
+                          opacity: 0.6,
+                        },
+                      }}
                     >
-                      Send
-                    </Button>
+                      <SendRoundedIcon sx={{ fontSize: '18px' }} />
+                    </IconButton>
                   </Box>
                 </Box>
               </>
@@ -556,30 +1055,49 @@ export const ChatOrganism: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
+                  p: 3,
                 }}
               >
-                <Typography variant="body1" sx={{ color: theme.palette.tokens.textSecondary }}>
-                  Select a conversation to start messaging.
-                </Typography>
+                <EmptyState
+                  icon={<ChatBubbleOutlineRoundedIcon />}
+                  title="Select a conversation"
+                  description="Choose a thread from the list on the left to view messages and collaborate."
+                  action={
+                    roleCode === 'AGENCY' ? (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<AddRoundedIcon fontSize="small" />}
+                        onClick={() => {
+                          setDialogParticipantId(undefined);
+                          setDialogCampaignId(undefined);
+                          setStartChatOpen(true);
+                        }}
+                      >
+                        New Conversation
+                      </Button>
+                    ) : undefined
+                  }
+                />
               </Box>
             )}
           </Box>
         )}
       </Card>
 
-      {/* Edit Message CommentDialog */}
-      {messageToEdit && (
-        <CommentDialog
-          open={Boolean(messageToEdit)}
-          title="Edit Message"
-          subtitle="Update your message content. An edited tag will be appended."
-          confirmText="Save Edit"
-          initialValue={messageToEdit.body}
-          loading={editMessageMutation.isPending}
-          onConfirm={handleEditConfirm}
-          onCancel={() => setMessageToEdit(null)}
-        />
-      )}
+      {/* Start New Chat Dialog */}
+      <StartChatDialog
+        open={startChatOpen}
+        loading={createChatMutation.isPending}
+        preselectedType={dialogType}
+        preselectedParticipantId={dialogParticipantId}
+        preselectedCampaignId={dialogCampaignId}
+        onStartChat={handleStartChat}
+        onClose={() => {
+          setStartChatOpen(false);
+          setSearchParams({});
+        }}
+      />
     </DashboardLayout>
   );
 };

@@ -2,8 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -17,6 +21,7 @@ import {
 import { useAgencyInfluencers, useCreateInfluencer } from '@api';
 import { InfluencerResponse, CreateInfluencerRequest } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { getInfluencerTier, getTierInfo } from '@utils';
 
 /** "64.7k" reads better than "64700" in a list of reach numbers. */
 function formatFollowers(value: number | null): string {
@@ -161,13 +166,33 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     },
     {
       id: 'followers',
-      header: 'Followers',
+      header: 'Followers / Tier',
       align: 'right',
-      render: (row) => (
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {formatFollowers(row.followers)}
-        </Typography>
-      ),
+      render: (row) => {
+        const tier = getInfluencerTier(row.followers);
+        const tierInfo = getTierInfo(tier);
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {formatFollowers(row.followers)}
+            </Typography>
+            {tierInfo && (
+              <Chip
+                label={tierInfo.label}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: tierInfo.color.bg,
+                  color: tierInfo.color.text,
+                  border: `1px solid ${tierInfo.color.border}`,
+                }}
+              />
+            )}
+          </Box>
+        );
+      },
     },
     {
       id: 'contactPhone',
@@ -186,6 +211,31 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         <Typography variant="body2">
           {formatCommercials(row) === '—' ? '—' : `${row.currency} ${formatCommercials(row)}`}
         </Typography>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      type: 'actions',
+      align: 'right',
+      render: (row) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Tooltip title="Message Creator">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/agency/chats?participantId=${row.id}&type=INFLUENCER`);
+              }}
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                '&:hover': { color: theme.palette.primary.main },
+              }}
+            >
+              <ChatBubbleOutlineRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       ),
     },
   ];
@@ -291,6 +341,12 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                   fields: [
                     { label: 'Influencer Name', value: selectedInfluencer.name },
                     { label: 'Category / Niche', value: selectedInfluencer.category || '—' },
+                    {
+                      label: 'Influencer Tier',
+                      value: getTierInfo(getInfluencerTier(selectedInfluencer.followers))
+                        ? `${getTierInfo(getInfluencerTier(selectedInfluencer.followers))?.label} (${getTierInfo(getInfluencerTier(selectedInfluencer.followers))?.rangeLabel})`
+                        : '—',
+                    },
                     { label: 'Location', value: selectedInfluencer.location || 'Global' },
                     {
                       label: 'Follower Reach',
@@ -341,15 +397,28 @@ export const AgencyInfluencersOrganism: React.FC = () => {
             : []
         }
         actions={
-          selectedInfluencer?.email
+          selectedInfluencer
             ? [
                 {
-                  label: 'Copy Email',
+                  label: 'Message Creator',
+                  variant: 'contained',
                   onClick: () => {
-                    navigator.clipboard.writeText(selectedInfluencer.email!);
-                    showSuccess('Email copied to clipboard');
+                    const id = selectedInfluencer.id;
+                    setSelectedInfluencer(null);
+                    navigate(`/agency/chats?participantId=${id}&type=INFLUENCER`);
                   },
                 },
+                ...(selectedInfluencer.email
+                  ? [
+                      {
+                        label: 'Copy Email',
+                        onClick: () => {
+                          navigator.clipboard.writeText(selectedInfluencer.email!);
+                          showSuccess('Email copied to clipboard');
+                        },
+                      },
+                    ]
+                  : []),
               ]
             : []
         }

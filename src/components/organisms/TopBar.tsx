@@ -71,18 +71,19 @@ export const TopBar: React.FC<TopBarProps> = ({
       className={className}
       sx={{
         display: 'flex',
-        alignItems: { xs: 'flex-start', sm: 'center' },
+        alignItems: 'center',
         justifyContent: 'space-between',
-        padding: { xs: '14px 16px', sm: '18px 20px', md: '24px 24px 20px 24px' },
+        flexWrap: { xs: 'wrap', sm: 'nowrap' },
+        padding: { xs: '12px 14px', sm: '16px 20px', md: '20px 24px 18px 24px' },
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
-        borderTopLeftRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
-        borderTopRightRadius: { xs: `${theme.customRadii.inner}px`, md: `${theme.customRadii.card}px` },
-        gap: 1.5,
+        borderTopLeftRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
+        borderTopRightRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
+        gap: { xs: 1.25, sm: 1.5 },
       }}
     >
       {/* Left: back control, breadcrumb trail, title and subtitle */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, minWidth: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1, sm: 1.5 }, minWidth: 0, flex: 1 }}>
         {onBack && (
           <Tooltip title={backLabel}>
             <IconButton
@@ -91,9 +92,10 @@ export const TopBar: React.FC<TopBarProps> = ({
               sx={{
                 // Nudged down so the arrow optically centres on the title line
                 // rather than on the whole block once crumbs are present.
-                mt: breadcrumbs?.length ? '20px' : '2px',
+                mt: breadcrumbs?.length ? '18px' : '0px',
                 flexShrink: 0,
                 border: `1px solid ${theme.palette.tokens.divider}`,
+                p: { xs: 0.75, sm: 1 },
               }}
             >
               <ArrowBackRoundedIcon fontSize="small" />
@@ -104,11 +106,11 @@ export const TopBar: React.FC<TopBarProps> = ({
         <Box sx={{ minWidth: 0 }}>
           {Boolean(breadcrumbs?.length) && (
             <Breadcrumbs
-              separator={<NavigateNextRoundedIcon sx={{ fontSize: 16 }} />}
+              separator={<NavigateNextRoundedIcon sx={{ fontSize: 14 }} />}
               aria-label="breadcrumb"
               sx={{
                 mb: '2px',
-                '& .MuiBreadcrumbs-separator': { mx: 0.5 },
+                '& .MuiBreadcrumbs-separator': { mx: 0.25 },
                 color: theme.palette.tokens.textSecondary,
               }}
             >
@@ -122,7 +124,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     onClick={crumb.onClick}
                     sx={{
                       font: 'inherit',
-                      fontSize: '13px',
+                      fontSize: { xs: '12px', sm: '13px' },
                       fontWeight: 500,
                       color: theme.palette.tokens.textSecondary,
                       cursor: 'pointer',
@@ -135,7 +137,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <Typography
                     key={`${crumb.label}-${i}`}
                     variant="caption"
-                    sx={{ fontSize: '13px', fontWeight: 500 }}
+                    sx={{ fontSize: { xs: '12px', sm: '13px' }, fontWeight: 500 }}
                   >
                     {crumb.label}
                   </Typography>
@@ -144,7 +146,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               <Typography
                 variant="caption"
                 sx={{
-                  fontSize: '13px',
+                  fontSize: { xs: '12px', sm: '13px' },
                   fontWeight: 600,
                   color: theme.palette.tokens.textPrimary,
                 }}
@@ -157,8 +159,9 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Typography
             variant="h1"
             sx={{
-              fontSize: { xs: '20px', sm: '24px', md: '32px' },
-              lineHeight: 1.25,
+              fontSize: { xs: '18px', sm: '22px', md: '28px' },
+              lineHeight: 1.2,
+              fontWeight: 800,
             }}
           >
             {title}
@@ -168,8 +171,8 @@ export const TopBar: React.FC<TopBarProps> = ({
               variant="body2"
               sx={{
                 color: theme.palette.tokens.textSecondary,
-                mt: '4px',
-                fontSize: { xs: '12px', sm: '13px' },
+                mt: '2px',
+                fontSize: { xs: '11px', sm: '13px' },
                 display: { xs: 'none', sm: 'block' },
               }}
             >
@@ -180,8 +183,21 @@ export const TopBar: React.FC<TopBarProps> = ({
       </Box>
 
       {/* Right controls: Search, Notifications, UserMenu, and Custom Actions */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        {rightAction}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 1.5 },
+          flexShrink: 0,
+          width: { xs: '100%', sm: 'auto' },
+          justifyContent: { xs: 'flex-end', sm: 'flex-start' },
+        }}
+      >
+        {rightAction && (
+          <Box sx={{ mr: { xs: 'auto', sm: 0 }, '& .MuiButton-root': { py: { xs: 0.6, sm: 0.8 }, px: { xs: 1.25, sm: 1.75 }, fontSize: { xs: '12px', sm: '13px' } } }}>
+            {rightAction}
+          </Box>
+        )}
 
         {onSearchClick && (
           <Tooltip title="Search">
