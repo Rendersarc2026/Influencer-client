@@ -8,6 +8,17 @@ export const apiClient = axios.create({
   },
 });
 
+// Attach Authorization header if stored token exists (fallback for third-party cookie restrictions)
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -26,6 +37,7 @@ apiClient.interceptors.response.use(
         try {
           localStorage.removeItem('app_role_code');
           localStorage.removeItem('app_session_active');
+          localStorage.removeItem('auth_token');
         } catch {
           // Ignore storage errors
         }

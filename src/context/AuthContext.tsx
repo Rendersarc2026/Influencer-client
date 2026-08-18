@@ -39,6 +39,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           try {
             localStorage.removeItem('app_role_code');
             localStorage.removeItem('app_session_active');
+            localStorage.removeItem('auth_token');
           } catch {
             // Ignore storage errors
           }
@@ -76,6 +77,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         localStorage.removeItem('app_role_code');
         localStorage.removeItem('app_session_active');
+        localStorage.removeItem('auth_token');
       } catch (_err) {
         // Ignore localStorage errors in private browsing/restricted environments
       }
@@ -90,7 +92,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const verifyOtp = async (email: string, code: string): Promise<CurrentUserResponse> => {
-    await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', { email, code });
+    const verifyRes = await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', { email, code });
+    if (verifyRes.data?.token) {
+      try {
+        localStorage.setItem('auth_token', verifyRes.data.token);
+      } catch {
+        // Ignore storage errors
+      }
+    }
     const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
     if (meRes.data?.roleCode) {
       try {

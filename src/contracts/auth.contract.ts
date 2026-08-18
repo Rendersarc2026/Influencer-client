@@ -22,6 +22,7 @@ export type VerifyOtpRequest = z.infer<typeof VerifyOtpRequestSchema>;
 export const VerifyOtpResponseSchema = z.object({
   message: z.string(),
   user: UserResponseSchema,
+  token: z.string().optional(),
 });
 export type VerifyOtpResponse = z.infer<typeof VerifyOtpResponseSchema>;
 
