@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -46,6 +47,7 @@ import { safeUrl, safeImageUrl } from '@utils';
 
 export const ChatOrganism: React.FC = () => {
   const theme = useTheme();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,6 +112,14 @@ export const ChatOrganism: React.FC = () => {
     () => messages.filter((m) => m.isActive !== false),
     [messages],
   );
+
+  // Instant message feed sync when activeChat receives a new message
+  const activeLastMessageOn = activeChat?.lastMessageOn;
+  useEffect(() => {
+    if (effectiveChatId && activeLastMessageOn) {
+      queryClient.invalidateQueries({ queryKey: ['chats', effectiveChatId, 'messages'] });
+    }
+  }, [effectiveChatId, activeLastMessageOn, queryClient]);
 
   // Handle URL query parameter changes
   useEffect(() => {

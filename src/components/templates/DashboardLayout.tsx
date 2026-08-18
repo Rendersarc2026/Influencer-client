@@ -32,7 +32,6 @@ export interface DashboardLayoutProps {
   onLogout?: () => void;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
-  notificationCount?: number;
   rightAction?: ReactNode;
   children: ReactNode;
 }
@@ -50,7 +49,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onLogout,
   onSearchClick,
   onNotificationsClick,
-  notificationCount = 0,
   rightAction,
   children,
 }) => {
@@ -143,7 +141,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           user={user}
           onSearchClick={onSearchClick}
           onNotificationsClick={onNotificationsClick}
-          notificationCount={notificationCount}
           onProfileClick={() => effectiveNavigate('/profile')}
           onLogoutClick={handleLogoutClick}
           rightAction={rightAction}

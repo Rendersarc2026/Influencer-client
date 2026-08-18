@@ -31,8 +31,6 @@ export interface TopBarProps {
   user?: TopBarUser;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
-  /** Overrides the live unread count from the notification context. */
-  notificationCount?: number;
   onProfileClick?: () => void;
   onLogoutClick?: () => void;
   rightAction?: ReactNode;

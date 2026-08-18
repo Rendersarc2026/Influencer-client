@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import Badge from '@mui/material/Badge';
 import Tooltip from '@mui/material/Tooltip';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
@@ -12,7 +11,6 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import { useTheme } from '@mui/material/styles';
 import { UserMenu, NotificationCenter } from '@molecules';
-import { useNotifications } from '@hooks';
 import { BreadcrumbItem, TopBarProps, TopBarUser } from '@types';
 
 export type { BreadcrumbItem, TopBarProps, TopBarUser };
@@ -26,18 +24,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   user = { name: 'User', roleCode: 'AGENCY' },
   onSearchClick,
   onNotificationsClick,
-  notificationCount,
   onProfileClick,
   onLogoutClick,
   rightAction,
   className,
 }) => {
   const theme = useTheme();
-  const { unreadCount } = useNotifications();
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
-
-  const effectiveCount =
-    notificationCount !== undefined ? notificationCount : unreadCount;
 
   const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
     setNotificationAnchor(event.currentTarget);
@@ -202,32 +195,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               color: notificationAnchor ? theme.palette.tokens.accentText : undefined,
             }}
           >
-            <Badge
-              badgeContent={effectiveCount > 99 ? '99+' : effectiveCount}
-              invisible={!effectiveCount || effectiveCount <= 0}
-              sx={{
-                '& .MuiBadge-badge': {
-                  backgroundColor: theme.palette.tokens.negative,
-                  color: theme.palette.tokens.surface,
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  height: 18,
-                  minWidth: 18,
-                  borderRadius: `${theme.customRadii.pill}px`,
-                  px: 0.5,
-                  boxShadow: '0 2px 6px rgba(224, 82, 82, 0.45)',
-                  border: `2px solid ${theme.palette.tokens.surface}`,
-                  animation: effectiveCount > 0 ? 'bubblePulse 2.5s infinite ease-in-out' : 'none',
-                  '@keyframes bubblePulse': {
-                    '0%': { transform: 'scale(1)' },
-                    '50%': { transform: 'scale(1.12)' },
-                    '100%': { transform: 'scale(1)' },
-                  },
-                },
-              }}
-            >
-              <NotificationsNoneRoundedIcon fontSize="small" />
-            </Badge>
+            <NotificationsNoneRoundedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, ReactNode, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { NotificationContext } from './notification-context-def';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -14,6 +15,7 @@ import {
 } from '@types';
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient();
   const { user, roleCode, isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
@@ -150,6 +152,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if (currentTimestamp && currentTimestamp !== prevTimestamp) {
         lastSeenChatTimestampsRef.current.set(chat.id, currentTimestamp);
 
+        // Immediately invalidate and refetch the open message feed for this conversation
+        queryClient.invalidateQueries({ queryKey: ['chats', chat.id, 'messages'] });
+        queryClient.refetchQueries({ queryKey: ['chats', chat.id, 'messages'] });
+
         // The timestamp also moves when *we* post. Both participants poll the
         // same chat list, so without this the sender is told about their own
         // message — under the other party's name, since that is who the thread
@@ -190,7 +196,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         );
       }
     });
-  }, [chats, isAuthenticated, roleCode, user?.id, getPartnerName, addNotification]);
+  }, [chats, isAuthenticated, roleCode, user?.id, getPartnerName, addNotification, queryClient]);
 
   const value = useMemo<NotificationContextType>(
     () => ({
