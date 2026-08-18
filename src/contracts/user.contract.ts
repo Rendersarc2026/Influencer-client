@@ -153,6 +153,15 @@ export const InfluencerListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   search: z.string().max(100).optional(),
   category: z.string().max(120).optional(),
+  categories: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => {
+      if (typeof val === 'string') {
+        return val.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+      return val;
+    })
+    .optional(),
   location: z.string().max(120).optional(),
   agencyId: z.string().uuid().optional(),
   isActive: boolQuery.optional(),
@@ -174,8 +183,30 @@ export const UserListQuerySchema = z.object({
   agencyId: z.string().uuid().optional(),
   brandId: z.string().uuid().optional(),
   roleCode: z.string().optional(),
+  roleCodes: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => {
+      if (typeof val === 'string') return val.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+      return val.map((s) => s.toUpperCase());
+    })
+    .optional(),
+  excludeRoleCodes: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => {
+      if (typeof val === 'string') return val.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+      return val.map((s) => s.toUpperCase());
+    })
+    .optional(),
+  excludeRoles: z
+    .union([z.string(), z.array(z.string())])
+    .transform((val) => {
+      if (typeof val === 'string') return val.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+      return val.map((s) => s.toUpperCase());
+    })
+    .optional(),
   /** Matches influencer_detail.location. */
   city: z.string().max(100).optional(),
+  location: z.string().max(100).optional(),
   isActive: boolQuery.optional(),
   status: UserStatusFilterSchema.optional(),
 });

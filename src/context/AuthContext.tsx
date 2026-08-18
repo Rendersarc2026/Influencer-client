@@ -34,7 +34,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return response.data;
       } catch (err: unknown) {
         const axiosErr = err as { response?: { status?: number } };
-        // Only return null if server explicitly responded with 401 (unauthorized / session expired)
+        // The only path that ends a session without the user asking, and it takes
+        // the authoritative endpoint rejecting the token to get here: the account
+        // was blocked, or someone logged out elsewhere. Sessions themselves slide
+        // forward as the app is used, so ordinary use never reaches this.
         if (axiosErr?.response?.status === 401) {
           try {
             localStorage.removeItem('app_role_code');
@@ -59,7 +62,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     refetchOnReconnect: true,
     refetchOnWindowFocus: false,
-    staleTime: 1000 * 60 * 60 * 24, // 24 hours — session cookie is 7 days
+    // The server renews the session on use rather than expiring it on a clock,
+    // so there is nothing to re-check on a schedule; a reconnect refetch is
+    // enough. Re-validating more often only risks turning a blip into a logout.
+    staleTime: 1000 * 60 * 60 * 24,
   });
 
   const requestOtpMutation = useMutation({

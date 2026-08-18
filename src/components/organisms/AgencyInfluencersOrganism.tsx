@@ -18,8 +18,8 @@ import {
   CreateInfluencerDialog,
   OverviewDrawer,
 } from '@molecules';
-import { useAgencyInfluencers, useCreateInfluencer } from '@api';
-import { InfluencerResponse, CreateInfluencerRequest } from '@contracts';
+import { useAgencyInfluencers, useCreateInfluencer, useCategories } from '@api';
+import { InfluencerResponse, CreateInfluencerRequest, CategoryTypeCode } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { getInfluencerTier, getTierInfo } from '@utils';
 
@@ -94,40 +94,40 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   } = useViewFilters('agencyInfluencers');
   const debouncedSearch = useDebounce(search, 300);
 
-  const activeCategory = categoryFilter && categoryFilter !== 'ALL' ? categoryFilter : undefined;
+  // All active influencer categories defined in the database (~16 categories)
+  const { data: dbCategories = [] } = useCategories(CategoryTypeCode.INFLUENCER);
 
-  // The creators this agency represents — the same set the assign-to-campaign
-  // picker offers. A creator joins it by being entered here, not by being
-  // assigned to something.
+  const selectedCategories = useMemo(() => {
+    if (!categoryFilter || categoryFilter === 'ALL') return [];
+    return categoryFilter.split(',').map((s) => s.trim()).filter(Boolean);
+  }, [categoryFilter]);
+
+  // The creators this agency represents
   const {
     data: influencersData,
     isLoading,
     isFetching,
   } = useAgencyInfluencers({
     search: debouncedSearch.trim() || undefined,
-    category: activeCategory,
+    categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     location: locationFilter || undefined,
     page: page + 1, // the API pages from 1, the table from 0
     limit: rowsPerPage,
   });
 
-  // The unfiltered set, purely to build the filter options from real data —
-  // deriving them from the paged results would limit the choices to whatever
-  // happens to be on the current page, and deriving them from the filtered
-  // results would make each choice erase the others.
+  // The unfiltered set to complement DB categories and build location filter options
   const { data: allCreatorsData } = useAgencyInfluencers();
   const allCreators = useMemo(() => allCreatorsData?.items ?? [], [allCreatorsData]);
 
   const influencers = influencersData?.items || [];
   const totalInfluencers = influencersData?.total ?? influencers.length;
 
-  const categoryPills = useMemo(() => {
-    const values = [...new Set(allCreators.map((c) => c.category).filter(Boolean))].sort();
-    return [
-      { id: 'ALL', label: 'All Influencers' },
-      ...values.map((v) => ({ id: v as string, label: v as string })),
-    ];
-  }, [allCreators]);
+  const categoryOptions = useMemo(() => {
+    const dbCategoryNames = dbCategories.map((c) => c.name).filter(Boolean);
+    const creatorCategoryNames = allCreators.map((c) => c.category).filter(Boolean) as string[];
+    const combined = [...new Set([...dbCategoryNames, ...creatorCategoryNames])].sort();
+    return combined.map((v) => ({ value: v, label: v }));
+  }, [dbCategories, allCreators]);
 
   const locationOptions = useMemo(() => {
     const values = [...new Set(allCreators.map((c) => c.location).filter(Boolean))].sort();
@@ -136,6 +136,23 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       ...values.map((v) => ({ value: v as string, label: v as string })),
     ];
   }, [allCreators]);
+
+  const handleRemoveCategory = (catToRemove: string) => {
+    const next = selectedCategories.filter((c) => c !== catToRemove);
+    setCategoryFilter(next.length > 0 ? next.join(',') : 'ALL');
+    setPage(0);
+  };
+
+  const handleClearAllFilters = () => {
+    setCategoryFilter('ALL');
+    setSearch('');
+    setLocationFilter('');
+    setPage(0);
+  };
+
+  const hasActiveFilters = Boolean(
+    selectedCategories.length > 0 || search.trim() || locationFilter
+  );
 
   // Narrowing the results while on a later page would otherwise land on a page
   // that no longer exists, showing an empty table with no way to tell why.
@@ -280,19 +297,100 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         </Button>
       }
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0 }}>
         <FilterBar
-          pills={categoryPills}
-          activePillId={categoryFilter || 'ALL'}
-          onPillChange={goToFirstPage(setCategoryFilter)}
           searchValue={search}
           onSearchChange={goToFirstPage(setSearch)}
-          searchPlaceholder="Search by name, category, location or handle"
+          searchPlaceholder="Search by name"
+          multiSelectOptions={categoryOptions}
+          selectedMultiOptions={selectedCategories}
+          onMultiSelectChange={goToFirstPage((vals) => {
+            setCategoryFilter(vals.length > 0 ? vals.join(',') : 'ALL');
+          })}
+          multiSelectLabel="Categories"
           selectOptions={locationOptions}
           selectedOption={locationFilter || ''}
           onSelectChange={goToFirstPage(setLocationFilter)}
           selectLabel="Location"
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={handleClearAllFilters}
         />
+
+        {hasActiveFilters && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              p: 1.25,
+              borderRadius: `${theme.customRadii.inner}px`,
+              backgroundColor: theme.palette.tokens.surface,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 700 }}
+            >
+              Active filters:
+            </Typography>
+            {selectedCategories.map((cat) => (
+              <Chip
+                key={cat}
+                label={cat}
+                size="small"
+                onDelete={() => handleRemoveCategory(cat)}
+                sx={{
+                  height: 24,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: theme.palette.tokens.accentBg,
+                  color: theme.palette.tokens.accentText,
+                }}
+              />
+            ))}
+            {search.trim() && (
+              <Chip
+                label={`Search: "${search.trim()}"`}
+                size="small"
+                onDelete={() => {
+                  setSearch('');
+                  setPage(0);
+                }}
+                sx={{ height: 24, fontSize: '11px', fontWeight: 600 }}
+              />
+            )}
+            {locationFilter && (
+              <Chip
+                label={`Location: ${locationFilter}`}
+                size="small"
+                onDelete={() => {
+                  setLocationFilter('');
+                  setPage(0);
+                }}
+                sx={{ height: 24, fontSize: '11px', fontWeight: 600 }}
+              />
+            )}
+            <Button
+              variant="text"
+              size="small"
+              onClick={handleClearAllFilters}
+              sx={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: theme.palette.error.main,
+                p: 0,
+                minWidth: 0,
+                textTransform: 'none',
+                ml: 0.5,
+                '&:hover': { background: 'transparent', textDecoration: 'underline' },
+              }}
+            >
+              Clear all
+            </Button>
+          </Box>
+        )}
 
         <DataTable<InfluencerResponse>
           columns={columns}

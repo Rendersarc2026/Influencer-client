@@ -39,7 +39,7 @@ export const RailIconButton: React.FC<RailIconButtonProps> = ({
         }}
       >
         {badgeContent ? (
-          <Badge badgeContent={badgeContent} color="primary">
+          <Badge badgeContent={badgeContent} color="error">
             {icon}
           </Badge>
         ) : (

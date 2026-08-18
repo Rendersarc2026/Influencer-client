@@ -11,7 +11,7 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
 import { useAgencyUsers, useSetUserBlocked } from '@api';
 import { UserResponse, UserStatusFilter } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 export const AgencyUsersOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -44,6 +44,7 @@ export const AgencyUsersOrganism: React.FC = () => {
     isFetching: usersFetching,
   } = useAgencyUsers({
     roleCode: activeRolePill !== 'ALL' ? activeRolePill : undefined,
+    excludeRoleCodes: activeRolePill === 'ALL' ? ['AGENCY'] : undefined,
     search: debouncedSearch.trim() || undefined,
     // Omitted on ACTIVE so the key still hashes to the boot-prefetched entry —
     // active-only is what the server already defaults to.
@@ -63,7 +64,11 @@ export const AgencyUsersOrganism: React.FC = () => {
   );
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
-  const filterPills = useEnumPills('ROLE', 'All Users', { INFLUENCER: 'Influencer' });
+  const filterPills = [
+    { id: 'ALL', label: 'All Users' },
+    { id: 'BRAND', label: 'Brand' },
+    { id: 'INFLUENCER', label: 'Influencer' },
+  ];
 
   const statusOptions = [
     { value: 'ACTIVE', label: 'Active' },
@@ -100,17 +105,16 @@ export const AgencyUsersOrganism: React.FC = () => {
       id: 'role',
       header: 'Role',
       type: 'text',
-      accessor: (row) => (row.roleCode === 'INFLUENCER' ? 'Influencer' : row.roleCode === 'BRAND' ? 'Brand' : 'Agency'),
+      accessor: (row) => (row.roleCode === 'INFLUENCER' ? 'Influencer' : 'Brand'),
     },
     {
       id: 'organization',
       header: 'Assigned Org',
       type: 'text',
       accessor: (row) => {
-        if (row.roleCode === 'AGENCY') return row.agencyName ? `Agency: ${row.agencyName}` : 'Agency Staff';
         if (row.roleCode === 'BRAND') return row.brandName ? `Brand: ${row.brandName}` : 'Brand Client';
         if (row.roleCode === 'INFLUENCER') return 'Influencer Studio';
-        return 'System Operator';
+        return '—';
       },
     },
     {
@@ -193,7 +197,7 @@ export const AgencyUsersOrganism: React.FC = () => {
             setSearch(s);
             setPage(0);
           }}
-          searchPlaceholder="Search by name, email or organization"
+          searchPlaceholder="Search"
           selectOptions={statusOptions}
           selectedOption={statusFilter}
           onSelectChange={(sel) => {

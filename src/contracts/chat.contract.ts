@@ -45,6 +45,7 @@ export const ChatResponseSchema = z.object({
   influencerName: z.string().nullable().optional(),
   lastMessageOn: z.date().nullable(),
   lastMessageSenderId: z.string().uuid().nullable(),
+  unreadCount: z.number().int().nonnegative().optional(),
   isActive: z.boolean(),
   createdOn: z.date(),
   messages: z.array(MessageResponseSchema).optional(),

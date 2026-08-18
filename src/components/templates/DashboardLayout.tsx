@@ -1,11 +1,11 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { SidebarRail, TopBar } from '@organisms';
 import { ConfirmDialog } from '@molecules';
 import { navConfig, NavItem } from '@routes/navConfig';
-import { useNavigation } from '@api';
+import { useNavigation, useChats } from '@api';
 import { RoleCode } from '@contracts';
 
 export interface DashboardLayoutProps {
@@ -59,7 +59,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
 
-  const effectiveNavItems: NavItem[] =
+  const { data: chats = [] } = useChats({ enabled: Boolean(user?.email) });
+  const totalUnreadMessages = useMemo(
+    () => chats.reduce((acc, c) => acc + (c.unreadCount || 0), 0),
+    [chats],
+  );
+
+  const baseNavItems: NavItem[] =
     dbNavItems && dbNavItems.length > 0
       ? dbNavItems.map((item) => ({
           id: item.code,
@@ -73,6 +79,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         : user?.roleCode && user.roleCode in navConfig
           ? navConfig[user.roleCode as RoleCode]
           : [];
+
+  const effectiveNavItems: NavItem[] = baseNavItems.map((item) => {
+    if ((item.iconName === 'Chat' || item.path.includes('/chats')) && totalUnreadMessages > 0) {
+      return {
+        ...item,
+        badge: totalUnreadMessages > 99 ? '99+' : totalUnreadMessages,
+      };
+    }
+    return item;
+  });
 
   const isSidebarLoading = isNavLoading && effectiveNavItems.length === 0;
 

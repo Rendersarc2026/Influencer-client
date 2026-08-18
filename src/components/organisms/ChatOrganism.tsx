@@ -162,7 +162,7 @@ export const ChatOrganism: React.FC = () => {
     );
   }, [effectiveChatId, queryChatId, setSearchParams]);
 
-  // Mark chat as read when viewing
+  // Mark chat as read when viewing or receiving new incoming messages on active thread
   useEffect(() => {
     if (effectiveChatId) {
       markReadMutation.mutate(effectiveChatId);
@@ -170,8 +170,7 @@ export const ChatOrganism: React.FC = () => {
         .filter((n) => !n.read && n.metadata?.chatId === effectiveChatId)
         .forEach((n) => markAsRead(n.id));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveChatId]);
+  }, [effectiveChatId, activeMessages.length]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -431,6 +430,25 @@ export const ChatOrganism: React.FC = () => {
                   >
                     {chats.length}
                   </Box>
+                  {chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0) > 0 && (
+                    <Box
+                      sx={{
+                        px: 0.9,
+                        py: 0.25,
+                        borderRadius: `${theme.customRadii.pill}px`,
+                        backgroundColor: '#EF4444',
+                        color: '#FFFFFF',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
+                      }}
+                    >
+                      {chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0) > 99
+                        ? '99+'
+                        : chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0)}{' '}
+                      unread
+                    </Box>
+                  )}
                 </Box>
                 {roleCode === 'AGENCY' && (
                   <Button
@@ -553,6 +571,7 @@ export const ChatOrganism: React.FC = () => {
                 filteredChats.map((chat) => {
                   const isSelected = chat.id === effectiveChatId;
                   const partnerName = getChatPartnerName(chat);
+                  const unreadCount = chat.unreadCount || 0;
 
                   return (
                     <Box
@@ -611,7 +630,7 @@ export const ChatOrganism: React.FC = () => {
                             variant="body2"
                             noWrap
                             sx={{
-                              fontWeight: isSelected ? 700 : 600,
+                              fontWeight: unreadCount > 0 ? 800 : (isSelected ? 700 : 600),
                               color: theme.palette.tokens.textPrimary,
                             }}
                           >
@@ -620,8 +639,9 @@ export const ChatOrganism: React.FC = () => {
                           <Typography
                             variant="caption"
                             sx={{
-                              color: theme.palette.tokens.textSecondary,
+                              color: unreadCount > 0 ? '#EF4444' : theme.palette.tokens.textSecondary,
                               fontSize: '11px',
+                              fontWeight: unreadCount > 0 ? 700 : 500,
                               flexShrink: 0,
                               ml: 1,
                             }}
@@ -630,37 +650,63 @@ export const ChatOrganism: React.FC = () => {
                           </Typography>
                         </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
-                          <Box
-                            sx={{
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              px: 0.75,
-                              py: 0.15,
-                              borderRadius: '4px',
-                              backgroundColor: theme.palette.tokens.accentBg,
-                              color: theme.palette.tokens.accentText,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.03em',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {roleCode === 'AGENCY'
-                              ? chat.type === ChatTypeCode.AGENCY_INFLUENCER
-                                ? 'Creator'
-                                : 'Brand'
-                              : 'Agency'}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', minWidth: 0 }}>
+                            <Box
+                              sx={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                px: 0.75,
+                                py: 0.15,
+                                borderRadius: '4px',
+                                backgroundColor: theme.palette.tokens.accentBg,
+                                color: theme.palette.tokens.accentText,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {roleCode === 'AGENCY'
+                                ? chat.type === ChatTypeCode.AGENCY_INFLUENCER
+                                  ? 'Creator'
+                                  : 'Brand'
+                                : 'Agency'}
+                            </Box>
+
+                            <Typography
+                              variant="caption"
+                              noWrap
+                              sx={{
+                                fontSize: '10px',
+                                color: theme.palette.tokens.textSecondary,
+                              }}
+                            >
+                              💬 Direct Thread
+                            </Typography>
                           </Box>
 
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              fontSize: '10px',
-                              color: theme.palette.tokens.textSecondary,
-                            }}
-                          >
-                            💬 Direct Thread
-                          </Typography>
+                          {unreadCount > 0 && (
+                            <Box
+                              sx={{
+                                minWidth: 20,
+                                height: 20,
+                                px: 0.65,
+                                borderRadius: '10px',
+                                backgroundColor: '#EF4444',
+                                color: '#FFFFFF',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                lineHeight: 1,
+                                flexShrink: 0,
+                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.35)',
+                              }}
+                            >
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </Box>
+                          )}
                         </Box>
                       </Box>
                     </Box>

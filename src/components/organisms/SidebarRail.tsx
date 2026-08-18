@@ -374,13 +374,12 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                           px: 0.75,
                           py: 0.2,
                           borderRadius: `${theme.customRadii.pill}px`,
-                          backgroundColor: isActive
-                            ? theme.palette.tokens.rail
-                            : theme.palette.tints.butter,
-                          color: isActive ? '#FFFFFF' : theme.palette.tokens.rail,
+                          backgroundColor: '#EF4444',
+                          color: '#FFFFFF',
                           fontSize: '11px',
                           fontWeight: 700,
                           flexShrink: 0,
+                          boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
                         }}
                       >
                         {item.badge}
