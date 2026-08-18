@@ -52,6 +52,9 @@ const AgencyInfluencersPage = lazy(() =>
 const AgencyReportsPage = lazy(() =>
   import('../pages/AgencyReportsPage').then((m) => ({ default: m.AgencyReportsPage })),
 );
+const AgencyERCalculatorPage = lazy(() =>
+  import('../pages/AgencyERCalculatorPage').then((m) => ({ default: m.AgencyERCalculatorPage })),
+);
 const BrandHome = lazy(() => import('../pages/BrandHome').then((m) => ({ default: m.BrandHome })));
 const BrandCampaignsPage = lazy(() =>
   import('../pages/BrandCampaignsPage').then((m) => ({ default: m.BrandCampaignsPage })),
@@ -104,6 +107,7 @@ const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
     () => import('../pages/AgencyAddInfluencerPage'),
     () => import('../pages/AgencyInfluencersPage'),
     () => import('../pages/AgencyReportsPage'),
+    () => import('../pages/AgencyERCalculatorPage'),
   ],
   BRAND: [
     () => import('../pages/BrandHome'),
@@ -282,6 +286,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={['AGENCY']} skeleton="chat">
         {withBoundary(ChatPage, 'chat')}
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/agency/er-calculator',
+    element: (
+      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="shell">
+        {withBoundary(AgencyERCalculatorPage, 'shell')}
       </ProtectedRoute>
     ),
   },

@@ -157,7 +157,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Influencer Hub"
+      title="Fetch Dashboard"
       subtitle="Campaign assignments, commercial rate cards, and delivery milestones"
       navItems={navConfig.INFLUENCER}
       activePath={location.pathname}

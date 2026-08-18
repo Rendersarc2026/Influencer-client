@@ -7,11 +7,13 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText, SectionHeading } from '@atoms';
 import { AgencyMapperResponse, UpdatePreEvalRequest } from '@contracts';
+import { useInfluencerEngagement } from '@api';
 
 export interface EditPreEvalDialogProps {
   open: boolean;
@@ -35,14 +37,18 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   const [brandFit, setBrandFit] = useState('');
   const [error, setError] = useState('');
 
+  const { data: engagementData } = useInfluencerEngagement(mapper?.influencerId);
+
   useEffect(() => {
     if (open && mapper) {
       setDeliverables(mapper.deliverables || '');
-      setPreEvalEr(
+      const existingEr =
         mapper.preEvalEr !== undefined && mapper.preEvalEr !== null
           ? String(mapper.preEvalEr)
-          : '',
-      );
+          : engagementData?.engagementRate !== undefined && engagementData?.engagementRate !== null
+            ? String(engagementData.engagementRate)
+            : '';
+      setPreEvalEr(existingEr);
       setCommittedViews(
         mapper.committedViews !== undefined && mapper.committedViews !== null
           ? String(mapper.committedViews)
@@ -51,14 +57,21 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
       setBrandFit(mapper.brandFit || '');
       setError('');
     }
-  }, [open, mapper]);
+  }, [open, mapper, engagementData?.engagementRate]);
 
   const committedViewsNum = parseInt(committedViews, 10) || 0;
   const preEvalErNum = parseFloat(preEvalEr) || 0;
 
+  const effectiveRate =
+    mapper?.clientRate !== null && mapper?.clientRate !== undefined
+      ? mapper.clientRate
+      : mapper?.influencerRate !== null && mapper?.influencerRate !== undefined
+        ? mapper.influencerRate
+        : 0;
+
   const cpv =
-    mapper?.clientRate && committedViewsNum > 0
-      ? (mapper.clientRate / committedViewsNum).toFixed(2)
+    effectiveRate > 0 && committedViewsNum > 0
+      ? (effectiveRate / committedViewsNum).toFixed(2)
       : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,16 +154,36 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 fullWidth
                 disabled={loading}
               />
-              <TextField
-                label="Pre-Eval ER %"
-                type="text"
-                value={preEvalEr}
-                onChange={(e) => setPreEvalEr(e.target.value.replace(/[^0-9.]/g, ''))}
-                placeholder="e.g. 4.5"
-                helperText="Avg ER% over last 10 posts"
-                fullWidth
-                disabled={loading}
-              />
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <TextField
+                  label="Pre-Eval ER %"
+                  type="text"
+                  value={preEvalEr}
+                  onChange={(e) => setPreEvalEr(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="e.g. 4.5"
+                  helperText="Agreed or Instagram benchmark ER%"
+                  fullWidth
+                  disabled={loading}
+                />
+                {engagementData?.engagementRate !== undefined &&
+                  engagementData?.engagementRate !== null && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setPreEvalEr(String(engagementData.engagementRate))}
+                      sx={{
+                        fontSize: '11px',
+                        textTransform: 'none',
+                        p: 0,
+                        mt: 0.5,
+                        justifyContent: 'flex-start',
+                        color: theme.palette.tokens.purpleText,
+                      }}
+                    >
+                      ✨ Use Instagram ER ({engagementData.engagementRate.toFixed(2)}%)
+                    </Button>
+                  )}
+              </Box>
             </Box>
 
             <TextField
@@ -165,7 +198,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
               disabled={loading}
             />
 
-            {/* Live Metrics & CPV Summary */}
+            {/* Live Metrics & Pre-Evaluation Rate Summary */}
             <Box
               sx={{
                 padding: '14px 16px',
@@ -174,17 +207,90 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 1.2,
+                border: `1px solid ${theme.palette.tokens.divider}`,
               }}
             >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  color: theme.palette.tokens.textSecondary,
+                  mb: 0.25,
+                }}
+              >
+                Pre-Evaluation & Commercials Summary
+              </Typography>
+
+              {/* Influencer Commercial Rate */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Influencer Quoted Rate:
+                </Typography>
+                {mapper?.influencerRate !== null && mapper?.influencerRate !== undefined ? (
+                  <MoneyText
+                    amount={mapper.influencerRate}
+                    currency={mapper.currency}
+                    variant="body2"
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    Pending quote
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Client Commercial Rate */}
               {mapper?.clientRate !== null && mapper?.clientRate !== undefined && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                     Client Commercial Rate:
                   </Typography>
-                  <MoneyText amount={mapper.clientRate} currency={mapper.currency} variant="body2" />
+                  <MoneyText
+                    amount={mapper.clientRate}
+                    currency={mapper.currency}
+                    variant="body2"
+                    color={theme.palette.tokens.positiveText}
+                  />
                 </Box>
               )}
 
+              {/* Pre-Eval ER % */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Pre-Eval Engagement Rate (ER):
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText }}
+                  >
+                    {preEvalErNum > 0 ? `${preEvalErNum.toFixed(2)}%` : 'Not specified'}
+                  </Typography>
+                  {preEvalErNum > 0 && (
+                    <Chip
+                      label={
+                        preEvalErNum >= 4.0
+                          ? '🔥 High'
+                          : preEvalErNum >= 2.0
+                            ? '✨ Good'
+                            : 'Standard'
+                      }
+                      size="small"
+                      sx={{
+                        height: 18,
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        backgroundColor: theme.palette.tokens.purpleBg,
+                        color: theme.palette.tokens.purpleText,
+                      }}
+                    />
+                  )}
+                </Box>
+              </Box>
+
+              {/* Committed Views */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                   Committed Views:
@@ -196,12 +302,19 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
 
               <Divider sx={{ my: 0.25, borderColor: 'rgba(0,0,0,0.08)' }} />
 
+              {/* Calculated Pre-Eval CPV */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                  Calculated Pre-Eval CPV:
+                  Calculated Pre-Eval CPV (Cost Per View):
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
-                  {cpv ? `₹${cpv}` : '—'}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 700,
+                    color: cpv ? theme.palette.primary.main : theme.palette.tokens.textSecondary,
+                  }}
+                >
+                  {cpv ? `₹${cpv} / view` : '—'}
                 </Typography>
               </Box>
             </Box>
@@ -231,3 +344,4 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
     </Dialog>
   );
 };
+

@@ -15,6 +15,7 @@ import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
+import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { NavItem } from '@routes/navConfig';
@@ -54,6 +55,8 @@ const getNavIcon = (iconName: string): ReactNode => {
       return <CurrencyRupeeRoundedIcon fontSize="small" />;
     case 'Palette':
       return <PaletteRoundedIcon fontSize="small" />;
+    case 'Calculate':
+      return <CalculateRoundedIcon fontSize="small" />;
     default:
       return <DashboardRoundedIcon fontSize="small" />;
   }
@@ -227,15 +230,15 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                 letterSpacing: '-0.01em',
               }}
             >
-              Influencer Hub
+              Fetch
             </Typography>
             <Typography
               variant="caption"
               sx={{
                 color: theme.palette.tokens.textSecondary,
-                lineHeight: 1,
                 fontSize: '11px',
-                whiteSpace: 'nowrap',
+                fontWeight: 500,
+                display: 'block',
               }}
             >
               Workspace

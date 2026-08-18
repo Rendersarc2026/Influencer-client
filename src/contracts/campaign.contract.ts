@@ -24,10 +24,10 @@ export const CreateCampaignSchema = z
     name: safeText(200),
     description: safeMultilineText(5000, 0).optional(),
     briefUrl: httpUrl.optional().or(z.literal('')),
-    startDate: z.coerce.date(),
-    endDate: z.coerce.date(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
   })
-  .refine((data) => data.endDate >= data.startDate, {
+  .refine((data) => !data.startDate || !data.endDate || data.endDate >= data.startDate, {
     message: 'End date must be on or after start date',
     path: ['endDate'],
   });

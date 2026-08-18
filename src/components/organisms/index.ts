@@ -10,6 +10,7 @@ export * from './AgencyCampaignDetailOrganism';
 export * from './AgencyAddInfluencerOrganism';
 export * from './AgencyInfluencersOrganism';
 export * from './AgencyReportsOrganism';
+export * from './AgencyERCalculatorOrganism';
 export * from './BrandHomeOrganism';
 export * from './BrandCampaignsOrganism';
 export * from './BrandCampaignDetailOrganism';

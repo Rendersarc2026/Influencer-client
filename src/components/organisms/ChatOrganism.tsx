@@ -33,11 +33,17 @@ import {
   useAgencyInfluencers,
   useAgencyBrands,
   useAgencyUsers,
+  getSocket,
+  joinChat,
+  leaveChat,
+  sendTyping,
+  sendStopTyping,
 } from '@api';
 import {
   ChatResponse,
   ChatTypeCode,
   ChatTypeName,
+  MessageResponse,
   InfluencerResponse,
   BrandResponse,
   UserResponse,
@@ -83,6 +89,8 @@ export const ChatOrganism: React.FC = () => {
   const [messageInput, setMessageInput] = useState('');
   const [attachmentInput, setAttachmentInput] = useState('');
   const [showAttachmentField, setShowAttachmentField] = useState(false);
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // New Chat Dialog state
   const [startChatOpen, setStartChatOpen] = useState(false);
@@ -113,13 +121,93 @@ export const ChatOrganism: React.FC = () => {
     [messages],
   );
 
-  // Instant message feed sync when activeChat receives a new message
-  const activeLastMessageOn = activeChat?.lastMessageOn;
+  // -------------------------------------------------------------
+  // Real-Time Socket.io Thread Sync (Messages, Read Receipts, Typing)
+  // -------------------------------------------------------------
   useEffect(() => {
-    if (effectiveChatId && activeLastMessageOn) {
-      queryClient.invalidateQueries({ queryKey: ['chats', effectiveChatId, 'messages'] });
-    }
-  }, [effectiveChatId, activeLastMessageOn, queryClient]);
+    if (!effectiveChatId) return;
+
+    joinChat(effectiveChatId);
+    const socket = getSocket();
+
+    const handleNewMessage = (msg: MessageResponse) => {
+      if (msg.chatId === effectiveChatId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          ['chats', effectiveChatId, 'messages'],
+          (old = []) => {
+            if (old.some((m) => m.id === msg.id)) return old;
+            return [...old, msg];
+          },
+        );
+        // Mark as read immediately if user is viewing this active incoming message
+        if (msg.senderId !== user?.id) {
+          markReadMutation.mutate(effectiveChatId);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+    };
+
+    const handleMessageEdited = (msg: MessageResponse) => {
+      if (msg.chatId === effectiveChatId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          ['chats', effectiveChatId, 'messages'],
+          (old = []) => old.map((m) => (m.id === msg.id ? msg : m)),
+        );
+      }
+    };
+
+    const handleMessageDeleted = (data: { messageId: string; chatId: string }) => {
+      if (data.chatId === effectiveChatId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          ['chats', effectiveChatId, 'messages'],
+          (old = []) => old.filter((m) => m.id !== data.messageId),
+        );
+      }
+    };
+
+    const handleMessagesRead = (data: { chatId: string; readBy: string; readOn: string | Date }) => {
+      if (data.chatId === effectiveChatId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          ['chats', effectiveChatId, 'messages'],
+          (old = []) =>
+            old.map((m) =>
+              m.senderId !== data.readBy && !m.readOn
+                ? { ...m, readOn: new Date(data.readOn) }
+                : m,
+            ),
+        );
+      }
+    };
+
+    const handleUserTyping = (data: { chatId: string; userId: string }) => {
+      if (data.chatId === effectiveChatId && data.userId !== user?.id) {
+        setPartnerTyping(true);
+      }
+    };
+
+    const handleUserStopTyping = (data: { chatId: string; userId: string }) => {
+      if (data.chatId === effectiveChatId && data.userId !== user?.id) {
+        setPartnerTyping(false);
+      }
+    };
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('message_edited', handleMessageEdited);
+    socket.on('message_deleted', handleMessageDeleted);
+    socket.on('messages_read', handleMessagesRead);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('user_stop_typing', handleUserStopTyping);
+
+    return () => {
+      leaveChat(effectiveChatId);
+      socket.off('new_message', handleNewMessage);
+      socket.off('message_edited', handleMessageEdited);
+      socket.off('message_deleted', handleMessageDeleted);
+      socket.off('messages_read', handleMessagesRead);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('user_stop_typing', handleUserStopTyping);
+    };
+  }, [effectiveChatId, user?.id, queryClient, markReadMutation]);
 
   // Handle URL query parameter changes
   useEffect(() => {
@@ -143,9 +231,7 @@ export const ChatOrganism: React.FC = () => {
     }
   }, [chats, selectedChatId, isMobile]);
 
-  // Keep the open thread in the URL. The notification layer reads ?chatId= to
-  // tell whether an arriving message belongs to the thread already on screen,
-  // and stays silent if it does.
+  // Keep the open thread in the URL
   useEffect(() => {
     if (effectiveChatId === (queryChatId ?? undefined)) return;
     setSearchParams(
@@ -162,15 +248,27 @@ export const ChatOrganism: React.FC = () => {
     );
   }, [effectiveChatId, queryChatId, setSearchParams]);
 
-  // Mark chat as read when viewing or receiving new incoming messages on active thread
+  // Mark chat as read only when opening a thread that has unread messages
   useEffect(() => {
-    if (effectiveChatId) {
+    if (effectiveChatId && activeChat?.unreadCount && activeChat.unreadCount > 0) {
       markReadMutation.mutate(effectiveChatId);
+    }
+  }, [effectiveChatId, activeChat?.unreadCount, markReadMutation]);
+
+  // Clear unread notifications for the active thread
+  const unreadThreadNotifIds = useMemo(
+    () =>
       notifications
         .filter((n) => !n.read && n.metadata?.chatId === effectiveChatId)
-        .forEach((n) => markAsRead(n.id));
+        .map((n) => n.id),
+    [notifications, effectiveChatId],
+  );
+
+  useEffect(() => {
+    if (unreadThreadNotifIds.length > 0) {
+      unreadThreadNotifIds.forEach((id) => markAsRead(id));
     }
-  }, [effectiveChatId, activeMessages.length]);
+  }, [unreadThreadNotifIds, markAsRead]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -204,9 +302,29 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessageInput(value);
+
+    if (effectiveChatId) {
+      sendTyping(effectiveChatId);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        sendStopTyping(effectiveChatId);
+      }, 2000);
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!messageInput.trim() || !effectiveChatId || sendMessageMutation.isPending) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    sendStopTyping(effectiveChatId);
 
     const payload = {
       body: messageInput.trim(),
@@ -840,12 +958,13 @@ export const ChatOrganism: React.FC = () => {
                       <Typography
                         variant="caption"
                         sx={{
-                          color: theme.palette.tokens.textSecondary,
-                          fontWeight: 500,
+                          color: partnerTyping ? theme.palette.tokens.accentText : theme.palette.tokens.textSecondary,
+                          fontWeight: partnerTyping ? 700 : 500,
                           fontSize: '11px',
+                          transition: 'all 0.15s ease',
                         }}
                       >
-                        Direct 1-on-1 Conversation
+                        {partnerTyping ? 'Typing a message...' : 'Direct 1-on-1 Conversation'}
                       </Typography>
                     </Box>
                   </Box>
@@ -1184,7 +1303,7 @@ export const ChatOrganism: React.FC = () => {
                       size="small"
                       placeholder="Type your message... (Press Enter to send)"
                       value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
+                      onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       variant="standard"
                       InputProps={{ disableUnderline: true }}

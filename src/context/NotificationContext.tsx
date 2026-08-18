@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo, ReactNode, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { NotificationContext } from './notification-context-def';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { playNotificationSound } from '../utils/sound.utils';
 import { parseStoredNotifications } from '../utils/notification.utils';
-import { useChats } from '@api';
-import { ChatResponse, ChatTypeCode } from '@contracts';
+import { connectSocket, disconnectSocket, getSocket } from '@api';
+import { MessageResponse } from '@contracts';
 import {
   AppNotification,
   NotificationContextType,
@@ -94,99 +94,54 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, []);
 
   // --------------------------------------------------------------------------
-  // Automatic Real-Time Monitoring: Incoming Messages (Only when logged in)
+  // Socket.io Real-Time Event Monitoring (Real-Time Notifications & Message Alerts)
   // --------------------------------------------------------------------------
-  const { data: chats = [] } = useChats({ enabled: Boolean(isAuthenticated) });
-
-  // Map to track previous lastMessageOn timestamps to detect newly arrived messages
-  const lastSeenChatTimestampsRef = useRef<Map<string, string | null>>(new Map());
-  const initialChatLoadDoneRef = useRef(false);
-
-  const getPartnerName = useCallback(
-    (chat: ChatResponse) => {
-      if (roleCode === 'AGENCY') {
-        if (chat.type === ChatTypeCode.AGENCY_BRAND && chat.brandName) {
-          return chat.brandName;
-        }
-        if (chat.type === ChatTypeCode.AGENCY_INFLUENCER && chat.influencerName) {
-          return chat.influencerName;
-        }
-      } else if (roleCode === 'BRAND' || roleCode === 'INFLUENCER') {
-        if (chat.agencyName) {
-          return chat.agencyName;
-        }
-      }
-      if (chat.type === ChatTypeCode.AGENCY_BRAND) {
-        return roleCode === 'BRAND' ? 'Agency Account Manager' : 'Brand Partner';
-      }
-      if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
-        return roleCode === 'INFLUENCER' ? 'Agency Manager' : 'Creator';
-      }
-      return 'Direct Message';
-    },
-    [roleCode],
-  );
-
   useEffect(() => {
-    if (!isAuthenticated || chats.length === 0) return;
-
-    if (!initialChatLoadDoneRef.current) {
-      // First load: snapshot timestamps without firing toast alerts
-      chats.forEach((chat) => {
-        lastSeenChatTimestampsRef.current.set(
-          chat.id,
-          chat.lastMessageOn ? new Date(chat.lastMessageOn).toISOString() : null,
-        );
-      });
-      initialChatLoadDoneRef.current = true;
+    if (!isAuthenticated) {
+      disconnectSocket();
       return;
     }
 
-    // Subsequent updates: check for newer lastMessageOn
-    chats.forEach((chat) => {
-      const prevTimestamp = lastSeenChatTimestampsRef.current.get(chat.id);
-      const currentTimestamp = chat.lastMessageOn
-        ? new Date(chat.lastMessageOn).toISOString()
-        : null;
+    const socket = connectSocket();
 
-      if (currentTimestamp && currentTimestamp !== prevTimestamp) {
-        lastSeenChatTimestampsRef.current.set(chat.id, currentTimestamp);
+    const handleChatUpdated = (data: {
+      chatId: string;
+      lastMessage?: MessageResponse;
+      senderId?: string;
+    }) => {
+      // Immediately invalidate conversation list and active message feed
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      if (data?.chatId) {
+        queryClient.invalidateQueries({ queryKey: ['chats', data.chatId, 'messages'] });
+      }
 
-        // Immediately invalidate and refetch the open message feed for this conversation
-        queryClient.invalidateQueries({ queryKey: ['chats', chat.id, 'messages'] });
-        queryClient.refetchQueries({ queryKey: ['chats', chat.id, 'messages'] });
-
-        // The timestamp also moves when *we* post. Both participants poll the
-        // same chat list, so without this the sender is told about their own
-        // message — under the other party's name, since that is who the thread
-        // is named after.
-        if (chat.lastMessageSenderId && chat.lastMessageSenderId === user?.id) {
-          return;
-        }
-
-        // Check if user is currently looking at this active chat thread via window.location safely
+      // If message is from someone else, fire real-time in-app notification
+      if (data?.senderId && data.senderId !== user?.id) {
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
         const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
         const isCurrentChatPage =
-          currentPath.includes('/chats') && currentSearch.includes(`chatId=${chat.id}`);
+          currentPath.includes('/chats') && currentSearch.includes(`chatId=${data.chatId}`);
 
-        const partner = getPartnerName(chat);
         const chatPath =
           roleCode === 'BRAND'
-            ? `/brand/chats?chatId=${chat.id}`
+            ? `/brand/chats?chatId=${data.chatId}`
             : roleCode === 'INFLUENCER'
-              ? `/influencer/chats?chatId=${chat.id}`
-              : `/agency/chats?chatId=${chat.id}`;
+              ? `/influencer/chats?chatId=${data.chatId}`
+              : `/agency/chats?chatId=${data.chatId}`;
 
         addNotification(
           {
             type: 'MESSAGE',
-            title: `New message from ${partner}`,
-            message: `New message received in ${partner}'s conversation thread.`,
+            title: 'New Message',
+            message: data.lastMessage?.body
+              ? data.lastMessage.body.length > 60
+                ? `${data.lastMessage.body.slice(0, 60)}...`
+                : data.lastMessage.body
+              : 'New message received in conversation thread.',
             link: chatPath,
             metadata: {
-              chatId: chat.id,
-              senderName: partner,
+              chatId: data.chatId,
+              senderId: data.senderId,
             },
           },
           {
@@ -195,8 +150,23 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           },
         );
       }
-    });
-  }, [chats, isAuthenticated, roleCode, user?.id, getPartnerName, addNotification, queryClient]);
+    };
+
+    const handleDirectNotification = (draft: NotificationDraft) => {
+      if (draft) {
+        addNotification(draft);
+      }
+    };
+
+    socket.on('chat_updated', handleChatUpdated);
+    socket.on('notification', handleDirectNotification);
+
+    return () => {
+      const s = getSocket();
+      s.off('chat_updated', handleChatUpdated);
+      s.off('notification', handleDirectNotification);
+    };
+  }, [isAuthenticated, user?.id, roleCode, addNotification, queryClient]);
 
   const value = useMemo<NotificationContextType>(
     () => ({

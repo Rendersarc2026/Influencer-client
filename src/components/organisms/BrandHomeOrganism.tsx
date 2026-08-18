@@ -42,7 +42,7 @@ export const BrandHomeOrganism: React.FC = () => {
 
   const campaigns = campaignsData?.items || [];
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
-  const allCampaigns = allCampaignsData?.items || [];
+  const allCampaigns = useMemo(() => allCampaignsData?.items || [], [allCampaignsData]);
   const payments = paymentsData?.items || [];
 
   const campaignIds = useMemo(() => allCampaigns.map((c) => c.id), [allCampaigns]);

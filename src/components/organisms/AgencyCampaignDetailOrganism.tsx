@@ -269,7 +269,13 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       header: 'Influencer',
       type: 'entity',
       accessor: (row) => row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`,
-      subAccessor: (row) => row.deliverables || 'Deliverables pending',
+      subAccessor: (row) => {
+        const parts: string[] = [];
+        if (row.deliverables) parts.push(row.deliverables);
+        if (row.preEvalEr) parts.push(`${row.preEvalEr}% ER`);
+        if (row.committedViews) parts.push(`${row.committedViews.toLocaleString()} views`);
+        return parts.length > 0 ? parts.join(' · ') : 'Deliverables pending';
+      },
     },
     {
       id: 'influencerRate',

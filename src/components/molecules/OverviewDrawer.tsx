@@ -253,8 +253,14 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: highlights.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+              gridTemplateColumns:
+                highlights.length === 1
+                  ? '1fr'
+                  : highlights.length === 3
+                    ? { xs: '1fr', sm: 'repeat(3, 1fr)' }
+                    : 'repeat(2, 1fr)',
               gap: 1.5,
+              alignItems: 'stretch',
             }}
           >
             {highlights.map((h, idx) => (
@@ -263,24 +269,56 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                 sx={{
                   padding: '14px 16px',
                   borderRadius: `${theme.customRadii.inner}px`,
-                  backgroundColor: h.tint ? (tintMap[h.tint] || theme.palette.tokens.fieldBg) : theme.palette.tokens.fieldBg,
+                  backgroundColor: h.tint
+                    ? tintMap[h.tint] || theme.palette.tokens.fieldBg
+                    : theme.palette.tokens.fieldBg,
                   border: `1px solid ${theme.palette.tokens.divider}`,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 0.5,
+                  justifyContent: 'space-between',
+                  minHeight: '88px',
+                  boxSizing: 'border-box',
                 }}
               >
-                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}>
-                  {h.label}
-                </Typography>
-                <Typography variant="h3" sx={{ fontSize: '18px', fontWeight: 700, color: theme.palette.tokens.textPrimary }}>
-                  {h.value}
-                </Typography>
-                {h.sublabel && (
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}>
-                    {h.sublabel}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: theme.palette.tokens.textSecondary,
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      fontSize: '12px',
+                    }}
+                    noWrap
+                  >
+                    {h.label}
                   </Typography>
-                )}
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontSize: '17px',
+                      fontWeight: 700,
+                      color: theme.palette.tokens.textPrimary,
+                      lineHeight: 1.3,
+                    }}
+                    noWrap
+                  >
+                    {h.value}
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: theme.palette.tokens.textSecondary,
+                    fontSize: '11px',
+                    lineHeight: 1.2,
+                    mt: 0.5,
+                    minHeight: '14px',
+                    visibility: h.sublabel ? 'visible' : 'hidden',
+                  }}
+                >
+                  {h.sublabel || '—'}
+                </Typography>
               </Box>
             ))}
           </Box>

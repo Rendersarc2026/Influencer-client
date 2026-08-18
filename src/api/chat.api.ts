@@ -33,30 +33,26 @@ export function useWindowFocus(): boolean {
 }
 
 // -------------------------------------------------------------
-// 1. Conversation List Query (polls every 1.5s when focused for instant incoming detection)
+// 1. Conversation List Query (real-time updates driven via Socket.io)
 // -------------------------------------------------------------
 
 export function useChats(options?: UseChatsOptions) {
-  const isFocused = useWindowFocus();
-
   return useQuery<ChatResponse[]>({
     queryKey: ['chats'],
     queryFn: async () => {
       const response = await apiClient.get<ChatResponse[]>('/chats');
       return response.data;
     },
-    refetchInterval: isFocused ? 1500 : 4000,
     enabled: options?.enabled ?? true,
+    staleTime: 30000,
   });
 }
 
 // -------------------------------------------------------------
-// 2. Chat Messages Query (polls 1s when focused, 3s when blurred)
+// 2. Chat Messages Query (real-time updates driven via Socket.io)
 // -------------------------------------------------------------
 
 export function useChatMessages(chatId: string | undefined) {
-  const isFocused = useWindowFocus();
-
   return useQuery<MessageResponse[]>({
     queryKey: ['chats', chatId, 'messages'],
     queryFn: async () => {
@@ -65,7 +61,7 @@ export function useChatMessages(chatId: string | undefined) {
       return response.data;
     },
     enabled: Boolean(chatId),
-    refetchInterval: isFocused ? 1000 : 3000,
+    staleTime: 30000,
   });
 }
 
