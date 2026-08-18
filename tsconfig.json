@@ -49,6 +49,8 @@
       "@context/*": ["src/context/*"],
       "@store": ["src/store"],
       "@store/*": ["src/store/*"],
+      "@types": ["src/types"],
+      "@types/*": ["src/types/*"],
       "@/*": ["src/*"]
     }
   },

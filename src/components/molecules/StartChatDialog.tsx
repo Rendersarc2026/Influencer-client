@@ -16,17 +16,33 @@ import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import RecordVoiceOverRoundedIcon from '@mui/icons-material/RecordVoiceOverRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { useAgencyInfluencers, useAgencyBrands, useAgencyCampaigns } from '@api';
-import { InfluencerResponse, BrandResponse, CampaignResponse } from '@contracts';
+import { useAgencyInfluencers, useAgencyBrands } from '@api';
+import { InfluencerResponse, BrandResponse } from '@contracts';
 import { safeImageUrl } from '@utils';
+
+function formatDisplaySocial(urlOrHandle: string | null | undefined): string {
+  if (!urlOrHandle) return '—';
+  if (urlOrHandle.startsWith('http://') || urlOrHandle.startsWith('https://')) {
+    try {
+      const parsed = new URL(urlOrHandle);
+      const path = parsed.pathname.replace(/^\//, '').replace(/\/$/, '');
+      if (path) {
+        return `@${path.replace(/^@/, '')}`;
+      }
+      return parsed.hostname;
+    } catch {
+      return urlOrHandle;
+    }
+  }
+  return urlOrHandle.startsWith('@') ? urlOrHandle : `@${urlOrHandle}`;
+}
 
 export interface StartChatDialogProps {
   open: boolean;
   loading?: boolean;
   preselectedType?: 'INFLUENCER' | 'BRAND';
   preselectedParticipantId?: string;
-  preselectedCampaignId?: string;
-  onStartChat: (participantId: string, campaignId?: string) => Promise<void> | void;
+  onStartChat: (participantId: string) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -35,7 +51,6 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
   loading = false,
   preselectedType = 'INFLUENCER',
   preselectedParticipantId,
-  preselectedCampaignId,
   onStartChat,
   onClose,
 }) => {
@@ -43,12 +58,10 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
   const [recipientType, setRecipientType] = useState<'INFLUENCER' | 'BRAND'>(preselectedType);
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
-  const [selectedCampaign, setSelectedCampaign] = useState<CampaignResponse | null>(null);
   const [error, setError] = useState('');
 
   const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers({ limit: 100 });
   const { data: brandsData, isLoading: brandsLoading } = useAgencyBrands({ limit: 100 });
-  const { data: campaignsData, isLoading: campaignsLoading } = useAgencyCampaigns({ limit: 100 });
 
   const influencers: InfluencerResponse[] = React.useMemo(
     () => influencersData?.items || [],
@@ -57,10 +70,6 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
   const brands: BrandResponse[] = React.useMemo(
     () => brandsData?.items || [],
     [brandsData],
-  );
-  const campaigns: CampaignResponse[] = React.useMemo(
-    () => campaignsData?.items || [],
-    [campaignsData],
   );
 
   useEffect(() => {
@@ -82,15 +91,8 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
         setSelectedInfluencer(null);
         setSelectedBrand(null);
       }
-
-      if (preselectedCampaignId) {
-        const match = campaigns.find((c: CampaignResponse) => c.id === preselectedCampaignId);
-        setSelectedCampaign(match || null);
-      } else {
-        setSelectedCampaign(null);
-      }
     }
-  }, [open, preselectedType, preselectedParticipantId, preselectedCampaignId, influencers, brands, campaigns]);
+  }, [open, preselectedType, preselectedParticipantId, influencers, brands]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,10 +105,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
     }
 
     setError('');
-    await onStartChat(
-      participantId,
-      selectedCampaign?.id,
-    );
+    await onStartChat(participantId);
   };
 
   return (
@@ -225,7 +224,9 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                         {option.name}
                       </Typography>
                       <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                        {option.instagram ? `@${option.instagram.replace(/^@/, '')}` : option.category || 'Creator'}
+                        {option.instagram
+                          ? formatDisplaySocial(option.instagram)
+                          : option.category || 'Creator'}
                       </Typography>
                     </Box>
                   </Box>
@@ -290,26 +291,6 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 )}
               />
             )}
-
-            {/* 3. Optional Campaign Context */}
-            <Autocomplete
-              options={campaigns}
-              value={selectedCampaign}
-              onChange={(_, val) => setSelectedCampaign(val)}
-              getOptionLabel={(option) => option.name}
-              isOptionEqualToValue={(option, val) => option.id === val.id}
-              loading={campaignsLoading}
-              disabled={loading || Boolean(preselectedCampaignId)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Campaign Context (Optional)"
-                  placeholder="Select a campaign to link this chat..."
-                  helperText="Links conversation to a specific campaign"
-                  fullWidth
-                />
-              )}
-            />
 
             {error && (
               <Typography variant="body2" sx={{ color: theme.palette.tokens.negative }}>

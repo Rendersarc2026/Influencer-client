@@ -123,6 +123,22 @@ export const ProfileOrganism: React.FC = () => {
       parsedFollowers = parsed;
     }
 
+    const normalizeSocialUrl = (val: string, domain: 'instagram.com' | 'youtube.com'): string | undefined => {
+      const trimmed = val.trim();
+      if (!trimmed) return undefined;
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+      if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`)) return `https://${trimmed}`;
+      if (domain === 'instagram.com') {
+        const handle = trimmed.replace(/^@/, '');
+        return `https://instagram.com/${handle}`;
+      }
+      if (domain === 'youtube.com') {
+        const handle = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+        return `https://youtube.com/${handle}`;
+      }
+      return `https://${trimmed}`;
+    };
+
     const payload: UpdateProfileRequest = {
       fullName: trimmedFullName,
       displayName: displayName.trim() || undefined,
@@ -132,8 +148,8 @@ export const ProfileOrganism: React.FC = () => {
             influencer: {
               location: city.trim() || undefined,
               category: category.trim() || undefined,
-              instagram: instagram.trim().replace(/\s+/g, '') || undefined,
-              youtube: youtube.trim() || undefined,
+              instagram: normalizeSocialUrl(instagram, 'instagram.com'),
+              youtube: normalizeSocialUrl(youtube, 'youtube.com'),
               followers: parsedFollowers,
               avgCommercialMin: commercialMin ? Number(commercialMin) : undefined,
               avgCommercialMax: commercialMax ? Number(commercialMax) : undefined,
@@ -310,23 +326,23 @@ export const ProfileOrganism: React.FC = () => {
 
                   <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <TextField
-                      label="Instagram Handle"
-                      placeholder="@handle"
+                      label="Instagram Profile URL"
+                      placeholder="https://instagram.com/username"
                       value={instagram}
                       onChange={(e) => setInstagram(e.target.value)}
                       error={Boolean(fieldErrors.instagram)}
-                      helperText={fieldErrors.instagram}
+                      helperText={fieldErrors.instagram || 'Full Instagram profile link'}
                       fullWidth
                       disabled={fieldsLocked}
                     />
 
                     <TextField
-                      label="YouTube Channel"
-                      placeholder="Channel URL or Handle"
+                      label="YouTube Channel URL"
+                      placeholder="https://youtube.com/@channel"
                       value={youtube}
                       onChange={(e) => setYoutube(e.target.value)}
                       error={Boolean(fieldErrors.youtube)}
-                      helperText={fieldErrors.youtube}
+                      helperText={fieldErrors.youtube || 'Full YouTube channel link'}
                       fullWidth
                       disabled={fieldsLocked}
                     />

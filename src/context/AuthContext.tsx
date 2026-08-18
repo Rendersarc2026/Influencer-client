@@ -23,11 +23,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     queryFn: async () => {
       try {
         const response = await apiClient.get<CurrentUserResponse>('/auth/me');
+        if (response.data?.roleCode) {
+          try {
+            localStorage.setItem('app_role_code', response.data.roleCode);
+            localStorage.setItem('app_session_active', 'true');
+          } catch {
+            // Ignore storage errors
+          }
+        }
         return response.data;
       } catch (err: unknown) {
         const axiosErr = err as { response?: { status?: number } };
         // Only return null if server explicitly responded with 401 (unauthorized / session expired)
         if (axiosErr?.response?.status === 401) {
+          try {
+            localStorage.removeItem('app_role_code');
+            localStorage.removeItem('app_session_active');
+          } catch {
+            // Ignore storage errors
+          }
           return null;
         }
         // If it's a network drop / laptop sleep wakeup / offline error, throw so React Query preserves cached session and retries
@@ -61,6 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     onSettled: () => {
       try {
         localStorage.removeItem('app_role_code');
+        localStorage.removeItem('app_session_active');
       } catch (_err) {
         // Ignore localStorage errors in private browsing/restricted environments
       }
@@ -80,6 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (meRes.data?.roleCode) {
       try {
         localStorage.setItem('app_role_code', meRes.data.roleCode);
+        localStorage.setItem('app_session_active', 'true');
       } catch (_err) {
         // Ignore localStorage errors
       }
@@ -92,13 +108,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await logoutMutation.mutateAsync();
   };
 
-  /**
-   * The write has to be allowed to throw. Both of these gate a redirect: the
-   * caller navigates on the refreshed session, and if the write silently failed
-   * that session still says "not accepted" / "not complete", so the route guard
-   * bounces the user straight back to the screen they just submitted — with no
-   * error shown, because the failure was swallowed here.
-   */
   const acceptTerms = async (): Promise<CurrentUserResponse> => {
     await apiClient.post('/terms/accept');
     const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
@@ -126,11 +135,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (authData?.roleCode) {
       try {
         localStorage.setItem('app_role_code', authData.roleCode);
+        localStorage.setItem('app_session_active', 'true');
       } catch (_err) {
         // Ignore localStorage errors
       }
     }
   }, [authData?.roleCode]);
+
   const profileComplete = authData?.profileComplete ?? false;
   const termsAccepted = authData?.termsAccepted ?? false;
   const isAuthenticated = Boolean(user && roleCode);

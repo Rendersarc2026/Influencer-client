@@ -52,6 +52,23 @@ function instagramHref(value: string | null): string | undefined {
   return value.startsWith('http') ? value : `https://instagram.com/${value.replace(/^@/, '')}`;
 }
 
+function formatDisplaySocial(urlOrHandle: string | null | undefined): string {
+  if (!urlOrHandle) return '—';
+  if (urlOrHandle.startsWith('http://') || urlOrHandle.startsWith('https://')) {
+    try {
+      const parsed = new URL(urlOrHandle);
+      const path = parsed.pathname.replace(/^\//, '').replace(/\/$/, '');
+      if (path) {
+        return `@${path.replace(/^@/, '')}`;
+      }
+      return parsed.hostname;
+    } catch {
+      return urlOrHandle;
+    }
+  }
+  return urlOrHandle.startsWith('@') ? urlOrHandle : `@${urlOrHandle}`;
+}
+
 export const AgencyInfluencersOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -152,7 +169,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       header: 'Influencer',
       type: 'entity',
       accessor: (row) => row.name,
-      subAccessor: (row) => row.instagram || row.youtube || '—',
+      subAccessor: (row) => formatDisplaySocial(row.instagram || row.youtube),
     },
     {
       id: 'category',
@@ -360,15 +377,13 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                     { label: 'Contact Email', value: selectedInfluencer.email || '—' },
                     { label: 'Contact Phone', value: selectedInfluencer.contactPhone || '—' },
                     {
-                      label: 'Instagram',
-                      value: selectedInfluencer.instagram
-                        ? `@${selectedInfluencer.instagram}`
-                        : '—',
+                      label: 'Instagram Profile URL',
+                      value: selectedInfluencer.instagram || '—',
                       isLink: Boolean(selectedInfluencer.instagram),
                       href: instagramHref(selectedInfluencer.instagram),
                     },
                     {
-                      label: 'YouTube Channel',
+                      label: 'YouTube Channel URL',
                       value: selectedInfluencer.youtube || '—',
                       isLink: Boolean(selectedInfluencer.youtube),
                       href: selectedInfluencer.youtube || undefined,

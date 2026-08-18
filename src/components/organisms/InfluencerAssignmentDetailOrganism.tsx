@@ -105,9 +105,7 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               <Button
                 variant="outlined"
                 startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
-                onClick={() =>
-                  navigate(`/influencer/chats?campaignId=${assignment?.campaignId}`)
-                }
+                onClick={() => navigate('/influencer/chats')}
               >
                 Message Agency
               </Button>

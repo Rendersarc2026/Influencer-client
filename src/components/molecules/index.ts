@@ -18,4 +18,5 @@ export * from './CreateInfluencerDialog';
 export * from './SubmitRateDialog';
 export * from './OverviewDrawer';
 export * from './StartChatDialog';
+export * from './NotificationCenter';
 export * from './ErrorBoundary';

@@ -8,6 +8,7 @@ import {
   SendMessageRequest,
   EditMessageRequest,
 } from '@contracts';
+import { UseChatsOptions } from '@types';
 
 // Hook to detect window focus state for dynamic polling intervals
 export function useWindowFocus(): boolean {
@@ -32,22 +33,23 @@ export function useWindowFocus(): boolean {
 }
 
 // -------------------------------------------------------------
-// 1. Conversation List Query (polls every 15s)
+// 1. Conversation List Query (polls every 3s for fast incoming message & notification detection)
 // -------------------------------------------------------------
 
-export function useChats() {
+export function useChats(options?: UseChatsOptions) {
   return useQuery<ChatResponse[]>({
     queryKey: ['chats'],
     queryFn: async () => {
       const response = await apiClient.get<ChatResponse[]>('/chats');
       return response.data;
     },
-    refetchInterval: 15000,
+    refetchInterval: 3000,
+    enabled: options?.enabled ?? true,
   });
 }
 
 // -------------------------------------------------------------
-// 2. Chat Messages Query (polls 4s when focused, 15s when blurred)
+// 2. Chat Messages Query (polls 2s when focused, 5s when blurred)
 // -------------------------------------------------------------
 
 export function useChatMessages(chatId: string | undefined) {
@@ -61,7 +63,7 @@ export function useChatMessages(chatId: string | undefined) {
       return response.data;
     },
     enabled: Boolean(chatId),
-    refetchInterval: isFocused ? 4000 : 15000,
+    refetchInterval: isFocused ? 2000 : 5000,
   });
 }
 
@@ -76,7 +78,12 @@ export function useCreateOrFindChat() {
       const response = await apiClient.post<ChatResponse>('/chats', data);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (newChat) => {
+      queryClient.setQueryData<ChatResponse[]>(['chats'], (old = []) => {
+        const exists = old.some((c) => c.id === newChat.id);
+        if (exists) return old.map((c) => (c.id === newChat.id ? newChat : c));
+        return [newChat, ...old];
+      });
       queryClient.invalidateQueries({ queryKey: ['chats'] });
     },
   });
@@ -96,7 +103,7 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
     { previousMessages?: MessageResponse[] }
   >({
     mutationFn: async (data) => {
-      if (!chatId) throw new Error('Chat ID required');
+      if (!chatId) throw new Error('No active conversation selected.');
       const response = await apiClient.post<MessageResponse>(`/chats/${chatId}/messages`, data);
       return response.data;
     },

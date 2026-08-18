@@ -31,7 +31,7 @@ import {
   useCreateOrFindChat,
   useAgencyInfluencers,
   useAgencyBrands,
-  useAgencyCampaigns,
+  useAgencyUsers,
 } from '@api';
 import {
   ChatResponse,
@@ -39,10 +39,10 @@ import {
   ChatTypeName,
   InfluencerResponse,
   BrandResponse,
-  CampaignResponse,
+  UserResponse,
 } from '@contracts';
-import { useAuth, useToast } from '@hooks';
-import { safeUrl } from '@utils';
+import { useAuth, useToast, useNotifications } from '@hooks';
+import { safeUrl, safeImageUrl } from '@utils';
 
 export const ChatOrganism: React.FC = () => {
   const theme = useTheme();
@@ -52,16 +52,16 @@ export const ChatOrganism: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, roleCode, logout } = useAuth();
   const { showSuccess, showError } = useToast();
+  const { notifications, markAsRead } = useNotifications();
 
   const queryChatId = searchParams.get('chatId');
   const queryParticipantId = searchParams.get('participantId');
   const queryType = (searchParams.get('type') as 'INFLUENCER' | 'BRAND') || undefined;
-  const queryCampaignId = searchParams.get('campaignId') || undefined;
 
   const { data: chats = [], isLoading: chatsLoading } = useChats();
-  const { data: influencersData } = useAgencyInfluencers({ limit: 100 });
-  const { data: brandsData } = useAgencyBrands({ limit: 100 });
-  const { data: campaignsData } = useAgencyCampaigns({ limit: 100 });
+  const { data: influencersData } = useAgencyInfluencers(roleCode === 'AGENCY' ? { limit: 100 } : undefined);
+  const { data: brandsData } = useAgencyBrands(roleCode === 'AGENCY' ? { limit: 100 } : undefined);
+  const { data: usersData } = useAgencyUsers(roleCode === 'AGENCY' ? { limit: 100 } : undefined);
 
   const influencers: InfluencerResponse[] = useMemo(
     () => influencersData?.items || [],
@@ -71,9 +71,9 @@ export const ChatOrganism: React.FC = () => {
     () => brandsData?.items || [],
     [brandsData],
   );
-  const campaigns: CampaignResponse[] = useMemo(
-    () => campaignsData?.items || [],
-    [campaignsData],
+  const users: UserResponse[] = useMemo(
+    () => usersData?.items || [],
+    [usersData],
   );
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(queryChatId || null);
@@ -86,14 +86,18 @@ export const ChatOrganism: React.FC = () => {
   const [startChatOpen, setStartChatOpen] = useState(false);
   const [dialogParticipantId, setDialogParticipantId] = useState<string | undefined>(queryParticipantId || undefined);
   const [dialogType, setDialogType] = useState<'INFLUENCER' | 'BRAND'>(queryType || 'INFLUENCER');
-  const [dialogCampaignId, setDialogCampaignId] = useState<string | undefined>(queryCampaignId || undefined);
 
   const createChatMutation = useCreateOrFindChat();
 
   // Active chat & messages
-  const activeChat =
-    chats.find((c) => c.id === selectedChatId) || (chats.length > 0 && !isMobile ? chats[0] : null);
-  const effectiveChatId = activeChat?.id;
+  const activeChat = useMemo(() => {
+    if (selectedChatId) {
+      return chats.find((c) => c.id === selectedChatId) || null;
+    }
+    return chats.length > 0 && !isMobile ? chats[0] : null;
+  }, [chats, selectedChatId, isMobile]);
+
+  const effectiveChatId = selectedChatId || activeChat?.id;
 
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(effectiveChatId);
   const sendMessageMutation = useSendMessage(effectiveChatId, user?.id);
@@ -118,10 +122,9 @@ export const ChatOrganism: React.FC = () => {
     if (queryParticipantId) {
       setDialogParticipantId(queryParticipantId);
       setDialogType(queryType || 'INFLUENCER');
-      setDialogCampaignId(queryCampaignId || undefined);
       setStartChatOpen(true);
     }
-  }, [queryParticipantId, queryType, queryCampaignId]);
+  }, [queryParticipantId, queryType]);
 
   // Auto select first chat on desktop if none selected
   useEffect(() => {
@@ -130,10 +133,32 @@ export const ChatOrganism: React.FC = () => {
     }
   }, [chats, selectedChatId, isMobile]);
 
+  // Keep the open thread in the URL. The notification layer reads ?chatId= to
+  // tell whether an arriving message belongs to the thread already on screen,
+  // and stays silent if it does.
+  useEffect(() => {
+    if (effectiveChatId === (queryChatId ?? undefined)) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (effectiveChatId) {
+          next.set('chatId', effectiveChatId);
+        } else {
+          next.delete('chatId');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }, [effectiveChatId, queryChatId, setSearchParams]);
+
   // Mark chat as read when viewing
   useEffect(() => {
     if (effectiveChatId) {
       markReadMutation.mutate(effectiveChatId);
+      notifications
+        .filter((n) => !n.read && n.metadata?.chatId === effectiveChatId)
+        .forEach((n) => markAsRead(n.id));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveChatId]);
@@ -143,18 +168,14 @@ export const ChatOrganism: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeMessages]);
 
-  const handleStartChat = async (
-    participantId: string,
-    campaignId?: string,
-  ) => {
+  const handleStartChat = async (participantId: string) => {
     try {
       const newChat = await createChatMutation.mutateAsync({
         participantId,
-        campaignId,
       });
       setSelectedChatId(newChat.id);
       setStartChatOpen(false);
-      setSearchParams({});
+      setSearchParams({ chatId: newChat.id });
       showSuccess('Conversation started.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -190,31 +211,83 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
-  const getChatPartnerName = React.useCallback((chat: ChatResponse) => {
-    if (chat.type === ChatTypeCode.AGENCY_BRAND) {
-      if (chat.brandUserId) {
-        const matchedBrand = brands.find((b: BrandResponse) => b.id === chat.brandUserId);
-        if (matchedBrand) return matchedBrand.name;
+  const getChatPartnerName = React.useCallback(
+    (chat: ChatResponse) => {
+      // 1. Direct from server payload if present
+      if (roleCode === 'AGENCY') {
+        if (chat.type === ChatTypeCode.AGENCY_BRAND && chat.brandName) {
+          return chat.brandName;
+        }
+        if (chat.type === ChatTypeCode.AGENCY_INFLUENCER && chat.influencerName) {
+          return chat.influencerName;
+        }
+      } else if (roleCode === 'BRAND' || roleCode === 'INFLUENCER') {
+        if (chat.agencyName) {
+          return chat.agencyName;
+        }
       }
-      return roleCode === 'BRAND' ? 'Agency Account Manager' : 'Brand Partner';
-    }
 
-    if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
-      if (chat.influencerId) {
-        const matchedInfluencer = influencers.find((i: InfluencerResponse) => i.id === chat.influencerId);
-        if (matchedInfluencer) return matchedInfluencer.name;
+      // 2. Client-side lookup fallback across users, brands, and influencers
+      if (chat.type === ChatTypeCode.AGENCY_BRAND) {
+        if (chat.brandUserId) {
+          const matchedUser = users.find((u) => u.id === chat.brandUserId);
+          if (matchedUser?.brandName) return matchedUser.brandName;
+          const matchedBrand = brands.find(
+            (b) =>
+              b.id === chat.brandUserId ||
+              b.id === matchedUser?.brandId ||
+              (matchedUser?.email && b.contactEmail === matchedUser.email),
+          );
+          if (matchedBrand) return matchedBrand.name;
+        }
+        return roleCode === 'BRAND' ? 'Fetch Agency' : 'Brand Partner';
       }
-      return roleCode === 'INFLUENCER' ? 'Agency Manager' : 'Creator Studio';
-    }
 
-    return 'Direct Message';
-  }, [brands, influencers, roleCode]);
+      if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
+        if (chat.influencerId) {
+          const matchedUser = users.find((u) => u.id === chat.influencerId);
+          if (matchedUser?.influencer?.name) return matchedUser.influencer.name;
+          if (matchedUser?.profile?.fullName) return matchedUser.profile.fullName;
+          const matchedInfluencer = influencers.find(
+            (i) =>
+              i.id === chat.influencerId ||
+              i.id === matchedUser?.influencer?.id ||
+              (matchedUser?.email && i.email === matchedUser.email),
+          );
+          if (matchedInfluencer) return matchedInfluencer.name;
+        }
+        return roleCode === 'INFLUENCER' ? 'Fetch Agency' : 'Creator';
+      }
 
-  const getCampaignName = React.useCallback((campaignId: string | null | undefined) => {
-    if (!campaignId) return null;
-    const matched = campaigns.find((c) => c.id === campaignId);
-    return matched ? matched.name : null;
-  }, [campaigns]);
+      return 'Direct Message';
+    },
+    [brands, influencers, users, roleCode],
+  );
+
+  const getChatPartnerAvatar = React.useCallback(
+    (chat: ChatResponse) => {
+      if (chat.type === ChatTypeCode.AGENCY_BRAND) {
+        if (chat.brandUserId) {
+          const matchedUser = users.find((u) => u.id === chat.brandUserId);
+          if (matchedUser?.profile?.avatarUrl) return matchedUser.profile.avatarUrl;
+          const matchedBrand = brands.find(
+            (b) =>
+              b.id === chat.brandUserId ||
+              b.id === matchedUser?.brandId ||
+              (matchedUser?.email && b.contactEmail === matchedUser.email),
+          );
+          if (matchedBrand?.logoUrl) return matchedBrand.logoUrl;
+        }
+      } else if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
+        if (chat.influencerId) {
+          const matchedUser = users.find((u) => u.id === chat.influencerId);
+          if (matchedUser?.profile?.avatarUrl) return matchedUser.profile.avatarUrl;
+        }
+      }
+      return undefined;
+    },
+    [brands, users],
+  );
 
   const formatMessageTime = (dateInput?: Date | string | null) => {
     if (!dateInput) return '';
@@ -253,11 +326,10 @@ export const ChatOrganism: React.FC = () => {
     const term = searchFilter.toLowerCase();
     return chats.filter((c) => {
       const partner = getChatPartnerName(c).toLowerCase();
-      const campaign = (getCampaignName(c.campaignId) || '').toLowerCase();
       const typeLabel = ChatTypeName[c.type]?.toLowerCase() || '';
-      return partner.includes(term) || campaign.includes(term) || typeLabel.includes(term);
+      return partner.includes(term) || typeLabel.includes(term);
     });
-  }, [chats, searchFilter, getChatPartnerName, getCampaignName]);
+  }, [chats, searchFilter, getChatPartnerName]);
 
   return (
     <DashboardLayout
@@ -279,7 +351,6 @@ export const ChatOrganism: React.FC = () => {
             startIcon={<AddRoundedIcon fontSize="small" />}
             onClick={() => {
               setDialogParticipantId(undefined);
-              setDialogCampaignId(undefined);
               setStartChatOpen(true);
             }}
           >
@@ -354,7 +425,6 @@ export const ChatOrganism: React.FC = () => {
                     startIcon={<AddRoundedIcon fontSize="small" />}
                     onClick={() => {
                       setDialogParticipantId(undefined);
-                      setDialogCampaignId(undefined);
                       setStartChatOpen(true);
                     }}
                     sx={{
@@ -450,7 +520,6 @@ export const ChatOrganism: React.FC = () => {
                           startIcon={<AddRoundedIcon fontSize="small" />}
                           onClick={() => {
                             setDialogParticipantId(undefined);
-                            setDialogCampaignId(undefined);
                             setStartChatOpen(true);
                           }}
                         >
@@ -470,7 +539,6 @@ export const ChatOrganism: React.FC = () => {
                 filteredChats.map((chat) => {
                   const isSelected = chat.id === effectiveChatId;
                   const partnerName = getChatPartnerName(chat);
-                  const campaignName = getCampaignName(chat.campaignId);
 
                   return (
                     <Box
@@ -498,6 +566,7 @@ export const ChatOrganism: React.FC = () => {
                       }}
                     >
                       <Avatar
+                        src={safeImageUrl(getChatPartnerAvatar(chat))}
                         sx={{
                           width: 42,
                           height: 42,
@@ -547,7 +616,7 @@ export const ChatOrganism: React.FC = () => {
                           </Typography>
                         </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'nowrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 0.5 }}>
                           <Box
                             sx={{
                               fontSize: '10px',
@@ -562,23 +631,22 @@ export const ChatOrganism: React.FC = () => {
                               flexShrink: 0,
                             }}
                           >
-                            {chat.type === ChatTypeCode.AGENCY_INFLUENCER ? 'Creator' : 'Brand'}
+                            {roleCode === 'AGENCY'
+                              ? chat.type === ChatTypeCode.AGENCY_INFLUENCER
+                                ? 'Creator'
+                                : 'Brand'
+                              : 'Agency'}
                           </Box>
 
-                          {campaignName && (
-                            <Typography
-                              variant="caption"
-                              noWrap
-                              sx={{
-                                color: theme.palette.tokens.textSecondary,
-                                fontSize: '11px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              📁 {campaignName}
-                            </Typography>
-                          )}
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: '10px',
+                              color: theme.palette.tokens.textSecondary,
+                            }}
+                          >
+                            💬 Direct Thread
+                          </Typography>
                         </Box>
                       </Box>
                     </Box>
@@ -614,6 +682,7 @@ export const ChatOrganism: React.FC = () => {
                     justifyContent: 'space-between',
                     backgroundColor: theme.palette.tokens.surface,
                     zIndex: 1,
+                    gap: 2,
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
@@ -633,6 +702,7 @@ export const ChatOrganism: React.FC = () => {
                     )}
 
                     <Avatar
+                      src={safeImageUrl(getChatPartnerAvatar(activeChat))}
                       sx={{
                         width: 40,
                         height: 40,
@@ -651,39 +721,56 @@ export const ChatOrganism: React.FC = () => {
                         <Typography variant="body1" sx={{ fontWeight: 700 }} noWrap>
                           {getChatPartnerName(activeChat)}
                         </Typography>
-                        {getCampaignName(activeChat.campaignId) && (
-                          <Box
-                            sx={{
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              px: 1,
-                              py: 0.25,
-                              borderRadius: `${theme.customRadii.pill}px`,
-                              backgroundColor: theme.palette.tokens.fieldBg,
-                              color: theme.palette.tokens.textSecondary,
-                              border: `1px solid ${theme.palette.tokens.divider}`,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 0.5,
-                            }}
-                          >
-                            📁 {getCampaignName(activeChat.campaignId)}
-                          </Box>
-                        )}
+                        <Box
+                          sx={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            px: 0.75,
+                            py: 0.15,
+                            borderRadius: '4px',
+                            backgroundColor: theme.palette.tokens.accentBg,
+                            color: theme.palette.tokens.accentText,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {roleCode === 'AGENCY'
+                            ? activeChat.type === ChatTypeCode.AGENCY_INFLUENCER
+                              ? 'Creator'
+                              : 'Brand Client'
+                            : 'Agency Account Manager'}
+                        </Box>
                       </Box>
                       <Typography
                         variant="caption"
                         sx={{
-                          color: theme.palette.tokens.accentText,
-                          fontWeight: 600,
+                          color: theme.palette.tokens.textSecondary,
+                          fontWeight: 500,
                           fontSize: '11px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
                         }}
                       >
-                        {ChatTypeName[activeChat.type]?.replace('_', ' • ')}
+                        Direct 1-on-1 Conversation
                       </Typography>
                     </Box>
+                  </Box>
+
+                  {/* Header Right */}
+                  <Box
+                    sx={{
+                      fontSize: '11px',
+                      color: theme.palette.tokens.textSecondary,
+                      display: { xs: 'none', sm: 'flex' },
+                      alignItems: 'center',
+                      gap: 0.5,
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: `${theme.customRadii.pill}px`,
+                      backgroundColor: theme.palette.tokens.fieldBg,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    💬 Direct Thread
                   </Box>
                 </Box>
 
@@ -735,10 +822,9 @@ export const ChatOrganism: React.FC = () => {
                       </Typography>
                       <Typography
                         variant="body2"
-                        sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 360 }}
+                        sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 380 }}
                       >
-                        Messages sent here are encrypted and delivered directly to{' '}
-                        {getChatPartnerName(activeChat)}.
+                        Messages sent here are encrypted and delivered directly to {getChatPartnerName(activeChat)}.
                       </Typography>
                     </Box>
                   ) : (
@@ -1070,7 +1156,6 @@ export const ChatOrganism: React.FC = () => {
                         startIcon={<AddRoundedIcon fontSize="small" />}
                         onClick={() => {
                           setDialogParticipantId(undefined);
-                          setDialogCampaignId(undefined);
                           setStartChatOpen(true);
                         }}
                       >
@@ -1091,7 +1176,6 @@ export const ChatOrganism: React.FC = () => {
         loading={createChatMutation.isPending}
         preselectedType={dialogType}
         preselectedParticipantId={dialogParticipantId}
-        preselectedCampaignId={dialogCampaignId}
         onStartChat={handleStartChat}
         onClose={() => {
           setStartChatOpen(false);

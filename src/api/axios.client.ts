@@ -23,6 +23,12 @@ apiClient.interceptors.response.use(
         !window.location.pathname.startsWith('/login') &&
         !window.location.pathname.startsWith('/auth')
       ) {
+        try {
+          localStorage.removeItem('app_role_code');
+          localStorage.removeItem('app_session_active');
+        } catch {
+          // Ignore storage errors
+        }
         window.location.href = '/login';
       }
     }

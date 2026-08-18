@@ -57,6 +57,42 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [followersError, setFollowersError] = useState('');
+  const [instagramError, setInstagramError] = useState('');
+  const [youtubeError, setYoutubeError] = useState('');
+
+  const normalizeSocialUrl = (val: string, domain: 'instagram.com' | 'youtube.com'): string => {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`)) return `https://${trimmed}`;
+    if (domain === 'instagram.com') {
+      const handle = trimmed.replace(/^@/, '');
+      return `https://instagram.com/${handle}`;
+    }
+    if (domain === 'youtube.com') {
+      const handle = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+      return `https://youtube.com/${handle}`;
+    }
+    return `https://${trimmed}`;
+  };
+
+  const validateSocialUrl = (val: string, label: string): string => {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    const normalized = normalizeSocialUrl(
+      trimmed,
+      label.toLowerCase().includes('instagram') ? 'instagram.com' : 'youtube.com',
+    );
+    try {
+      const parsed = new URL(normalized);
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
+        return `Please enter a valid ${label}`;
+      }
+    } catch {
+      return `Please enter a valid ${label} (e.g. https://${label.toLowerCase().includes('instagram') ? 'instagram.com/creator' : 'youtube.com/@channel'})`;
+    }
+    return '';
+  };
 
   const validateEmail = (val: string): string => {
     const trimmed = val.trim();
@@ -94,6 +130,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       setEmailError('');
       setPhoneError('');
       setFollowersError('');
+      setInstagramError('');
+      setYoutubeError('');
     }
   }, [open]);
 
@@ -194,6 +232,24 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       return;
     }
 
+    if (instagram.trim()) {
+      const igErr = validateSocialUrl(instagram, 'Instagram Profile URL');
+      if (igErr) {
+        setInstagramError(igErr);
+        return;
+      }
+    }
+    if (youtube.trim()) {
+      const ytErr = validateSocialUrl(youtube, 'YouTube Channel URL');
+      if (ytErr) {
+        setYoutubeError(ytErr);
+        return;
+      }
+    }
+
+    const finalInstagram = instagram.trim() ? normalizeSocialUrl(instagram, 'instagram.com') : undefined;
+    const finalYoutube = youtube.trim() ? normalizeSocialUrl(youtube, 'youtube.com') : undefined;
+
     const payload: CreateInfluencerRequest = {
       name: trimmedName,
       email: trimmedEmail,
@@ -201,8 +257,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       location: location.trim() || undefined,
       followers: parsedFollowers,
       contactPhone: trimmedPhone,
-      instagram: instagram.trim() || undefined,
-      youtube: youtube.trim() || undefined,
+      instagram: finalInstagram,
+      youtube: finalYoutube,
       avgCommercialMin: min,
       avgCommercialMax: max,
     };
@@ -460,18 +516,38 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
-                label="Instagram Handle"
+                label="Instagram Profile URL"
                 value={instagram}
-                onChange={(e) => setInstagram(e.target.value)}
-                placeholder="e.g. @riya.malhotra"
+                onChange={(e) => {
+                  setInstagram(e.target.value);
+                  if (instagramError) setInstagramError(validateSocialUrl(e.target.value, 'Instagram URL'));
+                }}
+                onBlur={() => {
+                  if (instagram.trim()) {
+                    setInstagramError(validateSocialUrl(instagram, 'Instagram Profile URL'));
+                  }
+                }}
+                placeholder="https://instagram.com/username"
+                error={Boolean(instagramError)}
+                helperText={instagramError || 'Full Instagram profile link'}
                 fullWidth
                 disabled={loading}
               />
               <TextField
-                label="YouTube Handle"
+                label="YouTube Channel URL"
                 value={youtube}
-                onChange={(e) => setYoutube(e.target.value)}
-                placeholder="e.g. @riyamalhotra"
+                onChange={(e) => {
+                  setYoutube(e.target.value);
+                  if (youtubeError) setYoutubeError(validateSocialUrl(e.target.value, 'YouTube URL'));
+                }}
+                onBlur={() => {
+                  if (youtube.trim()) {
+                    setYoutubeError(validateSocialUrl(youtube, 'YouTube Channel URL'));
+                  }
+                }}
+                placeholder="https://youtube.com/@channel"
+                error={Boolean(youtubeError)}
+                helperText={youtubeError || 'Full YouTube channel link'}
                 fullWidth
                 disabled={loading}
               />

@@ -8,6 +8,7 @@ import { theme } from '@theme';
 import { queryClient } from '@api';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { AppRoutes } from '@routes';
 
 export const App: React.FC = () => {
@@ -18,7 +19,9 @@ export const App: React.FC = () => {
           <CssBaseline />
           <ToastProvider>
             <AuthProvider>
-              <AppRoutes />
+              <NotificationProvider>
+                <AppRoutes />
+              </NotificationProvider>
             </AuthProvider>
           </ToastProvider>
         </ThemeProvider>
@@ -26,4 +29,3 @@ export const App: React.FC = () => {
     </Provider>
   );
 };
-

@@ -432,7 +432,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(
-                  `/agency/chats?participantId=${row.influencerId}&type=INFLUENCER&campaignId=${campaignId}`,
+                  `/agency/chats?participantId=${row.influencerId}&type=INFLUENCER`,
                 );
               }}
               sx={{
@@ -533,7 +533,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                     size="small"
                     onClick={() =>
                       navigate(
-                        `/agency/chats?participantId=${brand.id}&type=BRAND&campaignId=${campaignId}`,
+                        `/agency/chats?participantId=${brand.id}&type=BRAND`,
                       )
                     }
                     sx={{

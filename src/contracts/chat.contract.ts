@@ -16,7 +16,7 @@ export const MessageResponseSchema = z.object({
 export type MessageResponse = z.infer<typeof MessageResponseSchema>;
 
 export const CreateChatRequestSchema = z.object({
-  participantId: z.string().uuid(),
+  participantId: z.string().uuid().optional(),
   campaignId: z.string().uuid().optional(),
 });
 export type CreateChatRequest = z.infer<typeof CreateChatRequestSchema>;
@@ -36,10 +36,15 @@ export const ChatResponseSchema = z.object({
   id: z.string().uuid(),
   type: ChatTypeEnum,
   campaignId: z.string().uuid().nullable(),
+  campaignName: z.string().nullable().optional(),
   agencyUserId: z.string().uuid(),
+  agencyName: z.string().nullable().optional(),
   brandUserId: z.string().uuid().nullable(),
+  brandName: z.string().nullable().optional(),
   influencerId: z.string().uuid().nullable(),
+  influencerName: z.string().nullable().optional(),
   lastMessageOn: z.date().nullable(),
+  lastMessageSenderId: z.string().uuid().nullable(),
   isActive: z.boolean(),
   createdOn: z.date(),
   messages: z.array(MessageResponseSchema).optional(),

@@ -25,4 +25,6 @@ export function capitalizeWords(str: string): string {
 
 export * from './enum-label';
 export * from './shorthand-number';
+export * from './sound.utils';
 
+export * from './notification.utils';

@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -11,42 +11,11 @@ import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneR
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import { useTheme } from '@mui/material/styles';
-import { UserMenu } from '@molecules';
+import { UserMenu, NotificationCenter } from '@molecules';
+import { useNotifications } from '@hooks';
+import { BreadcrumbItem, TopBarProps, TopBarUser } from '@types';
 
-/**
- * One step in the trail above a page title. A crumb without `onClick` is the
- * current page — rendered as plain text rather than a dead link.
- */
-export interface BreadcrumbItem {
-  label: string;
-  onClick?: () => void;
-}
-
-export interface TopBarProps {
-  title: string;
-  subtitle?: string;
-  /**
-   * Trail shown above the title. The current page is appended automatically
-   * from `title`, so pass only its ancestors.
-   */
-  breadcrumbs?: BreadcrumbItem[];
-  /** Renders a back control to the left of the title. */
-  onBack?: () => void;
-  backLabel?: string;
-  user?: {
-    name: string;
-    email?: string;
-    roleCode?: string;
-    avatarUrl?: string;
-  };
-  onSearchClick?: () => void;
-  onNotificationsClick?: () => void;
-  notificationCount?: number;
-  onProfileClick?: () => void;
-  onLogoutClick?: () => void;
-  rightAction?: ReactNode;
-  className?: string;
-}
+export type { BreadcrumbItem, TopBarProps, TopBarUser };
 
 export const TopBar: React.FC<TopBarProps> = ({
   title,
@@ -57,13 +26,29 @@ export const TopBar: React.FC<TopBarProps> = ({
   user = { name: 'User', roleCode: 'AGENCY' },
   onSearchClick,
   onNotificationsClick,
-  notificationCount = 0,
+  notificationCount,
   onProfileClick,
   onLogoutClick,
   rightAction,
   className,
 }) => {
   const theme = useTheme();
+  const { unreadCount } = useNotifications();
+  const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
+
+  const effectiveCount =
+    notificationCount !== undefined ? notificationCount : unreadCount;
+
+  const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationAnchor(event.currentTarget);
+    if (onNotificationsClick) {
+      onNotificationsClick();
+    }
+  };
+
+  const handleCloseNotifications = () => {
+    setNotificationAnchor(null);
+  };
 
   return (
     <Box
@@ -208,12 +193,49 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
 
         <Tooltip title="Notifications">
-          <IconButton onClick={onNotificationsClick}>
-            <Badge badgeContent={notificationCount} color="error">
+          <IconButton
+            onClick={handleOpenNotifications}
+            aria-label="Notifications"
+            sx={{
+              position: 'relative',
+              backgroundColor: notificationAnchor ? theme.palette.tokens.accentBg : undefined,
+              color: notificationAnchor ? theme.palette.tokens.accentText : undefined,
+            }}
+          >
+            <Badge
+              badgeContent={effectiveCount > 99 ? '99+' : effectiveCount}
+              invisible={!effectiveCount || effectiveCount <= 0}
+              sx={{
+                '& .MuiBadge-badge': {
+                  backgroundColor: theme.palette.tokens.negative,
+                  color: theme.palette.tokens.surface,
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  height: 18,
+                  minWidth: 18,
+                  borderRadius: `${theme.customRadii.pill}px`,
+                  px: 0.5,
+                  boxShadow: '0 2px 6px rgba(224, 82, 82, 0.45)',
+                  border: `2px solid ${theme.palette.tokens.surface}`,
+                  animation: effectiveCount > 0 ? 'bubblePulse 2.5s infinite ease-in-out' : 'none',
+                  '@keyframes bubblePulse': {
+                    '0%': { transform: 'scale(1)' },
+                    '50%': { transform: 'scale(1.12)' },
+                    '100%': { transform: 'scale(1)' },
+                  },
+                },
+              }}
+            >
               <NotificationsNoneRoundedIcon fontSize="small" />
             </Badge>
           </IconButton>
         </Tooltip>
+
+        <NotificationCenter
+          anchorEl={notificationAnchor}
+          open={Boolean(notificationAnchor)}
+          onClose={handleCloseNotifications}
+        />
 
         <UserMenu user={user} onProfileClick={onProfileClick} onLogoutClick={onLogoutClick} />
       </Box>

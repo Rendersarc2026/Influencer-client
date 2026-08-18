@@ -15,7 +15,13 @@ export const RequireAuth: React.FC<{ children: ReactNode; skeleton?: PageSkeleto
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) {
+  const cachedSessionActive =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('app_session_active') === 'true' ||
+        Boolean(localStorage.getItem('app_role_code'))
+      : false;
+
+  if (isLoading || (cachedSessionActive && !isAuthenticated)) {
     return <PageSkeleton variant={skeleton} />;
   }
 
@@ -128,21 +134,28 @@ export const ProtectedRoute: React.FC<{
 export const RootRedirect: React.FC = () => {
   const { isAuthenticated, roleCode, termsAccepted, profileComplete, isLoading } = useAuth();
 
+  const cachedRole =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('app_role_code') as RoleCode | null)
+      : null;
+
   if (isLoading) {
     return <PageSkeleton variant="shell" />;
   }
 
-  if (!isAuthenticated || !roleCode) {
-    return <Navigate to="/login" replace />;
+  if (isAuthenticated && roleCode) {
+    if (!termsAccepted) {
+      return <Navigate to="/accept-terms" replace />;
+    }
+    if (!profileComplete) {
+      return <Navigate to="/complete-profile" replace />;
+    }
+    return <Navigate to={getRoleDashboardPath(roleCode)} replace />;
   }
 
-  if (!termsAccepted) {
-    return <Navigate to="/accept-terms" replace />;
+  if (cachedRole) {
+    return <Navigate to={getRoleDashboardPath(cachedRole)} replace />;
   }
 
-  if (!profileComplete) {
-    return <Navigate to="/complete-profile" replace />;
-  }
-
-  return <Navigate to={getRoleDashboardPath(roleCode)} replace />;
+  return <Navigate to="/login" replace />;
 };

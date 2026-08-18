@@ -56,13 +56,30 @@ interface AvailableCreator {
   avatarUrl?: string;
 }
 
+function formatDisplaySocial(urlOrHandle: string | null | undefined): string {
+  if (!urlOrHandle) return '—';
+  if (urlOrHandle.startsWith('http://') || urlOrHandle.startsWith('https://')) {
+    try {
+      const parsed = new URL(urlOrHandle);
+      const path = parsed.pathname.replace(/^\//, '').replace(/\/$/, '');
+      if (path) {
+        return `@${path.replace(/^@/, '')}`;
+      }
+      return parsed.hostname;
+    } catch {
+      return urlOrHandle;
+    }
+  }
+  return urlOrHandle.startsWith('@') ? urlOrHandle : `@${urlOrHandle}`;
+}
+
 function toAvailableCreator(influencer: InfluencerResponse): AvailableCreator {
   const tier = getInfluencerTier(influencer.followers);
   const tierInfo = getTierInfo(tier);
   return {
     id: influencer.id,
     name: influencer.name,
-    handle: influencer.instagram || influencer.youtube || '—',
+    handle: formatDisplaySocial(influencer.instagram || influencer.youtube),
     category: influencer.category || 'Uncategorized',
     followers: formatFollowers(influencer.followers),
     tier: tierInfo?.label,
@@ -546,8 +563,8 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                     { label: 'Contact Email', value: detailCreator.email || '—' },
                     { label: 'Contact Phone', value: detailCreator.contactPhone || '—' },
                     {
-                      label: 'Instagram',
-                      value: detailCreator.instagram ? `@${detailCreator.instagram}` : '—',
+                      label: 'Instagram Profile URL',
+                      value: detailCreator.instagram || '—',
                       isLink: Boolean(detailCreator.instagram),
                       href: detailCreator.instagram
                         ? detailCreator.instagram.startsWith('http')
@@ -556,7 +573,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                         : undefined,
                     },
                     {
-                      label: 'YouTube Channel',
+                      label: 'YouTube Channel URL',
                       value: detailCreator.youtube || '—',
                       isLink: Boolean(detailCreator.youtube),
                       href: detailCreator.youtube || undefined,

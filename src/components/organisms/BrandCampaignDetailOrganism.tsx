@@ -533,7 +533,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               variant="outlined"
               size="small"
               startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
-              onClick={() => navigate(`/brand/chats?campaignId=${campaignId}`)}
+              onClick={() => navigate('/brand/chats')}
               sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
             >
               Message Agency
