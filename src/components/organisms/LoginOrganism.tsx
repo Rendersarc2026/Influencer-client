@@ -9,7 +9,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import MailOutlineRoundedIcon from '@mui/icons-material/MailOutlineRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { RequestOtpRequestSchema, VerifyOtpRequestSchema } from '@contracts';
 import { useAuth, useToast } from '@hooks';
@@ -234,18 +233,17 @@ export const LoginOrganism: React.FC = () => {
         {/* Brand Symbol */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
           <Box
+            component="img"
+            src="/fetch-logo.jpeg"
+            alt="Fetch"
             sx={{
-              width: 52,
-              height: 52,
+              width: 56,
+              height: 56,
               borderRadius: `${theme.customRadii.inner}px`,
-              backgroundColor: theme.palette.tokens.rail,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              objectFit: 'cover',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
             }}
-          >
-            <StarRoundedIcon sx={{ fontSize: '28px', color: theme.palette.tints.butter }} />
-          </Box>
+          />
         </Box>
 
         {step === 1 ? (

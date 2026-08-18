@@ -15,7 +15,6 @@ import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { NavItem } from '@routes/navConfig';
@@ -204,19 +203,18 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           onClick={() => onNavigate && onNavigate('/')}
         >
           <Box
+            component="img"
+            src="/fetch-logo.jpeg"
+            alt="Fetch"
             sx={{
               width: 36,
               height: 36,
               borderRadius: `${theme.customRadii.inner}px`,
-              backgroundColor: theme.palette.tints.butter,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              objectFit: 'cover',
               flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
             }}
-          >
-            <StarRoundedIcon sx={{ fontSize: '20px', color: theme.palette.tokens.rail }} />
-          </Box>
+          />
           <Box sx={{ overflow: 'hidden' }}>
             <Typography
               variant="body2"
