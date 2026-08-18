@@ -154,7 +154,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={handleOpenCreate}
         >
-          Add Brand
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Add</Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Add Brand</Box>
         </Button>
       }
     >

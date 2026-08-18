@@ -624,7 +624,7 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' })
         minHeight: '100vh',
         '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
         backgroundColor: theme.palette.tokens.pageBg,
-        padding: { xs: '8px 8px 80px 8px', sm: '12px 12px 88px 12px', md: '16px' },
+        padding: { xs: '8px', sm: '12px', md: '16px' },
         gap: { xs: 0, md: '20px' },
         position: 'relative',
         boxSizing: 'border-box',

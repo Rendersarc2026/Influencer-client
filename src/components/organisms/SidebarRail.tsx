@@ -1,5 +1,7 @@
-import React, { ReactNode, useEffect, useRef } from 'react';
+import React, { ReactNode } from 'react';
 import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import ButtonBase from '@mui/material/ButtonBase';
 import Skeleton from '@mui/material/Skeleton';
@@ -16,10 +18,10 @@ import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { NavItem } from '@routes/navConfig';
-import { RailIconButton } from '@atoms';
 
 export interface SidebarRailProps {
   items?: NavItem[];
@@ -28,6 +30,8 @@ export interface SidebarRailProps {
   onLogout?: () => void;
   loading?: boolean;
   className?: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const getNavIcon = (iconName: string): ReactNode => {
@@ -89,26 +93,221 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   onLogout,
   loading = false,
   className,
+  mobileOpen = false,
+  onMobileClose,
 }) => {
   const theme = useTheme();
   const location = useLocation();
   const currentPath = location.pathname;
 
-  // The mobile bar scrolls sideways once a role has more items than fit. The
-  // active one is often past the fold — for the chat item at the end of the
-  // agency's list, nothing on screen said which page you were on.
-  const activeItemRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    activeItemRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
-  }, [currentPath]);
+  const handleNavigate = (path: string) => {
+    if (onMobileClose) {
+      onMobileClose();
+    }
+    if (onNavigate) {
+      onNavigate(path);
+    }
+  };
+
+  const handleLogout = () => {
+    if (onMobileClose) {
+      onMobileClose();
+    }
+    if (onLogout) {
+      onLogout();
+    }
+  };
+
+  const renderNavList = () => (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        alignItems: 'stretch',
+        justifyContent: 'flex-start',
+        width: '100%',
+        flexGrow: 1,
+        mt: 2,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        '&::-webkit-scrollbar': { display: 'none' },
+      }}
+    >
+      {loading || items.length === 0 ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+            width: '100%',
+          }}
+        >
+          {[1, 2, 3, 4, 5, 6].map((k) => (
+            <Box
+              key={k}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                width: '100%',
+                height: 44,
+                px: 1.5,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              }}
+            >
+              <Skeleton
+                variant="circular"
+                width={20}
+                height={20}
+                animation="wave"
+                sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', flexShrink: 0 }}
+              />
+              <Skeleton
+                variant="rounded"
+                width={`${50 + (k % 3) * 18}%`}
+                height={14}
+                animation="wave"
+                sx={{ bgcolor: 'rgba(255, 255, 255, 0.07)', borderRadius: '4px' }}
+              />
+            </Box>
+          ))}
+        </Box>
+      ) : (
+        items.map((item) => {
+          const isActive = isNavItemActive(item.path, currentPath);
+
+          return (
+            <ButtonBase
+              key={item.id}
+              onClick={() => handleNavigate(item.path)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: 1.5,
+                width: '100%',
+                height: 44,
+                px: 1.5,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: isActive ? theme.palette.tints.butter : 'transparent',
+                color: isActive ? theme.palette.tokens.rail : theme.palette.tokens.textSecondary,
+                transition: 'all 0.15s ease',
+                textAlign: 'left',
+                '&:hover': {
+                  backgroundColor: isActive
+                    ? theme.palette.tints.butter
+                    : 'rgba(255, 255, 255, 0.08)',
+                  color: isActive ? theme.palette.tokens.rail : '#FFFFFF',
+                },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                {getNavIcon(item.iconName)}
+              </Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: isActive ? 700 : 500,
+                  fontSize: '14px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  flexGrow: 1,
+                  color: 'inherit',
+                }}
+              >
+                {item.label}
+              </Typography>
+              {item.badge && (
+                <Box
+                  sx={{
+                    px: 0.75,
+                    py: 0.2,
+                    borderRadius: `${theme.customRadii.pill}px`,
+                    backgroundColor: '#EF4444',
+                    color: '#FFFFFF',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
+                  }}
+                >
+                  {item.badge}
+                </Box>
+              )}
+            </ButtonBase>
+          );
+        })
+      )}
+    </Box>
+  );
+
+  const renderLogoutButton = () => (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        flexShrink: 0,
+        pt: 1,
+      }}
+    >
+      {loading ? (
+        <Skeleton
+          variant="rounded"
+          width="100%"
+          height={44}
+          animation="wave"
+          sx={{
+            bgcolor: 'rgba(255, 255, 255, 0.04)',
+            borderRadius: `${theme.customRadii.inner}px`,
+          }}
+        />
+      ) : (
+        <ButtonBase
+          onClick={handleLogout}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            gap: 1.5,
+            width: '100%',
+            height: 44,
+            px: 1.5,
+            borderRadius: `${theme.customRadii.inner}px`,
+            backgroundColor: 'transparent',
+            color: theme.palette.tokens.textSecondary,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              color: theme.palette.tokens.negative,
+            },
+          }}
+        >
+          <LogoutRoundedIcon fontSize="small" />
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit' }}
+          >
+            Log Out
+          </Typography>
+        </ButtonBase>
+      )}
+    </Box>
+  );
 
   return (
-    <Box
-      component="aside"
-      className={className}
-      sx={{
-        // Desktop permanent expanded sidebar
-        [theme.breakpoints.up('md')]: {
+    <>
+      {/* 1. Desktop Permanent Sidebar (md and up) */}
+      <Box
+        component="aside"
+        className={className}
+        sx={{
+          display: { xs: 'none', md: 'flex' },
           position: 'fixed',
           top: 16,
           left: 16,
@@ -118,7 +317,6 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           '@supports (height: 100dvh)': { height: 'calc(100dvh - 32px)' },
           backgroundColor: theme.palette.tokens.rail,
           borderRadius: `${theme.customRadii.rail}px`,
-          display: 'flex',
           flexDirection: 'column',
           alignItems: 'stretch',
           justifyContent: 'space-between',
@@ -126,340 +324,216 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           zIndex: 1200,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
           overflow: 'hidden',
-        },
-        // Mobile & Tablet bottom bar
-        [theme.breakpoints.down('md')]: {
-          position: 'fixed',
-          bottom: { xs: 'calc(8px + env(safe-area-inset-bottom, 0px))', sm: 12 },
-          left: { xs: 8, sm: 16 },
-          right: { xs: 8, sm: 16 },
-          height: { xs: 60, sm: 66 },
-          backgroundColor: 'rgba(16, 17, 20, 0.94)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: { xs: '20px', sm: `${theme.customRadii.rail}px` },
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          padding: { xs: '0 8px', sm: '0 12px' },
-          zIndex: 1200,
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          WebkitOverflowScrolling: 'touch',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          '&::-webkit-scrollbar': { display: 'none' },
-          scrollbarWidth: 'none',
-        },
-      }}
-    >
-      {/* Top Header Section (Desktop Only) */}
-      {loading ? (
-        <Box
-          sx={{
-            display: { xs: 'none', md: 'flex' },
-            alignItems: 'center',
-            gap: 1.25,
-            px: 0.5,
-            mb: 1.5,
-          }}
-        >
-          <Skeleton
-            variant="rounded"
-            width={36}
-            height={36}
-            animation="wave"
-            sx={{
-              bgcolor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: `${theme.customRadii.inner}px`,
-              flexShrink: 0,
-            }}
-          />
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Skeleton
-              variant="rounded"
-              width={96}
-              height={14}
-              animation="wave"
-              sx={{ bgcolor: 'rgba(255, 255, 255, 0.08)', borderRadius: '4px' }}
-            />
-            <Skeleton
-              variant="rounded"
-              width={56}
-              height={10}
-              animation="wave"
-              sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px' }}
-            />
-          </Box>
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            display: { xs: 'none', md: 'flex' },
-            alignItems: 'center',
-            gap: 1.25,
-            px: 0.5,
-            mb: 1.5,
-            cursor: 'pointer',
-          }}
-          onClick={() => onNavigate && onNavigate('/')}
-        >
-          <Box
-            component="img"
-            src="/fetch-logo.jpeg"
-            alt="Fetch"
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: `${theme.customRadii.inner}px`,
-              objectFit: 'cover',
-              flexShrink: 0,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-            }}
-          />
-          <Box sx={{ overflow: 'hidden' }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 800,
-                color: '#FFFFFF',
-                lineHeight: 1.2,
-                whiteSpace: 'nowrap',
-                fontSize: '14px',
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Fetch
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                fontSize: '11px',
-                fontWeight: 500,
-                display: 'block',
-              }}
-            >
-              Workspace
-            </Typography>
-          </Box>
-        </Box>
-      )}
-
-      {/* Main Navigation Items */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'row', md: 'column' },
-          gap: { xs: 0.5, sm: 1, md: 1 },
-          alignItems: 'center',
-          justifyContent: { xs: 'flex-start', md: 'flex-start' },
-          width: { xs: 'max-content', md: '100%' },
-          minWidth: { xs: '100%', md: 'auto' },
-          flexGrow: { xs: 0, md: 1 },
-          mt: { xs: 0, md: 2 },
         }}
       >
-        {loading || items.length === 0 ? (
-          <>
-            {/* Desktop Shimmer Items */}
-            <Box
-              sx={{
-                display: { xs: 'none', md: 'flex' },
-                flexDirection: 'column',
-                gap: 1,
-                width: '100%',
-              }}
-            >
-              {[1, 2, 3, 4].map((k) => (
-                <Box
-                  key={k}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    width: '100%',
-                    height: 44,
-                    px: 1.5,
-                    borderRadius: `${theme.customRadii.inner}px`,
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  }}
-                >
-                  <Skeleton
-                    variant="circular"
-                    width={20}
-                    height={20}
-                    animation="wave"
-                    sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', flexShrink: 0 }}
-                  />
-                  <Skeleton
-                    variant="rounded"
-                    width={`${50 + (k % 3) * 18}%`}
-                    height={14}
-                    animation="wave"
-                    sx={{ bgcolor: 'rgba(255, 255, 255, 0.07)', borderRadius: '4px' }}
-                  />
-                </Box>
-              ))}
-            </Box>
-            {/* Mobile Shimmer Icons */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1 }}>
-              {[1, 2, 3, 4].map((k) => (
-                <Skeleton
-                  key={k}
-                  variant="rounded"
-                  width={40}
-                  height={40}
-                  animation="wave"
-                  sx={{
-                    bgcolor: 'rgba(255, 255, 255, 0.07)',
-                    borderRadius: '12px',
-                    flexShrink: 0,
-                  }}
-                />
-              ))}
-            </Box>
-          </>
-        ) : (
-          items.map((item) => {
-            const isActive = isNavItemActive(item.path, currentPath);
-
-            return (
-              <React.Fragment key={item.id}>
-                {/* Desktop full-width item */}
-                <Box sx={{ display: { xs: 'none', md: 'block' }, width: '100%' }}>
-                  <ButtonBase
-                    onClick={() => onNavigate && onNavigate(item.path)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'flex-start',
-                      gap: 1.5,
-                      width: '100%',
-                      height: 44,
-                      px: 1.5,
-                      borderRadius: `${theme.customRadii.inner}px`,
-                      backgroundColor: isActive ? theme.palette.tints.butter : 'transparent',
-                      color: isActive ? theme.palette.tokens.rail : theme.palette.tokens.textSecondary,
-                      transition: 'all 0.15s ease',
-                      textAlign: 'left',
-                      '&:hover': {
-                        backgroundColor: isActive
-                          ? theme.palette.tints.butter
-                          : 'rgba(255, 255, 255, 0.08)',
-                        color: isActive ? theme.palette.tokens.rail : '#FFFFFF',
-                      },
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      {getNavIcon(item.iconName)}
-                    </Box>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: isActive ? 700 : 500,
-                        fontSize: '14px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        flexGrow: 1,
-                        color: 'inherit',
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                    {item.badge && (
-                      <Box
-                        sx={{
-                          px: 0.75,
-                          py: 0.2,
-                          borderRadius: `${theme.customRadii.pill}px`,
-                          backgroundColor: '#EF4444',
-                          color: '#FFFFFF',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          flexShrink: 0,
-                          boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
-                        }}
-                      >
-                        {item.badge}
-                      </Box>
-                    )}
-                  </ButtonBase>
-                </Box>
-
-                {/* Mobile icon item */}
-                <Box
-                  ref={isActive ? activeItemRef : undefined}
-                  sx={{ display: { xs: 'block', md: 'none' } }}
-                >
-                  <RailIconButton
-                    icon={getNavIcon(item.iconName)}
-                    label={item.label}
-                    active={isActive}
-                    badgeContent={item.badge}
-                    onClick={() => onNavigate && onNavigate(item.path)}
-                  />
-                </Box>
-              </React.Fragment>
-            );
-          })
-        )}
-      </Box>
-
-      {/* Logout Pin at Bottom */}
-      <Box
-        sx={{
-          display: { xs: 'none', md: 'flex' },
-          alignItems: 'center',
-          width: '100%',
-          flexShrink: 0,
-        }}
-      >
+        {/* Top Header */}
         {loading ? (
-          <Skeleton
-            variant="rounded"
-            width="100%"
-            height={44}
-            animation="wave"
-            sx={{
-              bgcolor: 'rgba(255, 255, 255, 0.04)',
-              borderRadius: `${theme.customRadii.inner}px`,
-            }}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 0.5, mb: 1.5 }}>
+            <Skeleton
+              variant="rounded"
+              width={36}
+              height={36}
+              animation="wave"
+              sx={{
+                bgcolor: 'rgba(255, 255, 255, 0.08)',
+                borderRadius: `${theme.customRadii.inner}px`,
+                flexShrink: 0,
+              }}
+            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Skeleton
+                variant="rounded"
+                width={96}
+                height={14}
+                animation="wave"
+                sx={{ bgcolor: 'rgba(255, 255, 255, 0.08)', borderRadius: '4px' }}
+              />
+              <Skeleton
+                variant="rounded"
+                width={56}
+                height={10}
+                animation="wave"
+                sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px' }}
+              />
+            </Box>
+          </Box>
         ) : (
-          <ButtonBase
-            onClick={onLogout}
+          <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'flex-start',
-              gap: 1.5,
-              width: '100%',
-              height: 44,
-              px: 1.5,
-              borderRadius: `${theme.customRadii.inner}px`,
-              backgroundColor: 'transparent',
+              gap: 1.25,
+              px: 0.5,
+              mb: 1.5,
+              cursor: 'pointer',
+            }}
+            onClick={() => handleNavigate('/')}
+          >
+            <Box
+              component="img"
+              src="/fetch-logo.jpeg"
+              alt="Fetch"
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: `${theme.customRadii.inner}px`,
+                objectFit: 'cover',
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+              }}
+            />
+            <Box sx={{ overflow: 'hidden' }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                  fontSize: '14px',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                Fetch
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  display: 'block',
+                }}
+              >
+                Workspace
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        {/* Navigation List */}
+        {renderNavList()}
+
+        {/* Logout */}
+        {renderLogoutButton()}
+      </Box>
+
+      {/* 2. Mobile / Tablet Responsive Side Drawer (below md) */}
+      <Drawer
+        anchor="left"
+        open={Boolean(mobileOpen)}
+        onClose={onMobileClose}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          zIndex: theme.zIndex.drawer + 2,
+          '& .MuiDrawer-paper': {
+            width: 'min(300px, 82vw)',
+            boxSizing: 'border-box',
+            backgroundColor: theme.palette.tokens.rail,
+            color: '#FFFFFF',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '20px 14px',
+            boxShadow: '8px 0 32px rgba(0, 0, 0, 0.45)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            borderTopRightRadius: '20px',
+            borderBottomRightRadius: '20px',
+            overflow: 'hidden',
+          },
+        }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backdropFilter: 'blur(4px)',
+              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            },
+          },
+        }}
+      >
+        {/* Drawer Header with Logo & Close Button */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: 0.5,
+            pb: 1.5,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              cursor: 'pointer',
+            }}
+            onClick={() => handleNavigate('/')}
+          >
+            <Box
+              component="img"
+              src="/fetch-logo.jpeg"
+              alt="Fetch"
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: `${theme.customRadii.inner}px`,
+                objectFit: 'cover',
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+              }}
+            />
+            <Box sx={{ overflow: 'hidden' }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                  fontSize: '14px',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                Fetch
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  display: 'block',
+                }}
+              >
+                Workspace
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
+            onClick={onMobileClose}
+            aria-label="Close navigation"
+            sx={{
               color: theme.palette.tokens.textSecondary,
-              transition: 'all 0.15s ease',
+              p: 0.75,
               '&:hover': {
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                color: theme.palette.tokens.negative,
+                color: '#FFFFFF',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
               },
             }}
           >
-            <LogoutRoundedIcon fontSize="small" />
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit' }}
-            >
-              Log Out
-            </Typography>
-          </ButtonBase>
-        )}
-      </Box>
-    </Box>
+            <CloseRoundedIcon fontSize="small" />
+          </IconButton>
+        </Box>
+
+        {/* Navigation List */}
+        {renderNavList()}
+
+        {/* Logout */}
+        {renderLogoutButton()}
+      </Drawer>
+    </>
   );
 };
 

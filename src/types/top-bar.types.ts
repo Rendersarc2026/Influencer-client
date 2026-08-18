@@ -33,6 +33,7 @@ export interface TopBarProps {
   onNotificationsClick?: () => void;
   onProfileClick?: () => void;
   onLogoutClick?: () => void;
+  onMenuClick?: () => void;
   rightAction?: ReactNode;
   className?: string;
 }

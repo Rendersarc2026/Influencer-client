@@ -66,8 +66,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.25,
-          padding: '5px 12px 5px 6px',
+          gap: { xs: 0.5, sm: 1.25 },
+          padding: { xs: '2px 4px 2px 2px', sm: '5px 12px 5px 6px' },
           borderRadius: `${theme.customRadii.pill}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
@@ -85,12 +85,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         <Avatar
           src={safeImageUrl(user.avatarUrl)}
           sx={{
-            width: 34,
-            height: 34,
+            width: { xs: 26, sm: 34 },
+            height: { xs: 26, sm: 34 },
             backgroundColor: theme.palette.tokens.accentBg,
             color: theme.palette.tokens.accentText,
             fontWeight: 700,
-            fontSize: '13px',
+            fontSize: { xs: '11px', sm: '13px' },
             border: `1.5px solid #ffffff`,
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           }}
@@ -133,10 +133,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         <KeyboardArrowDownRoundedIcon
           sx={{
             color: theme.palette.tokens.textSecondary,
-            fontSize: '18px',
+            fontSize: { xs: '14px', sm: '18px' },
             transform: open ? 'rotate(180deg)' : 'none',
             transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            ml: 0.25,
+            ml: { xs: 0, sm: 0.25 },
           }}
         />
       </Box>

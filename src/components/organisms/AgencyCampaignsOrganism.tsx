@@ -143,7 +143,8 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          New Campaign
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>New</Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>New Campaign</Box>
         </Button>
       }
     >

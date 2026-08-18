@@ -292,7 +292,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={handleOpenCreate}
         >
-          Add Category
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Add</Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Add Category</Box>
         </Button>
       }
     >

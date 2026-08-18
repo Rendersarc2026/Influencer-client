@@ -357,7 +357,8 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          Add Influencer
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Add</Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Add Influencer</Box>
         </Button>
       }
     >

@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -12,6 +12,8 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import { useTheme } from '@mui/material/styles';
 import { Pill } from '@atoms';
 
 export interface FilterPillItem {
@@ -84,6 +86,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   extraAction,
   className,
 }) => {
+  const theme = useTheme();
+
   const isPillSelected = (id: string): boolean => {
     if (activePillIds !== undefined) {
       if (id === 'ALL') {
@@ -93,6 +97,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     }
     return activePillId === id;
   };
+
+  const hasDropdownFilters =
+    (multiSelectOptions && multiSelectOptions.length > 0) ||
+    (secondMultiSelectOptions && secondMultiSelectOptions.length > 0) ||
+    (priceRangeOptions && priceRangeOptions.length > 0) ||
+    (selectOptions && selectOptions.length > 0);
+
+  const activeDropdownCount =
+    (selectedMultiOptions ? selectedMultiOptions.length : 0) +
+    (selectedSecondMultiOptions ? selectedSecondMultiOptions.length : 0) +
+    (selectedPriceRange ? 1 : 0) +
+    (selectedOption && selectOptions.length > 0 && selectedOption !== selectOptions[0]?.value ? 1 : 0);
+
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(activeDropdownCount > 0);
 
   const showClearButton =
     Boolean(onClearFilters) &&
@@ -106,245 +124,415 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         (activePillIds && activePillIds.length > 0 && !activePillIds.includes('ALL')) ||
         (activePillId && activePillId !== 'ALL'));
 
+  const renderMultiSelect = (fullWidth = false) =>
+    multiSelectOptions.length > 0 && onMultiSelectChange ? (
+      <FormControl
+        size="small"
+        fullWidth={fullWidth}
+        sx={{
+          minWidth: fullWidth ? '100%' : 180,
+          flexGrow: fullWidth ? 1 : 0,
+          backgroundColor: fullWidth ? theme.palette.tokens.surface : undefined,
+          borderRadius: `${theme.customRadii.inner}px`,
+        }}
+      >
+        <InputLabel id="filter-multi-select-label">
+          {multiSelectLabel || 'Category'}
+        </InputLabel>
+        <Select
+          labelId="filter-multi-select-label"
+          multiple
+          value={selectedMultiOptions || []}
+          onChange={(e) => {
+            const val = e.target.value;
+            const newValues = typeof val === 'string' ? val.split(',') : val;
+            onMultiSelectChange(newValues);
+          }}
+          input={<OutlinedInput label={multiSelectLabel || 'Category'} />}
+          renderValue={(selected) => {
+            if (!selected || selected.length === 0) {
+              return 'All Categories';
+            }
+            if (selected.length === 1) {
+              const match = multiSelectOptions.find((o) => o.value === selected[0]);
+              return match ? match.label : selected[0];
+            }
+            return `${selected.length} Categories Selected`;
+          }}
+          MenuProps={{
+            PaperProps: {
+              style: {
+                maxHeight: 320,
+              },
+            },
+          }}
+        >
+          {multiSelectOptions.map((opt) => {
+            const isChecked = selectedMultiOptions
+              ? selectedMultiOptions.includes(opt.value)
+              : false;
+            return (
+              <MenuItem key={opt.value} value={opt.value}>
+                <Checkbox size="small" checked={isChecked} />
+                <ListItemText primary={opt.label} />
+              </MenuItem>
+            );
+          })}
+        </Select>
+      </FormControl>
+    ) : null;
+
+  const renderSecondMultiSelect = (fullWidth = false) =>
+    secondMultiSelectOptions.length > 0 && onSecondMultiSelectChange ? (
+      <FormControl
+        size="small"
+        fullWidth={fullWidth}
+        sx={{
+          minWidth: fullWidth ? '100%' : 180,
+          flexGrow: fullWidth ? 1 : 0,
+          backgroundColor: fullWidth ? theme.palette.tokens.surface : undefined,
+          borderRadius: `${theme.customRadii.inner}px`,
+        }}
+      >
+        <InputLabel id="filter-second-multi-select-label">
+          {secondMultiSelectLabel || 'Location'}
+        </InputLabel>
+        <Select
+          labelId="filter-second-multi-select-label"
+          multiple
+          value={selectedSecondMultiOptions || []}
+          onChange={(e) => {
+            const val = e.target.value;
+            const newValues = typeof val === 'string' ? val.split(',') : val;
+            onSecondMultiSelectChange(newValues);
+          }}
+          input={<OutlinedInput label={secondMultiSelectLabel || 'Location'} />}
+          renderValue={(selected) => {
+            if (!selected || selected.length === 0) {
+              return 'All Locations';
+            }
+            if (selected.length === 1) {
+              const match = secondMultiSelectOptions.find((o) => o.value === selected[0]);
+              return match ? match.label : selected[0];
+            }
+            return `${selected.length} Locations Selected`;
+          }}
+          MenuProps={{
+            PaperProps: {
+              style: {
+                maxHeight: 320,
+              },
+            },
+          }}
+        >
+          {secondMultiSelectOptions.map((opt) => {
+            const isChecked = selectedSecondMultiOptions
+              ? selectedSecondMultiOptions.includes(opt.value)
+              : false;
+            return (
+              <MenuItem key={opt.value} value={opt.value}>
+                <Checkbox size="small" checked={isChecked} />
+                <ListItemText primary={opt.label} />
+              </MenuItem>
+            );
+          })}
+        </Select>
+      </FormControl>
+    ) : null;
+
+  const renderPriceRange = (fullWidth = false) =>
+    priceRangeOptions.length > 0 && onPriceRangeChange ? (
+      <TextField
+        select
+        size="small"
+        fullWidth={fullWidth}
+        value={selectedPriceRange || ''}
+        onChange={(e) => onPriceRangeChange(e.target.value)}
+        label={priceRangeLabel || 'Commercials'}
+        sx={{
+          minWidth: fullWidth ? '100%' : 180,
+          flexGrow: fullWidth ? 1 : 0,
+          backgroundColor: fullWidth ? theme.palette.tokens.surface : undefined,
+          borderRadius: `${theme.customRadii.inner}px`,
+        }}
+      >
+        {priceRangeOptions.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </TextField>
+    ) : null;
+
+  const renderSingleSelect = (fullWidth = false) =>
+    selectOptions.length > 0 && onSelectChange ? (
+      <TextField
+        select
+        size="small"
+        fullWidth={fullWidth}
+        value={selectedOption || selectOptions[0]?.value || ''}
+        onChange={(e) => onSelectChange(e.target.value)}
+        label={selectLabel}
+        sx={{
+          minWidth: fullWidth ? '100%' : 150,
+          flexGrow: fullWidth ? 1 : 0,
+          backgroundColor: fullWidth ? theme.palette.tokens.surface : undefined,
+          borderRadius: `${theme.customRadii.inner}px`,
+        }}
+      >
+        {selectOptions.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </TextField>
+    ) : null;
+
   return (
     <Box
       className={className}
       sx={{
         display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 2,
+        flexDirection: 'column',
+        gap: 1.5,
         width: '100%',
       }}
     >
-      {/* Pills Row */}
-      {pills.length > 0 && (
+      {/* Top Row: Pills, Search, and Mobile Filter Toggle */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 1.5,
+          width: '100%',
+        }}
+      >
+        {/* Pills Row */}
+        {pills.length > 0 && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: { xs: 'nowrap', sm: 'wrap' },
+              width: { xs: '100%', sm: 'auto' },
+              overflowX: { xs: 'auto', sm: 'visible' },
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+              mx: { xs: -1.25, sm: 0 },
+              px: { xs: 1.25, sm: 0 },
+              '& > *': { flexShrink: 0 },
+            }}
+          >
+            {pills.map((pill) => (
+              <Pill
+                key={pill.id}
+                label={pill.label}
+                count={pill.count}
+                selected={isPillSelected(pill.id)}
+                onClick={() => onPillChange && onPillChange(pill.id)}
+              />
+            ))}
+          </Box>
+        )}
+
+        {/* Search & Actions Container */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
-            // Category pills wrap on larger screens, scroll sideways on mobile
-            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            gap: 1.5,
+            flexGrow: { xs: 1, sm: 'inherit' },
             width: { xs: '100%', sm: 'auto' },
-            overflowX: { xs: 'auto', sm: 'visible' },
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            '&::-webkit-scrollbar': { display: 'none' },
-            mx: { xs: -1.25, sm: 0 },
-            px: { xs: 1.25, sm: 0 },
-            '& > *': { flexShrink: 0 },
+            flexWrap: 'nowrap',
           }}
         >
-          {pills.map((pill) => (
-            <Pill
-              key={pill.id}
-              label={pill.label}
-              count={pill.count}
-              selected={isPillSelected(pill.id)}
-              onClick={() => onPillChange && onPillChange(pill.id)}
+          {onSearchChange && (
+            <TextField
+              size="small"
+              value={searchValue || ''}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={searchPlaceholder}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchRoundedIcon fontSize="small" sx={{ opacity: 0.6 }} />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              sx={{ minWidth: { xs: 0, sm: 220 }, flexGrow: 1 }}
             />
-          ))}
+          )}
+
+          {/* Mobile Filter Show/Hide Toggle Button */}
+          {hasDropdownFilters && (
+            <Button
+              variant={mobileFiltersOpen || activeDropdownCount > 0 ? 'contained' : 'outlined'}
+              onClick={() => setMobileFiltersOpen((prev) => !prev)}
+              startIcon={<TuneRoundedIcon fontSize="small" />}
+              sx={{
+                display: { xs: 'inline-flex', sm: 'none' },
+                height: 40,
+                px: 1.5,
+                fontSize: '13px',
+                fontWeight: 700,
+                textTransform: 'none',
+                borderRadius: `${theme.customRadii.inner}px`,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                backgroundColor:
+                  mobileFiltersOpen || activeDropdownCount > 0
+                    ? theme.palette.tokens.accent
+                    : theme.palette.tokens.surface,
+                color:
+                  mobileFiltersOpen || activeDropdownCount > 0
+                    ? '#FFFFFF'
+                    : theme.palette.tokens.textPrimary,
+                borderColor:
+                  mobileFiltersOpen || activeDropdownCount > 0
+                    ? theme.palette.tokens.accent
+                    : theme.palette.tokens.divider,
+                '&:hover': {
+                  backgroundColor:
+                    mobileFiltersOpen || activeDropdownCount > 0
+                      ? theme.palette.tokens.accent
+                      : theme.palette.tokens.fieldBg,
+                },
+              }}
+            >
+              Filters
+              {activeDropdownCount > 0 && (
+                <Box
+                  component="span"
+                  sx={{
+                    ml: 0.75,
+                    px: 0.75,
+                    py: 0.1,
+                    borderRadius: `${theme.customRadii.pill}px`,
+                    backgroundColor:
+                      mobileFiltersOpen || activeDropdownCount > 0
+                        ? '#FFFFFF'
+                        : theme.palette.tokens.accent,
+                    color:
+                      mobileFiltersOpen || activeDropdownCount > 0
+                        ? theme.palette.tokens.accent
+                        : '#FFFFFF',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {activeDropdownCount}
+                </Box>
+              )}
+            </Button>
+          )}
+
+          {/* Desktop inline dropdowns and clear filters */}
+          <Box
+            sx={{
+              display: { xs: 'none', sm: 'flex' },
+              alignItems: 'center',
+              gap: 1.5,
+              flexWrap: 'nowrap',
+            }}
+          >
+            {renderMultiSelect(false)}
+            {renderSecondMultiSelect(false)}
+            {renderPriceRange(false)}
+            {renderSingleSelect(false)}
+
+            {showClearButton && onClearFilters && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="inherit"
+                startIcon={<RestartAltRoundedIcon fontSize="small" />}
+                onClick={onClearFilters}
+                sx={{
+                  height: 40,
+                  px: 1.5,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: '8px',
+                  whiteSpace: 'nowrap',
+                  color: 'text.secondary',
+                  borderColor: 'divider',
+                  '&:hover': {
+                    borderColor: 'text.primary',
+                    color: 'text.primary',
+                    backgroundColor: 'action.hover',
+                  },
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+
+            {extraAction && <Box sx={{ flexShrink: 0 }}>{extraAction}</Box>}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Mobile Collapsible Dropdown Filters Container */}
+      {hasDropdownFilters && (
+        <Box
+          sx={{
+            display: { xs: mobileFiltersOpen ? 'flex' : 'none', sm: 'none' },
+            flexDirection: 'column',
+            gap: 1.25,
+            width: '100%',
+            p: 1.5,
+            borderRadius: `${theme.customRadii.inner}px`,
+            backgroundColor: theme.palette.tokens.fieldBg,
+            border: `1px solid ${theme.palette.tokens.divider}`,
+            animation: 'fadeIn 0.2s ease-in-out',
+            '@keyframes fadeIn': {
+              from: { opacity: 0, transform: 'translateY(-4px)' },
+              to: { opacity: 1, transform: 'translateY(0)' },
+            },
+          }}
+        >
+          {renderMultiSelect(true)}
+          {renderSecondMultiSelect(true)}
+          {renderPriceRange(true)}
+          {renderSingleSelect(true)}
+
+          {showClearButton && onClearFilters && (
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              startIcon={<RestartAltRoundedIcon fontSize="small" />}
+              onClick={onClearFilters}
+              sx={{
+                height: 38,
+                fontSize: '13px',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                color: 'text.secondary',
+                borderColor: 'divider',
+                backgroundColor: theme.palette.tokens.surface,
+                '&:hover': {
+                  borderColor: 'text.primary',
+                  color: 'text.primary',
+                  backgroundColor: 'action.hover',
+                },
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+
+          {extraAction && <Box sx={{ width: '100%' }}>{extraAction}</Box>}
         </Box>
       )}
-
-      {/* Search, Select & Clear controls */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          flexGrow: { xs: 1, sm: 'inherit' },
-          width: { xs: '100%', sm: 'auto' },
-          flexWrap: { xs: 'wrap', sm: 'nowrap' },
-        }}
-      >
-        {onSearchChange && (
-          <TextField
-            size="small"
-            value={searchValue || ''}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={searchPlaceholder}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchRoundedIcon fontSize="small" sx={{ opacity: 0.6 }} />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            sx={{ minWidth: { xs: '100%', sm: 220 }, flexGrow: { xs: 1, sm: 0 } }}
-          />
-        )}
-
-        {multiSelectOptions.length > 0 && onMultiSelectChange && (
-          <FormControl
-            size="small"
-            sx={{ minWidth: { xs: '100%', sm: 180 }, flexGrow: { xs: 1, sm: 0 } }}
-          >
-            <InputLabel id="filter-multi-select-label">
-              {multiSelectLabel || 'Category'}
-            </InputLabel>
-            <Select
-              labelId="filter-multi-select-label"
-              multiple
-              value={selectedMultiOptions || []}
-              onChange={(e) => {
-                const val = e.target.value;
-                const newValues = typeof val === 'string' ? val.split(',') : val;
-                onMultiSelectChange(newValues);
-              }}
-              input={<OutlinedInput label={multiSelectLabel || 'Category'} />}
-              renderValue={(selected) => {
-                if (!selected || selected.length === 0) {
-                  return 'All Categories';
-                }
-                if (selected.length === 1) {
-                  const match = multiSelectOptions.find((o) => o.value === selected[0]);
-                  return match ? match.label : selected[0];
-                }
-                return `${selected.length} Categories Selected`;
-              }}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 320,
-                  },
-                },
-              }}
-            >
-              {multiSelectOptions.map((opt) => {
-                const isChecked = selectedMultiOptions
-                  ? selectedMultiOptions.includes(opt.value)
-                  : false;
-                return (
-                  <MenuItem key={opt.value} value={opt.value}>
-                    <Checkbox size="small" checked={isChecked} />
-                    <ListItemText primary={opt.label} />
-                  </MenuItem>
-                );
-              })}
-            </Select>
-          </FormControl>
-        )}
-
-        {secondMultiSelectOptions.length > 0 && onSecondMultiSelectChange && (
-          <FormControl
-            size="small"
-            sx={{ minWidth: { xs: '100%', sm: 180 }, flexGrow: { xs: 1, sm: 0 } }}
-          >
-            <InputLabel id="filter-second-multi-select-label">
-              {secondMultiSelectLabel || 'Location'}
-            </InputLabel>
-            <Select
-              labelId="filter-second-multi-select-label"
-              multiple
-              value={selectedSecondMultiOptions || []}
-              onChange={(e) => {
-                const val = e.target.value;
-                const newValues = typeof val === 'string' ? val.split(',') : val;
-                onSecondMultiSelectChange(newValues);
-              }}
-              input={<OutlinedInput label={secondMultiSelectLabel || 'Location'} />}
-              renderValue={(selected) => {
-                if (!selected || selected.length === 0) {
-                  return 'All Locations';
-                }
-                if (selected.length === 1) {
-                  const match = secondMultiSelectOptions.find((o) => o.value === selected[0]);
-                  return match ? match.label : selected[0];
-                }
-                return `${selected.length} Locations Selected`;
-              }}
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 320,
-                  },
-                },
-              }}
-            >
-              {secondMultiSelectOptions.map((opt) => {
-                const isChecked = selectedSecondMultiOptions
-                  ? selectedSecondMultiOptions.includes(opt.value)
-                  : false;
-                return (
-                  <MenuItem key={opt.value} value={opt.value}>
-                    <Checkbox size="small" checked={isChecked} />
-                    <ListItemText primary={opt.label} />
-                  </MenuItem>
-                );
-              })}
-            </Select>
-          </FormControl>
-        )}
-
-        {priceRangeOptions.length > 0 && onPriceRangeChange && (
-          <TextField
-            select
-            size="small"
-            value={selectedPriceRange || ''}
-            onChange={(e) => onPriceRangeChange(e.target.value)}
-            label={priceRangeLabel || 'Commercials'}
-            sx={{ minWidth: { xs: '100%', sm: 180 }, flexGrow: { xs: 1, sm: 0 } }}
-          >
-            {priceRangeOptions.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
-
-        {selectOptions.length > 0 && onSelectChange && (
-          <TextField
-            select
-            size="small"
-            value={selectedOption || selectOptions[0]?.value || ''}
-            onChange={(e) => onSelectChange(e.target.value)}
-            label={selectLabel}
-            sx={{ minWidth: { xs: '100%', sm: 150 }, flexGrow: { xs: 1, sm: 0 } }}
-          >
-            {selectOptions.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        )}
-
-        {showClearButton && onClearFilters && (
-          <Button
-            variant="outlined"
-            size="small"
-            color="inherit"
-            startIcon={<RestartAltRoundedIcon fontSize="small" />}
-            onClick={onClearFilters}
-            sx={{
-              height: 40,
-              px: 1.5,
-              fontSize: '13px',
-              fontWeight: 600,
-              textTransform: 'none',
-              borderRadius: '8px',
-              whiteSpace: 'nowrap',
-              color: 'text.secondary',
-              borderColor: 'divider',
-              '&:hover': {
-                borderColor: 'text.primary',
-                color: 'text.primary',
-                backgroundColor: 'action.hover',
-              },
-            }}
-          >
-            Clear Filters
-          </Button>
-        )}
-
-        {extraAction && <Box sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>{extraAction}</Box>}
-      </Box>
     </Box>
   );
 };

@@ -56,6 +56,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const navigate = useNavigate();
   const { data: dbNavItems, isLoading: isNavLoading } = useNavigation();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
 
@@ -108,27 +109,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       sx={{
         display: 'flex',
         // hard lock — never grows past viewport. `dvh` so a phone's
-        // retracting toolbars don't push the bottom nav out of view.
+        // retracting toolbars don't push the layout out of view.
         height: '100vh',
         '@supports (height: 100dvh)': { height: '100dvh' },
         overflow: 'hidden',
         backgroundColor: theme.palette.tokens.pageBg,
         padding: {
-          xs: '6px 6px calc(76px + env(safe-area-inset-bottom, 0px)) 6px',
-          sm: '10px 10px 84px 10px',
+          xs: '8px',
+          sm: '12px',
           md: '16px',
         },
         gap: { xs: 0, md: '20px' },
         position: 'relative',
       }}
     >
-      {/* 1. Floating Sidebar Rail / Bottom Bar */}
+      {/* 1. Sidebar Rail (Desktop Fixed + Mobile Side Drawer) */}
       <SidebarRail
         loading={isSidebarLoading}
         items={effectiveNavItems}
         activePath={activePath}
         onNavigate={effectiveNavigate}
         onLogout={handleLogoutClick}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
 
       {/* 2. Main White Content Surface */}
@@ -157,6 +160,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           }))}
           onBack={onBack}
           backLabel={backLabel}
+          onMenuClick={() => setMobileNavOpen(true)}
           user={user}
           onSearchClick={onSearchClick}
           onNotificationsClick={onNotificationsClick}

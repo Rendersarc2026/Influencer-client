@@ -10,6 +10,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
 import { useTheme } from '@mui/material/styles';
 import { UserMenu, NotificationCenter } from '@molecules';
 import { useNotifications } from '@hooks';
@@ -28,6 +29,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onNotificationsClick,
   onProfileClick,
   onLogoutClick,
+  onMenuClick,
   rightAction,
   className,
 }) => {
@@ -54,45 +56,96 @@ export const TopBar: React.FC<TopBarProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: { xs: 'wrap', sm: 'nowrap' },
+        flexWrap: 'nowrap',
         padding: { xs: '12px 14px', sm: '16px 20px', md: '20px 24px 18px 24px' },
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
         borderTopLeftRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
         borderTopRightRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
-        gap: { xs: 1.25, sm: 1.5 },
+        gap: { xs: 1, sm: 1.5 },
+        minWidth: 0,
+        overflow: 'hidden',
       }}
     >
-      {/* Left: back control, breadcrumb trail, title and subtitle */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1, sm: 1.5 }, minWidth: 0, flex: 1 }}>
+      {/* Left: menu toggle (mobile), back control, breadcrumb trail, title and subtitle */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, sm: 1.5 },
+          minWidth: 0,
+          flex: 1,
+          overflow: 'hidden',
+        }}
+      >
+        {onMenuClick && (
+          <Tooltip title="Menu">
+            <IconButton
+              onClick={onMenuClick}
+              aria-label="Open menu"
+              sx={{
+                display: { xs: 'inline-flex', md: 'none' },
+                flexShrink: 0,
+                width: { xs: 34, sm: 38 },
+                height: { xs: 34, sm: 38 },
+                p: 0,
+                borderRadius: '10px',
+                border: `1px solid ${theme.palette.tokens.divider}`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                color: theme.palette.tokens.textPrimary,
+                '&:hover': {
+                  backgroundColor: theme.palette.tokens.surface,
+                },
+              }}
+            >
+              <MenuRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
+            </IconButton>
+          </Tooltip>
+        )}
+
         {onBack && (
           <Tooltip title={backLabel}>
             <IconButton
               onClick={onBack}
               aria-label={backLabel}
               sx={{
-                // Nudged down so the arrow optically centres on the title line
-                // rather than on the whole block once crumbs are present.
-                mt: breadcrumbs?.length ? '18px' : '0px',
                 flexShrink: 0,
+                width: { xs: 34, sm: 38 },
+                height: { xs: 34, sm: 38 },
+                p: 0,
+                borderRadius: '10px',
                 border: `1px solid ${theme.palette.tokens.divider}`,
-                p: { xs: 0.75, sm: 1 },
+                backgroundColor: theme.palette.tokens.fieldBg,
+                '&:hover': {
+                  backgroundColor: theme.palette.tokens.surface,
+                },
               }}
             >
-              <ArrowBackRoundedIcon fontSize="small" />
+              <ArrowBackRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
             </IconButton>
           </Tooltip>
         )}
 
-        <Box sx={{ minWidth: 0 }}>
+        <Box
+          sx={{
+            minWidth: 0,
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            overflow: 'hidden',
+          }}
+        >
           {Boolean(breadcrumbs?.length) && (
             <Breadcrumbs
-              separator={<NavigateNextRoundedIcon sx={{ fontSize: 14 }} />}
+              separator={<NavigateNextRoundedIcon sx={{ fontSize: 13 }} />}
               aria-label="breadcrumb"
               sx={{
-                mb: '2px',
+                mb: '1px',
                 '& .MuiBreadcrumbs-separator': { mx: 0.25 },
                 color: theme.palette.tokens.textSecondary,
+                '& .MuiBreadcrumbs-ol': { flexWrap: 'nowrap', overflow: 'hidden' },
+                '& .MuiBreadcrumbs-li': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
               }}
             >
               {breadcrumbs!.map((crumb, i) =>
@@ -105,10 +158,13 @@ export const TopBar: React.FC<TopBarProps> = ({
                     onClick={crumb.onClick}
                     sx={{
                       font: 'inherit',
-                      fontSize: { xs: '12px', sm: '13px' },
+                      fontSize: { xs: '11px', sm: '12px' },
                       fontWeight: 500,
                       color: theme.palette.tokens.textSecondary,
                       cursor: 'pointer',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                       '&:hover': { color: theme.palette.tokens.textPrimary },
                     }}
                   >
@@ -118,7 +174,8 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <Typography
                     key={`${crumb.label}-${i}`}
                     variant="caption"
-                    sx={{ fontSize: { xs: '12px', sm: '13px' }, fontWeight: 500 }}
+                    noWrap
+                    sx={{ fontSize: { xs: '11px', sm: '12px' }, fontWeight: 500 }}
                   >
                     {crumb.label}
                   </Typography>
@@ -126,8 +183,9 @@ export const TopBar: React.FC<TopBarProps> = ({
               )}
               <Typography
                 variant="caption"
+                noWrap
                 sx={{
-                  fontSize: { xs: '12px', sm: '13px' },
+                  fontSize: { xs: '11px', sm: '12px' },
                   fontWeight: 600,
                   color: theme.palette.tokens.textPrimary,
                 }}
@@ -139,10 +197,16 @@ export const TopBar: React.FC<TopBarProps> = ({
 
           <Typography
             variant="h1"
+            noWrap
             sx={{
-              fontSize: { xs: '18px', sm: '22px', md: '28px' },
+              fontSize: { xs: '17px', sm: '20px', md: '26px' },
               lineHeight: 1.2,
               fontWeight: 800,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              m: 0,
+              p: 0,
             }}
           >
             {title}
@@ -150,11 +214,15 @@ export const TopBar: React.FC<TopBarProps> = ({
           {subtitle && (
             <Typography
               variant="body2"
+              noWrap
               sx={{
                 color: theme.palette.tokens.textSecondary,
-                mt: '2px',
-                fontSize: { xs: '11px', sm: '13px' },
+                mt: '1px',
+                fontSize: { xs: '11px', sm: '12px' },
                 display: { xs: 'none', sm: 'block' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
               {subtitle}
@@ -168,22 +236,55 @@ export const TopBar: React.FC<TopBarProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: { xs: 1, sm: 1.5 },
+          gap: { xs: 0.75, sm: 1.25 },
           flexShrink: 0,
-          width: { xs: '100%', sm: 'auto' },
-          justifyContent: { xs: 'flex-end', sm: 'flex-start' },
+          justifyContent: 'flex-end',
         }}
       >
         {rightAction && (
-          <Box sx={{ mr: { xs: 'auto', sm: 0 }, '& .MuiButton-root': { py: { xs: 0.6, sm: 0.8 }, px: { xs: 1.25, sm: 1.75 }, fontSize: { xs: '12px', sm: '13px' } } }}>
+          <Box
+            sx={{
+              flexShrink: 0,
+              '& .MuiButton-root': {
+                height: { xs: 34, sm: 38 },
+                minWidth: { xs: 34, sm: 'auto' },
+                px: { xs: 1.25, sm: 2 },
+                fontSize: { xs: '12px', sm: '13px' },
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                borderRadius: `${theme.customRadii.pill}px`,
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
+                '& .MuiButton-startIcon': {
+                  mr: { xs: 0.35, sm: 0.75 },
+                  ml: { xs: -0.25, sm: -0.5 },
+                  '& > *:nth-of-type(1)': {
+                    fontSize: { xs: 17, sm: 19 },
+                  },
+                },
+              },
+            }}
+          >
             {rightAction}
           </Box>
         )}
 
         {onSearchClick && (
           <Tooltip title="Search">
-            <IconButton onClick={onSearchClick}>
-              <SearchRoundedIcon fontSize="small" />
+            <IconButton
+              onClick={onSearchClick}
+              sx={{
+                width: { xs: 34, sm: 38 },
+                height: { xs: 34, sm: 38 },
+                p: 0,
+                borderRadius: '10px',
+                border: `1px solid ${theme.palette.tokens.divider}`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                '&:hover': {
+                  backgroundColor: theme.palette.tokens.surface,
+                },
+              }}
+            >
+              <SearchRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
             </IconButton>
           </Tooltip>
         )}
@@ -195,9 +296,16 @@ export const TopBar: React.FC<TopBarProps> = ({
               unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
             }
             sx={{
-              position: 'relative',
-              backgroundColor: notificationAnchor ? theme.palette.tokens.accentBg : undefined,
-              color: notificationAnchor ? theme.palette.tokens.accentText : undefined,
+              width: { xs: 34, sm: 38 },
+              height: { xs: 34, sm: 38 },
+              p: 0,
+              borderRadius: '10px',
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              backgroundColor: notificationAnchor ? theme.palette.tokens.accentBg : theme.palette.tokens.fieldBg,
+              color: notificationAnchor ? theme.palette.tokens.accentText : theme.palette.tokens.textPrimary,
+              '&:hover': {
+                backgroundColor: theme.palette.tokens.surface,
+              },
             }}
           >
             <Badge
@@ -208,26 +316,30 @@ export const TopBar: React.FC<TopBarProps> = ({
                 '& .MuiBadge-badge': {
                   backgroundColor: theme.palette.tokens.negative,
                   color: '#FFFFFF',
-                  fontSize: '10px',
+                  fontSize: '9px',
                   fontWeight: 700,
-                  minWidth: 16,
-                  height: 16,
-                  padding: '0 4px',
+                  minWidth: 14,
+                  height: 14,
+                  padding: '0 3px',
                 },
               }}
             >
-              <NotificationsNoneRoundedIcon fontSize="small" />
+              <NotificationsNoneRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
             </Badge>
           </IconButton>
         </Tooltip>
+
+        <UserMenu
+          user={user}
+          onProfileClick={onProfileClick}
+          onLogoutClick={onLogoutClick}
+        />
 
         <NotificationCenter
           anchorEl={notificationAnchor}
           open={Boolean(notificationAnchor)}
           onClose={handleCloseNotifications}
         />
-
-        <UserMenu user={user} onProfileClick={onProfileClick} onLogoutClick={onLogoutClick} />
       </Box>
     </Box>
   );
