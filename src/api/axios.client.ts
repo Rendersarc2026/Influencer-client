@@ -9,6 +9,7 @@ export const apiClient = axios.create({
 });
 
 // Attach Authorization header if stored token exists (fallback for third-party cookie restrictions)
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('auth_token');
