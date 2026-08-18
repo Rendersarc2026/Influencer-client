@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid2';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks';
@@ -57,15 +58,17 @@ const HeadingShimmer: React.FC<{ rightAction?: boolean }> = ({ rightAction = tru
     <Box
       sx={{
         display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
-        alignItems: 'center',
-        minHeight: 48,
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: { xs: 1.5, sm: 2 },
+        minHeight: { xs: 0, sm: 48 },
         mb: 1,
       }}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        <Line width={220} height={32} sx={{ borderRadius: 1 }} />
-        <Line width={340} height={18} sx={{ borderRadius: 1 }} />
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, width: '100%', minWidth: 0 }}>
+        <Line width={220} height={32} sx={{ borderRadius: 1, maxWidth: '100%' }} />
+        <Line width={340} height={18} sx={{ borderRadius: 1, maxWidth: '100%' }} />
       </Box>
       {rightAction && <Block width={120} height={40} radius={theme.customRadii.pill} />}
     </Box>
@@ -76,12 +79,24 @@ const FilterBarShimmer: React.FC = () => {
   const theme = useTheme();
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 1 }}>
-      <Block width={260} height={44} radius={theme.customRadii.inner} />
+      <Block
+        width={260}
+        height={44}
+        radius={theme.customRadii.inner}
+        sx={{ width: { xs: '100%', sm: 260 } }}
+      />
       <Block width={110} height={36} radius={theme.customRadii.pill} />
       <Block width={110} height={36} radius={theme.customRadii.pill} />
-      <Block width={110} height={36} radius={theme.customRadii.pill} />
-      <Box sx={{ ml: 'auto' }}>
-        <Block width={140} height={44} radius={theme.customRadii.inner} />
+      <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+        <Block width={110} height={36} radius={theme.customRadii.pill} />
+      </Box>
+      <Box sx={{ ml: { xs: 0, sm: 'auto' }, width: { xs: '100%', sm: 'auto' } }}>
+        <Block
+          width={140}
+          height={44}
+          radius={theme.customRadii.inner}
+          sx={{ width: { xs: '100%', sm: 140 } }}
+        />
       </Box>
     </Box>
   );
@@ -116,7 +131,10 @@ const ChartCardShimmer: React.FC = () => {
   return (
     <Card
       sx={{
-        padding: `${theme.customSpacing.cardPadding}px`,
+        padding: {
+          xs: `${theme.customSpacing.cardPaddingMobile}px`,
+          md: `${theme.customSpacing.cardPadding}px`,
+        },
         borderRadius: `${theme.customRadii.card}px`,
         display: 'flex',
         flexDirection: 'column',
@@ -138,60 +156,108 @@ const ChartCardShimmer: React.FC = () => {
 
 const TableShimmer: React.FC<{ rows?: number; fill?: boolean }> = ({ rows = 6, fill = false }) => {
   const theme = useTheme();
+  // DataTable renders stacked cards below `sm`, so the placeholder has to have
+  // that shape too — a five-column strip here shifts the layout the moment the
+  // rows arrive, and overruns the viewport while it waits.
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <Card
       sx={{
-        padding: `${theme.customSpacing.cardPadding}px`,
+        padding: {
+          xs: `${theme.customSpacing.cardPaddingMobile}px`,
+          md: `${theme.customSpacing.cardPadding}px`,
+        },
         borderRadius: `${theme.customRadii.card}px`,
         flex: fill ? 1 : 'none',
-        minHeight: 360,
+        minHeight: { xs: 280, sm: 360 },
         display: 'flex',
         flexDirection: 'column',
+        overflow: 'hidden',
       }}
     >
-      {/* Column header strip */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          pb: 1.5,
-          mb: 1,
-          borderBottom: `1px solid ${theme.palette.tokens.divider}`,
-        }}
-      >
-        <Line width="25%" height={16} />
-        <Line width="20%" height={16} />
-        <Line width="15%" height={16} />
-        <Line width="15%" height={16} />
-        <Box sx={{ ml: 'auto' }}>
-          <Line width={60} height={16} />
+      {isMobile ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {Array.from({ length: Math.min(rows, 4) }).map((_, index) => (
+            <Box
+              key={index}
+              sx={{
+                border: `1px solid ${theme.palette.tokens.divider}`,
+                borderRadius: `${theme.customRadii.inner}px`,
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.25,
+              }}
+            >
+              {/* Card heading — avatar plus name and sub-label */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Skeleton animation="wave" variant="circular" width={36} height={36} />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Line width="60%" height={18} />
+                  <Line width="40%" height={14} />
+                </Box>
+              </Box>
+              {/* Two label / value rows */}
+              {[0, 1].map((r) => (
+                <Box
+                  key={r}
+                  sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Line width={72} height={14} />
+                  <Line width={96} height={14} />
+                </Box>
+              ))}
+            </Box>
+          ))}
         </Box>
-      </Box>
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1 }}>
-        {Array.from({ length: rows }).map((_, index) => (
+      ) : (
+        <>
+          {/* Column header strip */}
           <Box
-            key={index}
             sx={{
               display: 'flex',
               alignItems: 'center',
               gap: 2,
-              height: 52,
+              pb: 1.5,
+              mb: 1,
               borderBottom: `1px solid ${theme.palette.tokens.divider}`,
             }}
           >
-            <Skeleton animation="wave" variant="circular" width={32} height={32} />
-            <Line width="24%" height={18} />
-            <Line width="18%" height={18} />
-            <Line width="14%" height={18} />
-            <Line width="14%" height={18} />
+            <Line width="25%" height={16} />
+            <Line width="20%" height={16} />
+            <Line width="15%" height={16} />
+            <Line width="15%" height={16} />
             <Box sx={{ ml: 'auto' }}>
-              <Block width={75} height={26} radius={theme.customRadii.pill} />
+              <Line width={60} height={16} />
             </Box>
           </Box>
-        ))}
-      </Box>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1 }}>
+            {Array.from({ length: rows }).map((_, index) => (
+              <Box
+                key={index}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  height: 52,
+                  borderBottom: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              >
+                <Skeleton animation="wave" variant="circular" width={32} height={32} />
+                <Line width="24%" height={18} />
+                <Line width="18%" height={18} />
+                <Line width="14%" height={18} />
+                <Line width="14%" height={18} />
+                <Box sx={{ ml: 'auto' }}>
+                  <Block width={75} height={26} radius={theme.customRadii.pill} />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </>
+      )}
     </Card>
   );
 };
@@ -456,6 +522,7 @@ const AuthSkeleton: React.FC = () => {
     <Box
       sx={{
         minHeight: '100vh',
+        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
         backgroundColor: theme.palette.tokens.pageBg,
         display: 'flex',
         alignItems: 'center',
@@ -555,6 +622,7 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' })
       sx={{
         display: 'flex',
         minHeight: '100vh',
+        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
         backgroundColor: theme.palette.tokens.pageBg,
         padding: { xs: '8px 8px 80px 8px', sm: '12px 12px 88px 12px', md: '16px' },
         gap: { xs: 0, md: '20px' },
@@ -576,7 +644,10 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' })
           ml: { xs: 0, md: '260px' },
           display: 'flex',
           flexDirection: 'column',
-          gap: `${theme.customSpacing.cardGap}px`,
+          gap: {
+            xs: `${theme.customSpacing.cardGapMobile}px`,
+            md: `${theme.customSpacing.cardGap}px`,
+          },
         }}
       >
         <Body />

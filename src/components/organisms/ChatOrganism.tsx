@@ -372,7 +372,11 @@ export const ChatOrganism: React.FC = () => {
       <Card
         sx={{
           height: 'calc(100vh - 180px)',
-          minHeight: 560,
+          '@supports (height: 100dvh)': { height: 'calc(100dvh - 180px)' },
+          // 560 is a comfortable desktop floor but taller than what a short
+          // phone has left once the top bar and bottom nav take their cut,
+          // which forced the whole page to scroll behind the nav.
+          minHeight: { xs: 400, sm: 560 },
           borderRadius: `${theme.customRadii.card}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,

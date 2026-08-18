@@ -121,7 +121,10 @@ export const components: Components<Theme> = {
       disableEscapeKeyDown: true,
     },
     styleOverrides: {
-      paper: {
+      // A `maxWidth="sm"` dialog floating in 32px of margin leaves a phone
+      // roughly 290 usable pixels. Below `sm` every dialog — whatever maxWidth
+      // it asked for — becomes a near-full-bleed sheet instead.
+      paper: ({ theme }) => ({
         borderRadius: `${tokens.radii.card}px`,
         backgroundImage: 'none',
         boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12)',
@@ -130,34 +133,58 @@ export const components: Components<Theme> = {
         '&::-webkit-scrollbar': {
           display: 'none',
         },
-      },
+        [theme.breakpoints.down('sm')]: {
+          borderRadius: `${tokens.radii.cardMobile}px`,
+          margin: `${tokens.spacing.dialogInsetMobile}px`,
+          width: `calc(100% - ${tokens.spacing.dialogInsetMobile * 2}px)`,
+          maxWidth: `calc(100% - ${tokens.spacing.dialogInsetMobile * 2}px)`,
+          maxHeight: `calc(100% - ${tokens.spacing.dialogInsetMobile * 2}px)`,
+        },
+      }),
     },
   },
   MuiDialogTitle: {
     styleOverrides: {
-      root: {
+      root: ({ theme }) => ({
         padding: '24px 24px 12px 24px',
-      },
+        [theme.breakpoints.down('sm')]: {
+          padding: `${tokens.spacing.dialogPaddingMobile}px ${tokens.spacing.dialogPaddingMobile}px 8px ${tokens.spacing.dialogPaddingMobile}px`,
+        },
+      }),
     },
   },
   MuiDialogContent: {
     styleOverrides: {
-      root: {
+      root: ({ theme }) => ({
         padding: '16px 24px 16px 24px',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
         '&::-webkit-scrollbar': {
           display: 'none',
         },
-      },
+        [theme.breakpoints.down('sm')]: {
+          padding: `12px ${tokens.spacing.dialogPaddingMobile}px`,
+        },
+      }),
     },
   },
   MuiDialogActions: {
     styleOverrides: {
-      root: {
+      // Dialogs pair a "Cancel" with a primary action. Side by side those are
+      // narrow thumb targets on a phone, so below `sm` they split the full
+      // width evenly instead of hugging the right edge.
+      root: ({ theme }) => ({
         padding: '16px 24px 24px 24px',
         gap: '12px',
-      },
+        [theme.breakpoints.down('sm')]: {
+          padding: `12px ${tokens.spacing.dialogPaddingMobile}px ${tokens.spacing.dialogPaddingMobile}px ${tokens.spacing.dialogPaddingMobile}px`,
+          flexWrap: 'wrap',
+          '& > .MuiButton-root': {
+            flex: '1 1 auto',
+            minWidth: 0,
+          },
+        },
+      }),
     },
   },
   MuiTextField: {
@@ -195,17 +222,23 @@ export const components: Components<Theme> = {
           },
         },
       },
-      input: {
+      input: ({ theme }) => ({
         padding: '13px 16px',
         fontSize: '14px',
         fontWeight: 500,
         color: tokens.colors.textPrimary,
         height: 'auto',
-      },
-      inputSizeSmall: {
+        [theme.breakpoints.down('sm')]: {
+          fontSize: tokens.typography.inputMobile.fontSize,
+        },
+      }),
+      inputSizeSmall: ({ theme }) => ({
         padding: '8px 14px',
         fontSize: '13px',
-      },
+        [theme.breakpoints.down('sm')]: {
+          fontSize: tokens.typography.inputMobile.fontSize,
+        },
+      }),
     },
   },
   MuiInputLabel: {
@@ -247,7 +280,7 @@ export const components: Components<Theme> = {
       // Scoped away from TablePagination: these are form-field metrics, and the
       // 16px right padding is narrower than the arrow, so letting them reach the
       // "rows per page" select drops the arrow on top of the value.
-      select: {
+      select: ({ theme }) => ({
         '&:not(.MuiTablePagination-select)': {
           padding: '13px 16px',
           fontSize: '14px',
@@ -259,8 +292,14 @@ export const components: Components<Theme> = {
             padding: '8px 14px',
             fontSize: '13px',
           },
+          [theme.breakpoints.down('sm')]: {
+            fontSize: tokens.typography.inputMobile.fontSize,
+            '&.MuiInputBase-inputSizeSmall': {
+              fontSize: tokens.typography.inputMobile.fontSize,
+            },
+          },
         },
-      },
+      }),
       icon: {
         color: tokens.colors.textSecondary,
         '&:not(.MuiTablePagination-selectIcon)': {
@@ -326,7 +365,7 @@ export const components: Components<Theme> = {
   },
   MuiTableHead: {
     styleOverrides: {
-      root: {
+      root: ({ theme }) => ({
         '& .MuiTableCell-root': {
           color: tokens.colors.textSecondary,
           fontSize: tokens.typography.caption.fontSize,
@@ -337,18 +376,26 @@ export const components: Components<Theme> = {
           borderLeft: 'none',
           borderRight: 'none',
           padding: '16px 20px',
+          // Tablets still get a real table; tightening the gutters is what
+          // keeps a five-column one from needing a horizontal scroll there.
+          [theme.breakpoints.down('md')]: {
+            padding: '12px 14px',
+          },
         },
-      },
+      }),
     },
   },
   MuiTableBody: {
     styleOverrides: {
-      root: {
+      root: ({ theme }) => ({
         '& .MuiTableRow-root': {
           height: 64,
           transition: 'background-color 0.15s ease',
           '&:hover': {
             backgroundColor: tokens.colors.tableHover,
+          },
+          [theme.breakpoints.down('md')]: {
+            height: 56,
           },
         },
         '& .MuiTableCell-root': {
@@ -359,8 +406,11 @@ export const components: Components<Theme> = {
           padding: '16px 20px',
           color: tokens.colors.textPrimary,
           fontSize: tokens.typography.body1.fontSize,
+          [theme.breakpoints.down('md')]: {
+            padding: '12px 14px',
+          },
         },
-      },
+      }),
     },
   },
   MuiTableCell: {

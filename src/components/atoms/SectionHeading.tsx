@@ -16,21 +16,29 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({ title, subtitle,
     <Box
       sx={{
         display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: { xs: 1, sm: 0 },
         width: '100%',
         mb: 2,
       }}
     >
-      <Box>
-        <Typography variant="h2">{title}</Typography>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="h2" sx={{ fontSize: { xs: '18px', sm: '22px' } }}>
+          {title}
+        </Typography>
         {subtitle && (
           <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}>
             {subtitle}
           </Typography>
         )}
       </Box>
-      {action && <Box sx={{ flexShrink: 0, ml: 2 }}>{action}</Box>}
+      {action && (
+        <Box sx={{ flexShrink: 0, ml: { xs: 0, sm: 2 }, alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
+          {action}
+        </Box>
+      )}
     </Box>
   );
 };

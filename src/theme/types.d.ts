@@ -82,10 +82,16 @@ declare module '@mui/material/styles' {
       inner: number;
       pill: number;
       rail: number;
+      cardMobile: number;
     };
     customSpacing: {
+      base: number;
       cardPadding: number;
       cardGap: number;
+      cardPaddingMobile: number;
+      cardGapMobile: number;
+      dialogPaddingMobile: number;
+      dialogInsetMobile: number;
     };
   }
 
@@ -95,10 +101,16 @@ declare module '@mui/material/styles' {
       inner?: number;
       pill?: number;
       rail?: number;
+      cardMobile?: number;
     };
     customSpacing?: {
+      base?: number;
       cardPadding?: number;
       cardGap?: number;
+      cardPaddingMobile?: number;
+      cardGapMobile?: number;
+      dialogPaddingMobile?: number;
+      dialogInsetMobile?: number;
     };
   }
 }

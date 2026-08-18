@@ -139,7 +139,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
       {/* 1. Header (Sticky) */}
       <Box
         sx={{
-          padding: '24px 24px 18px 24px',
+          padding: { xs: '16px 16px 14px 16px', sm: '24px 24px 18px 24px' },
           borderBottom: `1px solid ${theme.palette.tokens.divider}`,
           display: 'flex',
           alignItems: 'flex-start',
@@ -232,10 +232,10 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
         sx={{
           flex: 1,
           overflowY: 'auto',
-          padding: '24px',
+          padding: { xs: '16px', sm: '24px' },
           display: 'flex',
           flexDirection: 'column',
-          gap: 3,
+          gap: { xs: 2.5, sm: 3 },
           // Sleek custom scrollbar
           '&::-webkit-scrollbar': { width: 6 },
           '&::-webkit-scrollbar-track': { background: 'transparent' },
@@ -420,7 +420,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
       {actions.length > 0 && (
         <Box
           sx={{
-            padding: '16px 24px',
+            padding: { xs: '12px 16px', sm: '16px 24px' },
             borderTop: `1px solid ${theme.palette.tokens.divider}`,
             backgroundColor: theme.palette.tokens.surface,
             display: 'flex',
@@ -429,6 +429,8 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
             position: 'sticky',
             bottom: 0,
             zIndex: 10,
+            // Two side-by-side buttons leave narrow thumb targets on a phone.
+            '& > .MuiButton-root': { flex: { xs: '1 1 0', sm: '0 0 auto' }, minWidth: 0 },
           }}
         >
           {actions.map((act, aIdx) => (

@@ -60,7 +60,27 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     >
       {/* Pills Row */}
       {pills.length > 0 && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            // Ten category pills wrap to seven rows on a phone and push the
+            // list itself below the fold. Below `sm` they stay on one line and
+            // scroll sideways instead.
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            width: { xs: '100%', sm: 'auto' },
+            overflowX: { xs: 'auto', sm: 'visible' },
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+            // The strip runs to the edge of the content column so a half-cut
+            // pill signals there is more to scroll to.
+            mx: { xs: -1.25, sm: 0 },
+            px: { xs: 1.25, sm: 0 },
+            '& > *': { flexShrink: 0 },
+          }}
+        >
           {pills.map((pill) => (
             <Pill
               key={pill.id}

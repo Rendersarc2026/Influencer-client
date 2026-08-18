@@ -1,6 +1,10 @@
 import { TypographyOptions } from '@mui/material/styles/createTypography';
 import { tokens } from './tokens';
 
+// MUI's default `sm` breakpoint. Written out because typography variants are
+// resolved before the theme exists, so `theme.breakpoints` isn't reachable here.
+const belowSm = '@media (max-width:599.95px)';
+
 export const typography: TypographyOptions = {
   fontFamily: tokens.typography.fontFamily,
   h1: {
@@ -9,6 +13,7 @@ export const typography: TypographyOptions = {
     lineHeight: tokens.typography.h1.lineHeight,
     letterSpacing: tokens.typography.h1.letterSpacing,
     color: tokens.colors.textPrimary,
+    [belowSm]: { fontSize: tokens.typography.h1Mobile.fontSize },
   },
   h2: {
     fontSize: tokens.typography.h2.fontSize,
@@ -16,6 +21,7 @@ export const typography: TypographyOptions = {
     lineHeight: tokens.typography.h2.lineHeight,
     letterSpacing: tokens.typography.h2.letterSpacing,
     color: tokens.colors.textPrimary,
+    [belowSm]: { fontSize: tokens.typography.h2Mobile.fontSize },
   },
   h3: {
     fontSize: tokens.typography.h3.fontSize,
@@ -23,6 +29,7 @@ export const typography: TypographyOptions = {
     lineHeight: tokens.typography.h3.lineHeight,
     letterSpacing: tokens.typography.h3.letterSpacing,
     color: tokens.colors.textPrimary,
+    [belowSm]: { fontSize: tokens.typography.h3Mobile.fontSize },
   },
   h4: {
     fontSize: tokens.typography.h3.fontSize,
@@ -30,6 +37,7 @@ export const typography: TypographyOptions = {
     lineHeight: tokens.typography.h3.lineHeight,
     letterSpacing: tokens.typography.h3.letterSpacing,
     color: tokens.colors.textPrimary,
+    [belowSm]: { fontSize: tokens.typography.h3Mobile.fontSize },
   },
   h5: {
     fontSize: tokens.typography.h3.fontSize,

@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import ButtonBase from '@mui/material/ButtonBase';
@@ -92,6 +92,14 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   const location = useLocation();
   const currentPath = location.pathname;
 
+  // The mobile bar scrolls sideways once a role has more items than fit. The
+  // active one is often past the fold — for the chat item at the end of the
+  // agency's list, nothing on screen said which page you were on.
+  const activeItemRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    activeItemRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [currentPath]);
+
   return (
     <Box
       component="aside"
@@ -105,6 +113,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           bottom: 16,
           width: 240,
           height: 'calc(100vh - 32px)',
+          '@supports (height: 100dvh)': { height: 'calc(100dvh - 32px)' },
           backgroundColor: theme.palette.tokens.rail,
           borderRadius: `${theme.customRadii.rail}px`,
           display: 'flex',
@@ -381,7 +390,10 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                 </Box>
 
                 {/* Mobile icon item */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Box
+                  ref={isActive ? activeItemRef : undefined}
+                  sx={{ display: { xs: 'block', md: 'none' } }}
+                >
                   <RailIconButton
                     icon={getNavIcon(item.iconName)}
                     label={item.label}

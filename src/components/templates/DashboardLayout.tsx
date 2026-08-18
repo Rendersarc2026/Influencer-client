@@ -91,7 +91,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     <Box
       sx={{
         display: 'flex',
-        height: '100vh',          // hard lock — never grows past viewport
+        // hard lock — never grows past viewport. `dvh` so a phone's
+        // retracting toolbars don't push the bottom nav out of view.
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
         overflow: 'hidden',
         backgroundColor: theme.palette.tokens.pageBg,
         padding: {

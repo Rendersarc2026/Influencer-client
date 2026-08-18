@@ -53,17 +53,21 @@ export const AcceptTermsOrganism: React.FC = () => {
       sx={{
         display: 'flex',
         minHeight: '100vh',
+        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
         backgroundColor: theme.palette.tokens.pageBg,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: { xs: '16px', sm: '24px' },
       }}
     >
       <Card
         sx={{
           width: '100%',
           maxWidth: 600,
-          padding: `${theme.customSpacing.cardPadding}px`,
+          padding: {
+            xs: `${theme.customSpacing.cardPaddingMobile}px`,
+            sm: `${theme.customSpacing.cardPadding}px`,
+          },
           borderRadius: `${theme.customRadii.card}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,

@@ -250,9 +250,17 @@ export const StyleGuideOrganism: React.FC = () => {
       sx={{
         display: 'flex',
         minHeight: '100vh',
+        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
         backgroundColor: theme.palette.tokens.pageBg,
-        padding: '16px',
-        gap: '20px',
+        // Below `md` the rail is a fixed bottom bar, so the page has to reserve
+        // its height the same way DashboardLayout does or the last card sits
+        // underneath it.
+        padding: {
+          xs: '6px 6px calc(76px + env(safe-area-inset-bottom, 0px)) 6px',
+          sm: '10px 10px 84px 10px',
+          md: '16px',
+        },
+        gap: { xs: 0, md: '20px' },
       }}
     >
       {/* 1. Floating Dark Sidebar Rail */}
@@ -268,15 +276,37 @@ export const StyleGuideOrganism: React.FC = () => {
         component="main"
         sx={{
           flexGrow: 1,
+          minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
-          gap: `${theme.customSpacing.cardGap}px`,
-          maxWidth: 'calc(100% - 92px)',
+          gap: {
+            xs: `${theme.customSpacing.cardGapMobile}px`,
+            md: `${theme.customSpacing.cardGap}px`,
+          },
+          // The rail is `position: fixed` at `md`, so the surface has to step
+          // around its 240px + 20px gutter itself. A phone has no rail beside
+          // it and takes the full width.
+          marginLeft: { xs: 0, md: '260px' },
+          maxWidth: { xs: '100%', md: 'calc(100% - 260px)' },
         }}
       >
         {/* Top App Bar with UserMenu & Title */}
-        <Card sx={{ padding: `${theme.customSpacing.cardPadding}px` }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Card
+          sx={{
+            padding: {
+              xs: `${theme.customSpacing.cardPaddingMobile}px`,
+              md: `${theme.customSpacing.cardPadding}px`,
+            },
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              gap: 1.5,
+            }}
+          >
             <Box>
               <Typography variant="h1">Style Guide & Component Library</Typography>
               <Typography

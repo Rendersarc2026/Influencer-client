@@ -211,17 +211,18 @@ export const LoginOrganism: React.FC = () => {
       sx={{
         display: 'flex',
         minHeight: '100vh',
+        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
         backgroundColor: theme.palette.tokens.pageBg,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: { xs: '16px', sm: '24px' },
       }}
     >
       <Card
         sx={{
           width: '100%',
           maxWidth: 440,
-          padding: '40px 36px',
+          padding: { xs: '28px 20px', sm: '40px 36px' },
           borderRadius: `${theme.customRadii.card}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,
@@ -340,7 +341,7 @@ export const LoginOrganism: React.FC = () => {
               sx={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                gap: 1.5,
+                gap: { xs: 1, sm: 1.5 },
                 mb: 2.5,
               }}
               onPaste={handlePaste}
@@ -361,10 +362,14 @@ export const LoginOrganism: React.FC = () => {
                   disabled={loading || isEmailBlocked || attemptsRemaining === 0}
                   autoFocus={idx === 0}
                   sx={{
-                    width: '48px',
-                    height: '56px',
+                    // Fixed 48px each overflows a phone; below `sm` the six
+                    // boxes divide the available width evenly instead.
+                    flex: { xs: '1 1 0', sm: '0 0 48px' },
+                    minWidth: 0,
+                    width: { xs: 'auto', sm: '48px' },
+                    height: { xs: '52px', sm: '56px' },
                     textAlign: 'center',
-                    fontSize: '22px',
+                    fontSize: { xs: '20px', sm: '22px' },
                     fontWeight: 700,
                     borderRadius: `${theme.customRadii.inner}px`,
                     border: `1px solid ${otpError ? theme.palette.tokens.negative : digit ? theme.palette.tokens.accent : theme.palette.tokens.divider}`,

@@ -69,13 +69,18 @@ export const ChartCard: React.FC<ChartCardProps> = ({
       <Box
         sx={{
           display: 'flex',
+          // Four timeframe pills plus the stat value need more than a phone's
+          // line; below `sm` the pills drop to their own row instead of
+          // pushing themselves off the card's right edge.
+          flexDirection: { xs: 'column', sm: 'row' },
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          alignItems: { xs: 'stretch', sm: 'flex-start' },
+          gap: { xs: 1.5, sm: 2 },
           mb: 2,
-          minHeight: 52,
+          minHeight: { xs: 0, sm: 52 },
         }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             variant="caption"
             sx={{
@@ -100,7 +105,18 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         </Box>
 
         {timeframeOptions.length > 0 && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 1,
+              flexShrink: 0,
+              // Still one row, but it can scroll if a caller passes more
+              // timeframes than a narrow screen fits.
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
             {timeframeOptions.map((tf) => (
               <Pill
                 key={tf}
