@@ -125,7 +125,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
       }}
       PaperProps={{
         sx: {
-          width: { xs: '100%', sm: 460, md: 520 },
+          width: { xs: '100%', sm: 540, md: 620, lg: 680 },
           maxWidth: '100vw',
           backgroundColor: theme.palette.tokens.surface,
           boxShadow: '-10px 0 40px rgba(16, 17, 20, 0.1)',

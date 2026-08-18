@@ -18,5 +18,6 @@ export * from './terms.contract';
 export * from './category.contract';
 export * from './navigation.contract';
 export * from './location.contract';
+export * from './engagement.contract';
 
 

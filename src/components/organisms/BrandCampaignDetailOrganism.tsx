@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
 import Link from '@mui/material/Link';
 import Tooltip from '@mui/material/Tooltip';
@@ -544,12 +545,18 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             <Button
               variant="outlined"
               size="small"
-              startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+              startIcon={
+                createChatMutation.isPending ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <ChatBubbleOutlineRoundedIcon fontSize="small" />
+                )
+              }
               onClick={handleMessageAgency}
               disabled={createChatMutation.isPending}
               sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
             >
-              Message Agency
+              {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
             </Button>
 
             {safeUrl(campaign?.briefUrl) && (

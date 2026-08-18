@@ -486,7 +486,13 @@ export const ChatOrganism: React.FC = () => {
                   <Button
                     variant="outlined"
                     size="small"
-                    startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+                    startIcon={
+                      createChatMutation.isPending ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : (
+                        <ChatBubbleOutlineRoundedIcon fontSize="small" />
+                      )
+                    }
                     onClick={handleStartAgencyChat}
                     disabled={createChatMutation.isPending}
                     sx={{
@@ -498,7 +504,7 @@ export const ChatOrganism: React.FC = () => {
                       borderRadius: `${theme.customRadii.pill}px`,
                     }}
                   >
-                    Message Agency
+                    {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
                   </Button>
                 )}
               </Box>
@@ -1255,11 +1261,17 @@ export const ChatOrganism: React.FC = () => {
                       <Button
                         variant="contained"
                         size="small"
-                        startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+                        startIcon={
+                          createChatMutation.isPending ? (
+                            <CircularProgress size={16} color="inherit" />
+                          ) : (
+                            <ChatBubbleOutlineRoundedIcon fontSize="small" />
+                          )
+                        }
                         onClick={handleStartAgencyChat}
                         disabled={createChatMutation.isPending}
                       >
-                        Message Agency
+                        {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
                       </Button>
                     )
                   }

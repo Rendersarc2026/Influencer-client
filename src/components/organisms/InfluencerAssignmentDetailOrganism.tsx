@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
@@ -116,11 +117,17 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
               <Button
                 variant="outlined"
-                startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+                startIcon={
+                  createChatMutation.isPending ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <ChatBubbleOutlineRoundedIcon fontSize="small" />
+                  )
+                }
                 onClick={handleMessageAgency}
                 disabled={createChatMutation.isPending}
               >
-                Message Agency
+                {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
               </Button>
 
               <Button

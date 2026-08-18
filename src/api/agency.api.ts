@@ -21,6 +21,7 @@ import {
   InfluencerResponse,
   InfluencerListQuery,
   CreateInfluencerRequest,
+  InfluencerEngagementResponse,
   UserResponse,
   UserListQuery,
   PaginatedResult,
@@ -241,6 +242,40 @@ export function useCreateInfluencer() {
     },
   });
 }
+
+/** The latest engagement metrics (ER, likes, comments, views) for an influencer. */
+export function useInfluencerEngagement(influencerId: string | undefined) {
+  return useQuery<InfluencerEngagementResponse>({
+    queryKey: ['agency', 'influencers', influencerId, 'engagement'],
+    queryFn: async () => {
+      if (!influencerId) throw new Error('Influencer ID required');
+      const response = await apiClient.get<InfluencerEngagementResponse>(
+        `/agency/influencers/${influencerId}/engagement`,
+      );
+      return response.data;
+    },
+    enabled: Boolean(influencerId),
+  });
+}
+
+/** Trigger recalculation of Instagram engagement metrics for an influencer. */
+export function useCalculateInfluencerEngagement(influencerId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation<InfluencerEngagementResponse, Error, void>({
+    mutationFn: async () => {
+      if (!influencerId) throw new Error('Influencer ID required');
+      const response = await apiClient.post<InfluencerEngagementResponse>(
+        `/agency/influencers/${influencerId}/engagement`,
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['agency', 'influencers', influencerId, 'engagement'], data);
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers', influencerId, 'engagement'] });
+    },
+  });
+}
+
 
 // -------------------------------------------------------------
 // 4. Campaign Influencer Mappers & Rates
