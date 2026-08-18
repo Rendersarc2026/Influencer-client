@@ -688,6 +688,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         <ApproveRateDialog
           open={Boolean(approveDialogMapper)}
           mapperId={approveDialogMapper.id}
+          influencerId={approveDialogMapper.influencerId}
           influencerName={approveDialogMapper.influencerName}
           influencerRate={approveDialogMapper.influencerRate}
           currency={approveDialogMapper.currency}

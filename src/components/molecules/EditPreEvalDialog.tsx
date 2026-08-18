@@ -13,7 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText, SectionHeading } from '@atoms';
 import { AgencyMapperResponse, UpdatePreEvalRequest } from '@contracts';
-import { useInfluencerEngagement } from '@api';
+import { useInfluencerEngagement, useCalculateInfluencerEngagement } from '@api';
 
 export interface EditPreEvalDialogProps {
   open: boolean;
@@ -37,7 +37,26 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   const [brandFit, setBrandFit] = useState('');
   const [error, setError] = useState('');
 
-  const { data: engagementData } = useInfluencerEngagement(mapper?.influencerId);
+  const {
+    data: engagementData,
+    isLoading: isEngagementLoading,
+    isFetching: isEngagementFetching,
+  } = useInfluencerEngagement(mapper?.influencerId);
+  const calculateEngagementMutation = useCalculateInfluencerEngagement(mapper?.influencerId);
+
+  const isCalculating =
+    isEngagementLoading || isEngagementFetching || calculateEngagementMutation.isPending;
+
+  const handleRecalculate = async () => {
+    try {
+      const res = await calculateEngagementMutation.mutateAsync();
+      if (res?.engagementRate !== undefined && res?.engagementRate !== null) {
+        setPreEvalEr(String(res.engagementRate));
+      }
+    } catch {
+      // Error handled by react-query / global handler
+    }
+  };
 
   useEffect(() => {
     if (open && mapper) {
@@ -57,7 +76,20 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
       setBrandFit(mapper.brandFit || '');
       setError('');
     }
-  }, [open, mapper, engagementData?.engagementRate]);
+  }, [open, mapper?.id]);
+
+  // When engagement calculation arrives and no preEvalEr was manually/previously set, populate it
+  useEffect(() => {
+    if (
+      open &&
+      (mapper?.preEvalEr === undefined || mapper?.preEvalEr === null) &&
+      !preEvalEr &&
+      engagementData?.engagementRate !== undefined &&
+      engagementData?.engagementRate !== null
+    ) {
+      setPreEvalEr(String(engagementData.engagementRate));
+    }
+  }, [open, mapper?.preEvalEr, preEvalEr, engagementData?.engagementRate]);
 
   const committedViewsNum = parseInt(committedViews, 10) || 0;
   const preEvalErNum = parseFloat(preEvalEr) || 0;
@@ -160,13 +192,45 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                   type="text"
                   value={preEvalEr}
                   onChange={(e) => setPreEvalEr(e.target.value.replace(/[^0-9.]/g, ''))}
-                  placeholder="e.g. 4.5"
+                  placeholder={isCalculating ? 'Calculating ER...' : 'e.g. 4.5'}
                   helperText="Agreed or Instagram benchmark ER%"
                   fullWidth
                   disabled={loading}
+                  slotProps={{
+                    input: {
+                      endAdornment: isCalculating ? (
+                        <CircularProgress
+                          size={16}
+                          sx={{ color: theme.palette.tokens.purpleText, mr: 0.5 }}
+                        />
+                      ) : null,
+                    },
+                  }}
                 />
-                {engagementData?.engagementRate !== undefined &&
-                  engagementData?.engagementRate !== null && (
+                {isCalculating ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75 }}>
+                    <CircularProgress size={12} sx={{ color: theme.palette.tokens.purpleText }} />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: theme.palette.tokens.purpleText,
+                        fontSize: '11px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Calculating Instagram ER...
+                    </Typography>
+                  </Box>
+                ) : engagementData?.engagementRate !== undefined &&
+                  engagementData?.engagementRate !== null ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mt: 0.5,
+                    }}
+                  >
                     <Button
                       size="small"
                       variant="text"
@@ -175,14 +239,55 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                         fontSize: '11px',
                         textTransform: 'none',
                         p: 0,
-                        mt: 0.5,
                         justifyContent: 'flex-start',
                         color: theme.palette.tokens.purpleText,
+                        fontWeight: 600,
+                        '&:hover': { background: 'transparent', textDecoration: 'underline' },
                       }}
                     >
                       ✨ Use Instagram ER ({engagementData.engagementRate.toFixed(2)}%)
                     </Button>
-                  )}
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={handleRecalculate}
+                      disabled={isCalculating || loading}
+                      sx={{
+                        fontSize: '10px',
+                        textTransform: 'none',
+                        p: 0,
+                        minWidth: 0,
+                        color: theme.palette.tokens.textSecondary,
+                        '&:hover': {
+                          background: 'transparent',
+                          color: theme.palette.tokens.textPrimary,
+                          textDecoration: 'underline',
+                        },
+                      }}
+                    >
+                      Recalculate
+                    </Button>
+                  </Box>
+                ) : (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={handleRecalculate}
+                    disabled={isCalculating || loading}
+                    sx={{
+                      fontSize: '11px',
+                      textTransform: 'none',
+                      p: 0,
+                      mt: 0.5,
+                      justifyContent: 'flex-start',
+                      color: theme.palette.tokens.purpleText,
+                      fontWeight: 600,
+                      '&:hover': { background: 'transparent', textDecoration: 'underline' },
+                    }}
+                  >
+                    ⚡ Calculate Instagram ER
+                  </Button>
+                )}
               </Box>
             </Box>
 
@@ -262,30 +367,55 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                   Pre-Eval Engagement Rate (ER):
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText }}
-                  >
-                    {preEvalErNum > 0 ? `${preEvalErNum.toFixed(2)}%` : 'Not specified'}
-                  </Typography>
-                  {preEvalErNum > 0 && (
-                    <Chip
-                      label={
-                        preEvalErNum >= 4.0
-                          ? '🔥 High'
-                          : preEvalErNum >= 2.0
-                            ? '✨ Good'
-                            : 'Standard'
-                      }
-                      size="small"
-                      sx={{
-                        height: 18,
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        backgroundColor: theme.palette.tokens.purpleBg,
-                        color: theme.palette.tokens.purpleText,
-                      }}
-                    />
+                  {isCalculating && preEvalErNum <= 0 ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <CircularProgress size={12} sx={{ color: theme.palette.tokens.purpleText }} />
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: theme.palette.tokens.purpleText,
+                          fontSize: '12px',
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        Calculating ER...
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color:
+                            preEvalErNum > 0
+                              ? theme.palette.tokens.purpleText
+                              : theme.palette.tokens.textSecondary,
+                        }}
+                      >
+                        {preEvalErNum > 0 ? `${preEvalErNum.toFixed(2)}%` : 'Not specified'}
+                      </Typography>
+                      {preEvalErNum > 0 && (
+                        <Chip
+                          label={
+                            preEvalErNum >= 4.0
+                              ? '🔥 High'
+                              : preEvalErNum >= 2.0
+                                ? '✨ Good'
+                                : 'Standard'
+                          }
+                          size="small"
+                          sx={{
+                            height: 18,
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            backgroundColor: theme.palette.tokens.purpleBg,
+                            color: theme.palette.tokens.purpleText,
+                          }}
+                        />
+                      )}
+                    </>
                   )}
                 </Box>
               </Box>

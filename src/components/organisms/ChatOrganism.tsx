@@ -112,6 +112,10 @@ export const ChatOrganism: React.FC = () => {
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(effectiveChatId);
   const sendMessageMutation = useSendMessage(effectiveChatId, user?.id);
   const markReadMutation = useMarkChatAsRead();
+  // The mutation object is a fresh reference on every render; `mutate` is stable.
+  // Depending on the object made the socket effect leave/rejoin the room and
+  // re-bind every listener on each render.
+  const markChatRead = markReadMutation.mutate;
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -136,15 +140,30 @@ export const ChatOrganism: React.FC = () => {
           ['chats', effectiveChatId, 'messages'],
           (old = []) => {
             if (old.some((m) => m.id === msg.id)) return old;
+
+            // The server broadcasts to the whole room, sender included. When this
+            // echo is our own message it must replace the optimistic placeholder
+            // instead of appending, or the bubble renders twice.
+            if (msg.senderId === user?.id) {
+              const tempIndex = old.findIndex(
+                (m) => m.id.startsWith('temp-') && m.body === msg.body,
+              );
+              if (tempIndex !== -1) {
+                const next = [...old];
+                next[tempIndex] = msg;
+                return next;
+              }
+            }
+
             return [...old, msg];
           },
         );
         // Mark as read immediately if user is viewing this active incoming message
         if (msg.senderId !== user?.id) {
-          markReadMutation.mutate(effectiveChatId);
+          markChatRead(effectiveChatId);
         }
       }
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
     };
 
     const handleMessageEdited = (msg: MessageResponse) => {
@@ -207,7 +226,7 @@ export const ChatOrganism: React.FC = () => {
       socket.off('user_typing', handleUserTyping);
       socket.off('user_stop_typing', handleUserStopTyping);
     };
-  }, [effectiveChatId, user?.id, queryClient, markReadMutation]);
+  }, [effectiveChatId, user?.id, queryClient, markChatRead]);
 
   // Handle URL query parameter changes
   useEffect(() => {
@@ -248,12 +267,25 @@ export const ChatOrganism: React.FC = () => {
     );
   }, [effectiveChatId, queryChatId, setSearchParams]);
 
-  // Mark chat as read only when opening a thread that has unread messages
+  // Mark chat as read only when opening a thread that has unread messages.
+  // The request invalidates ['chats'], so without the ref guard the refetched
+  // unreadCount re-triggers this effect and the POST fires in a loop.
+  const lastReadChatIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (effectiveChatId && activeChat?.unreadCount && activeChat.unreadCount > 0) {
-      markReadMutation.mutate(effectiveChatId);
-    }
-  }, [effectiveChatId, activeChat?.unreadCount, markReadMutation]);
+    if (!effectiveChatId) return;
+    if (!activeChat?.unreadCount || activeChat.unreadCount <= 0) return;
+    if (lastReadChatIdRef.current === effectiveChatId) return;
+
+    lastReadChatIdRef.current = effectiveChatId;
+    markChatRead(effectiveChatId);
+  }, [effectiveChatId, activeChat?.unreadCount, markChatRead]);
+
+  // Allow a re-mark once the thread is reopened later
+  useEffect(() => {
+    return () => {
+      lastReadChatIdRef.current = null;
+    };
+  }, [effectiveChatId]);
 
   // Clear unread notifications for the active thread
   const unreadThreadNotifIds = useMemo(

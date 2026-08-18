@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Badge from '@mui/material/Badge';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
@@ -11,6 +12,7 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import { useTheme } from '@mui/material/styles';
 import { UserMenu, NotificationCenter } from '@molecules';
+import { useNotifications } from '@hooks';
 import { BreadcrumbItem, TopBarProps, TopBarUser } from '@types';
 
 export type { BreadcrumbItem, TopBarProps, TopBarUser };
@@ -30,6 +32,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   className,
 }) => {
   const theme = useTheme();
+  const { unreadCount } = useNotifications();
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
 
   const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
@@ -185,17 +188,36 @@ export const TopBar: React.FC<TopBarProps> = ({
           </Tooltip>
         )}
 
-        <Tooltip title="Notifications">
+        <Tooltip title={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}>
           <IconButton
             onClick={handleOpenNotifications}
-            aria-label="Notifications"
+            aria-label={
+              unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
+            }
             sx={{
               position: 'relative',
               backgroundColor: notificationAnchor ? theme.palette.tokens.accentBg : undefined,
               color: notificationAnchor ? theme.palette.tokens.accentText : undefined,
             }}
           >
-            <NotificationsNoneRoundedIcon fontSize="small" />
+            <Badge
+              badgeContent={unreadCount}
+              max={99}
+              overlap="circular"
+              sx={{
+                '& .MuiBadge-badge': {
+                  backgroundColor: theme.palette.tokens.negative,
+                  color: '#FFFFFF',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  minWidth: 16,
+                  height: 16,
+                  padding: '0 4px',
+                },
+              }}
+            >
+              <NotificationsNoneRoundedIcon fontSize="small" />
+            </Badge>
           </IconButton>
         </Tooltip>
 

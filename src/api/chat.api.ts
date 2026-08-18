@@ -82,7 +82,7 @@ export function useCreateOrFindChat() {
         if (exists) return old.map((c) => (c.id === newChat.id ? newChat : c));
         return [newChat, ...old];
       });
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
     },
   });
 }
@@ -98,7 +98,7 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
     MessageResponse,
     Error,
     SendMessageRequest,
-    { previousMessages?: MessageResponse[] }
+    { tempId?: string }
   >({
     mutationFn: async (data) => {
       if (!chatId) throw new Error('No active conversation selected.');
@@ -111,46 +111,53 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
       // Cancel outgoing refetches so they don't overwrite optimistic update
       await queryClient.cancelQueries({ queryKey: ['chats', chatId, 'messages'] });
 
-      // Snapshot previous messages for rollback
-      const previousMessages = queryClient.getQueryData<MessageResponse[]>([
-        'chats',
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimisticMsg: MessageResponse = {
+        id: tempId,
         chatId,
-        'messages',
-      ]);
+        senderId: currentUserId || 'current-user',
+        body: newMessage.body,
+        attachmentUrl: newMessage.attachmentUrl || null,
+        editedFromId: null,
+        readOn: null,
+        isActive: true,
+        createdOn: new Date(),
+      };
 
-      // Optimistically append new message
-      if (previousMessages) {
-        const optimisticMsg: MessageResponse = {
-          id: `temp-${Date.now()}`,
-          chatId,
-          senderId: currentUserId || 'current-user',
-          body: newMessage.body,
-          attachmentUrl: newMessage.attachmentUrl || null,
-          editedFromId: null,
-          readOn: null,
-          isActive: true,
-          createdOn: new Date(),
-        };
+      queryClient.setQueryData<MessageResponse[]>(
+        ['chats', chatId, 'messages'],
+        (old = []) => [...old, optimisticMsg],
+      );
 
-        queryClient.setQueryData<MessageResponse[]>(
-          ['chats', chatId, 'messages'],
-          [...previousMessages, optimisticMsg],
-        );
-      }
+      return { tempId };
+    },
+    onSuccess: (saved, _newMessage, context) => {
+      if (!chatId) return;
 
-      return { previousMessages };
+      // Swap the placeholder for the persisted row. The `new_message` socket echo
+      // may already have appended it, so drop the placeholder either way and only
+      // append when the real id is not in the list yet - otherwise the bubble
+      // shows twice until the next refetch prunes it.
+      queryClient.setQueryData<MessageResponse[]>(['chats', chatId, 'messages'], (old = []) => {
+        const withoutTemp = context?.tempId ? old.filter((m) => m.id !== context.tempId) : old;
+        if (withoutTemp.some((m) => m.id === saved.id)) return withoutTemp;
+        return [...withoutTemp, saved];
+      });
     },
     onError: (_err, _newMessage, context) => {
-      // Rollback to previous state on error
-      if (chatId && context?.previousMessages) {
-        queryClient.setQueryData(['chats', chatId, 'messages'], context.previousMessages);
+      // Drop only the failed placeholder. Restoring a whole snapshot would also
+      // erase any message the socket delivered while the request was in flight.
+      if (chatId && context?.tempId) {
+        queryClient.setQueryData<MessageResponse[]>(
+          ['chats', chatId, 'messages'],
+          (old = []) => old.filter((m) => m.id !== context.tempId),
+        );
       }
     },
     onSettled: () => {
-      if (chatId) {
-        queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
-      }
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      // `exact` keeps this off the ['chats', id, 'messages'] children - refetching
+      // the thread here is what made the optimistic bubble flicker out.
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
     },
   });
 }
@@ -170,7 +177,7 @@ export function useEditMessage(chatId?: string) {
       if (chatId) {
         queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
       }
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
     },
   });
 }
@@ -189,7 +196,7 @@ export function useDeleteMessage(chatId?: string) {
       if (chatId) {
         queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
       }
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
     },
   });
 }
@@ -204,9 +211,10 @@ export function useMarkChatAsRead() {
     mutationFn: async (chatId) => {
       await apiClient.post(`/chats/${chatId}/read`);
     },
-    onSuccess: (_, chatId) => {
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
-      queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
+    onSuccess: () => {
+      // Only the conversation list needs refreshing - read receipts reach the
+      // thread through the `messages_read` socket event.
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
     },
   });
 }

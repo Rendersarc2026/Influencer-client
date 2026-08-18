@@ -1,4 +1,4 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState, useCallback, useMemo, ReactNode } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
@@ -10,14 +10,22 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [message, setMessage] = useState('');
   const [severity, setSeverity] = useState<ToastSeverity>('success');
 
-  const showToast = (msg: string, sev: ToastSeverity = 'success') => {
+  // Stable identities: consumers put these in effect deps (NotificationProvider
+  // binds its socket listeners against them), so a new function each render
+  // meant a full unsubscribe/resubscribe cycle on every toast.
+  const showToast = useCallback((msg: string, sev: ToastSeverity = 'success') => {
     setMessage(msg);
     setSeverity(sev);
     setOpen(true);
-  };
+  }, []);
 
-  const showSuccess = (msg: string) => showToast(msg, 'success');
-  const showError = (msg: string) => showToast(msg, 'error');
+  const showSuccess = useCallback((msg: string) => showToast(msg, 'success'), [showToast]);
+  const showError = useCallback((msg: string) => showToast(msg, 'error'), [showToast]);
+
+  const contextValue = useMemo(
+    () => ({ showToast, showSuccess, showError }),
+    [showToast, showSuccess, showError],
+  );
 
   const handleClose = (_event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') return;
@@ -25,7 +33,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   return (
-    <ToastContext.Provider value={{ showToast, showSuccess, showError }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <Snackbar
         open={open}

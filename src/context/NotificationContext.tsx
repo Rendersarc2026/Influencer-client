@@ -109,10 +109,28 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       lastMessage?: MessageResponse;
       senderId?: string;
     }) => {
-      // Immediately invalidate conversation list and active message feed
-      queryClient.invalidateQueries({ queryKey: ['chats'] });
-      if (data?.chatId) {
-        queryClient.invalidateQueries({ queryKey: ['chats', data.chatId, 'messages'] });
+      // Refresh the conversation list only. `exact` keeps this off the
+      // ['chats', id, 'messages'] children, which React Query would otherwise
+      // match by prefix and refetch.
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+
+      if (data?.chatId && data.lastMessage) {
+        // Write the message straight into the thread cache so an already-open
+        // thread updates without waiting on a refetch, then mark the thread
+        // stale without refetching it - the gap fill happens if and when the
+        // user actually opens that thread.
+        queryClient.setQueryData<MessageResponse[]>(
+          ['chats', data.chatId, 'messages'],
+          (old) => {
+            if (!old) return old;
+            if (old.some((m) => m.id === data.lastMessage!.id)) return old;
+            return [...old, data.lastMessage!];
+          },
+        );
+        queryClient.invalidateQueries({
+          queryKey: ['chats', data.chatId, 'messages'],
+          refetchType: 'none',
+        });
       }
 
       // If message is from someone else, fire real-time in-app notification
