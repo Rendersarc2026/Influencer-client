@@ -97,6 +97,15 @@ export const money = z
   .max(9_999_999_999, 'Amount exceeds the maximum supported value')
   .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, 'At most 2 decimal places');
 
+/** Money query parameter: coerced from string, finite, non-negative, at most 2 decimal places. */
+export const moneyQuery = z.coerce
+  .number()
+  .finite('Must be a finite number')
+  .nonnegative('Must not be negative')
+  .max(9_999_999_999, 'Amount exceeds the maximum supported value')
+  .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, 'At most 2 decimal places')
+  .optional();
+
 /** Non-negative integer counters (reach, impressions, engagements, followers). */
 export const count = z
   .number()
@@ -152,6 +161,38 @@ export const cursor = z.string().uuid().optional();
 export const page = z.coerce.number().int().min(1).optional();
 export const limit = z.coerce.number().int().min(1).max(100).optional();
 export const search = safeText(100, 0).optional();
+
+/**
+ * Multi-string query parameter: parses a single string, comma-separated string,
+ * or array of strings into a normalized array of clean strings.
+ */
+export function multiStringQuery(maxItem = 120, maxTotal = 2000) {
+  return z
+    .union([
+      z
+        .string()
+        .max(maxTotal)
+        .refine((v) => !CONTROL_CHARS.test(v), 'Must not contain control characters'),
+      z.array(
+        z
+          .string()
+          .max(maxItem)
+          .refine((v) => !CONTROL_CHARS.test(v), 'Must not contain control characters'),
+      ),
+    ])
+    .transform((val) => {
+      if (typeof val === 'string') {
+        return val
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      return val
+        .map((s) => s.trim())
+        .filter(Boolean);
+    })
+    .optional();
+}
 
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),

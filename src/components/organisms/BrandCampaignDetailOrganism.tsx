@@ -29,7 +29,7 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, CommentDialog, FilterBar } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
-import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision } from '@api';
+import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision, useCreateOrFindChat } from '@api';
 import { BrandMapperResponse, BrandDecisionRequest, BrandStatusCode } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl } from '@utils';
@@ -74,6 +74,18 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   const totalMappers = mappersData?.total ?? mappers.length;
 
   const brandDecisionMutation = useBrandDecision(campaignId);
+  const createChatMutation = useCreateOrFindChat();
+
+  const handleMessageAgency = async () => {
+    try {
+      const chat = await createChatMutation.mutateAsync({
+        campaignId,
+      });
+      navigate(`/brand/chats?chatId=${chat.id}`);
+    } catch {
+      navigate('/brand/chats');
+    }
+  };
 
   // Dialog state for Reject / Request Correction
   const [activeDialog, setActiveDialog] = useState<{
@@ -533,7 +545,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               variant="outlined"
               size="small"
               startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
-              onClick={() => navigate('/brand/chats')}
+              onClick={handleMessageAgency}
+              disabled={createChatMutation.isPending}
               sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
             >
               Message Agency

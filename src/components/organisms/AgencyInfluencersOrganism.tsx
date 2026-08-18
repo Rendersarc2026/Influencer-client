@@ -78,6 +78,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
+  const [priceRangeFilter, setPriceRangeFilter] = useState<string>('');
   const createInfluencerMutation = useCreateInfluencer();
 
   const {
@@ -94,6 +95,28 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   } = useViewFilters('agencyInfluencers');
   const debouncedSearch = useDebounce(search, 300);
 
+  const PRICE_RANGE_OPTIONS = useMemo(
+    () => [
+      { value: '', label: 'All Commercials' },
+      { value: '0-20000', label: 'Under ₹20,000' },
+      { value: '20000-35000', label: '₹20,000 - ₹35,000' },
+      { value: '35000-50000', label: '₹35,000 - ₹50,000' },
+      { value: '50000-100000', label: '₹50,000 - ₹1,00,000' },
+      { value: '100000+', label: 'Above ₹1,00,000' },
+    ],
+    [],
+  );
+
+  const { minPrice, maxPrice } = useMemo(() => {
+    if (!priceRangeFilter) return { minPrice: undefined, maxPrice: undefined };
+    if (priceRangeFilter === '0-20000') return { minPrice: undefined, maxPrice: 20000 };
+    if (priceRangeFilter === '20000-35000') return { minPrice: 20000, maxPrice: 35000 };
+    if (priceRangeFilter === '35000-50000') return { minPrice: 35000, maxPrice: 50000 };
+    if (priceRangeFilter === '50000-100000') return { minPrice: 50000, maxPrice: 100000 };
+    if (priceRangeFilter === '100000+') return { minPrice: 100000, maxPrice: undefined };
+    return { minPrice: undefined, maxPrice: undefined };
+  }, [priceRangeFilter]);
+
   // All active influencer categories defined in the database (~16 categories)
   const { data: dbCategories = [] } = useCategories(CategoryTypeCode.INFLUENCER);
 
@@ -101,6 +124,11 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     if (!categoryFilter || categoryFilter === 'ALL') return [];
     return categoryFilter.split(',').map((s) => s.trim()).filter(Boolean);
   }, [categoryFilter]);
+
+  const selectedLocations = useMemo(() => {
+    if (!locationFilter || locationFilter === 'ALL') return [];
+    return locationFilter.split(',').map((s) => s.trim()).filter(Boolean);
+  }, [locationFilter]);
 
   // The creators this agency represents
   const {
@@ -110,7 +138,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   } = useAgencyInfluencers({
     search: debouncedSearch.trim() || undefined,
     categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-    location: locationFilter || undefined,
+    locations: selectedLocations.length > 0 ? selectedLocations : undefined,
+    minPrice,
+    maxPrice,
     page: page + 1, // the API pages from 1, the table from 0
     limit: rowsPerPage,
   });
@@ -131,10 +161,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   const locationOptions = useMemo(() => {
     const values = [...new Set(allCreators.map((c) => c.location).filter(Boolean))].sort();
-    return [
-      { value: '', label: 'All Locations' },
-      ...values.map((v) => ({ value: v as string, label: v as string })),
-    ];
+    return values.map((v) => ({ value: v as string, label: v as string }));
   }, [allCreators]);
 
   const handleRemoveCategory = (catToRemove: string) => {
@@ -143,15 +170,25 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     setPage(0);
   };
 
+  const handleRemoveLocation = (locToRemove: string) => {
+    const next = selectedLocations.filter((l) => l !== locToRemove);
+    setLocationFilter(next.length > 0 ? next.join(',') : '');
+    setPage(0);
+  };
+
   const handleClearAllFilters = () => {
     setCategoryFilter('ALL');
     setSearch('');
     setLocationFilter('');
+    setPriceRangeFilter('');
     setPage(0);
   };
 
   const hasActiveFilters = Boolean(
-    selectedCategories.length > 0 || search.trim() || locationFilter
+    selectedCategories.length > 0 ||
+      selectedLocations.length > 0 ||
+      search.trim() ||
+      priceRangeFilter,
   );
 
   // Narrowing the results while on a later page would otherwise land on a page
@@ -308,10 +345,16 @@ export const AgencyInfluencersOrganism: React.FC = () => {
             setCategoryFilter(vals.length > 0 ? vals.join(',') : 'ALL');
           })}
           multiSelectLabel="Categories"
-          selectOptions={locationOptions}
-          selectedOption={locationFilter || ''}
-          onSelectChange={goToFirstPage(setLocationFilter)}
-          selectLabel="Location"
+          secondMultiSelectOptions={locationOptions}
+          selectedSecondMultiOptions={selectedLocations}
+          onSecondMultiSelectChange={goToFirstPage((vals) => {
+            setLocationFilter(vals.length > 0 ? vals.join(',') : '');
+          })}
+          secondMultiSelectLabel="Location"
+          priceRangeOptions={PRICE_RANGE_OPTIONS}
+          selectedPriceRange={priceRangeFilter}
+          onPriceRangeChange={goToFirstPage(setPriceRangeFilter)}
+          priceRangeLabel="Commercials"
           hasActiveFilters={hasActiveFilters}
           onClearFilters={handleClearAllFilters}
         />
@@ -350,23 +393,48 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                 }}
               />
             ))}
+            {selectedLocations.map((loc) => (
+              <Chip
+                key={loc}
+                label={loc}
+                size="small"
+                onDelete={() => handleRemoveLocation(loc)}
+                sx={{
+                  height: 24,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                  color: theme.palette.tokens.textPrimary,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              />
+            ))}
+            {priceRangeFilter && (
+              <Chip
+                label={
+                  PRICE_RANGE_OPTIONS.find((p) => p.value === priceRangeFilter)?.label ||
+                  priceRangeFilter
+                }
+                size="small"
+                onDelete={() => {
+                  setPriceRangeFilter('');
+                  setPage(0);
+                }}
+                sx={{
+                  height: 24,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: theme.palette.tokens.positiveBg,
+                  color: theme.palette.tokens.positiveText,
+                }}
+              />
+            )}
             {search.trim() && (
               <Chip
                 label={`Search: "${search.trim()}"`}
                 size="small"
                 onDelete={() => {
                   setSearch('');
-                  setPage(0);
-                }}
-                sx={{ height: 24, fontSize: '11px', fontWeight: 600 }}
-              />
-            )}
-            {locationFilter && (
-              <Chip
-                label={`Location: ${locationFilter}`}
-                size="small"
-                onDelete={() => {
-                  setLocationFilter('');
                   setPage(0);
                 }}
                 sx={{ height: 24, fontSize: '11px', fontWeight: 600 }}

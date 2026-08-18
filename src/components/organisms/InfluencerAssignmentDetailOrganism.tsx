@@ -13,7 +13,7 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
-import { useInfluencerAssignment, useSubmitInfluencerRate } from '@api';
+import { useInfluencerAssignment, useSubmitInfluencerRate, useCreateOrFindChat } from '@api';
 import { SubmitRateRequest, RateStatusCode } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 
@@ -27,8 +27,20 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
 
   const { data: assignment, isLoading } = useInfluencerAssignment(assignmentId);
   const submitRateMutation = useSubmitInfluencerRate();
+  const createChatMutation = useCreateOrFindChat();
 
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
+
+  const handleMessageAgency = async () => {
+    try {
+      const chat = await createChatMutation.mutateAsync({
+        campaignId: assignment?.campaignId,
+      });
+      navigate(`/influencer/chats?chatId=${chat.id}`);
+    } catch {
+      navigate('/influencer/chats');
+    }
+  };
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
     try {
@@ -105,7 +117,8 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               <Button
                 variant="outlined"
                 startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
-                onClick={() => navigate('/influencer/chats')}
+                onClick={handleMessageAgency}
+                disabled={createChatMutation.isPending}
               >
                 Message Agency
               </Button>

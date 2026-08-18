@@ -192,6 +192,18 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
+  const handleStartAgencyChat = async () => {
+    try {
+      const newChat = await createChatMutation.mutateAsync({});
+      setSelectedChatId(newChat.id);
+      setSearchParams({ chatId: newChat.id });
+      showSuccess('Conversation started.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.');
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!messageInput.trim() || !effectiveChatId || sendMessageMutation.isPending) return;
@@ -450,7 +462,7 @@ export const ChatOrganism: React.FC = () => {
                     </Box>
                   )}
                 </Box>
-                {roleCode === 'AGENCY' && (
+                {roleCode === 'AGENCY' ? (
                   <Button
                     variant="outlined"
                     size="small"
@@ -469,6 +481,24 @@ export const ChatOrganism: React.FC = () => {
                     }}
                   >
                     New
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+                    onClick={handleStartAgencyChat}
+                    disabled={createChatMutation.isPending}
+                    sx={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      height: 32,
+                      px: 1.5,
+                      borderRadius: `${theme.customRadii.pill}px`,
+                    }}
+                  >
+                    Message Agency
                   </Button>
                 )}
               </Box>
@@ -1221,7 +1251,17 @@ export const ChatOrganism: React.FC = () => {
                       >
                         New Conversation
                       </Button>
-                    ) : undefined
+                    ) : (
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<ChatBubbleOutlineRoundedIcon fontSize="small" />}
+                        onClick={handleStartAgencyChat}
+                        disabled={createChatMutation.isPending}
+                      >
+                        Message Agency
+                      </Button>
+                    )
                   }
                 />
               </Box>

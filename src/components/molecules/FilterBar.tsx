@@ -41,6 +41,14 @@ export interface FilterBarProps {
   selectedMultiOptions?: string[];
   onMultiSelectChange?: (values: string[]) => void;
   multiSelectLabel?: string;
+  secondMultiSelectOptions?: Array<FilterSelectOption>;
+  selectedSecondMultiOptions?: string[];
+  onSecondMultiSelectChange?: (values: string[]) => void;
+  secondMultiSelectLabel?: string;
+  priceRangeOptions?: Array<FilterSelectOption>;
+  selectedPriceRange?: string;
+  onPriceRangeChange?: (val: string) => void;
+  priceRangeLabel?: string;
   onClearFilters?: () => void;
   hasActiveFilters?: boolean;
   extraAction?: ReactNode;
@@ -63,6 +71,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedMultiOptions = [],
   onMultiSelectChange,
   multiSelectLabel,
+  secondMultiSelectOptions = [],
+  selectedSecondMultiOptions = [],
+  onSecondMultiSelectChange,
+  secondMultiSelectLabel,
+  priceRangeOptions = [],
+  selectedPriceRange,
+  onPriceRangeChange,
+  priceRangeLabel,
   onClearFilters,
   hasActiveFilters,
   extraAction,
@@ -84,7 +100,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       ? hasActiveFilters
       : Boolean(searchValue) ||
         Boolean(selectedOption) ||
+        Boolean(selectedPriceRange) ||
         (selectedMultiOptions && selectedMultiOptions.length > 0) ||
+        (selectedSecondMultiOptions && selectedSecondMultiOptions.length > 0) ||
         (activePillIds && activePillIds.length > 0 && !activePillIds.includes('ALL')) ||
         (activePillId && activePillId !== 'ALL'));
 
@@ -210,6 +228,74 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               })}
             </Select>
           </FormControl>
+        )}
+
+        {secondMultiSelectOptions.length > 0 && onSecondMultiSelectChange && (
+          <FormControl
+            size="small"
+            sx={{ minWidth: { xs: '100%', sm: 180 }, flexGrow: { xs: 1, sm: 0 } }}
+          >
+            <InputLabel id="filter-second-multi-select-label">
+              {secondMultiSelectLabel || 'Location'}
+            </InputLabel>
+            <Select
+              labelId="filter-second-multi-select-label"
+              multiple
+              value={selectedSecondMultiOptions || []}
+              onChange={(e) => {
+                const val = e.target.value;
+                const newValues = typeof val === 'string' ? val.split(',') : val;
+                onSecondMultiSelectChange(newValues);
+              }}
+              input={<OutlinedInput label={secondMultiSelectLabel || 'Location'} />}
+              renderValue={(selected) => {
+                if (!selected || selected.length === 0) {
+                  return 'All Locations';
+                }
+                if (selected.length === 1) {
+                  const match = secondMultiSelectOptions.find((o) => o.value === selected[0]);
+                  return match ? match.label : selected[0];
+                }
+                return `${selected.length} Locations Selected`;
+              }}
+              MenuProps={{
+                PaperProps: {
+                  style: {
+                    maxHeight: 320,
+                  },
+                },
+              }}
+            >
+              {secondMultiSelectOptions.map((opt) => {
+                const isChecked = selectedSecondMultiOptions
+                  ? selectedSecondMultiOptions.includes(opt.value)
+                  : false;
+                return (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    <Checkbox size="small" checked={isChecked} />
+                    <ListItemText primary={opt.label} />
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+        )}
+
+        {priceRangeOptions.length > 0 && onPriceRangeChange && (
+          <TextField
+            select
+            size="small"
+            value={selectedPriceRange || ''}
+            onChange={(e) => onPriceRangeChange(e.target.value)}
+            label={priceRangeLabel || 'Commercials'}
+            sx={{ minWidth: { xs: '100%', sm: 180 }, flexGrow: { xs: 1, sm: 0 } }}
+          >
+            {priceRangeOptions.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </TextField>
         )}
 
         {selectOptions.length > 0 && onSelectChange && (

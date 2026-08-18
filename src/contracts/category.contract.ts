@@ -30,12 +30,35 @@ export const UpdateCategorySchema = z.object({
 
 export type UpdateCategoryRequest = z.infer<typeof UpdateCategorySchema>;
 
-export const CategoryListQuerySchema = z.object({
-  type: CategoryTypeQuery.optional(),
-  search: safeText(100, 0).optional(),
-  isActive: boolQuery.optional(),
-  page: page,
-  limit: limit,
-});
+export const CategoryListQuerySchema = z
+  .object({
+    type: CategoryTypeQuery.optional(),
+    search: safeText(100, 0).optional(),
+    q: safeText(100, 0).optional(),
+    isActive: boolQuery.optional(),
+    status: z
+      .union([
+        z.enum(['ACTIVE', 'INACTIVE', 'ALL']),
+        z.enum(['active', 'inactive', 'all']).transform((v) => v.toUpperCase() as 'ACTIVE' | 'INACTIVE' | 'ALL'),
+      ])
+      .optional(),
+    page: page,
+    limit: limit,
+    pageSize: limit,
+  })
+  .transform((data) => ({
+    ...data,
+    search: data.search || data.q,
+    limit: data.limit || data.pageSize,
+    isActive:
+      data.status === 'ALL'
+        ? undefined
+        : data.status === 'ACTIVE'
+          ? true
+          : data.status === 'INACTIVE'
+            ? false
+            : data.isActive,
+  }));
 
-export type CategoryListQuery = z.infer<typeof CategoryListQuerySchema>;
+export type CategoryListQuery = z.input<typeof CategoryListQuerySchema>;
+
