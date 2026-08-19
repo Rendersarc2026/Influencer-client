@@ -30,7 +30,15 @@ import {
 import { safeImageUrl, exportTableToExcel, ExcelColumnConfig } from '@utils';
 
 export type ColumnType =
-  'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom';
+  | 'text'
+  | 'entity'
+  | 'money'
+  | 'delta'
+  | 'status'
+  | 'star'
+  | 'actions'
+  | 'custom'
+  | 'index';
 
 export interface DataTableColumn<T> {
   id: string;
@@ -107,6 +115,14 @@ export interface DataTableProps<T> {
    * Async handler to fetch all data without pagination for Excel export.
    */
   onExportAll?: () => Promise<T[]>;
+  /**
+   * When true (default), prepends a row number / serial number column (1, 2, 3, ...) to the table.
+   */
+  showRowNumbers?: boolean;
+  /**
+   * Custom header label for the serial number column. Defaults to '#'.
+   */
+  rowNumberHeader?: string;
 }
 
 /**
@@ -160,6 +176,8 @@ export function DataTable<T extends Record<string, unknown>>({
   exportSheetName,
   onExport,
   onExportAll,
+  showRowNumbers = true,
+  rowNumberHeader = '#',
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [isExporting, setIsExporting] = useState(false);
@@ -170,19 +188,58 @@ export function DataTable<T extends Record<string, unknown>>({
   const [internalPage, setInternalPage] = useState(0);
   const [internalRowsPerPage, setInternalRowsPerPage] = useState(initialRowsPerPage);
 
-  const { primaryColumn, starColumn, actionsColumn, detailColumns } = useMemo(() => {
+  const hasExplicitRowNumber = useMemo(() => {
+    return columns.some(
+      (c) =>
+        c.type === 'index' ||
+        c.id === 'srNo' ||
+        c.id === 'index' ||
+        c.id === 'sNo' ||
+        c.id === '#' ||
+        c.id === 'rowNumber',
+    );
+  }, [columns]);
+
+  const effectiveColumns = useMemo<Array<DataTableColumn<T>>>(() => {
+    if (!showRowNumbers || hasExplicitRowNumber) {
+      return columns;
+    }
+    const indexCol: DataTableColumn<T> = {
+      id: 'srNo',
+      header: rowNumberHeader,
+      type: 'index',
+      align: 'center',
+      width: 56,
+      minWidth: 48,
+    };
+    return [indexCol, ...columns];
+  }, [columns, showRowNumbers, hasExplicitRowNumber, rowNumberHeader]);
+
+  const { primaryColumn, starColumn, actionsColumn, indexColumn, detailColumns } = useMemo(() => {
+    const idx = effectiveColumns.find(
+      (c) =>
+        c.type === 'index' ||
+        c.id === 'srNo' ||
+        c.id === 'index' ||
+        c.id === 'sNo' ||
+        c.id === '#' ||
+        c.id === 'rowNumber',
+    );
     const primary =
-      columns.find((c) => c.type === 'entity') ??
-      columns.find((c) => c.type !== 'actions' && c.type !== 'star');
-    const star = columns.find((c) => c.type === 'star');
-    const actions = columns.find((c) => c.type === 'actions');
+      effectiveColumns.find((c) => c.type === 'entity') ??
+      effectiveColumns.find((c) => c.type !== 'actions' && c.type !== 'star' && c !== idx);
+    const star = effectiveColumns.find((c) => c.type === 'star');
+    const actions = effectiveColumns.find((c) => c.type === 'actions');
     return {
+      indexColumn: idx,
       primaryColumn: primary,
       starColumn: star,
       actionsColumn: actions,
-      detailColumns: columns.filter((c) => c !== primary && c !== star && c !== actions),
+      detailColumns: effectiveColumns.filter(
+        (c) => c !== primary && c !== star && c !== actions && c !== idx,
+      ),
     };
-  }, [columns]);
+  }, [effectiveColumns]);
 
 
   const isControlled = totalRows !== undefined;
@@ -253,6 +310,31 @@ export function DataTable<T extends Record<string, unknown>>({
       return column.type === 'actions'
         ? wrapActions(column, column.render(row, index))
         : column.render(row, index);
+    }
+
+    if (
+      column.type === 'index' ||
+      ((column.id === 'srNo' ||
+        column.id === 'index' ||
+        column.id === 'sNo' ||
+        column.id === '#' ||
+        column.id === 'rowNumber') &&
+        !column.accessor)
+    ) {
+      return (
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 700,
+            color: theme.palette.tokens.textSecondary,
+            display: 'inline-block',
+            textAlign: 'center',
+            width: '100%',
+          }}
+        >
+          {index + 1}
+        </Typography>
+      );
     }
 
     const value = getCellValue(row, column);
@@ -410,7 +492,7 @@ export function DataTable<T extends Record<string, unknown>>({
     try {
       setIsExporting(true);
       if (onExport) {
-        await onExport(rows, columns);
+        await onExport(rows, effectiveColumns);
       } else {
         const rowsToExport = onExportAll ? await onExportAll() : rows;
         if (!rowsToExport || rowsToExport.length === 0) return;
@@ -420,7 +502,7 @@ export function DataTable<T extends Record<string, unknown>>({
         await exportTableToExcel({
           filename: defaultFilename,
           sheetName: exportSheetName || title || 'Data',
-          columns: columns as Array<ExcelColumnConfig<T>>,
+          columns: effectiveColumns as Array<ExcelColumnConfig<T>>,
           rows: rowsToExport,
         });
       }
@@ -538,7 +620,7 @@ export function DataTable<T extends Record<string, unknown>>({
             }}
           >
             {/* Card heading — entity cell plus the star, if the table has one */}
-            {(primaryColumn || starColumn) && (
+            {(primaryColumn || starColumn || indexColumn) && (
               <Box
                 sx={{
                   display: 'flex',
@@ -547,11 +629,39 @@ export function DataTable<T extends Record<string, unknown>>({
                   gap: 1,
                 }}
               >
-                {primaryColumn && (
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    {renderCellContent(row, primaryColumn, globalIndex)}
-                  </Box>
-                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
+                  {indexColumn && (
+                    <Box
+                      sx={{
+                        flexShrink: 0,
+                        minWidth: 24,
+                        height: 24,
+                        px: 0.75,
+                        borderRadius: `${theme.customRadii.inner}px`,
+                        backgroundColor: theme.palette.tokens.fieldBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '11px',
+                          color: theme.palette.tokens.textSecondary,
+                        }}
+                      >
+                        #{globalIndex + 1}
+                      </Typography>
+                    </Box>
+                  )}
+                  {primaryColumn && (
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      {renderCellContent(row, primaryColumn, globalIndex)}
+                    </Box>
+                  )}
+                </Box>
                 {starColumn && (
                   <Box sx={{ flexShrink: 0, mt: '-4px', mr: '-4px' }}>
                     {renderCellContent(row, starColumn, globalIndex)}
@@ -740,7 +850,7 @@ export function DataTable<T extends Record<string, unknown>>({
               <Table stickyHeader sx={{ minWidth: 'max-content', width: '100%' }}>
                 <TableHead>
                   <TableRow>
-                    {columns.map((col) => (
+                    {effectiveColumns.map((col) => (
                       <TableCell
                         key={col.id}
                         align={col.align || 'left'}
@@ -772,7 +882,7 @@ export function DataTable<T extends Record<string, unknown>>({
                               '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
                             }}
                           >
-                            {columns.map((col) => (
+                            {effectiveColumns.map((col) => (
                               <TableCell
                                 key={col.id}
                                 align={col.align || 'left'}
@@ -915,7 +1025,7 @@ export function DataTable<T extends Record<string, unknown>>({
             <Table sx={{ minWidth: 'max-content', width: '100%' }}>
               <TableHead>
                 <TableRow>
-                  {columns.map((col) => (
+                  {effectiveColumns.map((col) => (
                     <TableCell
                       key={col.id}
                       align={col.align || 'left'}
@@ -945,7 +1055,7 @@ export function DataTable<T extends Record<string, unknown>>({
                             '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
                           }}
                         >
-                          {columns.map((col) => (
+                          {effectiveColumns.map((col) => (
                             <TableCell
                               key={col.id}
                               align={col.align || 'left'}

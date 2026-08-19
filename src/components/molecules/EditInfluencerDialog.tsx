@@ -14,7 +14,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useCategories, useLocations } from '@api';
-import { CreateInfluencerRequest, CategoryTypeCode } from '@contracts';
+import { InfluencerResponse, UpdateInfluencerRequest, CategoryTypeCode } from '@contracts';
 import {
   capitalizeWords,
   parseShorthandNumber,
@@ -25,15 +25,17 @@ import {
   InfluencerTier,
 } from '@utils';
 
-export interface CreateInfluencerDialogProps {
+export interface EditInfluencerDialogProps {
   open: boolean;
+  influencer: InfluencerResponse | null;
   loading?: boolean;
-  onSubmit: (data: CreateInfluencerRequest) => Promise<void> | void;
+  onSubmit: (data: UpdateInfluencerRequest) => Promise<void> | void;
   onClose: () => void;
 }
 
-export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
+export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
   open,
+  influencer,
   loading = false,
   onSubmit,
   onClose,
@@ -46,7 +48,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   const locationOptions = (locationsData || []).map((l) => l.name);
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [category, setCategory] = useState('');
   const [selectedTier, setSelectedTier] = useState<InfluencerTier | null>(null);
   const [location, setLocation] = useState('');
@@ -59,7 +60,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   const [avgCommercialMax, setAvgCommercialMax] = useState('');
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
-  const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [followersError, setFollowersError] = useState('');
   const [instagramError, setInstagramError] = useState('');
@@ -94,16 +94,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
         return `Please enter a valid ${label}`;
       }
     } catch {
-      return `Please enter a valid ${label} (e.g. https://${label.toLowerCase().includes('instagram') ? 'instagram.com/creator' : 'youtube.com/@channel'})`;
-    }
-    return '';
-  };
-
-  const validateEmail = (val: string): string => {
-    const trimmed = val.trim();
-    if (!trimmed) return '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      return 'Must be a valid email address (e.g. riya@gmail.com)';
+      return `Please enter a valid ${label} (e.g. https://${label.toLowerCase().includes('instagram') ? 'instagram.com/influencer' : 'youtube.com/@channel'})`;
     }
     return '';
   };
@@ -119,28 +110,27 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   };
 
   useEffect(() => {
-    if (open) {
-      setName('');
-      setEmail('');
-      setCategory('');
-      setSelectedTier(null);
-      setLocation('');
-      setRegions([]);
-      setFollowers('');
-      setContactPhone('');
-      setInstagram('');
-      setYoutube('');
-      setAvgCommercialMin('');
-      setAvgCommercialMax('');
+    if (open && influencer) {
+      setName(influencer.name || '');
+      setCategory(influencer.category || '');
+      setLocation(influencer.location || '');
+      setRegions(influencer.regions || influencer.influencingRegions || []);
+      const fVal = influencer.followers ? formatShorthandNumber(influencer.followers) : '';
+      setFollowers(fVal);
+      setSelectedTier(influencer.followers ? getInfluencerTier(influencer.followers) : null);
+      setContactPhone(influencer.contactPhone || '');
+      setInstagram(influencer.instagram || '');
+      setYoutube(influencer.youtube || '');
+      setAvgCommercialMin(influencer.avgCommercialMin ? String(influencer.avgCommercialMin) : '');
+      setAvgCommercialMax(influencer.avgCommercialMax ? String(influencer.avgCommercialMax) : '');
       setError('');
       setNameError('');
-      setEmailError('');
       setPhoneError('');
       setFollowersError('');
       setInstagramError('');
       setYoutubeError('');
     }
-  }, [open]);
+  }, [open, influencer]);
 
   const handleSelectTier = (tierKey: InfluencerTier) => {
     setSelectedTier(tierKey);
@@ -180,14 +170,12 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     e.preventDefault();
     setError('');
     setNameError('');
-    setEmailError('');
     setPhoneError('');
     setFollowersError('');
+    setInstagramError('');
+    setYoutubeError('');
 
     const trimmedName = name.trim();
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPhone = contactPhone.trim();
-
     let hasFieldErr = false;
 
     if (!trimmedName) {
@@ -195,21 +183,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       hasFieldErr = true;
     }
 
-    if (!trimmedEmail) {
-      setEmailError('Email is required');
-      hasFieldErr = true;
-    } else {
-      const eErr = validateEmail(trimmedEmail);
-      if (eErr) {
-        setEmailError(eErr);
-        hasFieldErr = true;
-      }
-    }
-
-    if (!trimmedPhone) {
-      setPhoneError('Phone number is required');
-      hasFieldErr = true;
-    } else {
+    const trimmedPhone = contactPhone.trim();
+    if (trimmedPhone) {
       const pErr = validatePhone(trimmedPhone);
       if (pErr) {
         setPhoneError(pErr);
@@ -225,24 +200,32 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        setFollowersError('Must be a valid positive value (e.g. 10k, 100k, 1m)');
+        setFollowersError('Must be a valid positive number (e.g. 10k, 100k, 1m)');
         return;
       }
       parsedFollowers = parsed;
     }
 
-    const min = avgCommercialMin ? Number(avgCommercialMin) : undefined;
-    const max = avgCommercialMax ? Number(avgCommercialMax) : undefined;
-    if (min !== undefined && min < 0) {
-      setError('Min commercial rate cannot be negative');
-      return;
+    let min: number | undefined = undefined;
+    let max: number | undefined = undefined;
+    if (avgCommercialMin.trim()) {
+      const parsedMin = Number(avgCommercialMin.replace(/,/g, ''));
+      if (isNaN(parsedMin) || parsedMin < 0) {
+        setError('Minimum rate must be a valid positive number.');
+        return;
+      }
+      min = parsedMin;
     }
-    if (max !== undefined && max < 0) {
-      setError('Max commercial rate cannot be negative');
-      return;
+    if (avgCommercialMax.trim()) {
+      const parsedMax = Number(avgCommercialMax.replace(/,/g, ''));
+      if (isNaN(parsedMax) || parsedMax < 0) {
+        setError('Maximum rate must be a valid positive number.');
+        return;
+      }
+      max = parsedMax;
     }
     if (min !== undefined && max !== undefined && max < min) {
-      setError('Max commercial must be greater than or equal to min commercial');
+      setError('Maximum indicative rate cannot be less than minimum indicative rate.');
       return;
     }
 
@@ -264,15 +247,14 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     const finalInstagram = instagram.trim() ? normalizeSocialUrl(instagram, 'instagram.com') : undefined;
     const finalYoutube = youtube.trim() ? normalizeSocialUrl(youtube, 'youtube.com') : undefined;
 
-    const payload: CreateInfluencerRequest = {
+    const payload: UpdateInfluencerRequest = {
       name: trimmedName,
-      email: trimmedEmail,
       category: category.trim() || undefined,
       location: location.trim() || undefined,
-      regions: regions.length > 0 ? regions : undefined,
-      influencingRegions: regions.length > 0 ? regions : undefined,
+      regions: regions.length > 0 ? regions : [],
+      influencingRegions: regions.length > 0 ? regions : [],
       followers: parsedFollowers,
-      contactPhone: trimmedPhone,
+      contactPhone: trimmedPhone || undefined,
       instagram: finalInstagram,
       youtube: finalYoutube,
       avgCommercialMin: min,
@@ -284,10 +266,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const msg =
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.';
-      if (msg.toLowerCase().includes('email')) {
-        setEmailError(msg);
-      }
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to update influencer.';
       setError(msg);
     }
   };
@@ -295,6 +274,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
   return (
     <Dialog
       open={open}
+      onClose={loading ? undefined : onClose}
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
@@ -314,8 +294,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 0, pt: 1, px: 2 }}>
           <SectionHeading
-            title="Add Influencer"
-            subtitle="Added to the influencers you represent; no login is needed until they first sign in"
+            title="Edit Influencer Details"
+            subtitle="Update profile, category niche, target regions, socials and indicative commercials"
             mb={0}
           />
         </DialogTitle>
@@ -329,11 +309,26 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            {error && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: theme.palette.error.main + '14',
+                  border: `1px solid ${theme.palette.error.main}30`,
+                }}
+              >
+                <Typography variant="body2" sx={{ color: theme.palette.error.main, fontWeight: 600 }}>
+                  {error}
+                </Typography>
+              </Box>
+            )}
+
             <TextField
               label="Influencer Name *"
               value={name}
               onChange={(e) => {
-                const val = capitalizeWords(e.target.value);
+                const val = e.target.value;
                 setName(val);
                 if (nameError) {
                   if (!val.trim()) setNameError('Influencer name is required');
@@ -349,66 +344,30 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               }}
               error={Boolean(nameError)}
               helperText={nameError || undefined}
-              placeholder="e.g. Riya Malhotra"
+              placeholder="e.g. Varsha, Neha Nazneen"
+              fullWidth
+              disabled={loading}
+              autoFocus
+            />
+
+            <TextField
+              label="Contact Phone"
+              value={contactPhone}
+              onChange={(e) => {
+                setContactPhone(e.target.value);
+                if (phoneError) setPhoneError(validatePhone(e.target.value));
+              }}
+              onBlur={() => {
+                if (contactPhone.trim()) setPhoneError(validatePhone(contactPhone));
+              }}
+              placeholder="+91 98765 43210"
+              error={Boolean(phoneError)}
+              helperText={phoneError || 'Influencer direct contact number'}
               fullWidth
               disabled={loading}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-              <TextField
-                label="Login / Contact Email *"
-                value={email}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setEmail(val);
-                  if (emailError) {
-                    if (!val.trim()) setEmailError('Email is required');
-                    else setEmailError(validateEmail(val));
-                  }
-                }}
-                onBlur={() => {
-                  if (!email.trim()) {
-                    setEmailError('Email is required');
-                  } else {
-                    setEmailError(validateEmail(email));
-                  }
-                }}
-                error={Boolean(emailError)}
-                helperText={
-                  emailError || 'Required: Influencer will use this email address to log in'
-                }
-                placeholder="e.g. riya@gmail.com"
-                fullWidth
-                disabled={loading}
-              />
-              <TextField
-                label="Contact Phone *"
-                value={contactPhone}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setContactPhone(val);
-                  if (phoneError) {
-                    if (!val.trim()) setPhoneError('Phone number is required');
-                    else setPhoneError(validatePhone(val));
-                  }
-                }}
-                onBlur={() => {
-                  if (!contactPhone.trim()) {
-                    setPhoneError('Phone number is required');
-                  } else {
-                    setPhoneError(validatePhone(contactPhone));
-                  }
-                }}
-                error={Boolean(phoneError)}
-                helperText={phoneError || 'Required: the influencer’s direct line'}
-                placeholder="e.g. +91 9876543210"
-                fullWidth
-                disabled={loading}
-              />
-            </Box>
-
             <Autocomplete
-              fullWidth
               freeSolo
               options={influencerCategoryOptions}
               value={category}
@@ -426,36 +385,21 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               )}
             />
 
-            {/* Influencer Tier / Follower Category (Nano, Micro, Macro, Mega) */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontWeight: 600,
-                    color: theme.palette.tokens.textSecondary,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  Influencer Tier & Category
-                </Typography>
-                {selectedTier && (
-                  <Chip
-                    size="small"
-                    label={`${getTierInfo(selectedTier)?.label} (${getTierInfo(selectedTier)?.rangeLabel})`}
-                    sx={{
-                      height: 22,
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      backgroundColor: getTierInfo(selectedTier)?.color.bg,
-                      color: getTierInfo(selectedTier)?.color.text,
-                      border: `1px solid ${getTierInfo(selectedTier)?.color.border}`,
-                    }}
-                  />
-                )}
-              </Box>
-
+            {/* Tier Selector Chips */}
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.tokens.textSecondary,
+                  display: 'block',
+                  mb: 1,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Influencer Tier & Category
+              </Typography>
               <Box
                 sx={{
                   display: 'grid',
@@ -515,21 +459,13 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
             </Box>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-              <Autocomplete
-                freeSolo
-                options={locationOptions}
+              <TextField
+                label="Location"
                 value={location}
-                onInputChange={(_, newInputValue) => setLocation(capitalizeWords(newInputValue))}
-                onChange={(_, newValue) => setLocation(newValue ? capitalizeWords(newValue) : '')}
+                onChange={(e) => setLocation(capitalizeWords(e.target.value))}
+                placeholder="e.g. Calicut, Kochi"
+                fullWidth
                 disabled={loading}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Location"
-                    placeholder="Select or enter location (e.g. Mumbai)"
-                    fullWidth
-                  />
-                )}
               />
               <TextField
                 label="Followers"
@@ -636,7 +572,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 label="Indicative Rate — Min (₹)"
                 value={avgCommercialMin}
                 onChange={(e) => setAvgCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 5000"
+                placeholder="e.g. 50000"
+                helperText="Baseline quote minimum"
                 fullWidth
                 disabled={loading}
               />
@@ -644,17 +581,12 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 label="Indicative Rate — Max (₹)"
                 value={avgCommercialMax}
                 onChange={(e) => setAvgCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 15000"
+                placeholder="e.g. 150000"
+                helperText="Baseline quote ceiling"
                 fullWidth
                 disabled={loading}
               />
             </Box>
-
-            {error && (
-              <Typography variant="body2" sx={{ color: theme.palette.tokens.negative }}>
-                {error}
-              </Typography>
-            )}
           </Box>
         </DialogContent>
 
@@ -665,10 +597,10 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || !name.trim() || !email.trim() || !contactPhone.trim()}
+            disabled={loading || !name.trim()}
             sx={{ minWidth: 120 }}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Add Influencer'}
+            {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>
       </form>

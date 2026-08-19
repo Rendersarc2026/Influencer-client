@@ -15,6 +15,7 @@ export * from './CreateBrandDialog';
 export * from './CreateCampaignDialog';
 export * from './EditCampaignDialog';
 export * from './CreateInfluencerDialog';
+export * from './EditInfluencerDialog';
 export * from './SubmitRateDialog';
 export * from './OverviewDrawer';
 export * from './StartChatDialog';

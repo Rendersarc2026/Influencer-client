@@ -3,7 +3,7 @@ import { StatusCategory, getStatusLabel } from './status-label';
 export interface ExcelColumnConfig<T = Record<string, unknown>> {
   id: string;
   header: string;
-  type?: 'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom';
+  type?: 'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom' | 'index';
   accessor?: keyof T | ((row: T) => unknown);
   subAccessor?: keyof T | ((row: T) => unknown);
   statusCategory?: StatusCategory;
@@ -35,7 +35,15 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
   }
 
   // Serial number fallback
-  if ((col.id === 'srNo' || col.id === 'index' || col.id === 'sNo') && (value === undefined || value === null)) {
+  if (
+    (col.id === 'srNo' ||
+      col.id === 'index' ||
+      col.id === 'sNo' ||
+      col.id === '#' ||
+      col.id === 'rowNumber' ||
+      col.type === 'index') &&
+    (value === undefined || value === null)
+  ) {
     return rowIndex !== undefined ? rowIndex + 1 : 1;
   }
 

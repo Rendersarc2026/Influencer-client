@@ -21,7 +21,7 @@ import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { FilterBar, CreateInfluencerDialog, ConfirmDialog, OverviewDrawer } from '@molecules';
-import { SectionHeading, EmptyState } from '@atoms';
+import { SectionHeading, EmptyState, LoadingBlock } from '@atoms';
 import {
   useAgencyCampaign,
   useCampaignInfluencers,
@@ -30,6 +30,7 @@ import {
   useAgencyInfluencers,
   useCreateInfluencer,
   useCategories,
+  useLocations,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeImageUrl, getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
@@ -137,6 +138,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   // All active influencer categories defined in the database (~16 categories)
   const { data: dbCategories = [] } = useCategories(CategoryTypeCode.INFLUENCER);
 
+  // All active locations defined in the database
+  const { data: dbLocations = [] } = useLocations();
+
   const selectedCategories = useMemo(() => {
     if (!categoryFilter || categoryFilter === 'ALL') return [];
     return categoryFilter.split(',').map((s) => s.trim()).filter(Boolean);
@@ -171,9 +175,11 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   }, [dbCategories, allCreators]);
 
   const locationOptions = useMemo(() => {
-    const values = [...new Set(allCreators.map((c) => c.location).filter(Boolean))].sort();
-    return values.map((v) => ({ value: v as string, label: v as string }));
-  }, [allCreators]);
+    const dbLocationNames = dbLocations.map((l) => l.name).filter(Boolean);
+    const creatorLocationNames = allCreators.map((c) => c.location).filter(Boolean) as string[];
+    const combined = [...new Set([...dbLocationNames, ...creatorLocationNames])].sort();
+    return combined.map((v) => ({ value: v, label: v }));
+  }, [dbLocations, allCreators]);
 
   const handleRemoveCategory = (catToRemove: string) => {
     const next = selectedCategories.filter((c) => c !== catToRemove);
@@ -506,160 +512,169 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
           />
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {creators.map((influencer) => {
-            const creator = toAvailableCreator(influencer);
-            const assigned = isAssigned(creator.id);
-            const isPending = pendingIds.has(creator.id);
+        {influencersLoading ? (
+          <LoadingBlock variant="roster" rows={Math.min(rowsPerPage, 6)} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {creators.map((influencer) => {
+              const creator = toAvailableCreator(influencer);
+              const assigned = isAssigned(creator.id);
+              const isPending = pendingIds.has(creator.id);
 
-            return (
-              <Card
-                key={creator.id}
-                sx={{
-                  padding: { xs: '14px', sm: '20px' },
-                  borderRadius: `${theme.customRadii.card}px`,
-                  backgroundColor: theme.palette.tokens.surface,
-                  border: `1px solid ${theme.palette.tokens.divider}`,
-                  boxShadow: 'none',
-                  display: 'flex',
-                  alignItems: { xs: 'stretch', sm: 'center' },
-                  justifyContent: 'space-between',
-                  gap: { xs: 2, sm: 3 },
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  flexWrap: 'wrap',
-                }}
-              >
-                {/* Creator Bio */}
-                <Box
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setDetailCreator(influencer)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setDetailCreator(influencer);
-                    }
-                  }}
-                  aria-label={`View details for ${creator.name}`}
+              return (
+                <Card
+                  key={creator.id}
                   sx={{
+                    padding: { xs: '14px', sm: '20px' },
+                    borderRadius: `${theme.customRadii.card}px`,
+                    backgroundColor: theme.palette.tokens.surface,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    boxShadow: 'none',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    minWidth: { xs: '100%', sm: 240 },
-                    cursor: 'pointer',
-                    borderRadius: `${theme.customRadii.inner}px`,
-                    padding: '4px 8px',
-                    margin: '-4px -8px',
-                    '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    justifyContent: 'space-between',
+                    gap: { xs: 2, sm: 3 },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <Avatar
-                    src={safeImageUrl(creator.avatarUrl)}
+                  {/* Creator Bio */}
+                  <Box
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailCreator(influencer)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setDetailCreator(influencer);
+                      }
+                    }}
+                    aria-label={`View details for ${creator.name}`}
                     sx={{
-                      width: 48,
-                      height: 48,
-                      bgcolor: theme.palette.tokens.rail,
-                      color: theme.palette.tints.butter,
-                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      minWidth: { xs: '100%', sm: 240 },
+                      cursor: 'pointer',
+                      borderRadius: `${theme.customRadii.inner}px`,
+                      padding: '4px 8px',
+                      margin: '-4px -8px',
+                      '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
                     }}
                   >
-                    {creator.name[0]}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                      {creator.name}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                    <Avatar
+                      src={safeImageUrl(creator.avatarUrl)}
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        bgcolor: theme.palette.tokens.rail,
+                        color: theme.palette.tints.butter,
+                        fontWeight: 700,
+                      }}
                     >
-                      {creator.handle} · {creator.followers} followers {creator.tier ? `(${creator.tier})` : ''}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ color: theme.palette.tokens.accent, fontWeight: 600 }}
-                    >
-                      {creator.category}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Deliverables Input */}
-                <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 } }}>
-                  <TextField
-                    size="small"
-                    label="Requested Deliverables"
-                    placeholder="e.g. 1x Reel + 2x Stories"
-                    value={deliverablesMap[creator.id] ?? '1x Instagram Reel + 2x Stories'}
-                    onChange={(e) =>
-                      setDeliverablesMap({ ...deliverablesMap, [creator.id]: e.target.value })
-                    }
-                    disabled={assigned || isPending}
-                    fullWidth
-                  />
-                </Box>
-
-                {/* Add Action */}
-                <Box
-                  sx={{
-                    minWidth: { xs: '100%', sm: 160 },
-                    display: 'flex',
-                    justifyContent: { xs: 'stretch', sm: 'flex-end' },
-                    gap: 1,
-                  }}
-                >
-                  {assigned ? (
-                    <>
-                      <Button
-                        variant="outlined"
-                        disabled
-                        startIcon={<CheckRoundedIcon fontSize="small" />}
-                        sx={{
-                          color: theme.palette.tokens.positive,
-                          borderColor: theme.palette.tokens.divider,
-                        }}
+                      {creator.name[0]}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                        {creator.name}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
                       >
-                        Assigned
+                        {creator.handle} · {creator.followers} followers {creator.tier ? `(${creator.tier})` : ''}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.accent, fontWeight: 600 }}
+                      >
+                        {creator.category}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* Deliverables Input */}
+                  <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 220 } }}>
+                    <TextField
+                      size="small"
+                      label="Requested Deliverables"
+                      placeholder="e.g. 1x Reel + 2x Stories"
+                      value={deliverablesMap[creator.id] ?? '1x Instagram Reel + 2x Stories'}
+                      onChange={(e) =>
+                        setDeliverablesMap({ ...deliverablesMap, [creator.id]: e.target.value })
+                      }
+                      disabled={assigned || isPending}
+                      fullWidth
+                    />
+                  </Box>
+
+                  {/* Add Action */}
+                  <Box
+                    sx={{
+                      minWidth: { xs: '100%', sm: 160 },
+                      display: 'flex',
+                      justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                      gap: 1,
+                    }}
+                  >
+                    {assigned ? (
+                      <>
+                        <Button
+                          variant="outlined"
+                          disabled
+                          startIcon={<CheckRoundedIcon fontSize="small" />}
+                          sx={{
+                            color: theme.palette.tokens.positive,
+                            borderColor: theme.palette.tokens.divider,
+                          }}
+                        >
+                          Assigned
+                        </Button>
+                        <Tooltip title="Remove from campaign">
+                          <span>
+                            <IconButton
+                              onClick={() => setRemoveDialogCreator(creator)}
+                              disabled={isPending}
+                              aria-label={`Remove ${creator.name} from campaign`}
+                              sx={{
+                                border: `1px solid ${theme.palette.tokens.divider}`,
+                                '&:hover': { color: theme.palette.tokens.negative },
+                              }}
+                            >
+                              {isPending ? (
+                                <CircularProgress size={18} color="inherit" />
+                              ) : (
+                                <PersonRemoveRoundedIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        startIcon={<PersonAddRoundedIcon fontSize="small" />}
+                        onClick={() => handleAddCreator(creator.id)}
+                        disabled={
+                          isPending ||
+                          (campaign !== undefined &&
+                            campaign !== null &&
+                            campaign.status !== CampaignStatusCode.DRAFT)
+                        }
+                      >
+                        {isPending ? (
+                          <CircularProgress size={20} color="inherit" />
+                        ) : (
+                          'Add to Campaign'
+                        )}
                       </Button>
-                      <Tooltip title="Remove from campaign">
-                        <span>
-                          <IconButton
-                            onClick={() => setRemoveDialogCreator(creator)}
-                            disabled={isPending}
-                            aria-label={`Remove ${creator.name} from campaign`}
-                            sx={{
-                              border: `1px solid ${theme.palette.tokens.divider}`,
-                              '&:hover': { color: theme.palette.tokens.negative },
-                            }}
-                          >
-                            {isPending ? (
-                              <CircularProgress size={18} color="inherit" />
-                            ) : (
-                              <PersonRemoveRoundedIcon fontSize="small" />
-                            )}
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </>
-                  ) : (
-                    <Button
-                      variant="contained"
-                      startIcon={<PersonAddRoundedIcon fontSize="small" />}
-                      onClick={() => handleAddCreator(creator.id)}
-                      disabled={isPending || (campaign !== undefined && campaign !== null && campaign.status !== CampaignStatusCode.DRAFT)}
-                    >
-                      {isPending ? (
-                        <CircularProgress size={20} color="inherit" />
-                      ) : (
-                        'Add to Campaign'
-                      )}
-                    </Button>
-                  )}
-                </Box>
-              </Card>
-            );
-          })}
-        </Box>
+                    )}
+                  </Box>
+                </Card>
+              );
+            })}
+          </Box>
+        )}
 
         {totalCreators > 0 && (
           <TablePagination
@@ -727,6 +742,21 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                         : '—',
                     },
                     { label: 'Location', value: detailCreator.location || 'Global' },
+                    {
+                      label: 'Influencing Regions',
+                      value:
+                        (detailCreator.regions && detailCreator.regions.length > 0) ||
+                        (detailCreator.influencingRegions && detailCreator.influencingRegions.length > 0) ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {(detailCreator.regions || detailCreator.influencingRegions || []).map((r) => (
+                              <Chip key={r} label={r} size="small" />
+                            ))}
+                          </Box>
+                        ) : (
+                          '—'
+                        ),
+                      fullWidth: true,
+                    },
                     { label: 'Follower Reach', value: formatFollowersDisplay(detailCreator.followers) },
                   ],
                 },

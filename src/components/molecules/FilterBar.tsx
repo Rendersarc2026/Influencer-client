@@ -355,8 +355,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: 1.5,
-            flexGrow: { xs: 1, sm: 'inherit' },
-            width: { xs: '100%', sm: 'auto' },
+            flexGrow: { xs: 1, sm: pills.length > 0 ? 0 : 1 },
+            width: pills.length > 0 ? { xs: '100%', sm: 'auto' } : '100%',
+            justifyContent: pills.length > 0 ? 'flex-end' : 'space-between',
             flexWrap: 'nowrap',
           }}
         >
@@ -375,7 +376,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   ),
                 },
               }}
-              sx={{ minWidth: { xs: 0, sm: 220 }, flexGrow: 1 }}
+              sx={{
+                minWidth: { xs: 0, sm: 220 },
+                width: pills.length === 0 ? { xs: '100%', sm: 260, md: 300 } : { xs: '100%', sm: 'auto' },
+                flexGrow: { xs: 1, sm: pills.length === 0 ? 0 : 1 },
+              }}
             />
           )}
 
@@ -442,6 +447,44 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </Button>
           )}
 
+          {/* Mobile Export Button when no dropdown filters exist */}
+          {!hasDropdownFilters && onExport && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onExport}
+              disabled={exportDisabled || isExporting}
+              startIcon={
+                isExporting ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <FileDownloadRoundedIcon sx={{ fontSize: '18px !important' }} />
+                )
+              }
+              sx={{
+                display: { xs: 'inline-flex', sm: 'none' },
+                height: 40,
+                px: 1.5,
+                fontSize: '13px',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: `${theme.customRadii.inner}px`,
+                color: theme.palette.tokens.textPrimary,
+                borderColor: theme.palette.tokens.divider,
+                backgroundColor: theme.palette.tokens.surface,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                '&:hover': {
+                  borderColor: theme.palette.tokens.accent,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                  color: theme.palette.tokens.accent,
+                },
+              }}
+            >
+              Export
+            </Button>
+          )}
+
           {/* Desktop inline dropdowns, clear filters, and Export Excel */}
           <Box
             sx={{
@@ -449,6 +492,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               alignItems: 'center',
               gap: 1.5,
               flexWrap: 'nowrap',
+              ml: pills.length === 0 ? 'auto' : 0,
             }}
           >
             {renderMultiSelect(false)}
@@ -526,7 +570,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </Box>
 
       {/* Mobile Collapsible Dropdown Filters Container */}
-      {(hasDropdownFilters || Boolean(onExport)) && (
+      {hasDropdownFilters && (
         <Box
           sx={{
             display: { xs: mobileFiltersOpen ? 'flex' : 'none', sm: 'none' },

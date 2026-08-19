@@ -6,11 +6,12 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
-import { useCategories } from '@api';
+import { useCategories, useLocations } from '@api';
 import { UpdateProfileSchema, CategoryTypeCode } from '@contracts';
 import { z } from 'zod';
 import { useAuth, useToast } from '@hooks';
@@ -30,6 +31,9 @@ export const CompleteProfileOrganism: React.FC = () => {
   const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
+  const { data: locationsData } = useLocations();
+  const locationOptions = (locationsData || []).map((l) => l.name);
+
   const { data: brandCategoriesData } = useCategories(CategoryTypeCode.BRAND);
   const brandCategoryOptions = (brandCategoriesData || []).map((c) => c.name);
 
@@ -41,6 +45,9 @@ export const CompleteProfileOrganism: React.FC = () => {
   const [contactPhone, setContactPhone] = useState(user?.phone || '');
   // Creator-only onboarding fields — they land on influencer_detail, not profile.
   const [city, setCity] = useState(user?.influencer?.location || '');
+  const [regions, setRegions] = useState<string[]>(
+    user?.influencer?.regions || user?.influencer?.influencingRegions || [],
+  );
   const [category, setCategory] = useState(user?.influencer?.category || '');
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
   const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
@@ -115,6 +122,8 @@ export const CompleteProfileOrganism: React.FC = () => {
         ? {
             influencer: {
               location: city.trim() || undefined,
+              regions: regions.length > 0 ? regions : undefined,
+              influencingRegions: regions.length > 0 ? regions : undefined,
               category: category.trim() || undefined,
               instagram: normalizeSocialUrl(instagram, 'instagram.com'),
               youtube: normalizeSocialUrl(youtube, 'youtube.com'),
@@ -273,15 +282,24 @@ export const CompleteProfileOrganism: React.FC = () => {
               </>
             )}
 
-            <TextField
-              label={isBrand ? 'City / Headquarters' : 'City'}
-              value={city}
-              placeholder={isBrand ? 'e.g. Kochi, Mumbai' : 'e.g. Kochi'}
-              onChange={(e) => setCity(capitalizeWords(e.target.value))}
-              error={Boolean(fieldErrors.city)}
-              helperText={fieldErrors.city}
+            <Autocomplete
               fullWidth
+              freeSolo
+              options={locationOptions}
+              value={city}
+              onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
+              onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
               disabled={loading}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label={isBrand ? 'City / Headquarters' : 'City'}
+                  placeholder={isBrand ? 'Select or enter location (e.g. Kochi, Mumbai)' : 'Select or enter location (e.g. Kochi)'}
+                  error={Boolean(fieldErrors.city)}
+                  helperText={fieldErrors.city}
+                  fullWidth
+                />
+              )}
             />
 
             {isInfluencer && (
@@ -322,6 +340,47 @@ export const CompleteProfileOrganism: React.FC = () => {
                       placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
                       error={Boolean(fieldErrors.category)}
                       helperText={fieldErrors.category || 'Creator niche / content domain'}
+                      fullWidth
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={locationOptions}
+                  value={regions}
+                  onChange={(_, newValue) => {
+                    const formatted = (newValue || [])
+                      .map((v) => (typeof v === 'string' ? capitalizeWords(v.trim()) : v))
+                      .filter(Boolean);
+                    setRegions([...new Set(formatted)]);
+                  }}
+                  disabled={loading}
+                  renderTags={(value: readonly string[], getTagProps) =>
+                    value.map((option: string, index: number) => {
+                      const { key, ...tagProps } = getTagProps({ index });
+                      return (
+                        <Chip
+                          key={key}
+                          label={option}
+                          size="small"
+                          {...tagProps}
+                        />
+                      );
+                    })
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Influencing Regions (Optional)"
+                      placeholder={regions.length === 0 ? "Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter" : ""}
+                      error={Boolean(fieldErrors.regions || fieldErrors.influencingRegions)}
+                      helperText={
+                        fieldErrors.regions ||
+                        fieldErrors.influencingRegions ||
+                        'Geographical regions or markets where your influence and follower base are strongest (optional)'
+                      }
                       fullWidth
                     />
                   )}

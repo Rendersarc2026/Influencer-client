@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -94,6 +94,22 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
     await onSubmit(payload);
   };
 
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const minStartDate = useMemo(() => {
+    const origStart = campaign?.startDate ? toDateInputValue(campaign.startDate) : '';
+    if (origStart && origStart < todayStr) {
+      return origStart;
+    }
+    return todayStr;
+  }, [campaign?.startDate, todayStr]);
+
   return (
     <Dialog
       open={open}
@@ -114,15 +130,17 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1 }}>
+        <DialogTitle sx={{ pb: 0, pt: 1, px: 2 }}>
           <SectionHeading
             title="Edit Campaign Details"
             subtitle="Update campaign parameters, timeline, briefs, and deliverables"
+            mb={0}
           />
         </DialogTitle>
 
         <DialogContent
           sx={{
+            pt: 0.5,
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
@@ -168,8 +186,17 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 label="Start Date *"
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setStartDate(val);
+                  if (endDate && val && endDate < val) {
+                    setEndDate('');
+                  }
+                }}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: minStartDate },
+                }}
                 fullWidth
                 disabled={loading}
               />
@@ -178,7 +205,10 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: startDate || todayStr },
+                }}
                 fullWidth
                 disabled={loading}
               />

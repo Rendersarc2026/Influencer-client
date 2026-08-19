@@ -203,7 +203,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
             '&::-webkit-scrollbar': { display: 'none' },
           }}
         >
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
             {/* 1. Influencer Rate Section */}
             {hasPresetRate ? (
               <Box

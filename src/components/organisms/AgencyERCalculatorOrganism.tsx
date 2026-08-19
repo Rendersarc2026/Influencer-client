@@ -1723,6 +1723,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     <Table size="small" sx={{ minWidth: 720 }}>
                       <TableHead sx={{ backgroundColor: theme.palette.tokens.fieldBg }}>
                         <TableRow>
+                          <TableCell sx={{ fontWeight: 700, width: 48, textAlign: 'center' }}>#</TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>Post</TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
@@ -1737,6 +1738,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           const isReel = post.mediaKind === 'REEL' || post.mediaKind === 'VIDEO';
                           return (
                             <TableRow key={post.shortcode ?? index} hover>
+                              <TableCell align="center" sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}>
+                                {index + 1}
+                              </TableCell>
                               <TableCell sx={{ maxWidth: 320 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                   <Avatar
@@ -1845,7 +1849,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         </DialogTitle>
 
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1.5 }}>
             <TextField
               multiline
               rows={6}

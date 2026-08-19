@@ -194,6 +194,18 @@ export function multiStringQuery(maxItem = 120, maxTotal = 2000) {
     .optional();
 }
 
+/**
+ * Array of validated strings (e.g. influencing regions).
+ * Accepts array of strings or comma-separated string, bounds items to safe strings.
+ */
+export const regionsArray = z.preprocess((val) => {
+  if (val === undefined || val === null || val === '') return undefined;
+  if (Array.isArray(val)) return val.map((s) => (typeof s === 'string' ? s.trim() : s)).filter(Boolean);
+  if (typeof val === 'string') {
+    return val.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  }
+  return val;
+}, z.array(safeText(120)).max(50).optional());
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),

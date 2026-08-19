@@ -12,7 +12,7 @@ import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { useCategories } from '@api';
+import { useCategories, useLocations } from '@api';
 import { CreateBrandRequest, UpdateBrandRequest, BrandResponse, CategoryTypeCode } from '@contracts';
 import { capitalizeWords } from '@utils';
 
@@ -55,6 +55,12 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   const brandCategoryOptions = useMemo(
     () => (brandCategoriesData || []).map((c) => c.name),
     [brandCategoriesData],
+  );
+
+  const { data: locationsData } = useLocations();
+  const locationOptions = useMemo(
+    () => (locationsData || []).map((l) => l.name),
+    [locationsData],
   );
 
   const isEdit = Boolean(brandToEdit);
@@ -262,7 +268,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1, px: 0, pt: 0 }}>
+        <DialogTitle sx={{ pb: 0, px: 0, pt: 0 }}>
           <SectionHeading
             title={isEdit ? 'Edit Brand Details' : 'Create New Brand'}
             subtitle={
@@ -270,13 +276,14 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 ? 'Update brand profile, contact personnel, and account settings'
                 : 'Enter complete brand profile, contact information, and representation details'
             }
+            mb={0}
           />
         </DialogTitle>
 
         <DialogContent
           sx={{
             px: 0,
-            py: 1,
+            pt: 0.5,
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
@@ -479,14 +486,22 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 sx={{ flex: 1 }}
               />
 
-              <TextField
-                label="City / Region"
+              <Autocomplete
+                freeSolo
+                options={locationOptions}
                 value={city}
-                onChange={(e) => setCity(capitalizeWords(e.target.value))}
-                placeholder="e.g. Kochi, Mumbai"
-                fullWidth
+                onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
+                onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
                 disabled={busy}
                 sx={{ flex: 1 }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="City / Region"
+                    placeholder="Select or enter location (e.g. Kochi, Mumbai)"
+                    fullWidth
+                  />
+                )}
               />
             </Box>
 

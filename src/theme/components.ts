@@ -156,14 +156,32 @@ export const components: Components<Theme> = {
   MuiDialogContent: {
     styleOverrides: {
       root: ({ theme }) => ({
-        padding: '16px 24px 16px 24px',
+        padding: '12px 24px 16px 24px',
+        '&.MuiDialogContent-root': {
+          paddingTop: '8px',
+        },
+        '&:not(:first-of-type)': {
+          paddingTop: '8px',
+        },
+        '.MuiDialogTitle-root + &': {
+          paddingTop: '8px',
+        },
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
         '&::-webkit-scrollbar': {
           display: 'none',
         },
         [theme.breakpoints.down('sm')]: {
-          padding: `12px ${tokens.spacing.dialogPaddingMobile}px`,
+          padding: `8px ${tokens.spacing.dialogPaddingMobile}px`,
+          '&.MuiDialogContent-root': {
+            paddingTop: '6px',
+          },
+          '&:not(:first-of-type)': {
+            paddingTop: '6px',
+          },
+          '.MuiDialogTitle-root + &': {
+            paddingTop: '6px',
+          },
         },
       }),
     },

@@ -128,16 +128,18 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1, px: 1 }}>
+        <DialogTitle sx={{ pb: 0, pt: 1, px: 1 }}>
           <SectionHeading
             title="Start New Conversation"
-            subtitle="Connect directly with an assigned creator or client brand"
+            subtitle="Connect directly with an assigned influencer or client brand"
+            mb={0}
           />
         </DialogTitle>
 
         <DialogContent
           sx={{
             px: 1,
+            pt: 0.5,
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
@@ -183,7 +185,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
               >
                 <ToggleButton value="INFLUENCER">
                   <RecordVoiceOverRoundedIcon fontSize="small" />
-                  Influencer / Creator
+                  Influencer
                 </ToggleButton>
                 <ToggleButton value="BRAND">
                   <StorefrontRoundedIcon fontSize="small" />
@@ -226,7 +228,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                       <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                         {option.instagram
                           ? formatDisplaySocial(option.instagram)
-                          : option.category || 'Creator'}
+                          : option.category || 'Influencer'}
                       </Typography>
                     </Box>
                   </Box>
@@ -235,7 +237,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                   <TextField
                     {...params}
                     label="Select Influencer *"
-                    placeholder="Search creator by name..."
+                    placeholder="Search influencer by name..."
                     error={Boolean(error && !selectedInfluencer)}
                     helperText={error && !selectedInfluencer ? error : undefined}
                     fullWidth

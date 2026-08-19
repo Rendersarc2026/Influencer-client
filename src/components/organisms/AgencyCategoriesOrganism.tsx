@@ -476,7 +476,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         }}
       >
         <form onSubmit={handleSaveCategory}>
-          <DialogTitle sx={{ pb: 1 }}>
+          <DialogTitle sx={{ pb: 0, pt: 1, px: 2 }}>
             <SectionHeading
               title={
                 categoryToEdit
@@ -488,11 +488,13 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                   ? 'Industry classification for brands and client companies'
                   : 'Niche / content domain for content creators and influencers'
               }
+              mb={0}
             />
           </DialogTitle>
 
           <DialogContent
             sx={{
+              pt: 0.5,
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               '&::-webkit-scrollbar': { display: 'none' },

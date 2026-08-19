@@ -7,6 +7,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -16,15 +17,24 @@ import {
   DataTableColumn,
   FilterBar,
   CreateInfluencerDialog,
+  EditInfluencerDialog,
   OverviewDrawer,
 } from '@molecules';
 import {
   apiClient,
   useAgencyInfluencers,
   useCreateInfluencer,
+  useUpdateInfluencer,
   useCategories,
+  useLocations,
 } from '@api';
-import { InfluencerResponse, CreateInfluencerRequest, CategoryTypeCode, PaginatedResult } from '@contracts';
+import {
+  InfluencerResponse,
+  CreateInfluencerRequest,
+  UpdateInfluencerRequest,
+  CategoryTypeCode,
+  PaginatedResult,
+} from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
 import { getInfluencerTier, getTierInfo, formatFollowersDisplay, ExcelColumnConfig } from '@utils';
 
@@ -68,9 +78,12 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const { showSuccess, showError } = useToast();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingInfluencer, setEditingInfluencer] = useState<InfluencerResponse | null>(null);
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
   const [priceRangeFilter, setPriceRangeFilter] = useState<string>('');
   const createInfluencerMutation = useCreateInfluencer();
+  const updateInfluencerMutation = useUpdateInfluencer();
 
   const {
     search,
@@ -110,6 +123,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   // All active influencer categories defined in the database (~16 categories)
   const { data: dbCategories = [] } = useCategories(CategoryTypeCode.INFLUENCER);
+
+  // All active locations defined in the database
+  const { data: dbLocations = [] } = useLocations();
 
   const selectedCategories = useMemo(() => {
     if (!categoryFilter || categoryFilter === 'ALL') return [];
@@ -151,9 +167,11 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   }, [dbCategories, allCreators]);
 
   const locationOptions = useMemo(() => {
-    const values = [...new Set(allCreators.map((c) => c.location).filter(Boolean))].sort();
-    return values.map((v) => ({ value: v as string, label: v as string }));
-  }, [allCreators]);
+    const dbLocationNames = dbLocations.map((l) => l.name).filter(Boolean);
+    const creatorLocationNames = allCreators.map((c) => c.location).filter(Boolean) as string[];
+    const combined = [...new Set([...dbLocationNames, ...creatorLocationNames])].sort();
+    return combined.map((v) => ({ value: v, label: v }));
+  }, [dbLocations, allCreators]);
 
   const handleRemoveCategory = (catToRemove: string) => {
     const next = selectedCategories.filter((c) => c !== catToRemove);
@@ -205,6 +223,27 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.');
+    }
+  };
+
+  const handleEditInfluencer = (influencer: InfluencerResponse) => {
+    setEditingInfluencer(influencer);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateInfluencer = async (data: UpdateInfluencerRequest) => {
+    if (!editingInfluencer) return;
+    try {
+      await updateInfluencerMutation.mutateAsync({ id: editingInfluencer.id, data });
+      showSuccess('Influencer updated successfully.');
+      setEditDialogOpen(false);
+      setEditingInfluencer(null);
+      if (selectedInfluencer && selectedInfluencer.id === editingInfluencer.id) {
+        setSelectedInfluencer(null);
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to update influencer.');
     }
   };
 
@@ -281,8 +320,23 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <Tooltip title="Message Creator">
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+          <Tooltip title="Edit Influencer">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditInfluencer(row);
+              }}
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                '&:hover': { color: theme.palette.primary.main },
+              }}
+            >
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Message Influencer">
             <IconButton
               size="small"
               onClick={(e) => {
@@ -501,6 +555,17 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         onClose={() => setCreateDialogOpen(false)}
       />
 
+      <EditInfluencerDialog
+        open={editDialogOpen}
+        influencer={editingInfluencer}
+        loading={updateInfluencerMutation.isPending}
+        onSubmit={handleUpdateInfluencer}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setEditingInfluencer(null);
+        }}
+      />
+
       {/* Influencer Overview Drawer */}
       <OverviewDrawer
         open={Boolean(selectedInfluencer)}
@@ -547,6 +612,21 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                         : '—',
                     },
                     { label: 'Location', value: selectedInfluencer.location || 'Global' },
+                    {
+                      label: 'Influencing Regions',
+                      value:
+                        (selectedInfluencer.regions && selectedInfluencer.regions.length > 0) ||
+                        (selectedInfluencer.influencingRegions && selectedInfluencer.influencingRegions.length > 0) ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {(selectedInfluencer.regions || selectedInfluencer.influencingRegions || []).map((r) => (
+                              <Chip key={r} label={r} size="small" />
+                            ))}
+                          </Box>
+                        ) : (
+                          '—'
+                        ),
+                      fullWidth: true,
+                    },
                     {
                       label: 'Follower Reach',
                       value: formatFollowersDisplay(selectedInfluencer.followers),
@@ -605,7 +685,16 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           selectedInfluencer
             ? [
                 {
-                  label: 'Message Creator',
+                  label: 'Edit Influencer',
+                  variant: 'outlined',
+                  onClick: () => {
+                    const inf = selectedInfluencer;
+                    setSelectedInfluencer(null);
+                    handleEditInfluencer(inf);
+                  },
+                },
+                {
+                  label: 'Message Influencer',
                   variant: 'contained',
                   onClick: () => {
                     const id = selectedInfluencer.id;

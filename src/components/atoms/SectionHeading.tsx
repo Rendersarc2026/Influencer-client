@@ -1,15 +1,23 @@
 import React, { ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { SxProps, Theme, useTheme } from '@mui/material/styles';
 
 export interface SectionHeadingProps {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  mb?: number | string;
+  sx?: SxProps<Theme>;
 }
 
-export const SectionHeading: React.FC<SectionHeadingProps> = ({ title, subtitle, action }) => {
+export const SectionHeading: React.FC<SectionHeadingProps> = ({
+  title,
+  subtitle,
+  action,
+  mb = 2,
+  sx,
+}) => {
   const theme = useTheme();
 
   return (
@@ -21,7 +29,8 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({ title, subtitle,
         alignItems: { xs: 'flex-start', sm: 'center' },
         gap: { xs: 1, sm: 0 },
         width: '100%',
-        mb: 2,
+        mb,
+        ...sx,
       }}
     >
       <Box sx={{ minWidth: 0 }}>

@@ -107,7 +107,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1 }}>
+        <DialogTitle sx={{ pb: 0, pt: 1, px: 2 }}>
           <SectionHeading
             title="Edit Pre-Evaluation Details"
             subtitle={
@@ -115,11 +115,13 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 ? `For: ${mapper.influencerName} · Update pre-evaluation metrics and deliverables`
                 : 'Update pre-evaluation assessment dimensions and delivery estimates'
             }
+            mb={0}
           />
         </DialogTitle>
 
         <DialogContent
           sx={{
+            pt: 0.5,
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             '&::-webkit-scrollbar': { display: 'none' },

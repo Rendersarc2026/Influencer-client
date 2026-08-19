@@ -470,15 +470,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
     {
       id: 'srNo',
       header: 'Sr No',
-      type: 'custom',
+      type: 'index',
       align: 'center',
       width: 70,
       minWidth: 70,
-      render: (_row, index) => (
-        <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary }}>
-          {page * rowsPerPage + index + 1}
-        </Typography>
-      ),
     },
     // 2. Region
     {

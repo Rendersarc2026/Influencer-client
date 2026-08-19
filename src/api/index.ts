@@ -7,6 +7,7 @@ export * from './chat.api';
 export * from './prefetch';
 export * from './enums.api';
 export * from './category.api';
+export * from './location.api';
 export * from './navigation.api';
 export * from './socket.client';
 

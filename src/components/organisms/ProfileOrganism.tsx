@@ -16,7 +16,7 @@ import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
-import { apiClient, useCategories, useBrandProfile, useUpdateBrandProfile } from '@api';
+import { apiClient, useCategories, useLocations, useBrandProfile, useUpdateBrandProfile } from '@api';
 import {
   UpdateProfileSchema,
   UpdateProfileRequest,
@@ -51,6 +51,9 @@ export const ProfileOrganism: React.FC = () => {
   const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
+  const { data: locationsData } = useLocations();
+  const locationOptions = (locationsData || []).map((l) => l.name);
+
   const { data: brandCategoriesData } = useCategories(CategoryTypeCode.BRAND);
   const brandCategoryOptions = (brandCategoriesData || []).map((c) => c.name);
 
@@ -65,6 +68,9 @@ export const ProfileOrganism: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState(user?.influencer?.location || '');
+  const [regions, setRegions] = useState<string[]>(
+    user?.influencer?.regions || user?.influencer?.influencingRegions || [],
+  );
   const [category, setCategory] = useState(user?.influencer?.category || '');
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
   const [youtube, setYoutube] = useState(user?.influencer?.youtube || '');
@@ -101,6 +107,7 @@ export const ProfileOrganism: React.FC = () => {
     const detail = user?.influencer;
     if (detail) {
       setCity(detail.location || '');
+      setRegions(detail.regions || detail.influencingRegions || []);
       setCategory(detail.category || '');
       setInstagram(detail.instagram || '');
       setYoutube(detail.youtube || '');
@@ -279,6 +286,8 @@ export const ProfileOrganism: React.FC = () => {
         ? {
             influencer: {
               location: city.trim() || undefined,
+              regions: regions.length > 0 ? regions : undefined,
+              influencingRegions: regions.length > 0 ? regions : undefined,
               category: category.trim() || undefined,
               instagram: normalizeSocialUrl(instagram, 'instagram.com'),
               youtube: normalizeSocialUrl(youtube, 'youtube.com'),
@@ -543,16 +552,25 @@ export const ProfileOrganism: React.FC = () => {
                       sx={{ flex: 1 }}
                     />
 
-                    <TextField
-                      label="City / Location"
-                      placeholder="e.g. Kochi, Mumbai"
-                      value={city}
-                      onChange={(e) => setCity(capitalizeWords(e.target.value))}
-                      error={Boolean(fieldErrors.city)}
-                      helperText={fieldErrors.city}
+                    <Autocomplete
                       fullWidth
+                      freeSolo
+                      options={locationOptions}
+                      value={city}
+                      onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
+                      onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="City / Location"
+                          placeholder="Select or enter location (e.g. Kochi, Mumbai)"
+                          error={Boolean(fieldErrors.city)}
+                          helperText={fieldErrors.city}
+                          fullWidth
+                        />
+                      )}
                     />
                   </Box>
 
@@ -605,16 +623,25 @@ export const ProfileOrganism: React.FC = () => {
                   {isInfluencer && (
                     <>
                       <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                        <TextField
-                          label="City / Location"
-                          placeholder="e.g. Kochi, Trivandrum"
-                          value={city}
-                          onChange={(e) => setCity(capitalizeWords(e.target.value))}
-                          error={Boolean(fieldErrors.location)}
-                          helperText={fieldErrors.location}
+                        <Autocomplete
                           fullWidth
+                          freeSolo
+                          options={locationOptions}
+                          value={city}
+                          onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
+                          onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
                           disabled={fieldsLocked}
                           sx={{ flex: 1 }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="City / Location"
+                              placeholder="Select or enter location (e.g. Kochi, Trivandrum)"
+                              error={Boolean(fieldErrors.location)}
+                              helperText={fieldErrors.location}
+                              fullWidth
+                            />
+                          )}
                         />
 
                         <Autocomplete
@@ -638,6 +665,47 @@ export const ProfileOrganism: React.FC = () => {
                           )}
                         />
                       </Box>
+
+                      <Autocomplete
+                        multiple
+                        freeSolo
+                        options={locationOptions}
+                        value={regions}
+                        onChange={(_, newValue) => {
+                          const formatted = (newValue || [])
+                            .map((v) => (typeof v === 'string' ? capitalizeWords(v.trim()) : v))
+                            .filter(Boolean);
+                          setRegions([...new Set(formatted)]);
+                        }}
+                        disabled={fieldsLocked}
+                        renderTags={(value: readonly string[], getTagProps) =>
+                          value.map((option: string, index: number) => {
+                            const { key, ...tagProps } = getTagProps({ index });
+                            return (
+                              <Chip
+                                key={key}
+                                label={option}
+                                size="small"
+                                {...tagProps}
+                              />
+                            );
+                          })
+                        }
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Influencing Regions (Optional)"
+                            placeholder={regions.length === 0 ? "Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter" : ""}
+                            error={Boolean(fieldErrors.regions || fieldErrors.influencingRegions)}
+                            helperText={
+                              fieldErrors.regions ||
+                              fieldErrors.influencingRegions ||
+                              'Geographical regions or markets where your influence and follower base are strongest (optional)'
+                            }
+                            fullWidth
+                          />
+                        )}
+                      />
 
                       <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                         <TextField

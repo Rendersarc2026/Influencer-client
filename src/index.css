@@ -45,3 +45,8 @@ body,
   height: 0 !important;
 }
 
+/* Ensure DialogContent always has top padding after DialogTitle so floating labels are not clipped */
+.MuiDialogTitle-root + .MuiDialogContent-root {
+  padding-top: 8px !important;
+}
+

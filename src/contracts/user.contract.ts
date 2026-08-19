@@ -11,6 +11,7 @@ import {
   multiStringQuery,
   page,
   phone,
+  regionsArray,
   safeMultilineText,
   safeText,
 } from './primitives';
@@ -33,6 +34,8 @@ export const InfluencerResponseSchema = z.object({
   email: z.string().nullable().optional(),
   category: z.string().nullable(),
   location: z.string().nullable(),
+  regions: z.array(z.string()).default([]),
+  influencingRegions: z.array(z.string()).optional(),
   followers: z.number().nullable(),
   contactPhone: z.string().nullable(),
   instagram: z.string().nullable(),
@@ -57,6 +60,8 @@ export const CreateInfluencerSchema = z
     email: email,
     category: safeText(120).optional(),
     location: safeText(120).optional(),
+    regions: regionsArray,
+    influencingRegions: regionsArray,
     followers: count.optional(),
     contactPhone: phone,
     instagram: httpUrl.optional(),
@@ -79,8 +84,11 @@ export type CreateInfluencerRequest = z.infer<typeof CreateInfluencerSchema>;
 
 export const UpdateInfluencerSchema = z
   .object({
+    name: safeText(200).optional(),
     category: safeText(120).optional(),
     location: safeText(120).optional(),
+    regions: regionsArray,
+    influencingRegions: regionsArray,
     followers: count.optional(),
     contactPhone: phone.optional(),
     instagram: httpUrl.optional(),
@@ -123,6 +131,8 @@ export const UpdateProfileSchema = z.object({
   city: safeText(120).optional(),
   contactPhone: phone.optional(),
   contactEmail: email.optional(),
+  regions: regionsArray,
+  influencingRegions: regionsArray,
   influencer: UpdateInfluencerSchema.optional(),
   brand: UpdateBrandSchema.optional(),
 });
@@ -227,6 +237,9 @@ export const InfluencerListQuerySchema = z
     city: multiStringQuery(120),
     locations: multiStringQuery(120),
     cities: multiStringQuery(120),
+    region: multiStringQuery(120),
+    regions: multiStringQuery(120),
+    influencingRegions: multiStringQuery(120),
     agencyId: z.string().uuid().optional(),
     isActive: boolQuery.optional(),
     status: UserStatusFilterSchema.optional(),
@@ -271,6 +284,13 @@ export const InfluencerListQuerySchema = z
     ];
     const uniqueLocations = locations.length > 0 ? [...new Set(locations)] : undefined;
 
+    const regions = [
+      ...(data.regions ?? []),
+      ...(data.region ?? []),
+      ...(data.influencingRegions ?? []),
+    ];
+    const uniqueRegions = regions.length > 0 ? [...new Set(regions)] : undefined;
+
     const categories = [
       ...(data.categories ?? []),
       ...(data.category ?? []),
@@ -305,6 +325,8 @@ export const InfluencerListQuerySchema = z
       city: primaryLocation,
       locations: uniqueLocations,
       cities: uniqueLocations,
+      regions: uniqueRegions,
+      region: uniqueRegions && uniqueRegions.length === 1 ? uniqueRegions[0] : undefined,
       category: primaryCategory,
       categories: uniqueCategories,
       agencyId: data.agencyId,
@@ -335,6 +357,9 @@ export const UserListQuerySchema = z
     location: multiStringQuery(120),
     cities: multiStringQuery(120),
     locations: multiStringQuery(120),
+    region: multiStringQuery(120),
+    regions: multiStringQuery(120),
+    influencingRegions: multiStringQuery(120),
     category: multiStringQuery(120),
     categories: multiStringQuery(120),
     isActive: boolQuery.optional(),

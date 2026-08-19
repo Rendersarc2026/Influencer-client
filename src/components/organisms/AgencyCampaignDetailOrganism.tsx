@@ -1172,7 +1172,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         title={overviewDrawerMapper?.influencerName || 'Influencer Overview'}
         subtitle={
           overviewDrawerMapper
-            ? `${overviewDrawerMapper.category || 'Creator'} · ${overviewDrawerMapper.region || 'India'}`
+            ? `${overviewDrawerMapper.category || 'Influencer'} · ${overviewDrawerMapper.region || 'India'}`
             : undefined
         }
         badge={overviewDrawerMapper ? overviewDrawerMapper.rateStatus : undefined}
@@ -1222,7 +1222,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           overviewDrawerMapper
             ? [
                 {
-                  title: 'Creator Profile & Demographics',
+                  title: 'Influencer Profile & Demographics',
                   fields: [
                     { label: 'Influencer Name', value: overviewDrawerMapper.influencerName },
                     { label: 'Category / Niche', value: overviewDrawerMapper.category || 'General' },
@@ -1355,7 +1355,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                   },
                 },
                 {
-                  label: 'Message Creator',
+                  label: 'Message Influencer',
                   variant: 'outlined',
                   onClick: () => {
                     const id = overviewDrawerMapper.influencerId;

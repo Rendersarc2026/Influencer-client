@@ -21,6 +21,7 @@ import {
   InfluencerResponse,
   InfluencerListQuery,
   CreateInfluencerRequest,
+  UpdateInfluencerRequest,
   UserResponse,
   UserListQuery,
   PaginatedResult,
@@ -241,6 +242,20 @@ export function useCreateInfluencer() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
+    },
+  });
+}
+
+export function useUpdateInfluencer() {
+  const queryClient = useQueryClient();
+  return useMutation<InfluencerResponse, Error, { id: string; data: UpdateInfluencerRequest }>({
+    mutationFn: async ({ id, data }) => {
+      const response = await apiClient.patch<InfluencerResponse>(`/agency/influencers/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'], refetchType: 'all' });
     },
   });
 }

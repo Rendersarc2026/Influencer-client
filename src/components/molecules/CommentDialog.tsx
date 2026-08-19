@@ -106,7 +106,7 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
 
         <DialogContent
           sx={{
-            pt: 1,
+            pt: 1.5,
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             '&::-webkit-scrollbar': { display: 'none' },

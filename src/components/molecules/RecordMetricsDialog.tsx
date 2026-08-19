@@ -169,18 +169,20 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <DialogTitle sx={{ pb: 1, px: 1, flexShrink: 0 }}>
+        <DialogTitle sx={{ pb: 0, pt: 1, px: 1, flexShrink: 0 }}>
           <SectionHeading
             title="Record Post-Evaluation Performance"
             subtitle={
               influencerName ? `Deliverable Insights for: ${influencerName}` : 'Enter verified post insights from social media analytics'
             }
+            mb={0}
           />
         </DialogTitle>
 
         <DialogContent
           sx={{
             px: 1,
+            pt: 0.5,
             flex: 1,
             overflowY: 'auto',
           }}
