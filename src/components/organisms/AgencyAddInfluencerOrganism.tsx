@@ -11,6 +11,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import TablePagination from '@mui/material/TablePagination';
+import Alert from '@mui/material/Alert';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
@@ -37,6 +38,8 @@ import {
   CreateInfluencerRequest,
   InfluencerResponse,
   CategoryTypeCode,
+  CampaignStatusCode,
+  CampaignStatusName,
 } from '@contracts';
 
 /** "64.7k" reads better than "64700" in a list of reach numbers. */
@@ -369,6 +372,12 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
       }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {campaign && campaign.status !== CampaignStatusCode.DRAFT && (
+          <Alert severity="warning" sx={{ borderRadius: `${theme.customRadii.inner}px` }}>
+            Influencers can only be added to campaigns in <strong>Draft</strong> status. This campaign is currently <strong>{CampaignStatusName[campaign.status] || 'Not in Draft'}</strong>.
+          </Alert>
+        )}
+
         <FilterBar
           searchValue={search}
           onSearchChange={goToFirstPage(setSearch)}
@@ -651,7 +660,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                       variant="contained"
                       startIcon={<PersonAddRoundedIcon fontSize="small" />}
                       onClick={() => handleAddCreator(creator.id)}
-                      disabled={isPending}
+                      disabled={isPending || (campaign !== undefined && campaign !== null && campaign.status !== CampaignStatusCode.DRAFT)}
                     >
                       {isPending ? (
                         <CircularProgress size={20} color="inherit" />
@@ -738,8 +747,16 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                 {
                   title: 'Contact & Socials',
                   fields: [
-                    { label: 'Contact Email', value: detailCreator.email || '—' },
-                    { label: 'Contact Phone', value: detailCreator.contactPhone || '—' },
+                    {
+                      label: 'Contact Email',
+                      value: detailCreator.email || '—',
+                      copyable: Boolean(detailCreator.email),
+                    },
+                    {
+                      label: 'Contact Phone',
+                      value: detailCreator.contactPhone || '—',
+                      copyable: Boolean(detailCreator.contactPhone),
+                    },
                     {
                       label: 'Instagram Profile URL',
                       value: detailCreator.instagram || '—',

@@ -8,8 +8,8 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
-import { useBrandPayments, useApprovePayment } from '@api';
-import { PaymentResponse, PaymentStatusEnum, PaymentStatusCode } from '@contracts';
+import { apiClient, useBrandPayments, useApprovePayment } from '@api';
+import { PaymentResponse, PaymentStatusEnum, PaymentStatusCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
 
 export const BrandPaymentsOrganism: React.FC = () => {
@@ -118,6 +118,16 @@ export const BrandPaymentsOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<PaymentResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<PaymentResponse>>('/brand/payments', {
+      params: {
+        status: statusFilter,
+        search: debouncedSearch.trim() || undefined,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Payment Authorization Queue"
@@ -161,6 +171,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
           isFetching={paymentsFetching}
           exportFilename="brand_payments"
           exportSheetName="Payments"
+          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

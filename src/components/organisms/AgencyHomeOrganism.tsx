@@ -200,6 +200,7 @@ export const AgencyHomeOrganism: React.FC = () => {
           isFetching={campaignsFetching}
           exportFilename="recent_campaigns"
           exportSheetName="Campaigns"
+          onExportAll={async () => allCampaigns}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

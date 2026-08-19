@@ -7,8 +7,8 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
-import { useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
-import { CampaignResponse, CreateCampaignRequest, CampaignStatusEnum } from '@contracts';
+import { apiClient, useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
+import { CampaignResponse, CreateCampaignRequest, CampaignStatusEnum, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
 
 export const AgencyCampaignsOrganism: React.FC = () => {
@@ -124,6 +124,17 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<CampaignResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<CampaignResponse>>('/agency/campaigns', {
+      params: {
+        status: statusFilter,
+        brandId: selectedBrand || undefined,
+        search: debouncedSearch.trim() || undefined,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Campaigns"
@@ -177,6 +188,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           fillHeight
           exportFilename="agency_campaigns"
           exportSheetName="Campaigns"
+          onExportAll={handleExportAll}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

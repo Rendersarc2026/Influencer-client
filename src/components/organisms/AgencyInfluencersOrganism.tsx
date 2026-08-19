@@ -19,11 +19,12 @@ import {
   OverviewDrawer,
 } from '@molecules';
 import {
+  apiClient,
   useAgencyInfluencers,
   useCreateInfluencer,
   useCategories,
 } from '@api';
-import { InfluencerResponse, CreateInfluencerRequest, CategoryTypeCode } from '@contracts';
+import { InfluencerResponse, CreateInfluencerRequest, CategoryTypeCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { getInfluencerTier, getTierInfo } from '@utils';
 
@@ -315,6 +316,19 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<InfluencerResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<InfluencerResponse>>('/agency/influencers', {
+      params: {
+        search: debouncedSearch.trim() || undefined,
+        categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+        locations: selectedLocations.length > 0 ? selectedLocations : undefined,
+        minPrice,
+        maxPrice,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Influencers"
@@ -481,6 +495,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           onRowClick={(row) => setSelectedInfluencer(row)}
           exportFilename="influencers_roster"
           exportSheetName="Influencers"
+          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>
@@ -547,8 +562,16 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                 {
                   title: 'Contact & Socials',
                   fields: [
-                    { label: 'Contact Email', value: selectedInfluencer.email || '—' },
-                    { label: 'Contact Phone', value: selectedInfluencer.contactPhone || '—' },
+                    {
+                      label: 'Contact Email',
+                      value: selectedInfluencer.email || '—',
+                      copyable: Boolean(selectedInfluencer.email),
+                    },
+                    {
+                      label: 'Contact Phone',
+                      value: selectedInfluencer.contactPhone || '—',
+                      copyable: Boolean(selectedInfluencer.contactPhone),
+                    },
                     {
                       label: 'Instagram Profile URL',
                       value: selectedInfluencer.instagram || '—',

@@ -103,6 +103,10 @@ export interface DataTableProps<T> {
    * Custom export handler. If not provided, exports current rows to .xlsx using exportTableToExcel.
    */
   onExport?: (rows: T[], columns: DataTableColumn<T>[]) => void | Promise<void>;
+  /**
+   * Async handler to fetch all data without pagination for Excel export.
+   */
+  onExportAll?: () => Promise<T[]>;
 }
 
 /**
@@ -155,6 +159,7 @@ export function DataTable<T extends Record<string, unknown>>({
   exportFilename,
   exportSheetName,
   onExport,
+  onExportAll,
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [isExporting, setIsExporting] = useState(false);
@@ -386,12 +391,14 @@ export function DataTable<T extends Record<string, unknown>>({
 
   const handleExport = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (rows.length === 0 || isExporting) return;
+    if ((rows.length === 0 && !onExportAll) || isExporting) return;
     try {
       setIsExporting(true);
       if (onExport) {
         await onExport(rows, columns);
       } else {
+        const rowsToExport = onExportAll ? await onExportAll() : rows;
+        if (!rowsToExport || rowsToExport.length === 0) return;
         const defaultFilename =
           exportFilename ||
           (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'table_data');
@@ -399,7 +406,7 @@ export function DataTable<T extends Record<string, unknown>>({
           filename: defaultFilename,
           sheetName: exportSheetName || title || 'Data',
           columns: columns as Array<ExcelColumnConfig<T>>,
-          rows,
+          rows: rowsToExport,
         });
       }
     } catch (err) {
@@ -410,12 +417,12 @@ export function DataTable<T extends Record<string, unknown>>({
   };
 
   const exportButton =
-    exportable && rows.length > 0 ? (
+    exportable && (rows.length > 0 || onExportAll) ? (
       <Button
         variant="outlined"
         size="small"
         onClick={handleExport}
-        disabled={loading || rows.length === 0 || isExporting}
+        disabled={loading || (rows.length === 0 && !onExportAll) || isExporting}
         startIcon={
           isExporting ? (
             <CircularProgress size={14} color="inherit" />

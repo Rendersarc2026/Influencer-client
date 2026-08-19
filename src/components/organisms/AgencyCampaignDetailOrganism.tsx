@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import FormControl from '@mui/material/FormControl';
@@ -25,6 +26,7 @@ import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -53,10 +55,12 @@ import {
   useRemoveInfluencerFromCampaign,
   useUpdateCampaign,
   useUpdatePreEval,
+  apiClient,
 } from '@api';
 import {
   AgencyMapperResponse,
   RecordMetricRequest,
+  MetricResponse,
   CampaignStatus,
   CampaignStatusCode,
   CampaignStatusName,
@@ -65,9 +69,10 @@ import {
   UpdateCampaignRequest,
   UpdatePreEvalRequest,
   ApprovalActionName,
+  PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl, humanizeCode } from '@utils';
+import { safeUrl, humanizeCode, exportCampaignPerformanceReport } from '@utils';
 
 interface RowActionsProps {
   row: AgencyMapperResponse;
@@ -613,6 +618,61 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     }
   };
 
+  // 7. Handle Download Full Performance & Post-Eval Report
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const handleDownloadPerformanceReport = async () => {
+    if (!campaign || isDownloadingReport) return;
+    try {
+      setIsDownloadingReport(true);
+      // 1. Fetch all mappers for this campaign without pagination
+      const mappersRes = await apiClient.get<PaginatedResult<AgencyMapperResponse>>(
+        `/agency/campaigns/${campaignId}/influencers`,
+      );
+      const allMappers = mappersRes.data.items || [];
+
+      // 2. Fetch recorded post-eval metrics for each mapper in parallel
+      const metricsPromises = allMappers.map(async (m) => {
+        try {
+          const res = await apiClient.get<MetricResponse[]>(`/agency/mappers/${m.id}/metrics`);
+          return { mapperId: m.id, metrics: res.data || [] };
+        } catch {
+          return { mapperId: m.id, metrics: [] };
+        }
+      });
+
+      const metricsResults = await Promise.all(metricsPromises);
+      const metricsByMapperId: Record<string, MetricResponse[]> = {};
+      for (const item of metricsResults) {
+        metricsByMapperId[item.mapperId] = item.metrics;
+      }
+
+      // 3. Export structured multi-sheet Excel workbook
+      const brandName =
+        brands.find((b) => b.id === campaign.brandId)?.name || campaign.brandName || 'Brand Partner';
+
+      await exportCampaignPerformanceReport({
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          description: campaign.description,
+          brandName,
+          status: campaign.status,
+          startDate: campaign.startDate,
+          endDate: campaign.endDate,
+        },
+        mappers: allMappers,
+        metricsByMapperId,
+      });
+
+      showSuccess('Campaign post-evaluation performance report downloaded.');
+    } catch (err) {
+      console.error('Failed to export performance report:', err);
+      showError('Failed to generate performance report.');
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
   const columns: Array<DataTableColumn<AgencyMapperResponse>> = [
 
     {
@@ -828,9 +888,27 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     },
   ];
 
+  const handleExportAll = async (): Promise<AgencyMapperResponse[]> => {
+    if (!campaignId) return [];
+    const res = await apiClient.get<PaginatedResult<AgencyMapperResponse>>(
+      `/agency/campaigns/${campaignId}/influencers`,
+      {
+        params: {
+          search: debouncedSearch.trim() || undefined,
+        },
+      },
+    );
+    return res.data.items || [];
+  };
+
+  const isDraft = (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.DRAFT;
+  const canEditCampaign =
+    (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.DRAFT ||
+    campaign?.status === CampaignStatusCode.ACTIVE;
+
   return (
     <DashboardLayout
-      title={campaign?.name || 'Campaign Management'}
+      title="Campaign Details"
       subtitle="Manage assigned influencer rosters, commercial margins, and deliverable approvals"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
@@ -845,13 +923,15 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       onBack={() => navigate('/agency/campaigns')}
       backLabel="Back to Campaigns"
       rightAction={
-        <Button
-          variant="contained"
-          startIcon={<PersonAddRoundedIcon fontSize="small" />}
-          onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
-        >
-          Add Influencers
-        </Button>
+        isDraft ? (
+          <Button
+            variant="contained"
+            startIcon={<PersonAddRoundedIcon fontSize="small" />}
+            onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
+          >
+            Add Influencers
+          </Button>
+        ) : undefined
       }
     >
       {/* 1. Campaign Brief Summary Card */}
@@ -919,13 +999,32 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             <Button
               variant="outlined"
               size="small"
-              startIcon={<EditRoundedIcon fontSize="small" />}
-              onClick={() => setEditCampaignOpen(true)}
-              disabled={campaignLoading}
+              startIcon={
+                isDownloadingReport ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <AssessmentRoundedIcon fontSize="small" />
+                )
+              }
+              onClick={handleDownloadPerformanceReport}
+              disabled={isDownloadingReport || campaignLoading}
               sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
             >
-              Edit Campaign
+              {isDownloadingReport ? 'Generating Report...' : 'Download Performance Report'}
             </Button>
+
+            {canEditCampaign && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditRoundedIcon fontSize="small" />}
+                onClick={() => setEditCampaignOpen(true)}
+                disabled={campaignLoading}
+                sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
+              >
+                Edit Campaign
+              </Button>
+            )}
 
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <Select
@@ -1009,16 +1108,35 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <SectionHeading
           title="Assigned Influencers & Rate Pipeline"
-          subtitle="Submitted rates, agency margin approvals, and brand visibility"
+          subtitle="Submitted rates, agency margin approvals, and deliverable post-evaluations"
           action={
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<PersonAddRoundedIcon fontSize="small" />}
-              onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
-            >
-              Add Influencer
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  isDownloadingReport ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <AssessmentRoundedIcon fontSize="small" />
+                  )
+                }
+                onClick={handleDownloadPerformanceReport}
+                disabled={isDownloadingReport || campaignLoading || mappers.length === 0}
+              >
+                {isDownloadingReport ? 'Generating...' : 'Download Report'}
+              </Button>
+              {isDraft && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<PersonAddRoundedIcon fontSize="small" />}
+                  onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
+                >
+                  Add Influencer
+                </Button>
+              )}
+            </Box>
           }
         />
 
@@ -1043,6 +1161,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           isFetching={mappersFetching}
           exportFilename={`${campaign?.name || 'campaign'}_influencers`}
           exportSheetName="Influencers"
+          onExportAll={handleExportAll}
         />
       </Box>
 

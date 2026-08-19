@@ -31,15 +31,15 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, CommentDialog, FilterBar, OverviewDrawer } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
-import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision, useCreateOrFindChat } from '@api';
+import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision, useCreateOrFindChat, apiClient } from '@api';
 import {
   BrandMapperResponse,
   BrandDecisionRequest,
   BrandStatusCode,
-  ApprovalActionName,
+  PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl, humanizeCode } from '@utils';
+import { safeUrl } from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandMapperResponse;
@@ -613,98 +613,12 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         </Typography>
       ),
     },
-    // 8. Pre Eval-ER% (Average last 10 post)
-    {
-      id: 'preEvalEr',
-      header: 'Pre Eval-ER%',
-      type: 'custom',
-      align: 'right',
-      minWidth: 120,
-      accessor: (row) => (row.preEvalEr !== null && row.preEvalEr !== undefined ? `${row.preEvalEr}%` : '—'),
-      render: (row) => (
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 700,
-            color: row.preEvalEr && row.preEvalEr >= 3 ? theme.palette.tokens.positiveText : theme.palette.tokens.textPrimary,
-          }}
-        >
-          {row.preEvalEr !== null && row.preEvalEr !== undefined ? `${row.preEvalEr}%` : '—'}
-        </Typography>
-      ),
-    },
-    // 9. Brand Fit & Feedback
-    {
-      id: 'brandFit',
-      header: 'Brand Fit & Feedback',
-      type: 'custom',
-      minWidth: 180,
-      accessor: (row) => (row.revisionComment ? `Remark: ${row.revisionComment}` : (row.brandFit || '—')),
-      render: (row) => (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {row.brandFit && (
-            <Tooltip title={row.brandFit}>
-              <Typography
-                variant="caption"
-                sx={{
-                  maxWidth: 180,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  color: theme.palette.tokens.textPrimary,
-                }}
-              >
-                {row.brandFit}
-              </Typography>
-            </Tooltip>
-          )}
-          {row.revisionComment && (
-            <Tooltip title={`Brand Feedback: ${row.revisionComment}`}>
-              <Box
-                sx={{
-                  p: '2px 6px',
-                  borderRadius: '4px',
-                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  maxWidth: 180,
-                }}
-              >
-                <EditNoteRoundedIcon sx={{ fontSize: 13, color: theme.palette.warning.dark, flexShrink: 0 }} />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: theme.palette.warning.dark,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {row.revisionComment}
-                </Typography>
-              </Box>
-            </Tooltip>
-          )}
-          {!row.brandFit && !row.revisionComment && (
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-              —
-            </Typography>
-          )}
-        </Box>
-      ),
-    },
-    // 10. Deliverables
+    // 7. Deliverables
     {
       id: 'deliverables',
       header: 'Deliverables',
       type: 'custom',
-      minWidth: 140,
+      minWidth: 180,
       accessor: 'deliverables',
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -712,7 +626,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         </Typography>
       ),
     },
-    // 11. Final Nego Commercials (Billed Client Rate)
+    // 8. Final Commercials (Billed Client Rate)
     {
       id: 'clientRate',
       header: 'Final Commercials',
@@ -728,40 +642,6 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             Pending Agency Rate
           </Typography>
         ),
-    },
-    // 12. Pre Eval - Committed Views
-    {
-      id: 'committedViews',
-      header: 'Committed Views',
-      type: 'custom',
-      align: 'right',
-      minWidth: 140,
-      accessor: 'committedViews',
-      render: (row) => (
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {row.committedViews ? row.committedViews.toLocaleString() : '—'}
-        </Typography>
-      ),
-    },
-    // 13. Pre Eval CPV (Cost/Views)
-    {
-      id: 'preEvalCpv',
-      header: 'Pre Eval CPV',
-      type: 'custom',
-      align: 'right',
-      minWidth: 120,
-      accessor: (row) => (row.preEvalCpv !== null && row.preEvalCpv !== undefined ? `₹${row.preEvalCpv}` : '—'),
-      render: (row) => (
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 700,
-            color: row.preEvalCpv ? theme.palette.primary.main : theme.palette.tokens.textSecondary,
-          }}
-        >
-          {row.preEvalCpv !== null && row.preEvalCpv !== undefined ? `₹${row.preEvalCpv}` : '—'}
-        </Typography>
-      ),
     },
     // Status
     {
@@ -793,12 +673,24 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         />
       ),
     },
-
   ];
+
+  const handleExportAll = async (): Promise<BrandMapperResponse[]> => {
+    if (!campaignId) return [];
+    const res = await apiClient.get<PaginatedResult<BrandMapperResponse>>(
+      `/brand/campaigns/${campaignId}/influencers`,
+      {
+        params: {
+          search: debouncedSearch.trim() || undefined,
+        },
+      },
+    );
+    return res.data.items || [];
+  };
 
   return (
     <DashboardLayout
-      title={campaign?.name || 'Campaign Review'}
+      title="Campaign Details"
       subtitle="Review influencer pre-evaluations, audience metrics, and commercial rates"
       navItems={navConfig.BRAND}
       activePath={location.pathname}
@@ -1075,8 +967,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       {/* 3. 13-Column Pre-Evaluation Table */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flexShrink: 0 }}>
         <SectionHeading
-          title="Influencer Pre-Evaluation & Commercial Proposals"
-          subtitle="Detailed pre-evaluation metrics across all 13 standard assessment dimensions"
+          title="Influencer Deliverables & Commercial Proposals"
+          subtitle="Creator profiles, deliverables, and commercial rates. Click on any row to view full pre-evaluation metrics and dossier."
         />
 
         <FilterBar
@@ -1100,6 +992,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           isFetching={mappersFetching}
           exportFilename={`${campaign?.name || 'campaign'}_influencer_proposals`}
           exportSheetName="Proposals"
+          onExportAll={handleExportAll}
           fillHeight={false}
           minHeight={360}
         />
@@ -1238,33 +1131,6 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                     },
                   ],
                 },
-                ...(selectedInfluencer.revisionComment
-                  ? [
-                      {
-                        title: 'Latest Brand Feedback / Remarks',
-                        fields: [
-                          {
-                            label: 'Active Brand Remark',
-                            value: selectedInfluencer.revisionComment,
-                            fullWidth: true,
-                            color: theme.palette.warning.dark,
-                          },
-                        ],
-                      },
-                    ]
-                  : []),
-                ...(selectedInfluencer.approvalEvents && selectedInfluencer.approvalEvents.length > 0
-                  ? [
-                      {
-                        title: 'Proposal History & Feedback',
-                        fields: selectedInfluencer.approvalEvents.map((evt) => ({
-                          label: `${new Date(evt.createdOn).toLocaleDateString('en-IN')}: ${humanizeCode(ApprovalActionName[evt.action] || 'Action')}`,
-                          value: evt.comment || 'Status updated',
-                          fullWidth: true,
-                        })),
-                      },
-                    ]
-                  : []),
               ]
             : []
         }

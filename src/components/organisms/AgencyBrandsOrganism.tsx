@@ -10,8 +10,8 @@ import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineR
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawer } from '@molecules';
-import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
-import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
+import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
+import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl, safeImageUrl } from '@utils';
 
@@ -136,6 +136,15 @@ export const AgencyBrandsOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<BrandResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<BrandResponse>>('/agency/brands', {
+      params: {
+        search: debouncedSearch.trim() || undefined,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Brands"
@@ -179,6 +188,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
           onPageChange={setPage}
           exportFilename="agency_brands"
           exportSheetName="Brands"
+          onExportAll={handleExportAll}
           onRowsPerPageChange={(limit) => {
             setRowsPerPage(limit);
             setPage(0);

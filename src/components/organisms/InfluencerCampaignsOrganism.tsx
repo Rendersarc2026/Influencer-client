@@ -12,8 +12,8 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { StatusChip } from '@atoms';
-import { useInfluencerCampaigns } from '@api';
-import { CampaignResponse, CampaignStatusEnum, CampaignStatusCode } from '@contracts';
+import { apiClient, useInfluencerCampaigns } from '@api';
+import { CampaignResponse, CampaignStatusEnum, CampaignStatusCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useViewFilters, usePillCode } from '@hooks';
 
 export const InfluencerCampaignsOrganism: React.FC = () => {
@@ -130,6 +130,16 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<CampaignResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<CampaignResponse>>('/influencer/campaigns', {
+      params: {
+        status: statusFilter,
+        search: debouncedSearch.trim() || undefined,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="My Campaigns"
@@ -206,6 +216,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
             fillHeight
             exportFilename="my_campaign_assignments"
             exportSheetName="Assignments"
+            onExportAll={handleExportAll}
             onRowClick={() => navigate('/influencer')}
           />
         </Box>

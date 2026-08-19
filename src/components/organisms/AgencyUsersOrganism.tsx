@@ -9,8 +9,8 @@ import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
-import { useAgencyUsers, useSetUserBlocked } from '@api';
-import { UserResponse, UserStatusFilter } from '@contracts';
+import { apiClient, useAgencyUsers, useSetUserBlocked } from '@api';
+import { UserResponse, UserStatusFilter, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 
 export const AgencyUsersOrganism: React.FC = () => {
@@ -170,6 +170,18 @@ export const AgencyUsersOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<UserResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<UserResponse>>('/agency/users', {
+      params: {
+        roleCode: activeRolePill !== 'ALL' ? activeRolePill : undefined,
+        excludeRoleCodes: activeRolePill === 'ALL' ? ['AGENCY'] : undefined,
+        search: debouncedSearch.trim() || undefined,
+        status: statusFilter === 'ACTIVE' ? undefined : statusFilter,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="All Users"
@@ -223,6 +235,7 @@ export const AgencyUsersOrganism: React.FC = () => {
           onRowClick={(row) => setSelectedUser(row)}
           exportFilename="platform_users"
           exportSheetName="Users"
+          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

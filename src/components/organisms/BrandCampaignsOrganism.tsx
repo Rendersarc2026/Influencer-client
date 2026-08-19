@@ -6,8 +6,8 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
-import { useBrandCampaigns } from '@api';
-import { CampaignResponse, CampaignStatusEnum } from '@contracts';
+import { apiClient, useBrandCampaigns } from '@api';
+import { CampaignResponse, CampaignStatusEnum, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useEnumOptions, useViewFilters, usePillCode } from '@hooks';
 
 export const BrandCampaignsOrganism: React.FC = () => {
@@ -95,6 +95,16 @@ export const BrandCampaignsOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<CampaignResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<CampaignResponse>>('/brand/campaigns', {
+      params: {
+        status: statusFilter,
+        search: debouncedSearch.trim() || undefined,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Brand Campaigns"
@@ -134,6 +144,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
           fillHeight
           exportFilename="brand_campaigns"
           exportSheetName="Campaigns"
+          onExportAll={handleExportAll}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

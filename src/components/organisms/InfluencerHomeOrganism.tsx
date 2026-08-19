@@ -12,12 +12,13 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
-import { useInfluencerAssignments, useSubmitInfluencerRate } from '@api';
+import { useInfluencerAssignments, useSubmitInfluencerRate, apiClient } from '@api';
 import {
   InfluencerMapperResponse,
   SubmitRateRequest,
   RateStatusEnum,
   RateStatusCode,
+  PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
 import { formatCurrency } from '@utils';
@@ -166,6 +167,19 @@ export const InfluencerHomeOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<InfluencerMapperResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<InfluencerMapperResponse>>(
+      '/influencer/assignments',
+      {
+        params: {
+          rateStatus: rateStatusFilter,
+          search: debouncedSearch.trim() || undefined,
+        },
+      },
+    );
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Fetch Dashboard"
@@ -261,6 +275,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
           isFetching={isFetching}
           exportFilename="current_campaign_assignments"
           exportSheetName="Assignments"
+          onExportAll={handleExportAll}
           onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
         />
       </Box>

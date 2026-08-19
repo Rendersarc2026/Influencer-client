@@ -28,8 +28,9 @@ import {
   useCreateCategory,
   useUpdateCategory,
   useDeactivateCategory,
+  apiClient,
 } from '@api';
-import { CategoryResponse, CategoryType, CategoryTypeCode } from '@contracts';
+import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { capitalizeWords } from '@utils';
 
@@ -273,6 +274,17 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     },
   ];
 
+  const handleExportAll = async (): Promise<CategoryResponse[]> => {
+    const res = await apiClient.get<PaginatedResult<CategoryResponse>>('/categories', {
+      params: {
+        type: activeTab,
+        search: debouncedSearch.trim() || undefined,
+        isActive: activeStatus,
+      },
+    });
+    return res.data.items || [];
+  };
+
   return (
     <DashboardLayout
       title="Categories"
@@ -431,6 +443,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           onRowClick={(row) => setSelectedCategory(row)}
           exportFilename={`${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'}_categories`}
           exportSheetName="Categories"
+          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

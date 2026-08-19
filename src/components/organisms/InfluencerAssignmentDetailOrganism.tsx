@@ -133,15 +133,21 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
                 {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
               </Button>
 
-              <Button
-                variant={isRateSubmitted ? 'outlined' : 'contained'}
-                startIcon={<EditNoteRoundedIcon fontSize="small" />}
-                onClick={() => setRateDialogOpen(true)}
-                disabled={isLoading}
-                sx={{ minWidth: 160 }}
-              >
-                {isRateSubmitted ? 'Revise Rate Quote' : 'Submit Commercial Rate'}
-              </Button>
+              {!isApproved && (
+                <Button
+                  variant={isRevisionRequested || !isRateSubmitted ? 'contained' : 'outlined'}
+                  startIcon={<EditNoteRoundedIcon fontSize="small" />}
+                  onClick={() => setRateDialogOpen(true)}
+                  disabled={isLoading}
+                  sx={{ minWidth: 160 }}
+                >
+                  {isRevisionRequested
+                    ? 'Submit Revised Rate'
+                    : isRateSubmitted
+                      ? 'Revise Rate Quote'
+                      : 'Submit Commercial Rate'}
+                </Button>
+              )}
             </Box>
           </Box>
 
@@ -401,7 +407,7 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
       </Box>
 
       {/* Rate Dialog */}
-      {assignment && (
+      {assignment && !isApproved && (
         <SubmitRateDialog
           open={rateDialogOpen}
           mapperId={assignment.id}
@@ -412,7 +418,11 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
           }
           deliverables={assignment.deliverables || undefined}
           currentRate={assignment.influencerRate}
-          revisionComment={assignment.revisionComment || assignment.lastComment || undefined}
+          revisionComment={
+            isRevisionRequested
+              ? assignment.revisionComment || assignment.lastComment || undefined
+              : undefined
+          }
           loading={submitRateMutation.isPending}
           onSubmit={handleSubmitRate}
           onClose={() => setRateDialogOpen(false)}
