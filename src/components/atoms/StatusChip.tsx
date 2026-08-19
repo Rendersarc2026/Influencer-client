@@ -1,27 +1,9 @@
 import React from 'react';
 import Chip from '@mui/material/Chip';
 import { useTheme } from '@mui/material/styles';
-import {
-  EnumCategory,
-  CampaignStatusCode,
-  RateStatusCode,
-  BrandStatusCode,
-  PaymentStatusCode,
-} from '@contracts';
+import { StatusCategory, STATUS_CONFIG, StatusConfig, StatusTone } from '@utils';
 
-/**
- * A status is a code, and a code only means something next to its category —
- * RATE_STATUS 1 is "Pending Submission" while CAMPAIGN_STATUS 1 is "Draft". So
- * the chip takes both, and looks the pair up in one table.
- *
- * The labels live here rather than coming from the /enums registry on the wire:
- * the registry carries symbolic names (AGENCY_APPROVED), not the sentence case a
- * user should read, and a chip should not wait on a network round trip to render.
- */
-export type StatusCategory = Extract<
-  EnumCategory,
-  'CAMPAIGN_STATUS' | 'RATE_STATUS' | 'BRAND_STATUS' | 'PAYMENT_STATUS'
->;
+export type { StatusCategory };
 
 export interface StatusChipProps {
   category: StatusCategory;
@@ -29,42 +11,6 @@ export interface StatusChipProps {
   size?: 'small' | 'medium';
   className?: string;
 }
-
-/** Which palette a status should read as, independent of its wording. */
-type Tone = 'neutral' | 'progress' | 'warning' | 'positive' | 'negative';
-
-interface StatusConfig {
-  label: string;
-  tone: Tone;
-}
-
-const STATUS_CONFIG: Record<StatusCategory, Record<number, StatusConfig>> = {
-  CAMPAIGN_STATUS: {
-    [CampaignStatusCode.DRAFT]: { label: 'Draft', tone: 'neutral' },
-    [CampaignStatusCode.ACTIVE]: { label: 'Active', tone: 'positive' },
-    [CampaignStatusCode.COMPLETED]: { label: 'Completed', tone: 'progress' },
-    [CampaignStatusCode.CANCELLED]: { label: 'Cancelled', tone: 'negative' },
-  },
-  RATE_STATUS: {
-    [RateStatusCode.PENDING_SUBMISSION]: { label: 'Pending Submission', tone: 'warning' },
-    [RateStatusCode.SUBMITTED]: { label: 'Submitted', tone: 'progress' },
-    [RateStatusCode.REVISION_REQUESTED]: { label: 'Revision Requested', tone: 'warning' },
-    [RateStatusCode.AGENCY_APPROVED]: { label: 'Agency Approved', tone: 'positive' },
-  },
-  BRAND_STATUS: {
-    [BrandStatusCode.NOT_VISIBLE]: { label: 'Draft Proposal', tone: 'neutral' },
-    [BrandStatusCode.PENDING_REVIEW]: { label: 'Pending Review', tone: 'warning' },
-    [BrandStatusCode.CORRECTION_REQUESTED]: { label: 'Correction Requested', tone: 'warning' },
-    [BrandStatusCode.APPROVED]: { label: 'Approved', tone: 'positive' },
-    [BrandStatusCode.REJECTED]: { label: 'Rejected', tone: 'negative' },
-  },
-  PAYMENT_STATUS: {
-    [PaymentStatusCode.NOT_RAISED]: { label: 'Not Raised', tone: 'neutral' },
-    [PaymentStatusCode.PENDING_APPROVAL]: { label: 'Pending Approval', tone: 'warning' },
-    [PaymentStatusCode.APPROVED]: { label: 'Approved', tone: 'positive' },
-    [PaymentStatusCode.REJECTED]: { label: 'Rejected', tone: 'negative' },
-  },
-};
 
 export const StatusChip: React.FC<StatusChipProps> = ({
   category,
@@ -74,7 +20,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
 }) => {
   const theme = useTheme();
 
-  const tones: Record<Tone, { bg: string; color: string }> = {
+  const tones: Record<StatusTone, { bg: string; color: string }> = {
     neutral: { bg: theme.palette.tokens.fieldBg, color: theme.palette.tokens.textSecondary },
     progress: { bg: theme.palette.tokens.accentBg, color: theme.palette.tokens.accentText },
     warning: { bg: theme.palette.tokens.warningBg, color: theme.palette.tokens.warningText },

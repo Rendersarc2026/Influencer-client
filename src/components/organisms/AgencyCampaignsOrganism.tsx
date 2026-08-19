@@ -175,6 +175,8 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           loading={campaignsLoading}
           isFetching={campaignsFetching}
           fillHeight
+          exportFilename="agency_campaigns"
+          exportSheetName="Campaigns"
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

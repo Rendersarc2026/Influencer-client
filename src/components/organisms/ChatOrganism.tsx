@@ -66,10 +66,17 @@ export const ChatOrganism: React.FC = () => {
   const queryParticipantId = searchParams.get('participantId');
   const queryType = (searchParams.get('type') as 'INFLUENCER' | 'BRAND') || undefined;
 
+  const isAgency = roleCode === 'AGENCY';
   const { data: chats = [], isLoading: chatsLoading } = useChats();
-  const { data: influencersData } = useAgencyInfluencers(roleCode === 'AGENCY' ? { limit: 100 } : undefined);
-  const { data: brandsData } = useAgencyBrands(roleCode === 'AGENCY' ? { limit: 100 } : undefined);
-  const { data: usersData } = useAgencyUsers(roleCode === 'AGENCY' ? { limit: 100 } : undefined);
+  const { data: influencersData } = useAgencyInfluencers(isAgency ? { limit: 100 } : undefined, {
+    enabled: isAgency,
+  });
+  const { data: brandsData } = useAgencyBrands(isAgency ? { limit: 100 } : undefined, {
+    enabled: isAgency,
+  });
+  const { data: usersData } = useAgencyUsers(isAgency ? { limit: 100 } : undefined, {
+    enabled: isAgency,
+  });
 
   const influencers: InfluencerResponse[] = useMemo(
     () => influencersData?.items || [],

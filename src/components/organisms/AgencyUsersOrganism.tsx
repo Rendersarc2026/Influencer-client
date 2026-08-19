@@ -221,6 +221,8 @@ export const AgencyUsersOrganism: React.FC = () => {
           loading={usersLoading}
           isFetching={usersFetching}
           onRowClick={(row) => setSelectedUser(row)}
+          exportFilename="platform_users"
+          exportSheetName="Users"
           fillHeight
         />
       </Box>

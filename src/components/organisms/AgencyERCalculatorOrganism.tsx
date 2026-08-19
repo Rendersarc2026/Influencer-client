@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -7,20 +7,8 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import InputAdornment from '@mui/material/InputAdornment';
-import InstagramIcon from '@mui/icons-material/Instagram';
-import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
-import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
-import ThumbUpAltRoundedIcon from '@mui/icons-material/ThumbUpAltRounded';
-import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
-import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
-import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded';
-import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
-import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded';
-import MovieCreationRoundedIcon from '@mui/icons-material/MovieCreationRounded';
-import CollectionsRoundedIcon from '@mui/icons-material/Collections';
-import ImageRoundedIcon from '@mui/icons-material/ImageRounded';
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
-import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import Link from '@mui/material/Link';
 import Table from '@mui/material/Table';
@@ -29,12 +17,43 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Avatar from '@mui/material/Avatar';
+import Grid from '@mui/material/Grid2';
+import InstagramIcon from '@mui/icons-material/Instagram';
+import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded';
+import MovieCreationRoundedIcon from '@mui/icons-material/MovieCreationRounded';
+import CollectionsRoundedIcon from '@mui/icons-material/Collections';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
+import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
+import PlaylistAddRoundedIcon from '@mui/icons-material/PlaylistAddRounded';
+import FunctionsRoundedIcon from '@mui/icons-material/FunctionsRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { SectionHeading } from '@atoms';
+import { SectionHeading, Pill } from '@atoms';
 import { useAuth, useToast } from '@hooks';
 import { apiClient } from '@api';
+import {
+  safeUrl,
+  safeImageUrl,
+  calculateMedian,
+  calculateEngagementRate,
+  calculatePreEvalCpv,
+  parseNumberInput,
+  parseNumberList,
+  ManualPostRowData,
+} from '@utils';
 
 type MediaKind = 'REEL' | 'VIDEO' | 'CAROUSEL' | 'IMAGE';
 
@@ -75,92 +94,459 @@ interface ERResult {
   posts: AnalyzedPost[];
 }
 
-const MEDIA_KIND_META: Record<MediaKind, { label: string; icon: React.ReactElement; color: string }> = {
-  REEL: { label: 'Reel', icon: <MovieCreationRoundedIcon fontSize="inherit" />, color: '#9C27B0' },
-  VIDEO: { label: 'Video', icon: <MovieCreationRoundedIcon fontSize="inherit" />, color: '#7E57C2' },
-  CAROUSEL: { label: 'Carousel', icon: <CollectionsRoundedIcon fontSize="inherit" />, color: '#1976D2' },
-  IMAGE: { label: 'Image', icon: <ImageRoundedIcon fontSize="inherit" />, color: '#607D8B' },
-};
-
-function formatCount(value: number | null): string {
-  if (value === null || value === undefined) return '—';
-  if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
-  if (value >= 1_000) return (value / 1_000).toFixed(1) + 'K';
-  return value.toLocaleString();
-}
+const createInitialRows = (count = 10): ManualPostRowData[] =>
+  Array.from({ length: count }, (_, i) => ({
+    id: String(i + 1),
+    likes: '',
+    comments: '',
+    views: '',
+  }));
 
 export const AgencyERCalculatorOrganism: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const { logout } = useAuth();
-  const { showError } = useToast();
+  const { showSuccess, showError } = useToast();
 
-  const [handle, setHandle] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ERResult | null>(null);
+  // Active Main Tab: 'manual' | 'auto'
+  const [activeTab, setActiveTab] = useState<'manual' | 'auto'>('manual');
 
-  const handleCalculate = async () => {
-    const trimmed = handle.trim();
+  // Manual Mode Sub-entry: 'table' | 'summary'
+  const [manualEntryMode, setManualEntryMode] = useState<'table' | 'summary'>('table');
+
+  // Manual Mode Inputs
+  const [manualHandle, setManualHandle] = useState('');
+  const [manualFollowers, setManualFollowers] = useState('');
+  const [manualCommercialFee, setManualCommercialFee] = useState('');
+  const [manualRows, setManualRows] = useState<ManualPostRowData[]>(createInitialRows(10));
+
+  // Manual Mode Summary Fields (for direct summary entry)
+  const [summaryLikes, setSummaryLikes] = useState('');
+  const [summaryComments, setSummaryComments] = useState('');
+  const [summaryPostsCount, setSummaryPostsCount] = useState('10');
+  const [summaryCommittedViews, setSummaryCommittedViews] = useState('');
+
+  // Bulk Paste Dialog
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkTargetField, setBulkTargetField] = useState<'views' | 'likes' | 'comments'>('views');
+  const [bulkInputText, setBulkInputText] = useState('');
+
+  // Auto Mode Inputs & State
+  const [autoHandle, setAutoHandle] = useState('');
+  const [autoCommercialFee, setAutoCommercialFee] = useState('');
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [autoResult, setAutoResult] = useState<ERResult | null>(null);
+
+  // ---------------------------------------------------------------------------
+  // Calculations for Manual Mode
+  // ---------------------------------------------------------------------------
+
+  const manualFollowersNum = useMemo(
+    () => parseNumberInput(manualFollowers),
+    [manualFollowers],
+  );
+
+  const manualCommercialFeeNum = useMemo(
+    () => parseNumberInput(manualCommercialFee),
+    [manualCommercialFee],
+  );
+
+  // Table calculation
+  const tableData = useMemo(() => {
+    const parsedRows = manualRows.map((r, index) => {
+      const likesNum = parseNumberInput(r.likes);
+      const commentsNum = parseNumberInput(r.comments);
+      const viewsNum = parseNumberInput(r.views);
+      const rowEngagement = likesNum + commentsNum;
+      const rowEr =
+        manualFollowersNum > 0 && rowEngagement > 0
+          ? (rowEngagement / manualFollowersNum) * 100
+          : 0;
+
+      return {
+        id: r.id,
+        postIndex: index + 1,
+        likesNum,
+        commentsNum,
+        viewsNum,
+        rowEngagement,
+        rowEr,
+        hasData: r.likes.trim() !== '' || r.comments.trim() !== '' || r.views.trim() !== '',
+      };
+    });
+
+    const activeRows = parsedRows.filter((r) => r.hasData);
+    const effectiveCount = activeRows.length > 0 ? activeRows.length : manualRows.length;
+
+    const totalLikes = parsedRows.reduce((sum, r) => sum + r.likesNum, 0);
+    const totalComments = parsedRows.reduce((sum, r) => sum + r.commentsNum, 0);
+    const validViews = parsedRows.filter((r) => r.viewsNum > 0).map((r) => r.viewsNum);
+    const committedViews = calculateMedian(validViews);
+
+    const erPercent = calculateEngagementRate(
+      totalLikes,
+      totalComments,
+      effectiveCount,
+      manualFollowersNum,
+    );
+
+    const cpv = calculatePreEvalCpv(manualCommercialFeeNum, committedViews);
+
+    return {
+      parsedRows,
+      activeRowsCount: effectiveCount,
+      totalLikes,
+      totalComments,
+      validViews,
+      committedViews,
+      erPercent,
+      cpv,
+      avgLikes: effectiveCount > 0 ? Math.round(totalLikes / effectiveCount) : 0,
+      avgComments: effectiveCount > 0 ? Math.round(totalComments / effectiveCount) : 0,
+    };
+  }, [manualRows, manualFollowersNum, manualCommercialFeeNum]);
+
+  // Summary calculation (when using direct summary totals)
+  const summaryData = useMemo(() => {
+    const totalLikes = parseNumberInput(summaryLikes);
+    const totalComments = parseNumberInput(summaryComments);
+    const postsCount = parseNumberInput(summaryPostsCount) || 10;
+    const committedViews = parseNumberInput(summaryCommittedViews);
+
+    const erPercent = calculateEngagementRate(
+      totalLikes,
+      totalComments,
+      postsCount,
+      manualFollowersNum,
+    );
+
+    const cpv = calculatePreEvalCpv(manualCommercialFeeNum, committedViews);
+
+    return {
+      totalLikes,
+      totalComments,
+      postsCount,
+      committedViews,
+      erPercent,
+      cpv,
+      avgLikes: postsCount > 0 ? Math.round(totalLikes / postsCount) : 0,
+      avgComments: postsCount > 0 ? Math.round(totalComments / postsCount) : 0,
+    };
+  }, [
+    summaryLikes,
+    summaryComments,
+    summaryPostsCount,
+    summaryCommittedViews,
+    manualFollowersNum,
+    manualCommercialFeeNum,
+  ]);
+
+  // Effective manual calculations based on active sub-mode
+  const effectiveManual = manualEntryMode === 'table' ? tableData : summaryData;
+
+  // ---------------------------------------------------------------------------
+  // Calculations for Auto Mode
+  // ---------------------------------------------------------------------------
+
+  const autoCommercialFeeNum = useMemo(
+    () => parseNumberInput(autoCommercialFee),
+    [autoCommercialFee],
+  );
+
+  const autoReelViews = useMemo(() => {
+    if (!autoResult?.posts) return [];
+    return autoResult.posts
+      .filter(
+        (p) =>
+          (p.mediaKind === 'REEL' || p.mediaKind === 'VIDEO') &&
+          p.views !== null &&
+          p.views > 0,
+      )
+      .slice(0, 10)
+      .map((p) => p.views as number);
+  }, [autoResult]);
+
+  const autoCommittedViews = useMemo(
+    () => calculateMedian(autoReelViews),
+    [autoReelViews],
+  );
+
+  const autoCpv = useMemo(
+    () => calculatePreEvalCpv(autoCommercialFeeNum, autoCommittedViews),
+    [autoCommercialFeeNum, autoCommittedViews],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
+  const handleRowChange = (
+    index: number,
+    field: 'likes' | 'comments' | 'views',
+    value: string,
+  ) => {
+    setManualRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleAddRow = () => {
+    setManualRows((prev) => [
+      ...prev,
+      {
+        id: String(prev.length + 1),
+        likes: '',
+        comments: '',
+        views: '',
+      },
+    ]);
+  };
+
+  const handleDeleteRow = (index: number) => {
+    setManualRows((prev) => {
+      if (prev.length <= 1) {
+        return [{ id: '1', likes: '', comments: '', views: '' }];
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleClearManual = () => {
+    setManualHandle('');
+    setManualFollowers('');
+    setManualCommercialFee('');
+    setManualRows(createInitialRows(10));
+    setSummaryLikes('');
+    setSummaryComments('');
+    setSummaryPostsCount('10');
+    setSummaryCommittedViews('');
+    showSuccess('Calculator reset successfully');
+  };
+
+  const handleOpenBulkDialog = (field: 'views' | 'likes' | 'comments') => {
+    setBulkTargetField(field);
+    setBulkInputText('');
+    setBulkDialogOpen(true);
+  };
+
+  const handleApplyBulkData = () => {
+    const parsedList = parseNumberList(bulkInputText);
+    if (parsedList.length === 0) {
+      showError('No valid numbers found in the pasted text');
+      return;
+    }
+
+    setManualRows((prev) => {
+      const targetLength = Math.max(prev.length, parsedList.length);
+      const next: ManualPostRowData[] = [];
+
+      for (let i = 0; i < targetLength; i++) {
+        const existing = prev[i] || {
+          id: String(i + 1),
+          likes: '',
+          comments: '',
+          views: '',
+        };
+        const valToSet = i < parsedList.length ? String(parsedList[i]) : existing[bulkTargetField];
+        next.push({
+          ...existing,
+          [bulkTargetField]: valToSet,
+        });
+      }
+      return next;
+    });
+
+    setBulkDialogOpen(false);
+    showSuccess(`Applied ${parsedList.length} values to ${bulkTargetField}`);
+  };
+
+  const handleCopySummary = () => {
+    const handleLabel = manualHandle.trim()
+      ? manualHandle.startsWith('@')
+        ? manualHandle.trim()
+        : `@${manualHandle.trim()}`
+      : 'Influencer';
+
+    const postsAnalyzed =
+      manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount;
+
+    const reportText = `📊 Influencer Evaluation Report: ${handleLabel}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Followers: ${manualFollowersNum > 0 ? manualFollowersNum.toLocaleString() : 'Not specified'}
+• Analyzed Posts: ${postsAnalyzed}
+• Total Likes: ${effectiveManual.totalLikes.toLocaleString()} (Avg: ${effectiveManual.avgLikes.toLocaleString()}/post)
+• Total Comments: ${effectiveManual.totalComments.toLocaleString()} (Avg: ${effectiveManual.avgComments.toLocaleString()}/post)
+• Engagement Rate (ER%): ${effectiveManual.erPercent.toFixed(2)}%
+• Pre-Eval Committed Views: ${effectiveManual.committedViews > 0 ? `${effectiveManual.committedViews.toLocaleString()} views` : 'Not specified'}
+• Reel Commercial Fee: ${manualCommercialFeeNum > 0 ? `₹${manualCommercialFeeNum.toLocaleString()}` : 'Not specified'}
+• Pre-Eval CPV: ${effectiveManual.cpv !== null ? `₹${effectiveManual.cpv.toFixed(2)} / view` : 'Not specified'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Formula: ER% = [(Likes + Comments) ÷ Posts] ÷ Followers × 100
+Formula: Committed Views = Median of Latest 10 Reel Views
+Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
+
+    navigator.clipboard.writeText(reportText);
+    showSuccess('Evaluation report copied to clipboard');
+  };
+
+  const handleCalculateAuto = async () => {
+    const trimmed = autoHandle.trim();
     if (!trimmed) return;
 
-    setLoading(true);
-    setResult(null);
+    setAutoLoading(true);
+    setAutoResult(null);
 
     try {
       const res = await apiClient.post<ERResult>('/er-calculator', {
         instagramHandle: trimmed,
       });
-      setResult(res.data);
+      setAutoResult(res.data);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Failed to calculate engagement rate';
       showError(message);
     } finally {
-      setLoading(false);
+      setAutoLoading(false);
     }
   };
 
-  const statCards = result
-    ? [
-        {
-          label: 'Followers',
-          value: formatCount(result.followersCount),
-          icon: <PeopleAltRoundedIcon />,
-          color: theme.palette.primary.main,
-        },
-        {
-          label: 'Following',
-          value: formatCount(result.followingCount),
-          icon: <PersonAddRoundedIcon />,
-          color: theme.palette.info.main,
-        },
-        {
-          label: 'Posts Analyzed',
-          value: formatCount(result.postsCount),
-          icon: <PhotoLibraryRoundedIcon />,
-          color: theme.palette.warning.main,
-        },
-        {
-          label: 'Avg. Likes',
-          value: formatCount(result.avgLikes),
-          icon: <ThumbUpAltRoundedIcon />,
-          color: '#E91E63',
-        },
-        {
-          label: 'Avg. Comments',
-          value: formatCount(result.avgComments),
-          icon: <ChatBubbleRoundedIcon />,
-          color: theme.palette.success.main,
-        },
-        {
-          label: 'Avg. Views (Reels)',
-          value: formatCount(result.avgViews),
-          icon: <VisibilityRoundedIcon />,
-          color: '#9C27B0',
-        },
-      ]
-    : [];
+  const handleTransferToManual = () => {
+    if (!autoResult) return;
+
+    setManualHandle(autoResult.instagramHandle);
+    setManualFollowers(autoResult.followersCount ? String(autoResult.followersCount) : '');
+    if (autoCommercialFee) {
+      setManualCommercialFee(autoCommercialFee);
+    }
+
+    if (autoResult.posts.length > 0) {
+      const transferredRows: ManualPostRowData[] = autoResult.posts
+        .slice(0, 10)
+        .map((p, idx) => ({
+          id: String(idx + 1),
+          likes: String(p.likes),
+          comments: String(p.comments),
+          views: p.views !== null ? String(p.views) : '',
+        }));
+
+      while (transferredRows.length < 10) {
+        transferredRows.push({
+          id: String(transferredRows.length + 1),
+          likes: '',
+          comments: '',
+          views: '',
+        });
+      }
+
+      setManualRows(transferredRows);
+    }
+
+    setActiveTab('manual');
+    setManualEntryMode('table');
+    showSuccess('Transferred Instagram profile data to Manual Calculator');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Helpers
+  // ---------------------------------------------------------------------------
+
+  const getErTierBadge = (er: number) => {
+    if (er <= 0) return null;
+    if (er >= 4.0) {
+      return (
+        <Chip
+          label="🔥 High ER (≥4%)"
+          size="small"
+          sx={{
+            fontWeight: 700,
+            backgroundColor: theme.palette.tokens.purpleBg,
+            color: theme.palette.tokens.purpleText,
+          }}
+        />
+      );
+    }
+    if (er >= 2.0) {
+      return (
+        <Chip
+          label="✨ Good ER (2%–4%)"
+          size="small"
+          sx={{
+            fontWeight: 700,
+            backgroundColor: theme.palette.tokens.positiveBg,
+            color: theme.palette.tokens.positiveText,
+          }}
+        />
+      );
+    }
+    if (er >= 1.0) {
+      return (
+        <Chip
+          label="⚖️ Average ER (1%–2%)"
+          size="small"
+          sx={{
+            fontWeight: 700,
+            backgroundColor: theme.palette.tokens.fieldBg,
+            color: theme.palette.tokens.textSecondary,
+          }}
+        />
+      );
+    }
+    return (
+      <Chip
+        label="❄️ Low ER (<1%)"
+        size="small"
+        sx={{
+          fontWeight: 700,
+          backgroundColor: theme.palette.tokens.warningBg,
+          color: theme.palette.tokens.warningText,
+        }}
+      />
+    );
+  };
+
+  const getCpvEfficiencyBadge = (cpv: number | null) => {
+    if (cpv === null || cpv <= 0) return null;
+    if (cpv <= 1.0) {
+      return (
+        <Chip
+          label="💎 Highly Cost Effective (≤ ₹1)"
+          size="small"
+          sx={{
+            fontWeight: 700,
+            backgroundColor: theme.palette.tokens.positiveBg,
+            color: theme.palette.tokens.positiveText,
+          }}
+        />
+      );
+    }
+    if (cpv <= 2.5) {
+      return (
+        <Chip
+          label="✅ Healthy CPV (₹1 – ₹2.5)"
+          size="small"
+          sx={{
+            fontWeight: 700,
+            backgroundColor: theme.palette.tokens.accentBg,
+            color: theme.palette.tokens.accentText,
+          }}
+        />
+      );
+    }
+    return (
+      <Chip
+        label="⚠️ High CPV (> ₹2.5)"
+        size="small"
+        sx={{
+          fontWeight: 700,
+          backgroundColor: theme.palette.tokens.warningBg,
+          color: theme.palette.tokens.warningText,
+        }}
+      />
+    );
+  };
 
   return (
     <DashboardLayout
@@ -170,326 +556,1341 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
       title="ER Calculator"
     >
       <SectionHeading
-        title="Engagement Rate Calculator"
-        subtitle="Calculate engagement rate for any Instagram profile"
+        title="Engagement Rate & Pre-Evaluation Calculator"
+        subtitle="Calculate ER%, Pre-Evaluation Committed Views, and CPV manually or fetch from Instagram"
       />
 
-      {/* Search Section */}
-      <Paper
-        elevation={0}
+      {/* Top Navigation & Mode Switcher */}
+      <Box
         sx={{
-          p: 3,
-          borderRadius: `${theme.customRadii?.card ?? 16}px`,
-          backgroundColor: theme.palette.background.paper,
-          border: `1px solid ${theme.palette.divider}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 2,
           mb: 3,
         }}
       >
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <TextField
-            placeholder="Enter Instagram handle or URL"
-            value={handle}
-            onChange={(e) => setHandle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCalculate();
-            }}
-            size="small"
-            sx={{ flex: 1, minWidth: 280 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <InstagramIcon sx={{ color: theme.palette.text.secondary }} />
-                  </InputAdornment>
-                ),
-              },
-            }}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Pill
+            label="Manual Calculator"
+            selected={activeTab === 'manual'}
+            onClick={() => setActiveTab('manual')}
+            icon={<CalculateRoundedIcon sx={{ fontSize: 18 }} />}
           />
-          <Button
-            variant="contained"
-            onClick={handleCalculate}
-            disabled={loading || !handle.trim()}
-            startIcon={loading ? <CircularProgress size={18} /> : <CalculateRoundedIcon />}
-            sx={{ height: 40, px: 3 }}
-          >
-            {loading ? 'Calculating…' : 'Calculate'}
-          </Button>
+          <Pill
+            label="Auto Profile Fetch"
+            selected={activeTab === 'auto'}
+            onClick={() => setActiveTab('auto')}
+            icon={<InstagramIcon sx={{ fontSize: 18 }} />}
+          />
         </Box>
-      </Paper>
 
-      {/* Results Section */}
-      {result && (
-        <>
-          {/* Profile Card */}
-          {result.profile && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: `${theme.customRadii?.card ?? 16}px`,
-                backgroundColor: theme.palette.background.paper,
-                border: `1px solid ${theme.palette.divider}`,
-                mb: 3,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2.5,
-                flexWrap: 'wrap',
-              }}
+        {activeTab === 'manual' && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ContentCopyRoundedIcon />}
+              onClick={handleCopySummary}
+              sx={{ height: 32 }}
             >
-              <Avatar
-                src={result.profile.profilePicUrl ?? undefined}
-                alt={result.profile.fullName ?? result.instagramHandle}
-                imgProps={{ referrerPolicy: 'no-referrer' }}
-                sx={{ width: 72, height: 72 }}
-              >
-                {(result.profile.fullName ?? result.instagramHandle).charAt(0).toUpperCase()}
-              </Avatar>
+              Copy Report
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              color="inherit"
+              startIcon={<RefreshRoundedIcon />}
+              onClick={handleClearManual}
+              sx={{ height: 32 }}
+            >
+              Reset
+            </Button>
+          </Box>
+        )}
+      </Box>
 
-              <Box sx={{ flex: 1, minWidth: 200 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    {result.profile.fullName || `@${result.instagramHandle}`}
-                  </Typography>
-                  {result.profile.isVerified && (
-                    <VerifiedRoundedIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
-                  )}
-                  {result.profile.isPrivate && (
-                    <Chip label="Private" size="small" color="warning" variant="outlined" />
-                  )}
-                </Box>
-
-                <Link
-                  href={`https://www.instagram.com/${result.instagramHandle}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="body2"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  @{result.instagramHandle}
-                  <OpenInNewRoundedIcon sx={{ fontSize: 14 }} />
-                </Link>
-
-                {result.profile.biography && (
-                  <Typography
-                    variant="body2"
-                    sx={{ color: theme.palette.text.secondary, mt: 0.5, whiteSpace: 'pre-line' }}
-                  >
-                    {result.profile.biography}
-                  </Typography>
-                )}
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                {[
-                  { label: 'Followers', value: formatCount(result.followersCount) },
-                  { label: 'Following', value: formatCount(result.followingCount) },
-                  { label: 'Total Posts', value: formatCount(result.profile.totalPosts) },
-                ].map((item) => (
-                  <Box key={item.label} sx={{ textAlign: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      {item.value}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                      {item.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
-          )}
-
-          {/* ER Score Card */}
+      {/* ========================================================================= */}
+      {/* MANUAL CALCULATOR TAB */}
+      {/* ========================================================================= */}
+      {activeTab === 'manual' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Formula Reference Explainer Card */}
           <Paper
             elevation={0}
             sx={{
-              p: 4,
-              borderRadius: `${theme.customRadii?.card ?? 16}px`,
-              backgroundColor: theme.palette.background.paper,
-              border: `1px solid ${theme.palette.divider}`,
-              mb: 3,
-              textAlign: 'center',
+              p: 2.5,
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundColor: theme.palette.tokens.fieldBg,
+              border: `1px solid ${theme.palette.tokens.divider}`,
             }}
           >
-            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 1 }}>
-              @{result.instagramHandle}
-            </Typography>
-            <Typography
-              variant="h2"
-              sx={{
-                fontWeight: 800,
-                color: result.engagementRate > 0 ? theme.palette.primary.main : theme.palette.text.secondary,
-                fontSize: { xs: '48px', md: '64px' },
-                lineHeight: 1,
-                mb: 0.5,
-              }}
-            >
-              {result.engagementRate.toFixed(2)}%
-            </Typography>
-            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-              Engagement Rate
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: theme.palette.text.disabled, mt: 1, display: 'block' }}
-            >
-              Source: {result.source.replace(/_/g, ' ')} •{' '}
-              {new Date(result.fetchedAt).toLocaleString()}
-            </Typography>
-          </Paper>
-
-          {/* Stats Grid */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: 'repeat(2, 1fr)',
-                sm: 'repeat(3, 1fr)',
-                lg: 'repeat(6, 1fr)',
-              },
-              gap: 2,
-            }}
-          >
-            {statCards.map((stat) => (
-              <Paper
-                key={stat.label}
-                elevation={0}
-                sx={{
-                  p: 2.5,
-                  borderRadius: `${theme.customRadii?.card ?? 16}px`,
-                  backgroundColor: theme.palette.background.paper,
-                  border: `1px solid ${theme.palette.divider}`,
-                  textAlign: 'center',
-                }}
-              >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <FunctionsRoundedIcon sx={{ color: theme.palette.tokens.accentText, fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                Standard Evaluation Equations
+              </Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Box
                   sx={{
-                    color: stat.color,
-                    mb: 1,
-                    '& .MuiSvgIcon-root': { fontSize: 28 },
+                    p: 1.5,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
                   }}
                 >
-                  {stat.icon}
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: theme.palette.tokens.accentText, display: 'block' }}
+                  >
+                    1. ER% (Engagement Rate)
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                    [(Total Likes + Total Comments) ÷ Number of Posts] ÷ Followers × 100
+                  </Typography>
                 </Box>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  {stat.value}
-                </Typography>
-                <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                  {stat.label}
-                </Typography>
-              </Paper>
-            ))}
-          </Box>
+              </Grid>
 
-          {/* Analyzed Posts */}
-          {result.posts.length > 0 && (
-            <Paper
-              elevation={0}
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText, display: 'block' }}
+                  >
+                    2. Pre Eval Committed Views
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                    Committed Views = Median of Latest 10 Reel Views
+                  </Typography>
+                </Box>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText, display: 'block' }}
+                  >
+                    3. Pre Eval CPV (Cost Per View)
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                    Reel Commercial Fee ÷ Pre Eval Committed Views
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* Primary Inputs Card: Influencer & Rate Setup */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundColor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+              Influencer & Deal Parameters
+            </Typography>
+
+            <Grid container spacing={2.5}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField
+                  label="Influencer Handle / Name (Optional)"
+                  placeholder="e.g. @ananyapandey"
+                  value={manualHandle}
+                  onChange={(e) => setManualHandle(e.target.value)}
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <InstagramIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField
+                  label="Followers Count *"
+                  placeholder="e.g. 100k or 100000"
+                  value={manualFollowers}
+                  onChange={(e) => setManualFollowers(e.target.value)}
+                  size="small"
+                  fullWidth
+                  helperText={
+                    manualFollowersNum > 0
+                      ? `Parsed: ${manualFollowersNum.toLocaleString()} followers`
+                      : 'Required to compute ER%'
+                  }
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField
+                  label="Reel Commercial Fee (₹)"
+                  placeholder="e.g. 50k or 50000"
+                  value={manualCommercialFee}
+                  onChange={(e) => setManualCommercialFee(e.target.value)}
+                  size="small"
+                  fullWidth
+                  helperText={
+                    manualCommercialFeeNum > 0
+                      ? `Parsed: ₹${manualCommercialFeeNum.toLocaleString()}`
+                      : 'Required to compute Pre-Eval CPV'
+                  }
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <CurrencyRupeeRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* 3 HERO RESULT CARDS */}
+          <Grid container spacing={2.5}>
+            {/* Hero Card 1: ER% */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: `${theme.customRadii.card}px`,
+                  backgroundColor: theme.palette.tokens.accentBg,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        color: theme.palette.tokens.accentText,
+                      }}
+                    >
+                      Engagement Rate (ER%)
+                    </Typography>
+                    {getErTierBadge(effectiveManual.erPercent)}
+                  </Box>
+
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontWeight: 800,
+                      color:
+                        effectiveManual.erPercent > 0
+                          ? theme.palette.tokens.accentText
+                          : theme.palette.tokens.textSecondary,
+                      my: 1,
+                    }}
+                  >
+                    {effectiveManual.erPercent > 0 ? `${effectiveManual.erPercent.toFixed(2)}%` : '0.00%'}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    {manualFollowersNum > 0
+                      ? `Based on ${effectiveManual.totalLikes.toLocaleString()} likes & ${effectiveManual.totalComments.toLocaleString()} comments across ${manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount} posts`
+                      : 'Enter followers count above to calculate ER%'}
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    mt: 2,
+                    pt: 1.5,
+                    borderTop: `1px dashed ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.accentText, fontWeight: 600 }}>
+                    Formula: [(Likes + Comments) ÷ Posts] ÷ Followers × 100
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Hero Card 2: Committed Views */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: `${theme.customRadii.card}px`,
+                  backgroundColor: theme.palette.tokens.purpleBg,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        color: theme.palette.tokens.purpleText,
+                      }}
+                    >
+                      Pre-Eval Committed Views
+                    </Typography>
+                    {effectiveManual.committedViews > 0 && (
+                      <Chip
+                        label="Median Value"
+                        size="small"
+                        sx={{
+                          fontWeight: 700,
+                          backgroundColor: theme.palette.background.paper,
+                          color: theme.palette.tokens.purpleText,
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontWeight: 800,
+                      color:
+                        effectiveManual.committedViews > 0
+                          ? theme.palette.tokens.purpleText
+                          : theme.palette.tokens.textSecondary,
+                      my: 1,
+                    }}
+                  >
+                    {effectiveManual.committedViews > 0
+                      ? `${effectiveManual.committedViews.toLocaleString()} views`
+                      : '0 views'}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    {manualEntryMode === 'table'
+                      ? tableData.validViews.length > 0
+                        ? `Computed from median of ${tableData.validViews.length} reel view inputs`
+                        : 'Enter reel views in the table below to calculate median'
+                      : summaryData.committedViews > 0
+                        ? 'Committed views set directly'
+                        : 'Enter committed views value'}
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    mt: 2,
+                    pt: 1.5,
+                    borderTop: `1px dashed ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.purpleText, fontWeight: 600 }}>
+                    Formula: Committed Views = Median of Latest 10 Reel Views
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Hero Card 3: Pre-Eval CPV */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: `${theme.customRadii.card}px`,
+                  backgroundColor: theme.palette.tokens.positiveBg,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        color: theme.palette.tokens.positiveText,
+                      }}
+                    >
+                      Pre-Eval CPV (Cost Per View)
+                    </Typography>
+                    {getCpvEfficiencyBadge(effectiveManual.cpv)}
+                  </Box>
+
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontWeight: 800,
+                      color:
+                        effectiveManual.cpv !== null
+                          ? theme.palette.tokens.positiveText
+                          : theme.palette.tokens.textSecondary,
+                      my: 1,
+                    }}
+                  >
+                    {effectiveManual.cpv !== null ? `₹${effectiveManual.cpv.toFixed(2)} / view` : '—'}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    {manualCommercialFeeNum > 0 && effectiveManual.committedViews > 0
+                      ? `₹${manualCommercialFeeNum.toLocaleString()} fee ÷ ${effectiveManual.committedViews.toLocaleString()} committed views`
+                      : 'Requires both Commercial Fee & Committed Views'}
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    mt: 2,
+                    pt: 1.5,
+                    borderTop: `1px dashed ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.positiveText, fontWeight: 600 }}>
+                    Formula: Reel Commercial Fee ÷ Pre Eval Committed Views
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Posts Data Entry Section */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundColor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+            }}
+          >
+            {/* Header & Sub-mode toggle */}
+            <Box
               sx={{
-                mt: 3,
-                borderRadius: `${theme.customRadii?.card ?? 16}px`,
-                backgroundColor: theme.palette.background.paper,
-                border: `1px solid ${theme.palette.divider}`,
-                overflow: 'hidden',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 2,
+                mb: 2.5,
               }}
             >
-              <Box sx={{ p: 3, pb: 2 }}>
+              <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  Analyzed Posts ({result.posts.length})
+                  Posts & Reels Data Breakdown
                 </Typography>
-                <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                  The latest {result.posts.length} posts by publish date. Pinned posts are excluded,
-                  and average views count reels only.
+                <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Input data for the latest 10 posts/reels or enter aggregated totals directly
                 </Typography>
               </Box>
 
-              <TableContainer sx={{ overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: 720 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Post</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Likes</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Comments</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Views</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>ER %</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {result.posts.map((post, index) => {
-                      const meta = MEDIA_KIND_META[post.mediaKind];
-                      return (
-                        <TableRow key={post.shortcode ?? index} hover>
-                          <TableCell sx={{ maxWidth: 320 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Avatar
-                                variant="rounded"
-                                src={post.thumbnailUrl ?? undefined}
-                                imgProps={{ referrerPolicy: 'no-referrer' }}
-                                sx={{ width: 44, height: 44, bgcolor: theme.palette.action.hover, color: meta.color }}
-                              >
-                                {meta.icon}
-                              </Avatar>
-                              <Box sx={{ minWidth: 0 }}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                  }}
-                                >
-                                  {post.caption || <em>No caption</em>}
-                                </Typography>
-                                {post.permalink && (
-                                  <Link
-                                    href={post.permalink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    variant="caption"
-                                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
-                                  >
-                                    View post
-                                    <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
-                                  </Link>
-                                )}
-                              </Box>
-                            </Box>
-                          </TableCell>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Pill
+                  label="10 Reels Grid"
+                  selected={manualEntryMode === 'table'}
+                  onClick={() => setManualEntryMode('table')}
+                />
+                <Pill
+                  label="Direct Totals"
+                  selected={manualEntryMode === 'summary'}
+                  onClick={() => setManualEntryMode('summary')}
+                />
+              </Box>
+            </Box>
 
-                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                            {new Date(post.takenAt).toLocaleDateString()}
+            {/* Table Entry Mode */}
+            {manualEntryMode === 'table' && (
+              <>
+                {/* Table Action Bar */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 1.5,
+                    p: 1.5,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.tokens.fieldBg,
+                    mb: 2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary, mr: 1 }}>
+                      Quick Bulk Paste:
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PlaylistAddRoundedIcon />}
+                      onClick={() => handleOpenBulkDialog('views')}
+                      sx={{ height: 28 }}
+                    >
+                      Paste 10 Reel Views
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PlaylistAddRoundedIcon />}
+                      onClick={() => handleOpenBulkDialog('likes')}
+                      sx={{ height: 28 }}
+                    >
+                      Paste Likes
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PlaylistAddRoundedIcon />}
+                      onClick={() => handleOpenBulkDialog('comments')}
+                      sx={{ height: 28 }}
+                    >
+                      Paste Comments
+                    </Button>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="text"
+                      startIcon={<AddRoundedIcon />}
+                      onClick={handleAddRow}
+                      sx={{ height: 28 }}
+                    >
+                      Add Row
+                    </Button>
+                  </Box>
+                </Box>
+
+                {/* 10 Posts Table */}
+                <TableContainer
+                  sx={{
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <Table size="small">
+                    <TableHead sx={{ backgroundColor: theme.palette.tokens.fieldBg }}>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700, width: 80 }}>Post #</TableCell>
+                        <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>
+                          Likes
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>
+                          Comments
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>
+                          Reel Views (for Median)
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, minWidth: 130 }}>
+                          Engagement
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, minWidth: 110 }}>
+                          Post ER%
+                        </TableCell>
+                        <TableCell align="center" sx={{ width: 60 }}>
+                          Action
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {tableData.parsedRows.map((row, index) => (
+                        <TableRow
+                          key={row.id}
+                          hover
+                          sx={{
+                            backgroundColor:
+                              index % 2 === 0 ? 'transparent' : theme.palette.tokens.tableHover,
+                          }}
+                        >
+                          <TableCell sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}>
+                            Reel {index + 1}
                           </TableCell>
 
                           <TableCell>
-                            <Chip
-                              label={meta.label}
+                            <TextField
                               size="small"
-                              variant="outlined"
-                              sx={{ borderColor: meta.color, color: meta.color }}
+                              placeholder="e.g. 1200 or 1.2k"
+                              value={manualRows[index]?.likes ?? ''}
+                              onChange={(e) => handleRowChange(index, 'likes', e.target.value)}
+                              fullWidth
+                              slotProps={{
+                                input: {
+                                  sx: {
+                                    height: 36,
+                                    fontSize: theme.typography.body2.fontSize,
+                                  },
+                                },
+                              }}
                             />
                           </TableCell>
 
-                          <TableCell align="right">{post.likes.toLocaleString()}</TableCell>
-                          <TableCell align="right">{post.comments.toLocaleString()}</TableCell>
-                          <TableCell align="right">
-                            {post.views === null ? '—' : post.views.toLocaleString()}
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              placeholder="e.g. 85"
+                              value={manualRows[index]?.comments ?? ''}
+                              onChange={(e) => handleRowChange(index, 'comments', e.target.value)}
+                              fullWidth
+                              slotProps={{
+                                input: {
+                                  sx: {
+                                    height: 36,
+                                    fontSize: theme.typography.body2.fontSize,
+                                  },
+                                },
+                              }}
+                            />
                           </TableCell>
+
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              placeholder="e.g. 45000 or 45k"
+                              value={manualRows[index]?.views ?? ''}
+                              onChange={(e) => handleRowChange(index, 'views', e.target.value)}
+                              fullWidth
+                              slotProps={{
+                                input: {
+                                  sx: {
+                                    height: 36,
+                                    fontSize: theme.typography.body2.fontSize,
+                                  },
+                                },
+                              }}
+                            />
+                          </TableCell>
+
                           <TableCell align="right" sx={{ fontWeight: 600 }}>
-                            {post.engagementRate.toFixed(2)}%
+                            {row.rowEngagement > 0 ? row.rowEngagement.toLocaleString() : '—'}
+                          </TableCell>
+
+                          <TableCell align="right" sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}>
+                            {row.rowEr > 0 ? `${row.rowEr.toFixed(2)}%` : '—'}
+                          </TableCell>
+
+                          <TableCell align="center">
+                            <Tooltip title="Delete row">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteRow(index)}
+                                sx={{ color: theme.palette.tokens.textSecondary }}
+                              >
+                                <DeleteOutlineRoundedIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          )}
-        </>
+                      ))}
+
+                      {/* Summary Table Footer */}
+                      <TableRow
+                        sx={{
+                          backgroundColor: theme.palette.tokens.fieldBg,
+                          borderTop: `2px solid ${theme.palette.tokens.divider}`,
+                        }}
+                      >
+                        <TableCell sx={{ fontWeight: 800 }}>
+                          Total ({tableData.activeRowsCount} Posts)
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 800 }}>
+                          {tableData.totalLikes.toLocaleString()} likes
+                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                            Avg: {tableData.avgLikes.toLocaleString()}/post
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 800 }}>
+                          {tableData.totalComments.toLocaleString()} comments
+                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                            Avg: {tableData.avgComments.toLocaleString()}/post
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 800, color: theme.palette.tokens.purpleText }}>
+                          Median: {tableData.committedViews.toLocaleString()} views
+                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                            From {tableData.validViews.length} reel view inputs
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800 }}>
+                          {(tableData.totalLikes + tableData.totalComments).toLocaleString()}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}>
+                          {tableData.erPercent > 0 ? `${tableData.erPercent.toFixed(2)}%` : '0.00%'}
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            )}
+
+            {/* Direct Summary Entry Mode */}
+            {manualEntryMode === 'summary' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+                <Grid container spacing={2.5}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <TextField
+                      label="Total Likes"
+                      placeholder="e.g. 45000 or 45k"
+                      value={summaryLikes}
+                      onChange={(e) => setSummaryLikes(e.target.value)}
+                      size="small"
+                      fullWidth
+                      helperText={
+                        summaryData.totalLikes > 0
+                          ? `Parsed: ${summaryData.totalLikes.toLocaleString()}`
+                          : 'Sum of likes across all analyzed posts'
+                      }
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <TextField
+                      label="Total Comments"
+                      placeholder="e.g. 3200 or 3.2k"
+                      value={summaryComments}
+                      onChange={(e) => setSummaryComments(e.target.value)}
+                      size="small"
+                      fullWidth
+                      helperText={
+                        summaryData.totalComments > 0
+                          ? `Parsed: ${summaryData.totalComments.toLocaleString()}`
+                          : 'Sum of comments across all analyzed posts'
+                      }
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <TextField
+                      label="Number of Analyzed Posts"
+                      placeholder="e.g. 10"
+                      value={summaryPostsCount}
+                      onChange={(e) => setSummaryPostsCount(e.target.value)}
+                      size="small"
+                      fullWidth
+                      helperText="Default is 10 latest posts"
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <TextField
+                      label="Pre-Eval Committed Views"
+                      placeholder="e.g. 35000 or 35k"
+                      value={summaryCommittedViews}
+                      onChange={(e) => setSummaryCommittedViews(e.target.value)}
+                      size="small"
+                      fullWidth
+                      helperText={
+                        summaryData.committedViews > 0
+                          ? `Parsed: ${summaryData.committedViews.toLocaleString()} views`
+                          : 'Median of latest 10 reels'
+                      }
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </Paper>
+
+          {/* Evaluation Summary Sheet */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundColor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Influencer Evaluation Summary
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<ContentCopyRoundedIcon />}
+                onClick={handleCopySummary}
+              >
+                Copy Evaluation Report
+              </Button>
+            </Box>
+
+            <Box
+              sx={{
+                p: 2.5,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                border: `1px solid ${theme.palette.tokens.divider}`,
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                fontSize: theme.typography.body2.fontSize,
+                color: theme.palette.tokens.textPrimary,
+                lineHeight: 1.6,
+              }}
+            >
+              {`📊 Influencer Evaluation Report: ${
+                manualHandle.trim()
+                  ? manualHandle.startsWith('@')
+                    ? manualHandle.trim()
+                    : `@${manualHandle.trim()}`
+                  : 'Influencer'
+              }
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Followers: ${manualFollowersNum > 0 ? manualFollowersNum.toLocaleString() : 'Not specified'}
+• Analyzed Posts / Reels: ${manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount}
+• Total Likes: ${effectiveManual.totalLikes.toLocaleString()} (Avg: ${effectiveManual.avgLikes.toLocaleString()}/post)
+• Total Comments: ${effectiveManual.totalComments.toLocaleString()} (Avg: ${effectiveManual.avgComments.toLocaleString()}/post)
+• Engagement Rate (ER%): ${effectiveManual.erPercent.toFixed(2)}%
+• Pre-Eval Committed Views: ${effectiveManual.committedViews > 0 ? `${effectiveManual.committedViews.toLocaleString()} views` : 'Not specified'}
+• Reel Commercial Fee: ${manualCommercialFeeNum > 0 ? `₹${manualCommercialFeeNum.toLocaleString()}` : 'Not specified'}
+• Pre-Eval CPV: ${effectiveManual.cpv !== null ? `₹${effectiveManual.cpv.toFixed(2)} / view` : 'Not specified'}`}
+            </Box>
+          </Paper>
+        </Box>
       )}
+
+      {/* ========================================================================= */}
+      {/* AUTO INSTAGRAM PROFILE FETCH TAB */}
+      {/* ========================================================================= */}
+      {activeTab === 'auto' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Profile Search Section */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundColor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+            }}
+          >
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <TextField
+                placeholder="Enter Instagram handle or URL (e.g. virat.kohli or https://instagram.com/...)"
+                value={autoHandle}
+                onChange={(e) => setAutoHandle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCalculateAuto();
+                }}
+                size="small"
+                sx={{ flex: 1, minWidth: 280 }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <InstagramIcon sx={{ color: theme.palette.tokens.textSecondary }} />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleCalculateAuto}
+                disabled={autoLoading || !autoHandle.trim()}
+                startIcon={autoLoading ? <CircularProgress size={18} /> : <CalculateRoundedIcon />}
+                sx={{ height: 40, px: 3 }}
+              >
+                {autoLoading ? 'Fetching Profile…' : 'Fetch Profile'}
+              </Button>
+            </Box>
+          </Paper>
+
+          {/* Results Section */}
+          {autoResult && (
+            <>
+              {/* Profile Card */}
+              {autoResult.profile && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 3,
+                    borderRadius: `${theme.customRadii.card}px`,
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 2.5,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap' }}>
+                    <Avatar
+                      src={safeImageUrl(autoResult.profile.profilePicUrl)}
+                      alt={autoResult.profile.fullName ?? autoResult.instagramHandle}
+                      imgProps={{ referrerPolicy: 'no-referrer' }}
+                      sx={{ width: 72, height: 72 }}
+                    >
+                      {(autoResult.profile.fullName ?? autoResult.instagramHandle).charAt(0).toUpperCase()}
+                    </Avatar>
+
+                    <Box sx={{ minWidth: 200 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {autoResult.profile.fullName || `@${autoResult.instagramHandle}`}
+                        </Typography>
+                        {autoResult.profile.isVerified && (
+                          <VerifiedRoundedIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+                        )}
+                        {autoResult.profile.isPrivate && (
+                          <Chip label="Private" size="small" color="warning" variant="outlined" />
+                        )}
+                      </Box>
+
+                      {safeUrl(`https://www.instagram.com/${autoResult.instagramHandle}/`) && (
+                        <Link
+                          href={safeUrl(`https://www.instagram.com/${autoResult.instagramHandle}/`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          variant="body2"
+                          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                        >
+                          @{autoResult.instagramHandle}
+                          <OpenInNewRoundedIcon sx={{ fontSize: 14 }} />
+                        </Link>
+                      )}
+
+                      {autoResult.profile.biography && (
+                        <Typography
+                          variant="body2"
+                          sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, whiteSpace: 'pre-line' }}
+                        >
+                          {autoResult.profile.biography}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                      {[
+                        {
+                          label: 'Followers',
+                          value: autoResult.followersCount ? autoResult.followersCount.toLocaleString() : '—',
+                        },
+                        {
+                          label: 'Following',
+                          value: autoResult.followingCount ? autoResult.followingCount.toLocaleString() : '—',
+                        },
+                        {
+                          label: 'Total Posts',
+                          value: autoResult.profile.totalPosts ? autoResult.profile.totalPosts.toLocaleString() : '—',
+                        },
+                      ].map((item) => (
+                        <Box key={item.label} sx={{ textAlign: 'center' }}>
+                          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                            {item.value}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                            {item.label}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    <Button
+                      variant="outlined"
+                      startIcon={<SwapHorizRoundedIcon />}
+                      onClick={handleTransferToManual}
+                      sx={{ height: 40 }}
+                    >
+                      Load into Manual Calc
+                    </Button>
+                  </Box>
+                </Paper>
+              )}
+
+              {/* Commercial Fee Input for Auto Mode */}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: `${theme.customRadii.card}px`,
+                  backgroundColor: theme.palette.background.paper,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              >
+                <Grid container spacing={2} alignItems="center">
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      label="Quoted Reel Commercial Fee (₹)"
+                      placeholder="e.g. 50000 or 50k"
+                      value={autoCommercialFee}
+                      onChange={(e) => setAutoCommercialFee(e.target.value)}
+                      size="small"
+                      fullWidth
+                      helperText="Enter commercial fee to compute Pre-Eval CPV"
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <CurrencyRupeeRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                      Pre-Evaluation CPV = Reel Fee ÷ Committed Views (Median of 10 Reels)
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                      Calculated CPV:{' '}
+                      <Typography
+                        component="span"
+                        sx={{
+                          fontWeight: 700,
+                          color: autoCpv ? theme.palette.tokens.positiveText : theme.palette.tokens.textSecondary,
+                        }}
+                      >
+                        {autoCpv ? `₹${autoCpv.toFixed(2)} / view` : 'Enter fee above'}
+                      </Typography>
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* 3 Result Metric Cards for Auto Mode */}
+              <Grid container spacing={2.5}>
+                {/* ER% Hero Card */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: `${theme.customRadii.card}px`,
+                      backgroundColor: theme.palette.tokens.accentBg,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}>
+                      ENGAGEMENT RATE (ER%)
+                    </Typography>
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        fontWeight: 800,
+                        color: theme.palette.tokens.accentText,
+                        my: 1,
+                      }}
+                    >
+                      {autoResult.engagementRate.toFixed(2)}%
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      [(Likes + Comments) ÷ {autoResult.posts.length} Posts] ÷ Followers × 100
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                {/* Pre-Eval Committed Views Hero Card */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: `${theme.customRadii.card}px`,
+                      backgroundColor: theme.palette.tokens.purpleBg,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText }}>
+                      PRE-EVAL COMMITTED VIEWS
+                    </Typography>
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        fontWeight: 800,
+                        color: theme.palette.tokens.purpleText,
+                        my: 1,
+                      }}
+                    >
+                      {autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : '—'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      Median of latest {autoReelViews.length} reel views
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                {/* Pre-Eval CPV Hero Card */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: `${theme.customRadii.card}px`,
+                      backgroundColor: theme.palette.tokens.positiveBg,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText }}>
+                      PRE-EVAL CPV (COST PER VIEW)
+                    </Typography>
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        fontWeight: 800,
+                        color: autoCpv ? theme.palette.tokens.positiveText : theme.palette.tokens.textSecondary,
+                        my: 1,
+                      }}
+                    >
+                      {autoCpv ? `₹${autoCpv.toFixed(2)} / view` : '—'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      Reel Commercial Fee ÷ Pre-Eval Committed Views
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              {/* Analyzed Posts Table */}
+              {autoResult.posts.length > 0 && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: `${theme.customRadii.card}px`,
+                    backgroundColor: theme.palette.background.paper,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Box sx={{ p: 3, pb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      Analyzed Posts ({autoResult.posts.length})
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      Latest {autoResult.posts.length} posts retrieved by publish date. Committed views is calculated from the median of reel views.
+                    </Typography>
+                  </Box>
+
+                  <TableContainer sx={{ overflowX: 'auto' }}>
+                    <Table size="small" sx={{ minWidth: 720 }}>
+                      <TableHead sx={{ backgroundColor: theme.palette.tokens.fieldBg }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>Post</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>Likes</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>Comments</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>Views</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>ER %</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {autoResult.posts.map((post, index) => {
+                          const isReel = post.mediaKind === 'REEL' || post.mediaKind === 'VIDEO';
+                          return (
+                            <TableRow key={post.shortcode ?? index} hover>
+                              <TableCell sx={{ maxWidth: 320 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                  <Avatar
+                                    variant="rounded"
+                                    src={safeImageUrl(post.thumbnailUrl)}
+                                    imgProps={{ referrerPolicy: 'no-referrer' }}
+                                    sx={{
+                                      width: 44,
+                                      height: 44,
+                                      bgcolor: theme.palette.tokens.fieldBg,
+                                      color: isReel ? theme.palette.tokens.purpleText : theme.palette.tokens.accentText,
+                                    }}
+                                  >
+                                    {isReel ? <MovieCreationRoundedIcon /> : <CollectionsRoundedIcon />}
+                                  </Avatar>
+                                  <Box sx={{ minWidth: 0 }}>
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                      }}
+                                    >
+                                      {post.caption || <em>No caption</em>}
+                                    </Typography>
+                                    {safeUrl(post.permalink) && (
+                                      <Link
+                                        href={safeUrl(post.permalink)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        variant="caption"
+                                        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
+                                      >
+                                        View post
+                                        <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
+                                      </Link>
+                                    )}
+                                  </Box>
+                                </Box>
+                              </TableCell>
+
+                              <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                {new Date(post.takenAt).toLocaleDateString()}
+                              </TableCell>
+
+                              <TableCell>
+                                <Chip
+                                  label={post.mediaKind}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{
+                                    borderColor: isReel ? theme.palette.tokens.purpleText : theme.palette.tokens.accentText,
+                                    color: isReel ? theme.palette.tokens.purpleText : theme.palette.tokens.accentText,
+                                  }}
+                                />
+                              </TableCell>
+
+                              <TableCell align="right">{post.likes.toLocaleString()}</TableCell>
+                              <TableCell align="right">{post.comments.toLocaleString()}</TableCell>
+                              <TableCell align="right">
+                                {post.views === null ? '—' : post.views.toLocaleString()}
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.tokens.accentText }}>
+                                {post.engagementRate.toFixed(2)}%
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              )}
+            </>
+          )}
+        </Box>
+      )}
+
+      {/* ========================================================================= */}
+      {/* BULK PASTE HELPER DIALOG */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={bulkDialogOpen}
+        onClose={() => setBulkDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Bulk Paste {bulkTargetField === 'views' ? 'Reel Views' : bulkTargetField === 'likes' ? 'Likes' : 'Comments'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+            Paste numbers from a spreadsheet column or comma/space-separated text (e.g. 45k, 32k, 18k, 25k...)
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              multiline
+              rows={6}
+              placeholder="Paste numbers here (e.g. 45000, 32000, 28000, 51000... or 45k 32k 28k)"
+              value={bulkInputText}
+              onChange={(e) => setBulkInputText(e.target.value)}
+              fullWidth
+              autoFocus
+            />
+
+            {bulkInputText.trim() && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              >
+                <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}>
+                  Preview ({parseNumberList(bulkInputText).length} numbers recognized):
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5, wordBreak: 'break-word' }}>
+                  {parseNumberList(bulkInputText)
+                    .map((n) => n.toLocaleString())
+                    .join(', ') || 'No valid numbers found'}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setBulkDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleApplyBulkData}
+            disabled={parseNumberList(bulkInputText).length === 0}
+          >
+            Apply to Table
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardLayout>
   );
 };

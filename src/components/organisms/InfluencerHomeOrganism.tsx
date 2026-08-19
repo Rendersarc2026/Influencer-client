@@ -123,12 +123,15 @@ export const InfluencerHomeOrganism: React.FC = () => {
       id: 'rateStatus',
       header: 'Rate Status',
       type: 'custom',
+      accessor: 'rateStatus',
+      statusCategory: 'RATE_STATUS',
       render: (row) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
     },
     {
       id: 'influencerRate',
       header: 'My Commercial Quote',
       type: 'custom',
+      accessor: 'influencerRate',
       render: (row) =>
         row.influencerRate !== null ? (
           <MoneyText amount={row.influencerRate} currency={row.currency} variant="body2" />
@@ -256,6 +259,8 @@ export const InfluencerHomeOrganism: React.FC = () => {
           }}
           loading={isTableLoading}
           isFetching={isFetching}
+          exportFilename="current_campaign_assignments"
+          exportSheetName="Assignments"
           onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
         />
       </Box>

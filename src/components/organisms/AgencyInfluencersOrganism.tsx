@@ -479,6 +479,8 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           loading={isLoading}
           isFetching={isFetching}
           onRowClick={(row) => setSelectedInfluencer(row)}
+          exportFilename="influencers_roster"
+          exportSheetName="Influencers"
           fillHeight
         />
       </Box>

@@ -196,6 +196,8 @@ export const BrandHomeOrganism: React.FC = () => {
           }}
           loading={campaignsLoading}
           isFetching={campaignsFetching}
+          exportFilename="campaigns_needing_review"
+          exportSheetName="Campaigns"
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

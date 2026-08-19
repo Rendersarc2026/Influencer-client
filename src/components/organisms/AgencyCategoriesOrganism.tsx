@@ -429,6 +429,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           loading={categoriesLoading}
           isFetching={categoriesFetching}
           onRowClick={(row) => setSelectedCategory(row)}
+          exportFilename={`${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'}_categories`}
+          exportSheetName="Categories"
           fillHeight
         />
       </Box>

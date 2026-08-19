@@ -75,6 +75,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
       id: 'amount',
       header: 'Disbursement Amount',
       type: 'custom',
+      accessor: 'amount',
       render: (row) => <MoneyText amount={row.amount} currency={row.currency} variant="body2" />,
     },
     {
@@ -82,6 +83,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
       header: 'Payment Status',
       type: 'status',
       accessor: 'status',
+      statusCategory: 'PAYMENT_STATUS',
     },
     {
       id: 'raisedOn',
@@ -157,6 +159,8 @@ export const BrandPaymentsOrganism: React.FC = () => {
           }}
           loading={paymentsLoading}
           isFetching={paymentsFetching}
+          exportFilename="brand_payments"
+          exportSheetName="Payments"
           fillHeight
         />
       </Box>

@@ -146,12 +146,14 @@ export const AgencyReportsOrganism: React.FC = () => {
       id: 'totalClientRate',
       header: 'Client Billing',
       type: 'custom',
+      accessor: 'totalClientRate',
       render: (row) => <MoneyText amount={row.totalClientRate} variant="body2" />,
     },
     {
       id: 'totalMargin',
       header: 'Agency Margin',
       type: 'custom',
+      accessor: 'totalMargin',
       render: (row) => (
         <MoneyText
           amount={row.totalMargin}
@@ -170,6 +172,7 @@ export const AgencyReportsOrganism: React.FC = () => {
       id: 'erPercent',
       header: 'Avg. ER%',
       type: 'custom',
+      accessor: (row) => `${row.erPercent.toFixed(1)}%`,
       render: (row) => (
         <Typography
           variant="body2"
@@ -265,6 +268,8 @@ export const AgencyReportsOrganism: React.FC = () => {
           rows={filteredRows}
           loading={campaignsLoading || reportsLoading}
           isFetching={campaignsFetching || reportsFetching}
+          exportFilename="campaign_financial_reports"
+          exportSheetName="Reports"
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

@@ -10,10 +10,13 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TablePagination from '@mui/material/TablePagination';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
 import { useTheme } from '@mui/material/styles';
 import {
   MoneyText,
@@ -24,7 +27,7 @@ import {
   LoadingBlock,
   BusyOverlay,
 } from '@atoms';
-import { safeImageUrl } from '@utils';
+import { safeImageUrl, exportTableToExcel, ExcelColumnConfig } from '@utils';
 
 export type ColumnType =
   'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom';
@@ -84,6 +87,22 @@ export interface DataTableProps<T> {
    * (search / filter / page / rowsPerPage changes).
    */
   isFetching?: boolean;
+  /**
+   * When true, displays an "Export Excel" action button. Defaults to true.
+   */
+  exportable?: boolean;
+  /**
+   * Filename for the downloaded Excel file. Defaults to title or 'table_data'.
+   */
+  exportFilename?: string;
+  /**
+   * Worksheet name. Defaults to title or 'Data'.
+   */
+  exportSheetName?: string;
+  /**
+   * Custom export handler. If not provided, exports current rows to .xlsx using exportTableToExcel.
+   */
+  onExport?: (rows: T[], columns: DataTableColumn<T>[]) => void | Promise<void>;
 }
 
 /**
@@ -132,8 +151,13 @@ export function DataTable<T extends Record<string, unknown>>({
   minHeight = 420,
   fillHeight = true,
   isFetching = false,
+  exportable = true,
+  exportFilename,
+  exportSheetName,
+  onExport,
 }: DataTableProps<T>) {
   const theme = useTheme();
+  const [isExporting, setIsExporting] = useState(false);
   // Below `sm` the table is replaced by stacked cards — a phone cannot show
   // five columns without a horizontal scroll, and a horizontally scrolling
   // table inside a vertically scrolling page is the worst of both.
@@ -360,7 +384,74 @@ export function DataTable<T extends Record<string, unknown>>({
     );
   }
 
-  const hasHeader = Boolean(title || subtitle || headerAction);
+  const handleExport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (rows.length === 0 || isExporting) return;
+    try {
+      setIsExporting(true);
+      if (onExport) {
+        await onExport(rows, columns);
+      } else {
+        const defaultFilename =
+          exportFilename ||
+          (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'table_data');
+        await exportTableToExcel({
+          filename: defaultFilename,
+          sheetName: exportSheetName || title || 'Data',
+          columns: columns as Array<ExcelColumnConfig<T>>,
+          rows,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to export table data to Excel:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportButton =
+    exportable && rows.length > 0 ? (
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={handleExport}
+        disabled={loading || rows.length === 0 || isExporting}
+        startIcon={
+          isExporting ? (
+            <CircularProgress size={14} color="inherit" />
+          ) : (
+            <FileDownloadRoundedIcon sx={{ fontSize: '18px !important' }} />
+          )
+        }
+        sx={{
+          height: { xs: 32, sm: 36 },
+          px: { xs: 1.25, sm: 1.75 },
+          fontSize: { xs: '12px', sm: '13px' },
+          fontWeight: 600,
+          textTransform: 'none',
+          borderRadius: `${theme.customRadii.inner}px`,
+          color: theme.palette.tokens.textPrimary,
+          borderColor: theme.palette.tokens.divider,
+          backgroundColor: theme.palette.tokens.surface,
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          '&:hover': {
+            borderColor: theme.palette.tokens.accent,
+            backgroundColor: theme.palette.tokens.fieldBg,
+            color: theme.palette.tokens.accent,
+          },
+        }}
+      >
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          Export Excel
+        </Box>
+        <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+          Export
+        </Box>
+      </Button>
+    ) : null;
+
+  const hasHeader = Boolean(title || subtitle || headerAction || exportButton);
   // `loading` already swapped the whole table for a skeleton above, so the
   // backlight only ever applies to a refetch over data that is still on screen.
   const busy = isFetching && !loading;
@@ -546,25 +637,40 @@ export function DataTable<T extends Record<string, unknown>>({
             sx={{
               display: 'flex',
               flexDirection: { xs: 'column', sm: 'row' },
-              justifyContent: 'space-between',
+              justifyContent: title || subtitle ? 'space-between' : 'flex-end',
               alignItems: { xs: 'stretch', sm: 'center' },
               gap: { xs: 1.5, sm: 2 },
               mb: 2,
               flexShrink: 0,
             }}
           >
-            <Box>
-              {title && <Typography variant="h2">{title}</Typography>}
-              {subtitle && (
-                <Typography
-                  variant="body2"
-                  sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
-                >
-                  {subtitle}
-                </Typography>
-              )}
-            </Box>
-            {headerAction && <Box sx={{ flexShrink: 0 }}>{headerAction}</Box>}
+            {(title || subtitle) && (
+              <Box>
+                {title && <Typography variant="h2">{title}</Typography>}
+                {subtitle && (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
+                  >
+                    {subtitle}
+                  </Typography>
+                )}
+              </Box>
+            )}
+            {(headerAction || exportButton) && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+                  gap: 1.5,
+                  flexShrink: 0,
+                }}
+              >
+                {headerAction}
+                {exportButton}
+              </Box>
+            )}
           </Box>
         )}
 
@@ -719,24 +825,39 @@ export function DataTable<T extends Record<string, unknown>>({
           sx={{
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
+            justifyContent: title || subtitle ? 'space-between' : 'flex-end',
             alignItems: { xs: 'stretch', sm: 'center' },
             gap: { xs: 1.5, sm: 2 },
             mb: 2,
           }}
         >
-          <Box>
-            {title && <Typography variant="h2">{title}</Typography>}
-            {subtitle && (
-              <Typography
-                variant="body2"
-                sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
-              >
-                {subtitle}
-              </Typography>
-            )}
-          </Box>
-          {headerAction && <Box sx={{ flexShrink: 0 }}>{headerAction}</Box>}
+          {(title || subtitle) && (
+            <Box>
+              {title && <Typography variant="h2">{title}</Typography>}
+              {subtitle && (
+                <Typography
+                  variant="body2"
+                  sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
+                >
+                  {subtitle}
+                </Typography>
+              )}
+            </Box>
+          )}
+          {(headerAction || exportButton) && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+                gap: 1.5,
+                flexShrink: 0,
+              }}
+            >
+              {headerAction}
+              {exportButton}
+            </Box>
+          )}
         </Box>
       )}
 

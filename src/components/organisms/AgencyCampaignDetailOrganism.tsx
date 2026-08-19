@@ -23,6 +23,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -36,6 +37,7 @@ import {
   CommentDialog,
   ConfirmDialog,
   EditCampaignDialog,
+  OverviewDrawer,
 } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { FilterBar } from '@molecules';
@@ -59,236 +61,13 @@ import {
   CampaignStatusCode,
   CampaignStatusName,
   RateStatusCode,
+  BrandStatusCode,
   UpdateCampaignRequest,
   UpdatePreEvalRequest,
+  ApprovalActionName,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeUrl, humanizeCode } from '@utils';
-
-interface AgencyCampaignDetailOrganismProps {
-  campaignId?: string;
-}
-
-export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganismProps> = ({
-  campaignId: propCampaignId,
-}) => {
-  const theme = useTheme();
-  const { id: routeCampaignId = '' } = useParams<{ id: string }>();
-  const campaignId = propCampaignId || routeCampaignId;
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user, logout } = useAuth();
-  const { showSuccess, showError } = useToast();
-
-  const {
-    search,
-    setSearch,
-    page,
-    setPage,
-    rowsPerPage,
-    setRowsPerPage,
-  } = useViewFilters('agencyCampaignDetail');
-  const debouncedSearch = useDebounce(search, 300);
-
-  const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
-  const { data: brandsData } = useAgencyBrands();
-  const brands = brandsData?.items || [];
-  const {
-    data: mappersData,
-    isLoading: mappersLoading,
-    isFetching: mappersFetching,
-  } = useCampaignInfluencers(campaignId, {
-    search: debouncedSearch.trim() || undefined,
-    page: page + 1,
-    limit: rowsPerPage,
-  });
-
-  const mappers = mappersData?.items || [];
-  const totalMappers = mappersData?.total ?? mappers.length;
-
-  // Mutations
-  const updateCampaignMutation = useUpdateCampaign();
-  const updatePreEvalMutation = useUpdatePreEval(campaignId);
-  const approveRateMutation = useApproveRate(campaignId);
-  const requestRevisionMutation = useRequestRevision(campaignId);
-  const submitBrandReviewMutation = useSubmitForBrandReview(campaignId);
-  const revertApprovalMutation = useRevertApproval(campaignId);
-  const recordMetricMutation = useRecordMetric(campaignId);
-  const removeInfluencerMutation = useRemoveInfluencerFromCampaign(campaignId);
-
-  // Dialog states
-  const [approveDialogMapper, setApproveDialogMapper] = useState<AgencyMapperResponse | null>(null);
-  const [revisionDialogMapper, setRevisionDialogMapper] = useState<AgencyMapperResponse | null>(
-    null,
-  );
-  const [revertDialogMapper, setRevertDialogMapper] = useState<AgencyMapperResponse | null>(null);
-  const [preEvalDialogMapper, setPreEvalDialogMapper] = useState<AgencyMapperResponse | null>(null);
-  const [metricsDialogMapper, setMetricsDialogMapper] = useState<AgencyMapperResponse | null>(null);
-  const [deleteDialogMapper, setDeleteDialogMapper] = useState<AgencyMapperResponse | null>(null);
-  const [editCampaignOpen, setEditCampaignOpen] = useState(false);
-
-  const brand = brands.find((b) => b.id === campaign?.brandId);
-
-  // 0. Handle Update Campaign Details & Status
-  const handleEditCampaign = async (data: UpdateCampaignRequest) => {
-    if (!campaignId) return;
-    try {
-      await updateCampaignMutation.mutateAsync({
-        id: campaignId,
-        data,
-      });
-      showSuccess('Campaign details updated successfully.');
-      setEditCampaignOpen(false);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to update campaign details.',
-      );
-    }
-  };
-
-  const handleUpdatePreEval = async (mapperId: string, data: UpdatePreEvalRequest) => {
-    try {
-      await updatePreEvalMutation.mutateAsync({ mapperId, data });
-      showSuccess('Pre-evaluation details updated successfully.');
-      setPreEvalDialogMapper(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to update pre-evaluation details.',
-      );
-    }
-  };
-
-  const handleUpdateCampaignStatus = async (newStatus: CampaignStatus) => {
-    if (!campaignId) return;
-    try {
-      await updateCampaignMutation.mutateAsync({
-        id: campaignId,
-        data: { status: newStatus },
-      });
-      showSuccess(
-        `Campaign status updated to ${humanizeCode(CampaignStatusName[newStatus] || String(newStatus))}.`,
-      );
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to update campaign status.',
-      );
-    }
-  };
-
-  // 1. Handle Approve Rate (sends { mapperId, margin, influencerRate, ...preEval })
-  const handleApproveRate = async (
-    mapperId: string,
-    params: {
-      margin: number;
-      influencerRate?: number;
-      committedViews?: number;
-      preEvalEr?: number;
-      reachFromRegion?: string;
-      brandFit?: string;
-      deliverables?: string;
-    },
-  ) => {
-    try {
-      await approveRateMutation.mutateAsync({ mapperId, ...params });
-      showSuccess('Influencer commercial rate approved and submitted for brand review.');
-      setApproveDialogMapper(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve rate.',
-      );
-    }
-  };
-
-  // 2. Handle Request Rate Revision (sends { comment } only)
-  const handleRequestRevision = async (comment: string) => {
-    if (!revisionDialogMapper) return;
-    try {
-      await requestRevisionMutation.mutateAsync({
-        mapperId: revisionDialogMapper.id,
-        comment,
-      });
-      showSuccess('Revision request sent to influencer.');
-      setRevisionDialogMapper(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to request revision.',
-      );
-    }
-  };
-
-  // 3. Handle Submit to Brand Review
-  const handleSubmitForBrandReview = async (mapperId: string) => {
-    try {
-      await submitBrandReviewMutation.mutateAsync(mapperId);
-      showSuccess('Submitted to brand for review.');
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to submit for brand review.',
-      );
-    }
-  };
-
-  // 4. Handle Record Metric
-  const handleRecordMetric = async (mapperId: string, data: RecordMetricRequest) => {
-    try {
-      await recordMetricMutation.mutateAsync({ mapperId, data });
-      showSuccess('Deliverable metrics recorded successfully.');
-      setMetricsDialogMapper(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to record metrics.',
-      );
-    }
-  };
-
-  // 5. Handle Remove Influencer
-  const handleRemoveInfluencer = async () => {
-    if (!deleteDialogMapper) return;
-    try {
-      await removeInfluencerMutation.mutateAsync(deleteDialogMapper.id);
-      showSuccess('Influencer removed from campaign.');
-      setDeleteDialogMapper(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.',
-      );
-    }
-  };
-
-  // 6. Handle Revert Approval
-  const handleRevertApproval = async () => {
-    if (!revertDialogMapper) return;
-    try {
-      await revertApprovalMutation.mutateAsync({ mapperId: revertDialogMapper.id });
-      showSuccess(
-        `Rate approval reverted for ${revertDialogMapper.influencerName || 'influencer'}. Status returned to Submitted.`,
-      );
-      setRevertDialogMapper(null);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to revert rate approval.',
-      );
-    }
-  };
 
 interface RowActionsProps {
   row: AgencyMapperResponse;
@@ -606,25 +385,340 @@ const RowActions: React.FC<RowActionsProps> = ({
   );
 };
 
+interface AgencyCampaignDetailOrganismProps {
+  campaignId?: string;
+}
+
+export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganismProps> = ({
+  campaignId: propCampaignId,
+}) => {
+  const theme = useTheme();
+  const { id: routeCampaignId = '' } = useParams<{ id: string }>();
+  const campaignId = propCampaignId || routeCampaignId;
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
+
+  const {
+    search,
+    setSearch,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('agencyCampaignDetail');
+  const debouncedSearch = useDebounce(search, 300);
+
+  const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
+  const { data: brandsData } = useAgencyBrands();
+  const brands = brandsData?.items || [];
+  const {
+    data: mappersData,
+    isLoading: mappersLoading,
+    isFetching: mappersFetching,
+  } = useCampaignInfluencers(campaignId, {
+    search: debouncedSearch.trim() || undefined,
+    page: page + 1,
+    limit: rowsPerPage,
+  });
+
+  const mappers = mappersData?.items || [];
+  const totalMappers = mappersData?.total ?? mappers.length;
+
+  // Mutations
+  const updateCampaignMutation = useUpdateCampaign();
+  const updatePreEvalMutation = useUpdatePreEval(campaignId);
+  const approveRateMutation = useApproveRate(campaignId);
+  const requestRevisionMutation = useRequestRevision(campaignId);
+  const submitBrandReviewMutation = useSubmitForBrandReview(campaignId);
+  const revertApprovalMutation = useRevertApproval(campaignId);
+  const recordMetricMutation = useRecordMetric(campaignId);
+  const removeInfluencerMutation = useRemoveInfluencerFromCampaign(campaignId);
+
+  // Dialog states
+  const [overviewDrawerMapper, setOverviewDrawerMapper] = useState<AgencyMapperResponse | null>(
+    null,
+  );
+  const [approveDialogMapper, setApproveDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [revisionDialogMapper, setRevisionDialogMapper] = useState<AgencyMapperResponse | null>(
+    null,
+  );
+  const [revertDialogMapper, setRevertDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [preEvalDialogMapper, setPreEvalDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [metricsDialogMapper, setMetricsDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [deleteDialogMapper, setDeleteDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [editCampaignOpen, setEditCampaignOpen] = useState(false);
+
+  const brand = brands.find((b) => b.id === campaign?.brandId);
+
+  // 0. Handle Update Campaign Details & Status
+  const handleEditCampaign = async (data: UpdateCampaignRequest) => {
+    if (!campaignId) return;
+    try {
+      await updateCampaignMutation.mutateAsync({
+        id: campaignId,
+        data,
+      });
+      showSuccess('Campaign details updated successfully.');
+      setEditCampaignOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update campaign details.',
+      );
+    }
+  };
+
+  const handleUpdatePreEval = async (mapperId: string, data: UpdatePreEvalRequest) => {
+    try {
+      await updatePreEvalMutation.mutateAsync({ mapperId, data });
+      showSuccess('Pre-evaluation details updated successfully.');
+      setPreEvalDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update pre-evaluation details.',
+      );
+    }
+  };
+
+  const handleUpdateCampaignStatus = async (newStatus: CampaignStatus) => {
+    if (!campaignId) return;
+    try {
+      await updateCampaignMutation.mutateAsync({
+        id: campaignId,
+        data: { status: newStatus },
+      });
+      showSuccess(
+        `Campaign status updated to ${humanizeCode(CampaignStatusName[newStatus] || String(newStatus))}.`,
+      );
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update campaign status.',
+      );
+    }
+  };
+
+  // 1. Handle Approve Rate (sends { mapperId, margin, influencerRate, ...preEval })
+  const handleApproveRate = async (
+    mapperId: string,
+    params: {
+      margin: number;
+      influencerRate?: number;
+      committedViews?: number;
+      preEvalEr?: number;
+      reachFromRegion?: string;
+      brandFit?: string;
+      deliverables?: string;
+    },
+  ) => {
+    try {
+      await approveRateMutation.mutateAsync({ mapperId, ...params });
+      showSuccess('Influencer commercial rate approved and submitted for brand review.');
+      setApproveDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve rate.',
+      );
+    }
+  };
+
+  // 2. Handle Request Rate Revision (sends { comment } only)
+  const handleRequestRevision = async (comment: string) => {
+    if (!revisionDialogMapper) return;
+    try {
+      await requestRevisionMutation.mutateAsync({
+        mapperId: revisionDialogMapper.id,
+        comment,
+      });
+      showSuccess('Revision request sent to influencer.');
+      setRevisionDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to request revision.',
+      );
+    }
+  };
+
+  // 3. Handle Submit to Brand Review
+  const handleSubmitForBrandReview = async (mapperId: string) => {
+    try {
+      await submitBrandReviewMutation.mutateAsync(mapperId);
+      showSuccess('Submitted to brand for review.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to submit for brand review.',
+      );
+    }
+  };
+
+  // 4. Handle Record Metric
+  const handleRecordMetric = async (mapperId: string, data: RecordMetricRequest) => {
+    try {
+      await recordMetricMutation.mutateAsync({ mapperId, data });
+      showSuccess('Deliverable metrics recorded successfully.');
+      setMetricsDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to record metrics.',
+      );
+    }
+  };
+
+  // 5. Handle Remove Influencer
+  const handleRemoveInfluencer = async () => {
+    if (!deleteDialogMapper) return;
+    try {
+      await removeInfluencerMutation.mutateAsync(deleteDialogMapper.id);
+      showSuccess('Influencer removed from campaign.');
+      setDeleteDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.',
+      );
+    }
+  };
+
+  // 6. Handle Revert Approval
+  const handleRevertApproval = async () => {
+    if (!revertDialogMapper) return;
+    try {
+      await revertApprovalMutation.mutateAsync({ mapperId: revertDialogMapper.id });
+      showSuccess(
+        `Rate approval reverted for ${revertDialogMapper.influencerName || 'influencer'}. Status returned to Submitted.`,
+      );
+      setRevertDialogMapper(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to revert rate approval.',
+      );
+    }
+  };
+
   const columns: Array<DataTableColumn<AgencyMapperResponse>> = [
+
     {
       id: 'influencer',
       header: 'Influencer',
-      type: 'entity',
-      accessor: (row) => row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`,
-      subAccessor: (row) => {
+      type: 'custom',
+      minWidth: 200,
+      accessor: (row: AgencyMapperResponse) => row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`,
+      subAccessor: (row: AgencyMapperResponse) => {
         const parts: string[] = [];
         if (row.deliverables) parts.push(row.deliverables);
         if (row.preEvalEr) parts.push(`${row.preEvalEr}% ER`);
         if (row.committedViews) parts.push(`${row.committedViews.toLocaleString()} views`);
-        return parts.length > 0 ? parts.join(' · ') : 'Deliverables pending';
+        return parts.join(' · ');
+      },
+      render: (row: AgencyMapperResponse) => {
+        const parts: string[] = [];
+        if (row.deliverables) parts.push(row.deliverables);
+        if (row.preEvalEr) parts.push(`${row.preEvalEr}% ER`);
+        if (row.committedViews) parts.push(`${row.committedViews.toLocaleString()} views`);
+        const sub = parts.length > 0 ? parts.join(' · ') : 'Deliverables pending';
+        const brandRemark = row.revisionComment || row.lastComment;
+
+        return (
+          <Box
+            onClick={(e) => {
+              e.stopPropagation();
+              setOverviewDrawerMapper(row);
+            }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              cursor: 'pointer',
+              p: '2px 4px',
+              borderRadius: '6px',
+              transition: 'all 0.15s ease',
+              '&:hover': {
+                backgroundColor: theme.palette.tokens.fieldBg,
+              },
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 750,
+                  color: theme.palette.primary.main,
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                {row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  display: 'block',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {sub}
+              </Typography>
+              {row.brandStatus === BrandStatusCode.CORRECTION_REQUESTED && brandRemark && (
+                <Box
+                  sx={{
+                    mt: 0.5,
+                    p: '1px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    maxWidth: 240,
+                  }}
+                >
+                  <EditNoteRoundedIcon sx={{ fontSize: 13, color: theme.palette.warning.dark, flexShrink: 0 }} />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: theme.palette.warning.dark,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    Brand: {brandRemark}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        );
       },
     },
     {
       id: 'influencerRate',
       header: 'Influencer Rate',
       type: 'custom',
-      render: (row) =>
+      accessor: 'influencerRate',
+      render: (row: AgencyMapperResponse) =>
         row.influencerRate !== null ? (
           <MoneyText amount={row.influencerRate} currency={row.currency} variant="body2" />
         ) : (
@@ -637,7 +731,8 @@ const RowActions: React.FC<RowActionsProps> = ({
       id: 'margin',
       header: 'Agency Margin',
       type: 'custom',
-      render: (row) =>
+      accessor: 'margin',
+      render: (row: AgencyMapperResponse) =>
         row.margin !== null ? (
           <Tooltip title="Click to edit agency margin">
             <Box
@@ -677,7 +772,8 @@ const RowActions: React.FC<RowActionsProps> = ({
       id: 'clientRate',
       header: 'Client Rate',
       type: 'custom',
-      render: (row) =>
+      accessor: 'clientRate',
+      render: (row: AgencyMapperResponse) =>
         row.clientRate !== null ? (
           <MoneyText
             amount={row.clientRate}
@@ -695,20 +791,24 @@ const RowActions: React.FC<RowActionsProps> = ({
       id: 'rateStatus',
       header: 'Rate Status',
       type: 'custom',
-      render: (row) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
+      accessor: 'rateStatus',
+      statusCategory: 'RATE_STATUS',
+      render: (row: AgencyMapperResponse) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
     },
     {
       id: 'brandStatus',
       header: 'Brand Status',
       type: 'custom',
-      render: (row) => <StatusChip category="BRAND_STATUS" code={row.brandStatus} />,
+      accessor: 'brandStatus',
+      statusCategory: 'BRAND_STATUS',
+      render: (row: AgencyMapperResponse) => <StatusChip category="BRAND_STATUS" code={row.brandStatus} />,
     },
     {
       id: 'actions',
       header: 'Workflow Actions',
       type: 'actions',
       align: 'right',
-      render: (row) => (
+      render: (row: AgencyMapperResponse) => (
         <RowActions
           row={row}
           onSetPriceApprove={(r) => setApproveDialogMapper(r)}
@@ -938,10 +1038,216 @@ const RowActions: React.FC<RowActionsProps> = ({
             setRowsPerPage(limit);
             setPage(0);
           }}
+          onRowClick={(row) => setOverviewDrawerMapper(row)}
           loading={mappersLoading || campaignLoading}
           isFetching={mappersFetching}
+          exportFilename={`${campaign?.name || 'campaign'}_influencers`}
+          exportSheetName="Influencers"
         />
       </Box>
+
+      {/* Influencer Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(overviewDrawerMapper)}
+        onClose={() => setOverviewDrawerMapper(null)}
+        title={overviewDrawerMapper?.influencerName || 'Influencer Overview'}
+        subtitle={
+          overviewDrawerMapper
+            ? `${overviewDrawerMapper.category || 'Creator'} · ${overviewDrawerMapper.region || 'India'}`
+            : undefined
+        }
+        badge={overviewDrawerMapper ? overviewDrawerMapper.rateStatus : undefined}
+        badgeCategory="RATE_STATUS"
+        avatarText={overviewDrawerMapper?.influencerName}
+        highlights={
+          overviewDrawerMapper
+            ? [
+                {
+                  label: 'Influencer Rate',
+                  value:
+                    overviewDrawerMapper.influencerRate !== null
+                      ? `₹${overviewDrawerMapper.influencerRate.toLocaleString('en-IN')}`
+                      : 'Pending quote',
+                  tint: 'sky',
+                },
+                {
+                  label: 'Agency Margin',
+                  value:
+                    overviewDrawerMapper.margin !== null
+                      ? `₹${overviewDrawerMapper.margin.toLocaleString('en-IN')}`
+                      : '—',
+                  tint: 'lavender',
+                },
+                {
+                  label: 'Client Rate (Billed)',
+                  value:
+                    overviewDrawerMapper.clientRate !== null
+                      ? `₹${overviewDrawerMapper.clientRate.toLocaleString('en-IN')}`
+                      : '—',
+                  tint: 'mint',
+                  sublabel: overviewDrawerMapper.preEvalCpv
+                    ? `₹${overviewDrawerMapper.preEvalCpv} CPV`
+                    : undefined,
+                },
+                {
+                  label: 'Committed Views',
+                  value: overviewDrawerMapper.committedViews
+                    ? overviewDrawerMapper.committedViews.toLocaleString()
+                    : '—',
+                  tint: 'butter',
+                },
+              ]
+            : []
+        }
+        sections={
+          overviewDrawerMapper
+            ? [
+                {
+                  title: 'Creator Profile & Demographics',
+                  fields: [
+                    { label: 'Influencer Name', value: overviewDrawerMapper.influencerName },
+                    { label: 'Category / Niche', value: overviewDrawerMapper.category || 'General' },
+                    {
+                      label: 'Region / Location',
+                      value: overviewDrawerMapper.region || overviewDrawerMapper.reachFromRegion || 'India',
+                    },
+                    {
+                      label: 'Followers Count',
+                      value: overviewDrawerMapper.followers
+                        ? overviewDrawerMapper.followers.toLocaleString()
+                        : '—',
+                    },
+                    {
+                      label: 'Instagram Profile',
+                      value: overviewDrawerMapper.instagram || '—',
+                      isLink: Boolean(overviewDrawerMapper.instagram),
+                      href: safeUrl(overviewDrawerMapper.instagram) || overviewDrawerMapper.instagram || undefined,
+                    },
+                    {
+                      label: 'YouTube Channel',
+                      value: overviewDrawerMapper.youtube || '—',
+                      isLink: Boolean(overviewDrawerMapper.youtube),
+                      href: safeUrl(overviewDrawerMapper.youtube) || overviewDrawerMapper.youtube || undefined,
+                    },
+                  ],
+                },
+                {
+                  title: 'Pre-Evaluation Metrics & Performance',
+                  fields: [
+                    {
+                      label: 'Pre-Eval Engagement Rate (ER)',
+                      value:
+                        overviewDrawerMapper.preEvalEr !== null && overviewDrawerMapper.preEvalEr !== undefined
+                          ? `${overviewDrawerMapper.preEvalEr}%`
+                          : '—',
+                    },
+                    {
+                      label: 'Committed Views Guarantee',
+                      value: overviewDrawerMapper.committedViews
+                        ? overviewDrawerMapper.committedViews.toLocaleString()
+                        : 'Not specified',
+                    },
+                    {
+                      label: 'Pre-Eval Cost Per View (CPV)',
+                      value: overviewDrawerMapper.preEvalCpv ? `₹${overviewDrawerMapper.preEvalCpv}` : '—',
+                      color: theme.palette.primary.main,
+                    },
+                    {
+                      label: 'Target Audience Region',
+                      value: overviewDrawerMapper.reachFromRegion || overviewDrawerMapper.region || 'India',
+                    },
+                  ],
+                },
+                {
+                  title: 'Commercials & Deliverables',
+                  fields: [
+                    {
+                      label: 'Deliverables Format',
+                      value: overviewDrawerMapper.deliverables || 'Pending agreement',
+                      fullWidth: true,
+                    },
+                    {
+                      label: 'Influencer Quoted Rate',
+                      value: overviewDrawerMapper.influencerRate,
+                      isMoney: true,
+                      currency: overviewDrawerMapper.currency || 'INR',
+                    },
+                    {
+                      label: 'Agency Commercial Margin',
+                      value: overviewDrawerMapper.margin,
+                      isMoney: true,
+                      currency: overviewDrawerMapper.currency || 'INR',
+                      color: theme.palette.tokens.accentText,
+                    },
+                    {
+                      label: 'Billed to Brand (Client Rate)',
+                      value: overviewDrawerMapper.clientRate,
+                      isMoney: true,
+                      currency: overviewDrawerMapper.currency || 'INR',
+                      color: theme.palette.tokens.positiveText,
+                    },
+                    {
+                      label: 'Brand Fit & Qualitative Assessment',
+                      value: overviewDrawerMapper.brandFit || 'No qualitative assessment note provided',
+                      fullWidth: true,
+                    },
+                  ],
+                },
+                ...(overviewDrawerMapper.revisionComment
+                  ? [
+                      {
+                        title: 'Active Brand Remarks & Correction Feedback',
+                        fields: [
+                          {
+                            label: 'Brand Remark',
+                            value: overviewDrawerMapper.revisionComment,
+                            fullWidth: true,
+                            color: theme.palette.warning.dark,
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
+                ...(overviewDrawerMapper.approvalEvents && overviewDrawerMapper.approvalEvents.length > 0
+                  ? [
+                      {
+                        title: 'Workflow History & Comments',
+                        fields: overviewDrawerMapper.approvalEvents.map((evt) => ({
+                          label: `${new Date(evt.createdOn).toLocaleDateString('en-IN')}: ${humanizeCode(ApprovalActionName[evt.action] || 'Action')}`,
+                          value: evt.comment || 'Status updated',
+                          fullWidth: true,
+                        })),
+                      },
+                    ]
+                  : []),
+              ]
+            : []
+        }
+        actions={
+          overviewDrawerMapper
+            ? [
+                {
+                  label: 'Edit Margin & Commercials',
+                  variant: 'contained',
+                  onClick: () => {
+                    const row = overviewDrawerMapper;
+                    setOverviewDrawerMapper(null);
+                    setApproveDialogMapper(row);
+                  },
+                },
+                {
+                  label: 'Message Creator',
+                  variant: 'outlined',
+                  onClick: () => {
+                    const id = overviewDrawerMapper.influencerId;
+                    setOverviewDrawerMapper(null);
+                    navigate(`/agency/chats?participantId=${id}&type=INFLUENCER`);
+                  },
+                },
+              ]
+            : []
+        }
+      />
 
       {/* Approve / Edit Rate Dialog */}
       {approveDialogMapper && (

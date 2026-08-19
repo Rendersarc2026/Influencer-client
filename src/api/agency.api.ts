@@ -47,10 +47,11 @@ export function agencyUsersQueryOptions(params?: UserListQuery) {
   };
 }
 
-export function useAgencyUsers(params?: UserListQuery) {
+export function useAgencyUsers(params?: UserListQuery, options?: { enabled?: boolean }) {
   return useQuery<PaginatedResult<UserResponse>>({
     ...agencyUsersQueryOptions(params),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -96,10 +97,11 @@ export function agencyBrandsQueryOptions(params?: BrandListQuery) {
   };
 }
 
-export function useAgencyBrands(params?: BrandListQuery) {
+export function useAgencyBrands(params?: BrandListQuery, options?: { enabled?: boolean }) {
   return useQuery<PaginatedResult<BrandResponse>>({
     ...agencyBrandsQueryOptions(params),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -210,7 +212,7 @@ export function useUpdateCampaign() {
 // -------------------------------------------------------------
 
 /** The creators this agency represents — also the assign-to-campaign picker. */
-export function useAgencyInfluencers(params?: InfluencerListQuery) {
+export function useAgencyInfluencers(params?: InfluencerListQuery, options?: { enabled?: boolean }) {
   return useQuery<PaginatedResult<InfluencerResponse>>({
     queryKey: ['agency', 'influencers', params],
     queryFn: async () => {
@@ -221,6 +223,7 @@ export function useAgencyInfluencers(params?: InfluencerListQuery) {
       return response.data;
     },
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 }
 

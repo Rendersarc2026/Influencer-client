@@ -204,6 +204,8 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
             loading={isLoading}
             isFetching={isFetching}
             fillHeight
+            exportFilename="my_campaign_assignments"
+            exportSheetName="Assignments"
             onRowClick={() => navigate('/influencer')}
           />
         </Box>

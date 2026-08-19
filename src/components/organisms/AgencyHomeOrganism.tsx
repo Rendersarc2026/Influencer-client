@@ -198,6 +198,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           }}
           loading={campaignsLoading}
           isFetching={campaignsFetching}
+          exportFilename="recent_campaigns"
+          exportSheetName="Campaigns"
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

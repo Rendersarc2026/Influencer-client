@@ -177,6 +177,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
           page={page}
           rowsPerPage={rowsPerPage}
           onPageChange={setPage}
+          exportFilename="agency_brands"
+          exportSheetName="Brands"
           onRowsPerPageChange={(limit) => {
             setRowsPerPage(limit);
             setPage(0);

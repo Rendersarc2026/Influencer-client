@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 
@@ -22,6 +23,7 @@ export interface CommentDialogProps {
   loading?: boolean;
   minRows?: number;
   initialValue?: string;
+  suggestions?: string[];
   onConfirm: (comment: string) => void;
   onCancel: () => void;
 }
@@ -38,6 +40,7 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
   loading = false,
   minRows = 3,
   initialValue = '',
+  suggestions = [],
   onConfirm,
   onCancel,
 }) => {
@@ -60,6 +63,11 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
     if (isValid) {
       onConfirm(comment.trim());
     }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setComment(suggestion);
+    setTouched(false);
   };
 
   return (
@@ -104,7 +112,54 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
             '&::-webkit-scrollbar': { display: 'none' },
           }}
         >
-          <Box sx={{ pt: 1 }}>
+          {suggestions && suggestions.length > 0 && (
+            <Box sx={{ mb: 2, mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  fontWeight: 600,
+                  display: 'block',
+                  mb: 0.75,
+                }}
+              >
+                Quick Suggestion Templates:
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                {suggestions.map((suggestion, idx) => (
+                  <Chip
+                    key={idx}
+                    label={suggestion}
+                    size="small"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    sx={{
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      backgroundColor:
+                        comment === suggestion
+                          ? theme.palette.tokens.accentBg
+                          : theme.palette.tokens.fieldBg,
+                      color:
+                        comment === suggestion
+                          ? theme.palette.tokens.accentText
+                          : theme.palette.tokens.textPrimary,
+                      border: `1px solid ${
+                        comment === suggestion
+                          ? theme.palette.primary.main
+                          : theme.palette.tokens.divider
+                      }`,
+                      '&:hover': {
+                        backgroundColor: theme.palette.tokens.accentBg,
+                        borderColor: theme.palette.primary.main,
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          <Box sx={{ pt: 0.5 }}>
             <TextField
               multiline
               minRows={minRows}

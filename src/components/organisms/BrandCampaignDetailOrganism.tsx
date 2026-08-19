@@ -9,15 +9,16 @@ import Chip from '@mui/material/Chip';
 import Link from '@mui/material/Link';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Divider from '@mui/material/Divider';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
@@ -28,12 +29,257 @@ import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineR
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, CommentDialog, FilterBar } from '@molecules';
+import { DataTable, DataTableColumn, CommentDialog, FilterBar, OverviewDrawer } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision, useCreateOrFindChat } from '@api';
-import { BrandMapperResponse, BrandDecisionRequest, BrandStatusCode } from '@contracts';
+import {
+  BrandMapperResponse,
+  BrandDecisionRequest,
+  BrandStatusCode,
+  ApprovalActionName,
+} from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl } from '@utils';
+import { safeUrl, humanizeCode } from '@utils';
+
+interface BrandRowActionsProps {
+  row: BrandMapperResponse;
+  onApprove: (mapperId: string) => void;
+  onSendRemarks: (mapperId: string) => void;
+  onReject: (mapperId: string) => void;
+  onViewDossier: (row: BrandMapperResponse) => void;
+  loading?: boolean;
+}
+
+const BrandRowActions: React.FC<BrandRowActionsProps> = ({
+  row,
+  onApprove,
+  onSendRemarks,
+  onReject,
+  onViewDossier,
+  loading = false,
+}) => {
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setAnchorEl(null);
+  };
+
+  const isApproved = row.brandStatus === BrandStatusCode.APPROVED;
+  const isRejected = row.brandStatus === BrandStatusCode.REJECTED;
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+      {/* 1. Primary Action Button */}
+      {!isApproved && (
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<CheckCircleRoundedIcon fontSize="small" />}
+          onClick={(e) => {
+            e.stopPropagation();
+            onApprove(row.id);
+          }}
+          disabled={loading}
+          sx={{
+            py: 0.5,
+            px: 1.5,
+            fontSize: '0.8125rem',
+            fontWeight: 700,
+            textTransform: 'none',
+          }}
+        >
+          {isRejected ? 'Re-Approve' : 'Approve'}
+        </Button>
+      )}
+
+      {/* 2. Three-dot More Menu Button */}
+      <Tooltip title="More options">
+        <IconButton
+          size="small"
+          onClick={handleOpen}
+          sx={{
+            border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
+            backgroundColor: open ? theme.palette.tokens.fieldBg : theme.palette.tokens.surface,
+            borderRadius: `${theme.customRadii.inner}px`,
+            p: 0.75,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: theme.palette.tokens.fieldBg,
+              borderColor: theme.palette.primary.main,
+            },
+          }}
+        >
+          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+        </IconButton>
+      </Tooltip>
+
+      {/* 3. Actions Dropdown Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={() => handleClose()}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              minWidth: 230,
+              padding: '6px',
+              mt: 0.75,
+              boxShadow:
+                '0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06)',
+            },
+          },
+        }}
+      >
+        {/* View Full Dossier */}
+        <MenuItem
+          onClick={(e) => {
+            handleClose(e);
+            onViewDossier(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <InfoOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          View Full Pre-Evaluation
+        </MenuItem>
+
+        {/* Send Remarks & Feedback */}
+        <MenuItem
+          onClick={(e) => {
+            handleClose(e);
+            onSendRemarks(row.id);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            color: theme.palette.warning.dark,
+            '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.warning.main, minWidth: 'auto' }}>
+            <EditNoteRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          {row.brandStatus === BrandStatusCode.CORRECTION_REQUESTED
+            ? 'Edit Remarks / Correction'
+            : 'Send Remarks & Feedback'}
+        </MenuItem>
+
+        {/* Approve Proposal */}
+        {!isApproved && (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onApprove(row.id);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.positiveText,
+              '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Approve Influencer
+          </MenuItem>
+        )}
+
+        <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* Reject Proposal */}
+        {!isRejected ? (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onReject(row.id);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.negative,
+              '&:hover': {
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                color: theme.palette.tokens.negative,
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+              <CancelRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Reject Proposal
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onApprove(row.id);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.primary.main,
+              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Re-Approve Proposal
+          </MenuItem>
+        )}
+      </Menu>
+    </Box>
+  );
+};
 
 interface BrandCampaignDetailOrganismProps {
   campaignId?: string;
@@ -88,13 +334,30 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
     }
   };
 
-  // Dialog state for Reject / Request Correction
+  // Pre-configured remarks & feedback templates for fast brand decisions
+  const CORRECTION_SUGGESTIONS = [
+    'Price is too high, previously we did at a lower price',
+    'Please renegotiate commercial rate to fit our allocated budget',
+    'Deliverables need adjustment (e.g. 1 Reel + 3 Stories)',
+    'Committed view guarantee is below benchmark for this price point',
+    'Please propose an alternative creator in this category',
+  ];
+
+  const REJECTION_SUGGESTIONS = [
+    'Commercial rate exceeds our maximum campaign budget',
+    'Creator style & audience aesthetic does not align with campaign brief',
+    'Audience demographic mismatch for targeted regional market',
+    'Recent engagement metrics are below brand threshold',
+  ];
+
+  // Dialog state for Reject / Request Correction / Remarks
   const [activeDialog, setActiveDialog] = useState<{
     mapperId: string;
     action: 'REJECT' | 'REQUEST_CORRECTION';
     title: string;
     subtitle: string;
     confirmText: string;
+    suggestions?: string[];
   } | null>(null);
 
   // Detailed Influencer Pre-Eval Drawer/Modal State
@@ -122,19 +385,21 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       mapperId,
       action: 'REJECT',
       title: 'Reject Influencer Proposal',
-      subtitle: 'Provide the reason for rejecting this influencer from the campaign roster',
+      subtitle: 'Provide the reason for rejecting this creator from the campaign roster',
       confirmText: 'Confirm Rejection',
+      suggestions: REJECTION_SUGGESTIONS,
     });
   };
 
-  // 3. Request Correction Action (opens dialog)
+  // 3. Request Correction / Send Remarks Action (opens dialog)
   const handleOpenCorrection = (mapperId: string) => {
     setActiveDialog({
       mapperId,
       action: 'REQUEST_CORRECTION',
-      title: 'Request Deliverable / Rate Correction',
-      subtitle: 'Specify the required deliverable adjustments or commercial targets for the agency',
-      confirmText: 'Send Correction Request',
+      title: 'Send Remarks & Feedback to Agency',
+      subtitle: 'Specify required commercial targets, price adjustments, or deliverable changes for your agency',
+      confirmText: 'Send Remarks to Agency',
+      suggestions: CORRECTION_SUGGESTIONS,
     });
   };
 
@@ -221,6 +486,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Region',
       type: 'custom',
       minWidth: 110,
+      accessor: (row) => row.region || row.reachFromRegion || 'India',
       render: (row) => (
         <Chip
           label={row.region || row.reachFromRegion || 'India'}
@@ -240,10 +506,35 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Username',
       type: 'custom',
       minWidth: 160,
+      accessor: (row) => row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`,
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedInfluencer(row);
+          }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            cursor: 'pointer',
+            p: '2px 4px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: theme.palette.tokens.fieldBg,
+            },
+          }}
+        >
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.tokens.textPrimary }}>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 700,
+                color: theme.palette.primary.main,
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
               {row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`}
             </Typography>
             {row.instagram && (
@@ -262,6 +553,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'center',
       minWidth: 120,
+      accessor: (row) => row.instagram || row.youtube || '—',
       render: (row) => {
         const link = row.instagram || row.youtube;
         if (!link) {
@@ -300,6 +592,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Category',
       type: 'custom',
       minWidth: 120,
+      accessor: (row) => row.category || 'General',
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.tokens.textPrimary }}>
           {row.category || 'General'}
@@ -313,6 +606,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'right',
       minWidth: 110,
+      accessor: 'followers',
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {row.followers ? row.followers.toLocaleString() : '—'}
@@ -326,6 +620,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'right',
       minWidth: 120,
+      accessor: (row) => (row.preEvalEr !== null && row.preEvalEr !== undefined ? `${row.preEvalEr}%` : '—'),
       render: (row) => (
         <Typography
           variant="body2"
@@ -338,29 +633,70 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         </Typography>
       ),
     },
-    // 9. Brand Fit (Qualitative Comments)
+    // 9. Brand Fit & Feedback
     {
       id: 'brandFit',
-      header: 'Brand Fit',
+      header: 'Brand Fit & Feedback',
       type: 'custom',
-      minWidth: 160,
+      minWidth: 180,
+      accessor: (row) => (row.revisionComment ? `Remark: ${row.revisionComment}` : (row.brandFit || '—')),
       render: (row) => (
-        <Tooltip title={row.brandFit || 'No qualitative comments entered'}>
-          <Typography
-            variant="caption"
-            sx={{
-              maxWidth: 160,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              color: row.brandFit ? theme.palette.tokens.textPrimary : theme.palette.tokens.textSecondary,
-            }}
-          >
-            {row.brandFit || '—'}
-          </Typography>
-        </Tooltip>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          {row.brandFit && (
+            <Tooltip title={row.brandFit}>
+              <Typography
+                variant="caption"
+                sx={{
+                  maxWidth: 180,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  color: theme.palette.tokens.textPrimary,
+                }}
+              >
+                {row.brandFit}
+              </Typography>
+            </Tooltip>
+          )}
+          {row.revisionComment && (
+            <Tooltip title={`Brand Feedback: ${row.revisionComment}`}>
+              <Box
+                sx={{
+                  p: '2px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  maxWidth: 180,
+                }}
+              >
+                <EditNoteRoundedIcon sx={{ fontSize: 13, color: theme.palette.warning.dark, flexShrink: 0 }} />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: theme.palette.warning.dark,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {row.revisionComment}
+                </Typography>
+              </Box>
+            </Tooltip>
+          )}
+          {!row.brandFit && !row.revisionComment && (
+            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+              —
+            </Typography>
+          )}
+        </Box>
       ),
     },
     // 10. Deliverables
@@ -369,6 +705,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Deliverables',
       type: 'custom',
       minWidth: 140,
+      accessor: 'deliverables',
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 500 }}>
           {row.deliverables || 'Pending'}
@@ -382,6 +719,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'right',
       minWidth: 140,
+      accessor: 'clientRate',
       render: (row) =>
         row.clientRate !== null ? (
           <MoneyText amount={row.clientRate} currency={row.currency} variant="body2" />
@@ -398,6 +736,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'right',
       minWidth: 140,
+      accessor: 'committedViews',
       render: (row) => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {row.committedViews ? row.committedViews.toLocaleString() : '—'}
@@ -411,6 +750,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'right',
       minWidth: 120,
+      accessor: (row) => (row.preEvalCpv !== null && row.preEvalCpv !== undefined ? `₹${row.preEvalCpv}` : '—'),
       render: (row) => (
         <Typography
           variant="body2"
@@ -430,67 +770,30 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       type: 'custom',
       align: 'center',
       minWidth: 150,
+      accessor: 'brandStatus',
+      statusCategory: 'BRAND_STATUS',
       render: (row) => <StatusChip category="BRAND_STATUS" code={row.brandStatus} />,
     },
+
     // Workflow Actions
     {
       id: 'actions',
       header: 'Actions',
       type: 'actions',
       align: 'right',
-      minWidth: 220,
-      render: (row) => {
-        const isPending = row.brandStatus === BrandStatusCode.PENDING_REVIEW;
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-            <Tooltip title="View Full Pre-Evaluation Dossier">
-              <IconButton
-                size="small"
-                onClick={() => setSelectedInfluencer(row)}
-                sx={{ color: theme.palette.tokens.textSecondary }}
-              >
-                <InfoOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-
-            {isPending && (
-              <>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<CheckCircleRoundedIcon fontSize="small" />}
-                  onClick={() => handleApprove(row.id)}
-                  disabled={brandDecisionMutation.isPending}
-                  sx={{ py: 0.5, px: 1.5, fontSize: '0.75rem' }}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<EditNoteRoundedIcon fontSize="small" />}
-                  onClick={() => handleOpenCorrection(row.id)}
-                  disabled={brandDecisionMutation.isPending}
-                  sx={{ py: 0.5, px: 1, fontSize: '0.75rem' }}
-                >
-                  Correct
-                </Button>
-                <Button
-                  variant="text"
-                  size="small"
-                  startIcon={<CancelRoundedIcon fontSize="small" />}
-                  onClick={() => handleOpenReject(row.id)}
-                  disabled={brandDecisionMutation.isPending}
-                  sx={{ color: theme.palette.tokens.negative, py: 0.5, px: 1, fontSize: '0.75rem' }}
-                >
-                  Reject
-                </Button>
-              </>
-            )}
-          </Box>
-        );
-      },
+      minWidth: 160,
+      render: (row) => (
+        <BrandRowActions
+          row={row}
+          onApprove={handleApprove}
+          onSendRemarks={handleOpenCorrection}
+          onReject={handleOpenReject}
+          onViewDossier={setSelectedInfluencer}
+          loading={brandDecisionMutation.isPending}
+        />
+      ),
     },
+
   ];
 
   return (
@@ -792,147 +1095,232 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             setRowsPerPage(limit);
             setPage(0);
           }}
+          onRowClick={(row) => setSelectedInfluencer(row)}
           loading={mappersLoading || campaignLoading}
           isFetching={mappersFetching}
+          exportFilename={`${campaign?.name || 'campaign'}_influencer_proposals`}
+          exportSheetName="Proposals"
           fillHeight={false}
           minHeight={360}
         />
       </Box>
 
-      {/* 4. Pre-Evaluation Details Dialog */}
-      {selectedInfluencer && (
-        <Dialog
-          open={Boolean(selectedInfluencer)}
-          onClose={() => setSelectedInfluencer(null)}
-          maxWidth="sm"
-          fullWidth
-          slotProps={{
-            paper: {
-              sx: {
-                borderRadius: `${theme.customRadii.card}px`,
-                padding: '16px',
-              },
-            },
-          }}
-        >
-          <DialogTitle sx={{ px: 1, pt: 1, pb: 0 }}>
-            <Typography variant="h3" sx={{ fontWeight: 800 }}>
-              {selectedInfluencer.influencerName}
-            </Typography>
-            <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5 }}>
-              Pre-Evaluation Dossier & Deliverable Profile
-            </Typography>
-          </DialogTitle>
+      {/* 4. Full Influencer Pre-Evaluation Overview Drawer */}
+      <OverviewDrawer
+        open={Boolean(selectedInfluencer)}
+        onClose={() => setSelectedInfluencer(null)}
+        title={selectedInfluencer?.influencerName || 'Influencer Overview'}
+        subtitle={
+          selectedInfluencer
+            ? `${selectedInfluencer.category || 'Creator'} · ${selectedInfluencer.region || 'India'}`
+            : undefined
+        }
+        badge={selectedInfluencer ? selectedInfluencer.brandStatus : undefined}
+        badgeCategory="BRAND_STATUS"
+        avatarText={selectedInfluencer?.influencerName}
+        highlights={
+          selectedInfluencer
+            ? [
+                {
+                  label: 'Follower Reach',
+                  value: selectedInfluencer.followers
+                    ? selectedInfluencer.followers.toLocaleString()
+                    : '—',
+                  tint: 'sky',
+                },
+                {
+                  label: 'Pre-Eval ER %',
+                  value:
+                    selectedInfluencer.preEvalEr !== null && selectedInfluencer.preEvalEr !== undefined
+                      ? `${selectedInfluencer.preEvalEr}%`
+                      : '—',
+                  tint: 'lavender',
+                },
+                {
+                  label: 'Committed Views',
+                  value: selectedInfluencer.committedViews
+                    ? selectedInfluencer.committedViews.toLocaleString()
+                    : '—',
+                  tint: 'butter',
+                },
+                {
+                  label: 'Final Commercials',
+                  value:
+                    selectedInfluencer.clientRate !== null
+                      ? `₹${selectedInfluencer.clientRate.toLocaleString('en-IN')}`
+                      : 'Pending',
+                  tint: 'mint',
+                  sublabel: selectedInfluencer.preEvalCpv
+                    ? `₹${selectedInfluencer.preEvalCpv} CPV`
+                    : undefined,
+                },
+              ]
+            : []
+        }
+        sections={
+          selectedInfluencer
+            ? [
+                {
+                  title: 'Creator Profile & Demographics',
+                  fields: [
+                    { label: 'Influencer Name', value: selectedInfluencer.influencerName },
+                    { label: 'Category / Niche', value: selectedInfluencer.category || 'General' },
+                    {
+                      label: 'Region / Location',
+                      value: selectedInfluencer.region || selectedInfluencer.reachFromRegion || 'India',
+                    },
+                    {
+                      label: 'Followers Count',
+                      value: selectedInfluencer.followers
+                        ? selectedInfluencer.followers.toLocaleString()
+                        : '—',
+                    },
+                    {
+                      label: 'Instagram Profile',
+                      value: selectedInfluencer.instagram || '—',
+                      isLink: Boolean(selectedInfluencer.instagram),
+                      href: safeUrl(selectedInfluencer.instagram) || selectedInfluencer.instagram || undefined,
+                    },
+                    {
+                      label: 'YouTube Channel',
+                      value: selectedInfluencer.youtube || '—',
+                      isLink: Boolean(selectedInfluencer.youtube),
+                      href: safeUrl(selectedInfluencer.youtube) || selectedInfluencer.youtube || undefined,
+                    },
+                  ],
+                },
+                {
+                  title: 'Pre-Evaluation Metrics & Performance',
+                  fields: [
+                    {
+                      label: 'Pre-Eval Engagement Rate (ER)',
+                      value:
+                        selectedInfluencer.preEvalEr !== null && selectedInfluencer.preEvalEr !== undefined
+                          ? `${selectedInfluencer.preEvalEr}%`
+                          : '—',
+                    },
+                    {
+                      label: 'Committed Views Guarantee',
+                      value: selectedInfluencer.committedViews
+                        ? selectedInfluencer.committedViews.toLocaleString()
+                        : 'Not specified',
+                    },
+                    {
+                      label: 'Pre-Eval Cost Per View (CPV)',
+                      value: selectedInfluencer.preEvalCpv ? `₹${selectedInfluencer.preEvalCpv}` : '—',
+                      color: theme.palette.primary.main,
+                    },
+                    {
+                      label: 'Target Audience Region',
+                      value: selectedInfluencer.reachFromRegion || selectedInfluencer.region || 'India',
+                    },
+                  ],
+                },
+                {
+                  title: 'Commercial Deliverables & Scope',
+                  fields: [
+                    {
+                      label: 'Deliverables Format',
+                      value: selectedInfluencer.deliverables || 'Pending agreement',
+                      fullWidth: true,
+                    },
+                    {
+                      label: 'Final Commercial Price',
+                      value: selectedInfluencer.clientRate,
+                      isMoney: true,
+                      currency: selectedInfluencer.currency || 'INR',
+                      color: theme.palette.tokens.positiveText,
+                    },
+                    {
+                      label: 'Brand Fit & Qualitative Assessment',
+                      value: selectedInfluencer.brandFit || 'No qualitative assessment note provided',
+                      fullWidth: true,
+                    },
+                  ],
+                },
+                ...(selectedInfluencer.revisionComment
+                  ? [
+                      {
+                        title: 'Latest Brand Feedback / Remarks',
+                        fields: [
+                          {
+                            label: 'Active Brand Remark',
+                            value: selectedInfluencer.revisionComment,
+                            fullWidth: true,
+                            color: theme.palette.warning.dark,
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
+                ...(selectedInfluencer.approvalEvents && selectedInfluencer.approvalEvents.length > 0
+                  ? [
+                      {
+                        title: 'Proposal History & Feedback',
+                        fields: selectedInfluencer.approvalEvents.map((evt) => ({
+                          label: `${new Date(evt.createdOn).toLocaleDateString('en-IN')}: ${humanizeCode(ApprovalActionName[evt.action] || 'Action')}`,
+                          value: evt.comment || 'Status updated',
+                          fullWidth: true,
+                        })),
+                      },
+                    ]
+                  : []),
+              ]
+            : []
+        }
+        actions={
+          selectedInfluencer
+            ? [
+                ...(selectedInfluencer.brandStatus !== BrandStatusCode.APPROVED
+                  ? [
+                      {
+                        label:
+                          selectedInfluencer.brandStatus === BrandStatusCode.REJECTED
+                            ? 'Re-Approve Proposal'
+                            : 'Approve Proposal',
+                        variant: 'contained' as const,
+                        color: 'primary' as const,
+                        onClick: () => {
+                          const id = selectedInfluencer.id;
+                          setSelectedInfluencer(null);
+                          handleApprove(id);
+                        },
+                      },
+                    ]
+                  : []),
+                {
+                  label:
+                    selectedInfluencer.brandStatus === BrandStatusCode.CORRECTION_REQUESTED
+                      ? 'Update Remarks'
+                      : 'Send Remarks / Correct',
+                  variant: 'outlined' as const,
+                  color: 'warning' as const,
+                  onClick: () => {
+                    const id = selectedInfluencer.id;
+                    setSelectedInfluencer(null);
+                    handleOpenCorrection(id);
+                  },
+                },
+                ...(selectedInfluencer.brandStatus !== BrandStatusCode.REJECTED
+                  ? [
+                      {
+                        label: 'Reject Proposal',
+                        variant: 'outlined' as const,
+                        color: 'error' as const,
+                        onClick: () => {
+                          const id = selectedInfluencer.id;
+                          setSelectedInfluencer(null);
+                          handleOpenReject(id);
+                        },
+                      },
+                    ]
+                  : []),
+              ]
+            : []
+        }
+      />
 
-          <DialogContent
-            sx={{
-              px: 1,
-              pt: 2,
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-            }}
-          >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 2,
-                  p: 2,
-                  backgroundColor: theme.palette.tokens.fieldBg,
-                  borderRadius: `${theme.customRadii.inner}px`,
-                }}
-              >
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Region
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {selectedInfluencer.region || 'India'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Category
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {selectedInfluencer.category || 'General'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Followers
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {selectedInfluencer.followers ? selectedInfluencer.followers.toLocaleString() : '—'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Pre-Eval ER%
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {selectedInfluencer.preEvalEr ? `${selectedInfluencer.preEvalEr}%` : '—'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Committed Views
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {selectedInfluencer.committedViews ? selectedInfluencer.committedViews.toLocaleString() : '—'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Pre-Eval CPV
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
-                    {selectedInfluencer.preEvalCpv ? `₹${selectedInfluencer.preEvalCpv}` : '—'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Final Commercial
-                  </Typography>
-                  <MoneyText
-                    amount={selectedInfluencer.clientRate || 0}
-                    currency={selectedInfluencer.currency}
-                    variant="body2"
-                  />
-                </Box>
-              </Box>
-
-              <Box>
-                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 700 }}>
-                  DELIVERABLES
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  {selectedInfluencer.deliverables || 'Pending'}
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 700 }}>
-                  BRAND FIT (QUALITATIVE COMMENTS)
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5, fontStyle: selectedInfluencer.brandFit ? 'normal' : 'italic', color: selectedInfluencer.brandFit ? theme.palette.tokens.textPrimary : theme.palette.tokens.textSecondary }}>
-                  {selectedInfluencer.brandFit || 'No qualitative evaluation note provided'}
-                </Typography>
-              </Box>
-            </Box>
-          </DialogContent>
-
-          <DialogActions sx={{ px: 1, pt: 2 }}>
-            <Button variant="outlined" onClick={() => setSelectedInfluencer(null)}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
-
-      {/* 5. CommentDialog for Reject / Request Correction */}
+      {/* 5. CommentDialog for Reject / Request Correction / Remarks */}
       {activeDialog && (
         <CommentDialog
           open={Boolean(activeDialog)}
@@ -941,6 +1329,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           confirmText={activeDialog.confirmText}
           loading={brandDecisionMutation.isPending}
           variant={activeDialog.action === 'REJECT' ? 'destructive' : 'neutral'}
+          suggestions={activeDialog.suggestions}
           onConfirm={handleDialogSubmit}
           onCancel={() => setActiveDialog(null)}
         />
