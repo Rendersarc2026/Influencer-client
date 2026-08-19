@@ -6,17 +6,16 @@ import Grid from '@mui/material/Grid2';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import HourglassEmptyRoundedIcon from '@mui/icons-material/HourglassEmptyRounded';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
-import PaymentRoundedIcon from '@mui/icons-material/PaymentRounded';
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useBrandCampaigns, useBrandPayments, useBrandCampaignsInfluencers } from '@api';
+import { useBrandCampaigns, useBrandCampaignsInfluencers } from '@api';
 import {
   CampaignResponse,
   CampaignStatusCode,
-  PaymentStatusCode,
   BrandStatusCode,
 } from '@contracts';
 import { useAuth } from '@hooks';
@@ -38,12 +37,10 @@ export const BrandHomeOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
   const { data: allCampaignsData, isLoading: allCampaignsLoading } = useBrandCampaigns();
-  const { data: paymentsData, isLoading: paymentsLoading } = useBrandPayments();
 
   const campaigns = campaignsData?.items || [];
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
   const allCampaigns = useMemo(() => allCampaignsData?.items || [], [allCampaignsData]);
-  const payments = paymentsData?.items || [];
 
   const campaignIds = useMemo(() => allCampaigns.map((c) => c.id), [allCampaigns]);
   const { mappers, isLoading: mappersLoading } = useBrandCampaignsInfluencers(campaignIds);
@@ -55,8 +52,8 @@ export const BrandHomeOrganism: React.FC = () => {
   const approvedInfluencersCount = mappers.filter(
     (m) => m.brandStatus === BrandStatusCode.APPROVED,
   ).length;
-  const pendingPayments = payments.filter(
-    (p) => p.status === PaymentStatusCode.PENDING_APPROVAL,
+  const completedCampaigns = allCampaigns.filter(
+    (c) => c.status === CampaignStatusCode.COMPLETED,
   ).length;
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
@@ -105,7 +102,7 @@ export const BrandHomeOrganism: React.FC = () => {
   return (
     <DashboardLayout
       title="Brand Portal"
-      subtitle="Campaign rosters, influencer approvals, and deliverable disbursements"
+      subtitle="Campaign rosters, influencer approvals, and brand collaborations"
       navItems={navConfig.BRAND}
       activePath={location.pathname}
       user={{
@@ -157,12 +154,12 @@ export const BrandHomeOrganism: React.FC = () => {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Pending Payments"
-            value={pendingPayments}
-            loading={paymentsLoading}
-            icon={<PaymentRoundedIcon fontSize="small" />}
-            subtitle="Awaiting authorization"
-            onClick={() => navigate('/brand/payments')}
+            title="Completed Campaigns"
+            value={completedCampaigns}
+            loading={allCampaignsLoading}
+            icon={<HistoryRoundedIcon fontSize="small" />}
+            subtitle="Past campaign archives"
+            onClick={() => navigate('/brand/campaigns')}
           />
         </Grid>
       </Grid>

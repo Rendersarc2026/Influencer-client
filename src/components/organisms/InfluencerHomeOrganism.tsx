@@ -204,6 +204,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             loading={isSummaryLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Invited & assigned briefs"
+            onClick={() => navigate('/influencer/campaigns')}
           />
         </Grid>
 

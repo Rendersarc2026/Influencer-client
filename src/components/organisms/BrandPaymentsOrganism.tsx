@@ -10,7 +10,8 @@ import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { apiClient, useBrandPayments, useApprovePayment } from '@api';
 import { PaymentResponse, PaymentStatusEnum, PaymentStatusCode, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import { ExcelColumnConfig } from '@utils';
 
 export const BrandPaymentsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -128,6 +129,14 @@ export const BrandPaymentsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'brand_payments',
+    sheetName: 'Payments',
+    columns: columns as Array<ExcelColumnConfig<PaymentResponse>>,
+    rows: payments,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="Payment Authorization Queue"
@@ -154,6 +163,9 @@ export const BrandPaymentsOrganism: React.FC = () => {
           onPillChange={setActivePill}
           searchValue={search}
           onSearchChange={setSearch}
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalPayments === 0}
         />
 
         <DataTable<PaymentResponse>
@@ -169,9 +181,6 @@ export const BrandPaymentsOrganism: React.FC = () => {
           }}
           loading={paymentsLoading}
           isFetching={paymentsFetching}
-          exportFilename="brand_payments"
-          exportSheetName="Payments"
-          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

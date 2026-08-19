@@ -1,15 +1,30 @@
 import { WindowWithWebkitAudio } from '@types';
 
+let cachedAudioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!cachedAudioCtx || cachedAudioCtx.state === 'closed') {
+      cachedAudioCtx = new AudioContextClass();
+    }
+    return cachedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Lightweight chime notification using Web Audio API (zero external assets needed).
  */
 export function playNotificationSound(): void {
   try {
-    const AudioContextClass =
-      window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
-    if (!AudioContextClass) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
 
-    const ctx = new AudioContextClass();
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
     }

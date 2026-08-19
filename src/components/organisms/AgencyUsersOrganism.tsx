@@ -11,7 +11,8 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
 import { apiClient, useAgencyUsers, useSetUserBlocked } from '@api';
 import { UserResponse, UserStatusFilter, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { ExcelColumnConfig } from '@utils';
 
 export const AgencyUsersOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -182,6 +183,14 @@ export const AgencyUsersOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'platform_users',
+    sheetName: 'Users',
+    columns: columns as Array<ExcelColumnConfig<UserResponse>>,
+    rows: users,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="All Users"
@@ -217,6 +226,9 @@ export const AgencyUsersOrganism: React.FC = () => {
             setPage(0);
           }}
           selectLabel="Account Status"
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalUsers === 0}
         />
 
         <DataTable<UserResponse>
@@ -233,9 +245,6 @@ export const AgencyUsersOrganism: React.FC = () => {
           loading={usersLoading}
           isFetching={usersFetching}
           onRowClick={(row) => setSelectedUser(row)}
-          exportFilename="platform_users"
-          exportSheetName="Users"
-          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

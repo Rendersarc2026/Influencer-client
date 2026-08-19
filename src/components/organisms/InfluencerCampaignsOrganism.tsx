@@ -2,19 +2,16 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Grid from '@mui/material/Grid2';
-import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { MetricCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
+import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { StatusChip } from '@atoms';
 import { apiClient, useInfluencerCampaigns } from '@api';
 import { CampaignResponse, CampaignStatusEnum, CampaignStatusCode, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useViewFilters, usePillCode } from '@hooks';
+import { useAuth, useDebounce, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import { safeExternalUrl, ExcelColumnConfig } from '@utils';
 
 export const InfluencerCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -45,14 +42,8 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
-  const { data: allCampaignsData, isLoading: isAllCampaignsLoading } = useInfluencerCampaigns();
-
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;
-  const allCampaigns = allCampaignsData?.items || [];
-
-  const activeCount = allCampaigns.filter((c) => c?.status === CampaignStatusCode.ACTIVE).length;
-  const completedCount = allCampaigns.filter((c) => c?.status === CampaignStatusCode.COMPLETED).length;
 
   // Pill ids are status codes, the same as the ones useEnumPills emits — the
   // filter is sent as a code, so a symbolic id here would simply never match.
@@ -92,12 +83,17 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
       id: 'brief',
       header: 'Brief',
       type: 'custom',
-      render: (row) =>
-        row.briefUrl ? (
+      render: (row) => {
+        // Gate on the sanitised value, not the raw one: a brief URL stored as
+        // `javascript:` must render as plain text, not as an inert-looking
+        // button that still carries the payload.
+        const briefHref = safeExternalUrl(row.briefUrl);
+        return briefHref ? (
           <Button
+            component="a"
             size="small"
             variant="text"
-            href={row.briefUrl}
+            href={briefHref}
             target="_blank"
             rel="noopener noreferrer"
             endIcon={<LaunchRoundedIcon fontSize="small" />}
@@ -110,21 +106,22 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
           <Box component="span" sx={{ color: 'text.secondary', fontSize: '13px' }}>
             {row.description || 'Deliverables in Assignment'}
           </Box>
-        ),
+        );
+      },
     },
     {
       id: 'actions',
       header: 'Actions',
       type: 'actions',
       align: 'right',
-      render: (_row) => (
+      render: (row) => (
         <Button
           variant="outlined"
           size="small"
-          onClick={() => navigate('/influencer')}
+          onClick={() => navigate(`/influencer/campaigns/${row.id}`)}
           endIcon={<ArrowForwardRoundedIcon fontSize="small" />}
         >
-          My Assignment
+          View Details
         </Button>
       ),
     },
@@ -140,6 +137,14 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'my_campaign_assignments',
+    sheetName: 'Assignments',
+    columns: columns as Array<ExcelColumnConfig<CampaignResponse>>,
+    rows: campaigns,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="My Campaigns"
@@ -154,51 +159,20 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minHeight: 0 }}>
-        {/* 1. Summary Metrics */}
-        <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <MetricCard
-              tint="butter"
-              title="ACTIVE CAMPAIGNS"
-              value={activeCount}
-              subtitle="Current live briefs & deliverables"
-              icon={<CampaignRoundedIcon fontSize="small" />}
-              loading={isAllCampaignsLoading}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <MetricCard
-              tint="butter"
-              title="CAMPAIGN HISTORY"
-              value={completedCount}
-              subtitle="Completed past collaborations"
-              icon={<HistoryRoundedIcon fontSize="small" />}
-              loading={isAllCampaignsLoading}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <MetricCard
-              tint="butter"
-              title="TOTAL COLLABORATIONS"
-              value={allCampaigns.length}
-              subtitle="All assigned brand campaigns"
-              icon={<CheckCircleRoundedIcon fontSize="small" />}
-              loading={isAllCampaignsLoading}
-            />
-          </Grid>
-        </Grid>
-
-        {/* 2. Filter Bar */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, flex: 1, minHeight: 0 }}>
+        {/* Filter Bar */}
         <FilterBar
           pills={filterPills}
           activePillId={activePill}
           onPillChange={setActivePill}
           searchValue={search}
           onSearchChange={setSearch}
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalCampaigns === 0}
         />
 
-        {/* 3. Campaigns Table */}
+        {/* Campaigns Table */}
         <Box sx={{ flex: 1, minHeight: 0 }}>
           <DataTable<CampaignResponse>
             columns={columns}
@@ -214,10 +188,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
             loading={isLoading}
             isFetching={isFetching}
             fillHeight
-            exportFilename="my_campaign_assignments"
-            exportSheetName="Assignments"
-            onExportAll={handleExportAll}
-            onRowClick={() => navigate('/influencer')}
+            onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
           />
         </Box>
       </Box>

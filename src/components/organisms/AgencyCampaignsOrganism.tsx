@@ -9,7 +9,8 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
 import { apiClient, useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
 import { CampaignResponse, CreateCampaignRequest, CampaignStatusEnum, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
+import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import { ExcelColumnConfig } from '@utils';
 
 export const AgencyCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -135,6 +136,14 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'agency_campaigns',
+    sheetName: 'Campaigns',
+    columns: columns as Array<ExcelColumnConfig<CampaignResponse>>,
+    rows: campaigns,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="Campaigns"
@@ -170,6 +179,9 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           selectedOption={selectedBrand}
           onSelectChange={setSelectedBrand}
           selectLabel="Brand"
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalCampaigns === 0}
         />
 
         <DataTable<CampaignResponse>
@@ -186,9 +198,6 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           loading={campaignsLoading}
           isFetching={campaignsFetching}
           fillHeight
-          exportFilename="agency_campaigns"
-          exportSheetName="Campaigns"
-          onExportAll={handleExportAll}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

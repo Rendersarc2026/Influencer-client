@@ -1,6 +1,6 @@
 import { queryClient } from './query.client';
 import { agencyBrandsQueryOptions, agencyCampaignsQueryOptions } from './agency.api';
-import { brandCampaignsQueryOptions, brandPaymentsQueryOptions } from './brand.api';
+import { brandCampaignsQueryOptions, brandProfileQueryOptions } from './brand.api';
 
 /**
  * Boot-time data prefetch.
@@ -35,6 +35,6 @@ export function prefetchForRoute(pathname: string): void {
 
   if (pathname.startsWith('/brand')) {
     void queryClient.prefetchQuery(brandCampaignsQueryOptions(FIRST_PAGE));
-    void queryClient.prefetchQuery(brandPaymentsQueryOptions());
+    void queryClient.prefetchQuery(brandProfileQueryOptions());
   }
 }

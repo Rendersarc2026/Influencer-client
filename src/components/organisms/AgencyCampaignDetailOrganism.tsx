@@ -72,7 +72,7 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl, humanizeCode, exportCampaignPerformanceReport } from '@utils';
+import { safeUrl, safeExternalUrl, humanizeCode, exportCampaignPerformanceReport } from '@utils';
 
 interface RowActionsProps {
   row: AgencyMapperResponse;
@@ -1240,13 +1240,13 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                       label: 'Instagram Profile',
                       value: overviewDrawerMapper.instagram || '—',
                       isLink: Boolean(overviewDrawerMapper.instagram),
-                      href: safeUrl(overviewDrawerMapper.instagram) || overviewDrawerMapper.instagram || undefined,
+                      href: safeExternalUrl(overviewDrawerMapper.instagram),
                     },
                     {
                       label: 'YouTube Channel',
                       value: overviewDrawerMapper.youtube || '—',
                       isLink: Boolean(overviewDrawerMapper.youtube),
-                      href: safeUrl(overviewDrawerMapper.youtube) || overviewDrawerMapper.youtube || undefined,
+                      href: safeExternalUrl(overviewDrawerMapper.youtube),
                     },
                   ],
                 },

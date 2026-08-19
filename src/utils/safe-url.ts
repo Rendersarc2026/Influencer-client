@@ -48,3 +48,35 @@ export function safeImageUrl(value: string | null | undefined): string | undefin
   if (!url) return undefined;
   return url.startsWith('mailto:') ? undefined : url;
 }
+
+/**
+ * Sanitiser for user-supplied external links (social handles, brief documents,
+ * websites) that are commonly stored without a scheme — "instagram.com/acme".
+ *
+ * `safeUrl` resolves a scheme-less value against the current origin, so
+ * "instagram.com/acme" becomes "https://<our-host>/instagram.com/acme". That is
+ * safe but wrong, and the call sites worked around it with
+ * `safeUrl(value) || value` — which hands the *raw, rejected* value to `href`
+ * whenever the sanitiser refuses it. That fallback turned the check into a
+ * no-op for exactly the inputs it existed to stop: a stored
+ * `javascript:alert(document.cookie)` fails `safeUrl` and was then bound
+ * directly to the anchor.
+ *
+ * This assumes https for a bare host instead, so there is never a reason to
+ * fall back. Anything carrying an explicit scheme still goes through `safeUrl`
+ * and is rejected unless it is http, https or mailto.
+ */
+export function safeExternalUrl(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+
+  // An explicit scheme (including javascript:) or an origin-relative path is
+  // safeUrl's business — do not prefix either.
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) || trimmed.startsWith('/')) {
+    return safeUrl(trimmed);
+  }
+
+  return safeUrl(`https://${trimmed}`);
+}

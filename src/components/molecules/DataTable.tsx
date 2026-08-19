@@ -155,7 +155,7 @@ export function DataTable<T extends Record<string, unknown>>({
   minHeight = 420,
   fillHeight = true,
   isFetching = false,
-  exportable = true,
+  exportable = false,
   exportFilename,
   exportSheetName,
   onExport,

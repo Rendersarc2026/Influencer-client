@@ -10,9 +10,11 @@ import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
+import CircularProgress from '@mui/material/CircularProgress';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
 import { useTheme } from '@mui/material/styles';
 import { Pill } from '@atoms';
 
@@ -53,6 +55,10 @@ export interface FilterBarProps {
   priceRangeLabel?: string;
   onClearFilters?: () => void;
   hasActiveFilters?: boolean;
+  onExport?: () => void | Promise<void>;
+  isExporting?: boolean;
+  exportDisabled?: boolean;
+  exportLabel?: string;
   extraAction?: ReactNode;
   className?: string;
 }
@@ -83,6 +89,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   priceRangeLabel,
   onClearFilters,
   hasActiveFilters,
+  onExport,
+  isExporting,
+  exportDisabled,
+  exportLabel,
   extraAction,
   className,
 }) => {
@@ -432,7 +442,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </Button>
           )}
 
-          {/* Desktop inline dropdowns and clear filters */}
+          {/* Desktop inline dropdowns, clear filters, and Export Excel */}
           <Box
             sx={{
               display: { xs: 'none', sm: 'flex' },
@@ -459,18 +469,54 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   fontSize: '13px',
                   fontWeight: 600,
                   textTransform: 'none',
-                  borderRadius: '8px',
+                  borderRadius: `${theme.customRadii.inner}px`,
                   whiteSpace: 'nowrap',
-                  color: 'text.secondary',
-                  borderColor: 'divider',
+                  color: theme.palette.tokens.textSecondary,
+                  borderColor: theme.palette.tokens.divider,
                   '&:hover': {
-                    borderColor: 'text.primary',
-                    color: 'text.primary',
-                    backgroundColor: 'action.hover',
+                    borderColor: theme.palette.tokens.textPrimary,
+                    color: theme.palette.tokens.textPrimary,
+                    backgroundColor: theme.palette.tokens.fieldBg,
                   },
                 }}
               >
                 Clear Filters
+              </Button>
+            )}
+
+            {onExport && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={onExport}
+                disabled={exportDisabled || isExporting}
+                startIcon={
+                  isExporting ? (
+                    <CircularProgress size={14} color="inherit" />
+                  ) : (
+                    <FileDownloadRoundedIcon sx={{ fontSize: '18px !important' }} />
+                  )
+                }
+                sx={{
+                  height: 40,
+                  px: 1.75,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  color: theme.palette.tokens.textPrimary,
+                  borderColor: theme.palette.tokens.divider,
+                  backgroundColor: theme.palette.tokens.surface,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  '&:hover': {
+                    borderColor: theme.palette.tokens.accent,
+                    backgroundColor: theme.palette.tokens.fieldBg,
+                    color: theme.palette.tokens.accent,
+                  },
+                }}
+              >
+                {exportLabel || 'Export Excel'}
               </Button>
             )}
 
@@ -480,7 +526,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </Box>
 
       {/* Mobile Collapsible Dropdown Filters Container */}
-      {hasDropdownFilters && (
+      {(hasDropdownFilters || Boolean(onExport)) && (
         <Box
           sx={{
             display: { xs: mobileFiltersOpen ? 'flex' : 'none', sm: 'none' },
@@ -515,18 +561,52 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 fontSize: '13px',
                 fontWeight: 600,
                 textTransform: 'none',
-                borderRadius: '8px',
-                color: 'text.secondary',
-                borderColor: 'divider',
+                borderRadius: `${theme.customRadii.inner}px`,
+                color: theme.palette.tokens.textSecondary,
+                borderColor: theme.palette.tokens.divider,
                 backgroundColor: theme.palette.tokens.surface,
                 '&:hover': {
-                  borderColor: 'text.primary',
-                  color: 'text.primary',
-                  backgroundColor: 'action.hover',
+                  borderColor: theme.palette.tokens.textPrimary,
+                  color: theme.palette.tokens.textPrimary,
+                  backgroundColor: theme.palette.tokens.fieldBg,
                 },
               }}
             >
               Clear Filters
+            </Button>
+          )}
+
+          {onExport && (
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              onClick={onExport}
+              disabled={exportDisabled || isExporting}
+              startIcon={
+                isExporting ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <FileDownloadRoundedIcon sx={{ fontSize: '18px !important' }} />
+                )
+              }
+              sx={{
+                height: 38,
+                fontSize: '13px',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: `${theme.customRadii.inner}px`,
+                color: theme.palette.tokens.textPrimary,
+                borderColor: theme.palette.tokens.divider,
+                backgroundColor: theme.palette.tokens.surface,
+                '&:hover': {
+                  borderColor: theme.palette.tokens.accent,
+                  color: theme.palette.tokens.accent,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                },
+              }}
+            >
+              {exportLabel || 'Export Excel'}
             </Button>
           )}
 

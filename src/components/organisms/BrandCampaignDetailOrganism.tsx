@@ -39,7 +39,7 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl } from '@utils';
+import { safeUrl, safeExternalUrl } from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandMapperResponse;
@@ -568,7 +568,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           <Tooltip title={isInstagram ? 'Open Instagram Profile' : 'Open YouTube Channel'}>
             <IconButton
               component={Link}
-              href={safeUrl(link) || link}
+              href={safeExternalUrl(link)}
               target="_blank"
               rel="noopener noreferrer"
               size="small"
@@ -1072,13 +1072,13 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                       label: 'Instagram Profile',
                       value: selectedInfluencer.instagram || '—',
                       isLink: Boolean(selectedInfluencer.instagram),
-                      href: safeUrl(selectedInfluencer.instagram) || selectedInfluencer.instagram || undefined,
+                      href: safeExternalUrl(selectedInfluencer.instagram),
                     },
                     {
                       label: 'YouTube Channel',
                       value: selectedInfluencer.youtube || '—',
                       isLink: Boolean(selectedInfluencer.youtube),
-                      href: safeUrl(selectedInfluencer.youtube) || selectedInfluencer.youtube || undefined,
+                      href: safeExternalUrl(selectedInfluencer.youtube),
                     },
                   ],
                 },

@@ -13,7 +13,7 @@ import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { useTheme } from '@mui/material/styles';
 import { StatusChip, StatusCategory, MoneyText } from '@atoms';
 import { useToast } from '@hooks';
-import { safeImageUrl } from '@utils';
+import { safeImageUrl, safeExternalUrl } from '@utils';
 
 export interface OverviewField {
   label: string;
@@ -398,12 +398,12 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                           variant="body2"
                           color={field.color}
                         />
-                      ) : field.isLink && field.href ? (
+                      ) : field.isLink && safeExternalUrl(field.href) ? (
                         <Button
                           variant="text"
                           size="small"
                           component="a"
-                          href={field.href}
+                          href={safeExternalUrl(field.href)}
                           target="_blank"
                           rel="noopener noreferrer"
                           endIcon={<LaunchRoundedIcon fontSize="inherit" />}

@@ -8,7 +8,8 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { apiClient, useBrandCampaigns } from '@api';
 import { CampaignResponse, CampaignStatusEnum, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useEnumOptions, useViewFilters, usePillCode } from '@hooks';
+import { useAuth, useDebounce, useEnumOptions, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import { ExcelColumnConfig } from '@utils';
 
 export const BrandCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -105,6 +106,14 @@ export const BrandCampaignsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'brand_campaigns',
+    sheetName: 'Campaigns',
+    columns: columns as Array<ExcelColumnConfig<CampaignResponse>>,
+    rows: campaigns,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="Brand Campaigns"
@@ -126,6 +135,9 @@ export const BrandCampaignsOrganism: React.FC = () => {
           onPillChange={setActivePill}
           searchValue={search}
           onSearchChange={setSearch}
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalCampaigns === 0}
         />
 
         <DataTable<CampaignResponse>
@@ -142,9 +154,6 @@ export const BrandCampaignsOrganism: React.FC = () => {
           loading={isLoading}
           isFetching={isFetching}
           fillHeight
-          exportFilename="brand_campaigns"
-          exportSheetName="Campaigns"
-          onExportAll={handleExportAll}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

@@ -299,7 +299,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               width: { xs: 34, sm: 38 },
               height: { xs: 34, sm: 38 },
               p: 0,
-              borderRadius: '10px',
+              borderRadius: '50%',
               border: `1px solid ${theme.palette.tokens.divider}`,
               backgroundColor: notificationAnchor ? theme.palette.tokens.accentBg : theme.palette.tokens.fieldBg,
               color: notificationAnchor ? theme.palette.tokens.accentText : theme.palette.tokens.textPrimary,

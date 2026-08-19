@@ -12,8 +12,8 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawer } from '@molecules';
 import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl, safeImageUrl } from '@utils';
+import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { safeUrl, safeImageUrl, ExcelColumnConfig } from '@utils';
 
 /**
  * The agency's client brands.
@@ -145,6 +145,14 @@ export const AgencyBrandsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'agency_brands',
+    sheetName: 'Brands',
+    columns: columns as Array<ExcelColumnConfig<BrandResponse>>,
+    rows: brands,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="Brands"
@@ -177,6 +185,9 @@ export const AgencyBrandsOrganism: React.FC = () => {
             setPage(0);
           }}
           searchPlaceholder="Search by brand name or industry"
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalBrands === 0}
         />
 
         <DataTable<BrandResponse>
@@ -186,9 +197,6 @@ export const AgencyBrandsOrganism: React.FC = () => {
           page={page}
           rowsPerPage={rowsPerPage}
           onPageChange={setPage}
-          exportFilename="agency_brands"
-          exportSheetName="Brands"
-          onExportAll={handleExportAll}
           onRowsPerPageChange={(limit) => {
             setRowsPerPage(limit);
             setPage(0);

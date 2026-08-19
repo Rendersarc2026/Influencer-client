@@ -73,8 +73,9 @@ function isNavItemActive(itemPath: string, currentPath: string): boolean {
   if (currentPath === itemPath) return true;
 
   if (
-    (itemPath === '/influencer/profile' && currentPath === '/profile') ||
-    (itemPath === '/profile' && currentPath === '/influencer/profile')
+    (itemPath.endsWith('/profile') && currentPath.endsWith('/profile')) ||
+    (itemPath === '/profile' && currentPath.endsWith('/profile')) ||
+    (itemPath.endsWith('/profile') && currentPath === '/profile')
   ) {
     return true;
   }
@@ -228,12 +229,16 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                     px: 0.75,
                     py: 0.2,
                     borderRadius: `${theme.customRadii.pill}px`,
-                    backgroundColor: '#EF4444',
-                    color: '#FFFFFF',
+                    backgroundColor: theme.palette.tokens.negative,
+                    color: theme.palette.tokens.surface,
                     fontSize: '11px',
                     fontWeight: 700,
                     flexShrink: 0,
-                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
+                    lineHeight: 1.4,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 2px 4px ${theme.palette.tokens.negative}4D`,
                   }}
                 >
                   {item.badge}

@@ -12,8 +12,8 @@ import { navConfig } from '@routes/navConfig';
 import { MetricCard, ChartCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
-import { useAuth, useViewFilters } from '@hooks';
-import { formatCurrency } from '@utils';
+import { useAuth, useViewFilters, useTableExport } from '@hooks';
+import { formatCurrency, ExcelColumnConfig } from '@utils';
 
 interface CampaignMetricRow extends Record<string, unknown> {
   id: string;
@@ -184,10 +184,17 @@ export const AgencyReportsOrganism: React.FC = () => {
     },
   ];
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'campaign_financial_reports',
+    sheetName: 'Reports',
+    columns: columns as Array<ExcelColumnConfig<CampaignMetricRow>>,
+    rows: filteredRows,
+  });
+
   return (
     <DashboardLayout
-      title="Performance Reports"
-      subtitle="Per campaign and per influencer metrics, engagement analytics, and margin realizations"
+      title="Reports & Analytics"
+      subtitle="Financial performance, margins, and deliverable engagement metrics across campaigns"
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
       user={{
@@ -256,6 +263,9 @@ export const AgencyReportsOrganism: React.FC = () => {
           selectedOption={selectedBrand}
           onSelectChange={setSelectedBrand}
           selectLabel="Brand"
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={filteredRows.length === 0}
         />
 
         <SectionHeading
@@ -268,8 +278,6 @@ export const AgencyReportsOrganism: React.FC = () => {
           rows={filteredRows}
           loading={campaignsLoading || reportsLoading}
           isFetching={campaignsFetching || reportsFetching}
-          exportFilename="campaign_financial_reports"
-          exportSheetName="Reports"
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

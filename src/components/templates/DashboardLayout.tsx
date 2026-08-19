@@ -6,6 +6,7 @@ import { SidebarRail, TopBar } from '@organisms';
 import { ConfirmDialog } from '@molecules';
 import { navConfig, NavItem } from '@routes/navConfig';
 import { useNavigation, useChats } from '@api';
+import { useAuth } from '@hooks';
 import { RoleCode } from '@contracts';
 
 export interface DashboardLayoutProps {
@@ -54,7 +55,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { data: dbNavItems, isLoading: isNavLoading } = useNavigation();
+  const { roleCode: authRoleCode } = useAuth();
+  const activeRoleCode = (user?.roleCode || authRoleCode) as RoleCode | undefined;
+  const { data: dbNavItems, isLoading: isNavLoading } = useNavigation(activeRoleCode);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -66,6 +69,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     [chats],
   );
 
+  const fallbackNavItems =
+    navItems.length > 0
+      ? navItems
+      : activeRoleCode && activeRoleCode in navConfig
+        ? navConfig[activeRoleCode]
+        : [];
+
   const baseNavItems: NavItem[] =
     dbNavItems && dbNavItems.length > 0
       ? dbNavItems.map((item) => ({
@@ -75,11 +85,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           iconName: item.iconName || 'Dashboard',
           badge: item.badge || undefined,
         }))
-      : navItems.length > 0
-        ? navItems
-        : user?.roleCode && user.roleCode in navConfig
-          ? navConfig[user.roleCode as RoleCode]
-          : [];
+      : fallbackNavItems;
 
   const effectiveNavItems: NavItem[] = baseNavItems.map((item) => {
     if ((item.iconName === 'Chat' || item.path.includes('/chats')) && totalUnreadMessages > 0) {

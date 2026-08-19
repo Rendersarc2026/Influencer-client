@@ -38,8 +38,8 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
   BRAND: [
     { id: 'brand-dashboard', label: 'Dashboard', path: '/brand', iconName: 'Dashboard' },
     { id: 'brand-campaigns', label: 'Campaigns', path: '/brand/campaigns', iconName: 'Campaign' },
-    { id: 'brand-payments', label: 'Payments', path: '/brand/payments', iconName: 'AttachMoney' },
     { id: 'brand-messages', label: 'Messages', path: '/brand/chats', iconName: 'Chat' },
+    { id: 'brand-profile', label: 'Profile', path: '/brand/profile', iconName: 'People' },
   ],
   INFLUENCER: [
     {
@@ -47,6 +47,12 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
       label: 'Dashboard',
       path: '/influencer',
       iconName: 'Dashboard',
+    },
+    {
+      id: 'influencer-campaigns',
+      label: 'Campaigns',
+      path: '/influencer/campaigns',
+      iconName: 'Campaign',
     },
     { id: 'influencer-messages', label: 'Messages', path: '/influencer/chats', iconName: 'Chat' },
     {

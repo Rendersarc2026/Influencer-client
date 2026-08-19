@@ -25,8 +25,8 @@ import {
   useCategories,
 } from '@api';
 import { InfluencerResponse, CreateInfluencerRequest, CategoryTypeCode, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
+import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { getInfluencerTier, getTierInfo, formatFollowersDisplay, ExcelColumnConfig } from '@utils';
 
 /** Indicative range, e.g. "20,000 - 25,000". Blank when a creator has not quoted one. */
 function formatCommercials(row: InfluencerResponse): string {
@@ -315,6 +315,14 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: 'influencers_roster',
+    sheetName: 'Influencers',
+    columns: columns as Array<ExcelColumnConfig<InfluencerResponse>>,
+    rows: influencers,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="Influencers"
@@ -362,6 +370,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           priceRangeLabel="Commercials"
           hasActiveFilters={hasActiveFilters}
           onClearFilters={handleClearAllFilters}
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalInfluencers === 0}
         />
 
         {hasActiveFilters && (
@@ -479,9 +490,6 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           loading={isLoading}
           isFetching={isFetching}
           onRowClick={(row) => setSelectedInfluencer(row)}
-          exportFilename="influencers_roster"
-          exportSheetName="Influencers"
-          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

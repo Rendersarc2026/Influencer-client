@@ -164,7 +164,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           },
           {
             showToastAlert: !isCurrentChatPage,
-            playSound: !isCurrentChatPage,
+            playSound: true,
           },
         );
       }

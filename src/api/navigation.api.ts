@@ -2,13 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import { NavItemResponse, NavigationListResponse } from '@contracts';
 
-export function useNavigation() {
+export function useNavigation(roleCode?: string | null) {
   return useQuery<NavItemResponse[]>({
-    queryKey: ['navigation'],
+    queryKey: ['navigation', roleCode],
     queryFn: async () => {
       const response = await apiClient.get<NavigationListResponse>('/navigation');
       return response.data.items;
     },
-    staleTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

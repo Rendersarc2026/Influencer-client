@@ -31,8 +31,8 @@ import {
   apiClient,
 } from '@api';
 import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { capitalizeWords } from '@utils';
+import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { capitalizeWords, ExcelColumnConfig } from '@utils';
 
 export const AgencyCategoriesOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -285,6 +285,14 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
+  const { exportExcel, isExporting } = useTableExport({
+    filename: `${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'}_categories`,
+    sheetName: 'Categories',
+    columns: columns as Array<ExcelColumnConfig<CategoryResponse>>,
+    rows: categories,
+    onExportAll: handleExportAll,
+  });
+
   return (
     <DashboardLayout
       title="Categories"
@@ -424,6 +432,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           pills={statusPillOptions}
           activePillId={statusFilter || 'ALL'}
           onPillChange={setStatusFilter}
+          onExport={exportExcel}
+          isExporting={isExporting}
+          exportDisabled={totalCategories === 0}
         />
 
         {/* Categories DataTable */}
@@ -441,9 +452,6 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           loading={categoriesLoading}
           isFetching={categoriesFetching}
           onRowClick={(row) => setSelectedCategory(row)}
-          exportFilename={`${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'}_categories`}
-          exportSheetName="Categories"
-          onExportAll={handleExportAll}
           fillHeight
         />
       </Box>

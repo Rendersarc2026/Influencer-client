@@ -106,6 +106,11 @@ export const ChatOrganism: React.FC = () => {
 
   const createChatMutation = useCreateOrFindChat();
 
+  const totalUnread = useMemo(
+    () => chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    [chats],
+  );
+
   // Active chat & messages
   const activeChat = useMemo(() => {
     if (selectedChatId) {
@@ -582,40 +587,48 @@ export const ChatOrganism: React.FC = () => {
                   justifyContent: 'space-between',
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="h3" sx={{ fontSize: '17px', fontWeight: 700 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexShrink: 1 }}>
+                  <Typography variant="h3" sx={{ fontSize: '17px', fontWeight: 700, whiteSpace: 'nowrap' }}>
                     Conversations
                   </Typography>
-                  <Box
-                    sx={{
-                      px: 1,
-                      py: 0.25,
-                      borderRadius: `${theme.customRadii.pill}px`,
-                      backgroundColor: theme.palette.tokens.accentBg,
-                      color: theme.palette.tokens.accentText,
-                      fontSize: '11px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {chats.length}
-                  </Box>
-                  {chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0) > 0 && (
+                  {totalUnread > 0 ? (
                     <Box
                       sx={{
-                        px: 0.9,
+                        px: 1,
                         py: 0.25,
                         borderRadius: `${theme.customRadii.pill}px`,
-                        backgroundColor: '#EF4444',
-                        color: '#FFFFFF',
+                        backgroundColor: theme.palette.tokens.negative,
+                        color: theme.palette.tokens.surface,
                         fontSize: '11px',
                         fontWeight: 700,
-                        boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        lineHeight: 1.4,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        boxShadow: `0 2px 4px ${theme.palette.tokens.negative}4D`,
                       }}
                     >
-                      {chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0) > 99
-                        ? '99+'
-                        : chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0)}{' '}
-                      unread
+                      {totalUnread > 99 ? '99+' : totalUnread} unread
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: `${theme.customRadii.pill}px`,
+                        backgroundColor: theme.palette.tokens.accentBg,
+                        color: theme.palette.tokens.accentText,
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        lineHeight: 1.4,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {chats.length}
                     </Box>
                   )}
                 </Box>
@@ -832,7 +845,7 @@ export const ChatOrganism: React.FC = () => {
                           <Typography
                             variant="caption"
                             sx={{
-                              color: unreadCount > 0 ? '#EF4444' : theme.palette.tokens.textSecondary,
+                              color: unreadCount > 0 ? theme.palette.tokens.negative : theme.palette.tokens.textSecondary,
                               fontSize: '11px',
                               fontWeight: unreadCount > 0 ? 700 : 500,
                               flexShrink: 0,
@@ -861,7 +874,7 @@ export const ChatOrganism: React.FC = () => {
                             >
                               {roleCode === 'AGENCY'
                                 ? chat.type === ChatTypeCode.AGENCY_INFLUENCER
-                                  ? 'Creator'
+                                   ? 'Creator'
                                   : 'Brand'
                                 : 'Agency'}
                             </Box>
@@ -884,9 +897,9 @@ export const ChatOrganism: React.FC = () => {
                                 minWidth: 20,
                                 height: 20,
                                 px: 0.65,
-                                borderRadius: '10px',
-                                backgroundColor: '#EF4444',
-                                color: '#FFFFFF',
+                                borderRadius: `${theme.customRadii.pill}px`,
+                                backgroundColor: theme.palette.tokens.negative,
+                                color: theme.palette.tokens.surface,
                                 fontSize: '11px',
                                 fontWeight: 800,
                                 display: 'inline-flex',
@@ -894,7 +907,7 @@ export const ChatOrganism: React.FC = () => {
                                 justifyContent: 'center',
                                 lineHeight: 1,
                                 flexShrink: 0,
-                                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.35)',
+                                boxShadow: `0 2px 4px ${theme.palette.tokens.negative}59`,
                               }}
                             >
                               {unreadCount > 99 ? '99+' : unreadCount}
