@@ -13,6 +13,7 @@ import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawe
 import { useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { safeUrl, safeImageUrl } from '@utils';
 
 /**
  * The agency's client brands.
@@ -199,7 +200,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
         }
         badge={selectedBrand?.isActive ? 'ACTIVE' : 'ARCHIVED'}
         avatarText={selectedBrand?.name}
-        avatarUrl={selectedBrand?.logoUrl || undefined}
+        avatarUrl={safeImageUrl(selectedBrand?.logoUrl)}
         highlights={
           selectedBrand
             ? [
@@ -236,12 +237,17 @@ export const AgencyBrandsOrganism: React.FC = () => {
                       label: 'Website',
                       value: selectedBrand.website || '—',
                       isLink: Boolean(selectedBrand.website),
-                      href: selectedBrand.website?.startsWith('http')
-                        ? selectedBrand.website
-                        : selectedBrand.website
-                        ? `https://${selectedBrand.website}`
-                        : undefined,
+                      href: safeUrl(
+                        selectedBrand.website?.startsWith('http')
+                          ? selectedBrand.website
+                          : selectedBrand.website
+                          ? `https://${selectedBrand.website}`
+                          : undefined,
+                      ),
                     },
+                    ...(selectedBrand.bio
+                      ? [{ label: 'Bio & Overview', value: selectedBrand.bio, fullWidth: true }]
+                      : []),
                   ],
                 },
                 {

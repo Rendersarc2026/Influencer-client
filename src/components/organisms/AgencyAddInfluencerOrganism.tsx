@@ -16,7 +16,6 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import PersonRemoveRoundedIcon from '@mui/icons-material/PersonRemoveRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
-import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -30,8 +29,6 @@ import {
   useAgencyInfluencers,
   useCreateInfluencer,
   useCategories,
-  useInfluencerEngagement,
-  useCalculateInfluencerEngagement,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeImageUrl, getInfluencerTier, getTierInfo } from '@utils';
@@ -243,26 +240,6 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [removeDialogCreator, setRemoveDialogCreator] = useState<AvailableCreator | null>(null);
   const [detailCreator, setDetailCreator] = useState<InfluencerResponse | null>(null);
-
-  const {
-    data: engagementData,
-    isLoading: isEngagementLoading,
-  } = useInfluencerEngagement(detailCreator?.id);
-
-  const calculateEngagementMutation = useCalculateInfluencerEngagement(detailCreator?.id);
-
-  const handleRecalculateER = async () => {
-    try {
-      await calculateEngagementMutation.mutateAsync();
-      showSuccess('Instagram Engagement Rate recalculated and stored.');
-    } catch {
-      showError('Failed to recalculate Engagement Rate.');
-    }
-  };
-
-  const erValue = engagementData?.engagementRate;
-  const erLabel =
-    erValue !== undefined && erValue !== null ? `${erValue.toFixed(2)}%` : 'Analyzing...';
 
   /** The assignment id for a creator, from this visit's adds or the server list. */
   const mapperIdFor = (creatorId: string): string | undefined =>
@@ -733,19 +710,6 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                   tint: 'sky',
                 },
                 {
-                  label: 'Engagement Rate (ER)',
-                  value: isEngagementLoading ? 'Analyzing...' : erLabel,
-                  tint: 'lavender',
-                  sublabel:
-                    erValue !== undefined && erValue !== null
-                      ? erValue >= 4.0
-                        ? '🔥 High ER'
-                        : erValue >= 2.0
-                          ? '✨ Good ER'
-                          : '📊 Average ER'
-                      : undefined,
-                },
-                {
                   label: 'On This Campaign',
                   value: isAssigned(detailCreator.id) ? 'Assigned' : 'Not assigned',
                   tint: isAssigned(detailCreator.id) ? 'mint' : 'sky',
@@ -769,72 +733,6 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                     },
                     { label: 'Location', value: detailCreator.location || 'Global' },
                     { label: 'Follower Reach', value: formatFollowers(detailCreator.followers) },
-                  ],
-                },
-                {
-                  title: 'Instagram Engagement & Performance',
-                  fields: [
-                    {
-                      label: 'Instagram Profile',
-                      value: detailCreator.instagram || '—',
-                      isLink: Boolean(detailCreator.instagram),
-                      href: detailCreator.instagram
-                        ? detailCreator.instagram.startsWith('http')
-                          ? detailCreator.instagram
-                          : `https://instagram.com/${detailCreator.instagram.replace(/^@/, '')}`
-                        : undefined,
-                    },
-                    {
-                      label: 'Engagement Rate (ER)',
-                      value: (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText }}
-                          >
-                            {isEngagementLoading ? 'Analyzing...' : erLabel}
-                          </Typography>
-                          {erValue !== undefined && erValue !== null && (
-                            <Chip
-                              label={erValue >= 4.0 ? 'High' : erValue >= 2.0 ? 'Good' : 'Standard'}
-                              size="small"
-                              sx={{
-                                height: 20,
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                backgroundColor: theme.palette.tokens.purpleBg,
-                                color: theme.palette.tokens.purpleText,
-                              }}
-                            />
-                          )}
-                        </Box>
-                      ),
-                    },
-                    {
-                      label: 'Avg Likes / Post',
-                      value:
-                        engagementData?.avgLikes !== null && engagementData?.avgLikes !== undefined
-                          ? engagementData.avgLikes.toLocaleString('en-IN')
-                          : '—',
-                    },
-                    {
-                      label: 'Avg Comments / Post',
-                      value:
-                        engagementData?.avgComments !== null &&
-                        engagementData?.avgComments !== undefined
-                          ? engagementData.avgComments.toLocaleString('en-IN')
-                          : '—',
-                    },
-                    {
-                      label: 'Recent Posts Analyzed',
-                      value: engagementData?.postsCount ? String(engagementData.postsCount) : '—',
-                    },
-                    {
-                      label: 'Last Analyzed & Stored',
-                      value: engagementData?.fetchedAt
-                        ? new Date(engagementData.fetchedAt).toLocaleString('en-IN')
-                        : 'Auto-calculated',
-                    },
                   ],
                 },
                 {
@@ -884,15 +782,6 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
         actions={
           detailCreator
             ? [
-                {
-                  label: calculateEngagementMutation.isPending
-                    ? 'Calculating ER...'
-                    : 'Recalculate ER',
-                  icon: <AutorenewRoundedIcon fontSize="small" />,
-                  variant: 'outlined',
-                  onClick: handleRecalculateER,
-                  disabled: calculateEngagementMutation.isPending,
-                },
                 ...(!isAssigned(detailCreator.id)
                   ? [
                       {

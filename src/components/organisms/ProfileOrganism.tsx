@@ -7,23 +7,35 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
+import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
-import { apiClient, useCategories } from '@api';
+import { apiClient, useCategories, useBrandProfile, useUpdateBrandProfile } from '@api';
 import {
   UpdateProfileSchema,
   UpdateProfileRequest,
+  UpdateBrandSchema,
+  UpdateBrandRequest,
   UserResponse,
   CategoryTypeCode,
 } from '@contracts';
+import { z } from 'zod';
 import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
+import { capitalizeWords, parseShorthandNumber, formatShorthandNumber, safeImageUrl } from '@utils';
+
+const normalizeUrl = (val: string): string | undefined => {
+  const trimmed = val.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  return `https://${trimmed}`;
+};
 
 export const ProfileOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -34,11 +46,24 @@ export const ProfileOrganism: React.FC = () => {
   const queryClient = useQueryClient();
 
   const isInfluencer = roleCode === 'INFLUENCER';
+  const isBrand = roleCode === 'BRAND';
+
   const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
+  const { data: brandCategoriesData } = useCategories(CategoryTypeCode.BRAND);
+  const brandCategoryOptions = (brandCategoriesData || []).map((c) => c.name);
+
+  const { data: brandData } = useBrandProfile(isBrand);
+  const updateBrandProfileMutation = useUpdateBrandProfile();
+
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
+  const [brandCategory, setBrandCategory] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [website, setWebsite] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [address, setAddress] = useState('');
   const [city, setCity] = useState(user?.influencer?.location || '');
   const [category, setCategory] = useState(user?.influencer?.category || '');
   const [instagram, setInstagram] = useState(user?.influencer?.instagram || '');
@@ -58,7 +83,17 @@ export const ProfileOrganism: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (user?.profile) {
+    if (isBrand && brandData) {
+      setFullName(brandData.contactPerson || user?.profile?.fullName || '');
+      setDisplayName(brandData.name || user?.profile?.displayName || '');
+      setBrandCategory(brandData.industry || '');
+      setContactPhone(brandData.contactPhone || user?.phone || '');
+      setWebsite(brandData.website || '');
+      setCity(brandData.city || '');
+      setAddress(brandData.address || '');
+      setLogoUrl(brandData.logoUrl || user?.profile?.avatarUrl || '');
+      setBio(brandData.bio || user?.profile?.bio || '');
+    } else if (user?.profile) {
       setFullName(user.profile.fullName || '');
       setDisplayName(user.profile.displayName || '');
       setBio(user.profile.bio || '');
@@ -73,7 +108,7 @@ export const ProfileOrganism: React.FC = () => {
       setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
       setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
     }
-  }, [user]);
+  }, [user, brandData, isBrand]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateProfileRequest) => {
@@ -99,7 +134,29 @@ export const ProfileOrganism: React.FC = () => {
     },
   });
 
-  const fieldsLocked = updateProfileMutation.isPending;
+  const fieldsLocked = updateProfileMutation.isPending || updateBrandProfileMutation.isPending;
+
+  const validatePhone = (val: string) => {
+    if (!val) return '';
+    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,15}$/;
+    if (!phoneRegex.test(val)) return 'Please enter a valid phone number (e.g. +91 9876543210)';
+    return '';
+  };
+
+  const validateHttpUrl = (val: string) => {
+    if (!val.trim()) return '';
+    const normalized = normalizeUrl(val);
+    if (!normalized) return '';
+    try {
+      const parsed = new URL(normalized);
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
+        return 'Please enter a valid URL (e.g. https://brand.com)';
+      }
+      return '';
+    } catch {
+      return 'Please enter a valid URL (e.g. https://brand.com)';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +167,81 @@ export const ProfileOrganism: React.FC = () => {
     const trimmedFullName = fullName.trim();
     if (!trimmedFullName) {
       setFieldErrors({ fullName: 'Full Legal Name is required and cannot be whitespace only' });
+      return;
+    }
+
+    if (isBrand) {
+      const trimmedDisplayName = displayName.trim();
+      if (!trimmedDisplayName) {
+        setFieldErrors({ displayName: 'Brand Name is required' });
+        return;
+      }
+
+      if (contactPhone.trim()) {
+        const pErr = validatePhone(contactPhone.trim());
+        if (pErr) {
+          setFieldErrors({ contactPhone: pErr });
+          return;
+        }
+      }
+
+      if (website.trim()) {
+        const wErr = validateHttpUrl(website);
+        if (wErr) {
+          setFieldErrors({ website: wErr });
+          return;
+        }
+      }
+
+      if (logoUrl.trim()) {
+        const lErr = validateHttpUrl(logoUrl);
+        if (lErr) {
+          setFieldErrors({ logoUrl: lErr });
+          return;
+        }
+      }
+
+      const brandPayload: UpdateBrandRequest = {
+        name: trimmedDisplayName,
+        contactPerson: trimmedFullName,
+        industry: brandCategory.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
+        website: normalizeUrl(website),
+        city: city.trim() || undefined,
+        address: address.trim() || undefined,
+        logoUrl: normalizeUrl(logoUrl),
+        bio: bio.trim() || undefined,
+      };
+
+      const validation = UpdateBrandSchema.safeParse(brandPayload);
+      if (!validation.success) {
+        const errors: Record<string, string> = {};
+        validation.error.errors.forEach((err: z.ZodIssue) => {
+          const field = err.path[err.path.length - 1];
+          if (field !== undefined) {
+            errors[String(field)] = err.message;
+          }
+        });
+        setFieldErrors(errors);
+        return;
+      }
+
+      try {
+        await updateBrandProfileMutation.mutateAsync(brandPayload);
+        await queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] });
+        await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+        await queryClient.invalidateQueries({ queryKey: ['agency', 'brands'] });
+        await refetchUser();
+        showSuccess('Brand details saved successfully.');
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3500);
+      } catch (err: unknown) {
+        const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+        const msg =
+          errorObj?.response?.data?.message || errorObj?.message || 'Failed to update brand details.';
+        setErrorMsg(msg);
+        showError(msg);
+      }
       return;
     }
 
@@ -161,7 +293,7 @@ export const ProfileOrganism: React.FC = () => {
     const validation = UpdateProfileSchema.safeParse(payload);
     if (!validation.success) {
       const errors: Record<string, string> = {};
-      validation.error.errors.forEach((err) => {
+      validation.error.errors.forEach((err: z.ZodIssue) => {
         const field = err.path[err.path.length - 1];
         if (field !== undefined) {
           errors[String(field)] = err.message;
@@ -226,24 +358,48 @@ export const ProfileOrganism: React.FC = () => {
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: `${theme.customRadii.inner}px`,
-                  backgroundColor: theme.palette.tokens.fieldBg,
-                  color: theme.palette.tokens.accent,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <PersonOutlineRoundedIcon fontSize="medium" />
-              </Box>
+              {isBrand && (logoUrl || brandData?.logoUrl) ? (
+                <Avatar
+                  src={safeImageUrl(logoUrl || brandData?.logoUrl)}
+                  alt={displayName || brandData?.name || 'Brand Logo'}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.tokens.fieldBg,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  {(displayName || brandData?.name || 'B').charAt(0).toUpperCase()}
+                </Avatar>
+              ) : (
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.tokens.fieldBg,
+                    color: theme.palette.tokens.accent,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {isBrand ? (
+                    <BusinessRoundedIcon fontSize="medium" />
+                  ) : (
+                    <PersonOutlineRoundedIcon fontSize="medium" />
+                  )}
+                </Box>
+              )}
               <Box>
-                <Typography variant="h2">{user?.profile?.fullName || 'User Profile'}</Typography>
+                <Typography variant="h2">
+                  {isBrand
+                    ? displayName || brandData?.name || fullName || 'Brand Profile'
+                    : user?.profile?.fullName || 'User Profile'}
+                </Typography>
                 <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                  {user?.email}
+                  {brandData?.contactEmail || user?.email}
                 </Typography>
               </Box>
             </Box>
@@ -251,165 +407,326 @@ export const ProfileOrganism: React.FC = () => {
           </Box>
 
           <SectionHeading
-            title="Personal & Workspace Details"
-            subtitle="Update your personal details and contact information"
+            title={isBrand ? 'Personal & Brand Details' : 'Personal & Workspace Details'}
+            subtitle={
+              isBrand
+                ? 'Update your organization profile, team contact details, and brand representation'
+                : 'Update your personal details and contact information'
+            }
           />
 
           <form onSubmit={handleSubmit}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
-              <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                <TextField
-                  label="Full Legal Name *"
-                  value={fullName}
-                  onChange={(e) => setFullName(capitalizeWords(e.target.value))}
-                  error={Boolean(fieldErrors.fullName)}
-                  helperText={fieldErrors.fullName}
-                  fullWidth
-                  disabled={fieldsLocked}
-                />
-
-                <TextField
-                  label="Public Display Name"
-                  value={displayName}
-                  placeholder="e.g. Alex Influencer"
-                  onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
-                  error={Boolean(fieldErrors.displayName)}
-                  helperText={fieldErrors.displayName}
-                  fullWidth
-                  disabled={fieldsLocked}
-                />
-              </Box>
-
-              <TextField
-                label="Account Email (Read-Only)"
-                value={user?.email || ''}
-                disabled
-                fullWidth
-              />
-
-              {isInfluencer && (
+              {/* Brand Manager specific full form */}
+              {isBrand ? (
                 <>
                   <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <TextField
-                      label="City / Location"
-                      placeholder="e.g. Kochi, Trivandrum"
-                      value={city}
-                      onChange={(e) => setCity(capitalizeWords(e.target.value))}
-                      error={Boolean(fieldErrors.location)}
-                      helperText={fieldErrors.location}
+                      label="Full Legal Name / Contact Person *"
+                      value={fullName}
+                      onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                      error={Boolean(fieldErrors.fullName || fieldErrors.contactPerson)}
+                      helperText={fieldErrors.fullName || fieldErrors.contactPerson}
                       fullWidth
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
                     />
 
-                    <Autocomplete
+                    <TextField
+                      label="Public Brand Name *"
+                      value={displayName}
+                      placeholder="e.g. Jos Alukkas"
+                      onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
+                      error={Boolean(fieldErrors.displayName || fieldErrors.name)}
+                      helperText={fieldErrors.displayName || fieldErrors.name}
                       fullWidth
-                      freeSolo
-                      options={influencerCategoryOptions}
-                      value={category}
-                      onInputChange={(_, newInputValue) => setCategory(newInputValue)}
-                      onChange={(_, newValue) => setCategory(newValue || '')}
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Influencer Category"
-                          placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
-                          error={Boolean(fieldErrors.category)}
-                          helperText={fieldErrors.category || 'Influencer niche / content domain'}
-                          fullWidth
-                        />
-                      )}
                     />
                   </Box>
 
                   <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <TextField
-                      label="Instagram Profile URL"
-                      placeholder="https://instagram.com/username"
-                      value={instagram}
-                      onChange={(e) => setInstagram(e.target.value)}
-                      error={Boolean(fieldErrors.instagram)}
-                      helperText={fieldErrors.instagram || 'Full Instagram profile link'}
+                      label="Account Email (Read-Only)"
+                      value={brandData?.contactEmail || user?.email || ''}
+                      disabled
+                      fullWidth
+                      sx={{ flex: 1 }}
+                    />
+
+                    <TextField
+                      label="Contact Phone"
+                      placeholder="e.g. +91 9876543210"
+                      value={contactPhone}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setContactPhone(val);
+                        if (fieldErrors.contactPhone) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.contactPhone;
+                            return next;
+                          });
+                        }
+                      }}
+                      error={Boolean(fieldErrors.contactPhone)}
+                      helperText={fieldErrors.contactPhone || 'Direct phone line for campaign coordination'}
+                      fullWidth
+                      disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <Autocomplete
+                      fullWidth
+                      freeSolo
+                      options={brandCategoryOptions}
+                      value={brandCategory}
+                      onInputChange={(_, newInputValue) => setBrandCategory(newInputValue)}
+                      onChange={(_, newValue) => setBrandCategory(newValue || '')}
+                      disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Brand Category / Industry"
+                          placeholder="Select or enter industry (e.g. Fashion & Apparel)"
+                          error={Boolean(fieldErrors.industry || fieldErrors.category)}
+                          helperText={fieldErrors.industry || fieldErrors.category || 'Industry classification for your brand'}
+                          fullWidth
+                        />
+                      )}
+                    />
+
+                    <TextField
+                      label="Official Website URL"
+                      placeholder="https://brand.com"
+                      value={website}
+                      onChange={(e) => {
+                        setWebsite(e.target.value);
+                        if (fieldErrors.website) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.website;
+                            return next;
+                          });
+                        }
+                      }}
+                      error={Boolean(fieldErrors.website)}
+                      helperText={fieldErrors.website || 'Official brand website'}
+                      fullWidth
+                      disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField
+                      label="Brand Logo / Avatar URL"
+                      placeholder="https://brand.com/logo.png"
+                      value={logoUrl}
+                      onChange={(e) => {
+                        setLogoUrl(e.target.value);
+                        if (fieldErrors.logoUrl) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.logoUrl;
+                            return next;
+                          });
+                        }
+                      }}
+                      error={Boolean(fieldErrors.logoUrl)}
+                      helperText={fieldErrors.logoUrl || 'Direct public URL to brand logo'}
+                      fullWidth
+                      disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                    />
+
+                    <TextField
+                      label="City / Location"
+                      placeholder="e.g. Kochi, Mumbai"
+                      value={city}
+                      onChange={(e) => setCity(capitalizeWords(e.target.value))}
+                      error={Boolean(fieldErrors.city)}
+                      helperText={fieldErrors.city}
+                      fullWidth
+                      disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                    />
+                  </Box>
+
+                  <TextField
+                    label="Office Address"
+                    multiline
+                    rows={2}
+                    placeholder="e.g. 123 Corporate Tower, MG Road"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    error={Boolean(fieldErrors.address)}
+                    helperText={fieldErrors.address}
+                    fullWidth
+                    disabled={fieldsLocked}
+                  />
+                </>
+              ) : (
+                /* Influencer and Agency/Default Profile */
+                <>
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField
+                      label="Full Legal Name *"
+                      value={fullName}
+                      onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                      error={Boolean(fieldErrors.fullName)}
+                      helperText={fieldErrors.fullName}
                       fullWidth
                       disabled={fieldsLocked}
                     />
 
                     <TextField
-                      label="YouTube Channel URL"
-                      placeholder="https://youtube.com/@channel"
-                      value={youtube}
-                      onChange={(e) => setYoutube(e.target.value)}
-                      error={Boolean(fieldErrors.youtube)}
-                      helperText={fieldErrors.youtube || 'Full YouTube channel link'}
+                      label="Public Display Name"
+                      value={displayName}
+                      placeholder="e.g. Alex Influencer"
+                      onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
+                      error={Boolean(fieldErrors.displayName)}
+                      helperText={fieldErrors.displayName}
                       fullWidth
                       disabled={fieldsLocked}
                     />
                   </Box>
 
                   <TextField
-                    label="Estimated Followers"
-                    placeholder="e.g. 10k, 100k, 1m"
-                    value={followers}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/-/g, '');
-                      setFollowers(cleaned);
-                      if (cleaned.trim() && parseShorthandNumber(cleaned) === null) {
-                        setFieldErrors((prev) => ({
-                          ...prev,
-                          followers: 'Enter valid followers (e.g. 10k, 100k, 1m)',
-                        }));
-                      } else {
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          delete next.followers;
-                          return next;
-                        });
-                      }
-                    }}
-                    onBlur={() => {
-                      if (followers.trim()) {
-                        const parsed = parseShorthandNumber(followers);
-                        if (parsed !== null) {
-                          setFollowers(formatShorthandNumber(parsed));
-                        }
-                      }
-                    }}
-                    error={Boolean(fieldErrors.followers)}
-                    helperText={
-                      fieldErrors.followers ||
-                      (followers && parseShorthandNumber(followers) !== null
-                        ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
-                        : 'Format: 10k, 100k, 1m')
-                    }
+                    label="Account Email (Read-Only)"
+                    value={user?.email || ''}
+                    disabled
                     fullWidth
-                    disabled={fieldsLocked}
                   />
 
-                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                    <TextField
-                      label="Avg Commercial Min (₹)"
-                      placeholder="e.g. 5000"
-                      value={commercialMin}
-                      onChange={(e) => setCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
-                      error={Boolean(fieldErrors.avgCommercialMin)}
-                      helperText={fieldErrors.avgCommercialMin}
-                      fullWidth
-                      disabled={fieldsLocked}
-                    />
+                  {isInfluencer && (
+                    <>
+                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <TextField
+                          label="City / Location"
+                          placeholder="e.g. Kochi, Trivandrum"
+                          value={city}
+                          onChange={(e) => setCity(capitalizeWords(e.target.value))}
+                          error={Boolean(fieldErrors.location)}
+                          helperText={fieldErrors.location}
+                          fullWidth
+                          disabled={fieldsLocked}
+                          sx={{ flex: 1 }}
+                        />
 
-                    <TextField
-                      label="Avg Commercial Max (₹)"
-                      placeholder="e.g. 25000"
-                      value={commercialMax}
-                      onChange={(e) => setCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
-                      error={Boolean(fieldErrors.avgCommercialMax)}
-                      helperText={fieldErrors.avgCommercialMax}
-                      fullWidth
-                      disabled={fieldsLocked}
-                    />
-                  </Box>
+                        <Autocomplete
+                          fullWidth
+                          freeSolo
+                          options={influencerCategoryOptions}
+                          value={category}
+                          onInputChange={(_, newInputValue) => setCategory(newInputValue)}
+                          onChange={(_, newValue) => setCategory(newValue || '')}
+                          disabled={fieldsLocked}
+                          sx={{ flex: 1 }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Influencer Category"
+                              placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
+                              error={Boolean(fieldErrors.category)}
+                              helperText={fieldErrors.category || 'Influencer niche / content domain'}
+                              fullWidth
+                            />
+                          )}
+                        />
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <TextField
+                          label="Instagram Profile URL"
+                          placeholder="https://instagram.com/username"
+                          value={instagram}
+                          onChange={(e) => setInstagram(e.target.value)}
+                          error={Boolean(fieldErrors.instagram)}
+                          helperText={fieldErrors.instagram || 'Full Instagram profile link'}
+                          fullWidth
+                          disabled={fieldsLocked}
+                        />
+
+                        <TextField
+                          label="YouTube Channel URL"
+                          placeholder="https://youtube.com/@channel"
+                          value={youtube}
+                          onChange={(e) => setYoutube(e.target.value)}
+                          error={Boolean(fieldErrors.youtube)}
+                          helperText={fieldErrors.youtube || 'Full YouTube channel link'}
+                          fullWidth
+                          disabled={fieldsLocked}
+                        />
+                      </Box>
+
+                      <TextField
+                        label="Estimated Followers"
+                        placeholder="e.g. 10k, 100k, 1m"
+                        value={followers}
+                        onChange={(e) => {
+                          const cleaned = e.target.value.replace(/-/g, '');
+                          setFollowers(cleaned);
+                          if (cleaned.trim() && parseShorthandNumber(cleaned) === null) {
+                            setFieldErrors((prev) => ({
+                              ...prev,
+                              followers: 'Enter valid followers (e.g. 10k, 100k, 1m)',
+                            }));
+                          } else {
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.followers;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={() => {
+                          if (followers.trim()) {
+                            const parsed = parseShorthandNumber(followers);
+                            if (parsed !== null) {
+                              setFollowers(formatShorthandNumber(parsed));
+                            }
+                          }
+                        }}
+                        error={Boolean(fieldErrors.followers)}
+                        helperText={
+                          fieldErrors.followers ||
+                          (followers && parseShorthandNumber(followers) !== null
+                            ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
+                            : 'Format: 10k, 100k, 1m')
+                        }
+                        fullWidth
+                        disabled={fieldsLocked}
+                      />
+
+                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <TextField
+                          label="Avg Commercial Min (₹)"
+                          placeholder="e.g. 5000"
+                          value={commercialMin}
+                          onChange={(e) => setCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
+                          error={Boolean(fieldErrors.avgCommercialMin)}
+                          helperText={fieldErrors.avgCommercialMin}
+                          fullWidth
+                          disabled={fieldsLocked}
+                        />
+
+                        <TextField
+                          label="Avg Commercial Max (₹)"
+                          placeholder="e.g. 25000"
+                          value={commercialMax}
+                          onChange={(e) => setCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
+                          error={Boolean(fieldErrors.avgCommercialMax)}
+                          helperText={fieldErrors.avgCommercialMax}
+                          fullWidth
+                          disabled={fieldsLocked}
+                        />
+                      </Box>
+                    </>
+                  )}
                 </>
               )}
 
@@ -417,7 +734,11 @@ export const ProfileOrganism: React.FC = () => {
                 label="Bio & Overview"
                 multiline
                 rows={3}
-                placeholder="Short description of your background or representation"
+                placeholder={
+                  isBrand
+                    ? 'Short description of your brand legacy, product categories, or marketing focus'
+                    : 'Short description of your background or representation'
+                }
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 error={Boolean(fieldErrors.bio)}
@@ -439,7 +760,7 @@ export const ProfileOrganism: React.FC = () => {
                     variant="body2"
                     sx={{ color: theme.palette.tokens.positive, fontWeight: 600 }}
                   >
-                    ✓ Profile details saved successfully!
+                    ✓ {isBrand ? 'Brand details' : 'Profile details'} saved successfully!
                   </Typography>
                 </Box>
               )}
@@ -462,21 +783,23 @@ export const ProfileOrganism: React.FC = () => {
                 </Box>
               )}
 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    startIcon={<SaveRoundedIcon fontSize="small" />}
-                    disabled={fieldsLocked || !fullName.trim()}
-                    sx={{ minWidth: 160, height: 44 }}
-                  >
-                    {updateProfileMutation.isPending ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      'Save Profile'
-                    )}
-                  </Button>
-                </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  startIcon={<SaveRoundedIcon fontSize="small" />}
+                  disabled={fieldsLocked || !fullName.trim() || (isBrand && !displayName.trim())}
+                  sx={{ minWidth: 160, height: 44 }}
+                >
+                  {fieldsLocked ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : isBrand ? (
+                    'Save Brand Profile'
+                  ) : (
+                    'Save Profile'
+                  )}
+                </Button>
+              </Box>
             </Box>
           </form>
         </Card>
@@ -484,3 +807,4 @@ export const ProfileOrganism: React.FC = () => {
     </DashboardLayout>
   );
 };
+

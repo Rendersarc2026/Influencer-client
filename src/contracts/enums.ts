@@ -171,7 +171,7 @@ export const RoleCodeName = nameLookup(RoleCodeValue);
  * turns it into a stored status code. Keeping them as text keeps the API
  * self-describing where there is no column to keep narrow.
  */
-export const RateActionEnum = z.enum(['SUBMIT_RATE', 'REQUEST_REVISION', 'APPROVE_RATE']);
+export const RateActionEnum = z.enum(['SUBMIT_RATE', 'REQUEST_REVISION', 'APPROVE_RATE', 'REVERT_APPROVAL']);
 export type RateAction = z.infer<typeof RateActionEnum>;
 
 export const BrandActionEnum = z.enum([

@@ -56,13 +56,16 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
 
   const isRateSubmitted = Boolean(assignment?.influencerRate);
   const isApproved = assignment?.rateStatus === RateStatusCode.AGENCY_APPROVED;
+  const isRevisionRequested = assignment?.rateStatus === RateStatusCode.REVISION_REQUESTED;
 
   return (
     <DashboardLayout
       title="Assignment Details"
       subtitle={
         assignment
-          ? `Campaign Assignment #${assignment.campaignId.slice(0, 8)}`
+          ? (assignment.campaignName
+              ? `${assignment.campaignName}${assignment.brandName ? ` (${assignment.brandName})` : ''}`
+              : assignment.campaign?.name || `Campaign Assignment #${assignment.campaignId.slice(0, 8)}`)
           : 'Deliverables & Rates'
       }
       navItems={navConfig.INFLUENCER}
@@ -142,6 +145,52 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
             </Box>
           </Box>
 
+          {/* Agency Revision Feedback Banner */}
+          {isRevisionRequested && (
+            <Box
+              sx={{
+                padding: '16px 20px',
+                backgroundColor: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                borderRadius: `${theme.customRadii.inner}px`,
+                mb: 3,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: '#FEF3C7',
+                  color: '#D97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  mt: '2px',
+                }}
+              >
+                <EditNoteRoundedIcon fontSize="small" />
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: '#B45309', fontWeight: 700, display: 'block', mb: 0.5, letterSpacing: '0.5px' }}
+                >
+                  AGENCY REVISION MESSAGE
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#78350F', fontWeight: 600 }}>
+                  {assignment?.revisionComment ||
+                    assignment?.lastComment ||
+                    'Agency has requested a revision for your submitted quote. Please review the feedback and submit an updated rate.'}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
           <Box
             sx={{
               padding: '16px',
@@ -208,10 +257,16 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
                   fontWeight: 600,
                   color: isApproved
                     ? theme.palette.tokens.positiveText
+                    : isRevisionRequested
+                    ? '#D97706'
                     : theme.palette.tokens.textPrimary,
                 }}
               >
-                {isApproved ? 'Approved & Locked' : 'Pending Agency Review'}
+                {isApproved
+                  ? 'Approved & Locked'
+                  : isRevisionRequested
+                  ? 'Revision Requested'
+                  : 'Pending Agency Review'}
               </Typography>
             </Box>
           </Box>
@@ -285,32 +340,62 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               </Box>
             )}
 
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-              <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: `${theme.customRadii.inner}px`,
-                  backgroundColor: isApproved ? '#DEF2E5' : '#FBF2D6',
-                  color: isApproved ? '#2E9E5B' : '#B45309',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <ScheduleRoundedIcon fontSize="small" />
+            {isRevisionRequested ? (
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: '#FEF3C7',
+                    color: '#D97706',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <EditNoteRoundedIcon fontSize="small" />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#B45309' }}>
+                    Revision Requested by Agency
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#92400E', mt: 0.25, fontWeight: 500 }}>
+                    &ldquo;{assignment?.revisionComment || assignment?.lastComment || 'Agency requested adjustments to commercial quote.'}&rdquo;
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}>
+                    Agency is awaiting your revised commercial quote submission.
+                  </Typography>
+                </Box>
               </Box>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  {isApproved ? 'Rate Approved by Agency' : 'Awaiting Agency Review'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                  {isApproved
-                    ? 'Deliverables verified and approved for brand campaign'
-                    : 'Agency reviewing submitted commercial rate'}
-                </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: isApproved ? '#DEF2E5' : '#FBF2D6',
+                    color: isApproved ? '#2E9E5B' : '#B45309',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ScheduleRoundedIcon fontSize="small" />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {isApproved ? 'Rate Approved by Agency' : 'Awaiting Agency Review'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    {isApproved
+                      ? 'Deliverables verified and approved for brand campaign'
+                      : 'Agency reviewing submitted commercial rate'}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
+            )}
           </Box>
         </Card>
       </Box>
@@ -320,9 +405,14 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
         <SubmitRateDialog
           open={rateDialogOpen}
           mapperId={assignment.id}
-          campaignName={`Campaign #${assignment.campaignId.slice(0, 8)}`}
+          campaignName={
+            assignment.campaignName ||
+            assignment.campaign?.name ||
+            `Campaign #${assignment.campaignId.slice(0, 8)}`
+          }
           deliverables={assignment.deliverables || undefined}
           currentRate={assignment.influencerRate}
+          revisionComment={assignment.revisionComment || assignment.lastComment || undefined}
           loading={submitRateMutation.isPending}
           onSubmit={handleSubmitRate}
           onClose={() => setRateDialogOpen(false)}

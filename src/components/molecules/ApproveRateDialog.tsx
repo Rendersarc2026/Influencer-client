@@ -11,14 +11,14 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText } from '@atoms';
-import { useInfluencerEngagement, useCalculateInfluencerEngagement } from '@api';
 
 export interface ApproveRateDialogProps {
   open: boolean;
   mapperId: string;
-  influencerId?: string;
   influencerName?: string;
   influencerRate?: number | null;
+  initialMargin?: number | null;
+  isAlreadyApproved?: boolean;
   currency?: string;
   loading?: boolean;
   initialDeliverables?: string | null;
@@ -42,9 +42,10 @@ export interface ApproveRateDialogProps {
 export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   open,
   mapperId,
-  influencerId,
   influencerName,
   influencerRate,
+  initialMargin,
+  isAlreadyApproved = false,
   currency = 'INR',
   loading = false,
   initialDeliverables,
@@ -65,49 +66,28 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const [rateError, setRateError] = useState('');
   const [marginError, setMarginError] = useState('');
 
-  const {
-    data: engagementData,
-    isLoading: isEngagementLoading,
-    isFetching: isEngagementFetching,
-  } = useInfluencerEngagement(influencerId);
-  const calculateEngagementMutation = useCalculateInfluencerEngagement(influencerId);
-
-  const isCalculatingEr =
-    isEngagementLoading || isEngagementFetching || calculateEngagementMutation.isPending;
-
-  const handleRecalculateEr = async () => {
-    try {
-      const res = await calculateEngagementMutation.mutateAsync();
-      if (res?.engagementRate !== undefined && res?.engagementRate !== null) {
-        setPreEvalErInput(String(res.engagementRate));
-      }
-    } catch {
-      // Handled
-    }
-  };
-
   const hasPresetRate =
     influencerRate !== null && influencerRate !== undefined && influencerRate > 0;
 
   useEffect(() => {
     if (open) {
+      const marginVal =
+        initialMargin !== null && initialMargin !== undefined ? Number(initialMargin) : 0;
       if (hasPresetRate) {
         setRateInput(String(influencerRate));
-        setMarginInput('0');
-        setClientRateInput(String(influencerRate));
+        setMarginInput(String(marginVal));
+        setClientRateInput(String(influencerRate + marginVal));
       } else {
         setRateInput('');
-        setMarginInput('0');
-        setClientRateInput('0');
+        setMarginInput(String(marginVal));
+        setClientRateInput(String(marginVal));
       }
       setDeliverablesInput(initialDeliverables || '');
-      const existingEr =
+      setPreEvalErInput(
         initialPreEvalEr !== null && initialPreEvalEr !== undefined
           ? String(initialPreEvalEr)
-          : engagementData?.engagementRate !== undefined && engagementData?.engagementRate !== null
-            ? String(engagementData.engagementRate)
-            : '';
-      setPreEvalErInput(existingEr);
+          : '',
+      );
       setCommittedViewsInput(
         initialCommittedViews !== null && initialCommittedViews !== undefined
           ? String(initialCommittedViews)
@@ -120,25 +100,13 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   }, [
     open,
     influencerRate,
+    initialMargin,
     hasPresetRate,
     initialDeliverables,
     initialPreEvalEr,
     initialBrandFit,
     initialCommittedViews,
   ]);
-
-  // When engagement arrives and preEvalErInput is empty and initialPreEvalEr is null
-  useEffect(() => {
-    if (
-      open &&
-      (initialPreEvalEr === undefined || initialPreEvalEr === null) &&
-      !preEvalErInput &&
-      engagementData?.engagementRate !== undefined &&
-      engagementData?.engagementRate !== null
-    ) {
-      setPreEvalErInput(String(engagementData.engagementRate));
-    }
-  }, [open, initialPreEvalEr, preEvalErInput, engagementData?.engagementRate]);
 
   const handleRateChange = (val: string) => {
     setRateInput(val);
@@ -218,7 +186,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ px: 1, pt: 1, pb: 0 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Set Margin & Pre-Evaluation
+            {isAlreadyApproved ? 'Edit Margin & Pre-Evaluation' : 'Set Margin & Pre-Evaluation'}
           </Typography>
           <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5 }}>
             {influencerName
@@ -325,90 +293,16 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 fullWidth
                 disabled={loading}
               />
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                <TextField
-                  label="Pre-Eval ER %"
-                  type="text"
-                  value={preEvalErInput}
-                  onChange={(e) => setPreEvalErInput(e.target.value.replace(/[^0-9.]/g, ''))}
-                  placeholder={isCalculatingEr ? 'Calculating ER...' : 'e.g. 4.5'}
-                  helperText="Agreed or Instagram benchmark ER%"
-                  fullWidth
-                  disabled={loading}
-                  slotProps={{
-                    input: {
-                      endAdornment: isCalculatingEr ? (
-                        <CircularProgress
-                          size={16}
-                          sx={{ color: theme.palette.tokens.purpleText, mr: 0.5 }}
-                        />
-                      ) : null,
-                    },
-                  }}
-                />
-                {isCalculatingEr ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75 }}>
-                    <CircularProgress size={12} sx={{ color: theme.palette.tokens.purpleText }} />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: theme.palette.tokens.purpleText,
-                        fontSize: '11px',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Calculating Instagram ER...
-                    </Typography>
-                  </Box>
-                ) : engagementData?.engagementRate !== undefined &&
-                  engagementData?.engagementRate !== null ? (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mt: 0.5,
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => setPreEvalErInput(String(engagementData.engagementRate))}
-                      sx={{
-                        fontSize: '11px',
-                        textTransform: 'none',
-                        p: 0,
-                        justifyContent: 'flex-start',
-                        color: theme.palette.tokens.purpleText,
-                        fontWeight: 600,
-                        '&:hover': { background: 'transparent', textDecoration: 'underline' },
-                      }}
-                    >
-                      ✨ Use Instagram ER ({engagementData.engagementRate.toFixed(2)}%)
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={handleRecalculateEr}
-                      disabled={isCalculatingEr || loading}
-                      sx={{
-                        fontSize: '10px',
-                        textTransform: 'none',
-                        p: 0,
-                        minWidth: 0,
-                        color: theme.palette.tokens.textSecondary,
-                        '&:hover': {
-                          background: 'transparent',
-                          color: theme.palette.tokens.textPrimary,
-                          textDecoration: 'underline',
-                        },
-                      }}
-                    >
-                      Recalculate
-                    </Button>
-                  </Box>
-                ) : null}
-              </Box>
+              <TextField
+                label="Pre-Eval ER %"
+                type="text"
+                value={preEvalErInput}
+                onChange={(e) => setPreEvalErInput(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder="e.g. 4.5"
+                helperText="Enter the agreed ER% manually"
+                fullWidth
+                disabled={loading}
+              />
             </Box>
 
             <TextField
@@ -499,7 +393,13 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
             disabled={loading || isNaN(marginNum) || marginNum < 0 || effectiveRate <= 0}
             sx={{ minWidth: 160 }}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Approve & Send to Brand'}
+            {loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : isAlreadyApproved ? (
+              'Save Margin & Update Rate'
+            ) : (
+              'Approve & Send to Brand'
+            )}
           </Button>
         </DialogActions>
       </form>

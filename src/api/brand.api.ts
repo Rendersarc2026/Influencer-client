@@ -10,6 +10,8 @@ import {
   PaymentResponse,
   PaymentListQuery,
   PaginatedResult,
+  BrandResponse,
+  UpdateBrandRequest,
 } from '@contracts';
 
 /** Shared with the boot-time prefetch, so the key cannot drift from the hook's. */
@@ -148,3 +150,37 @@ export function useApprovePayment() {
     },
   });
 }
+
+export function brandProfileQueryOptions() {
+  return {
+    queryKey: ['brand', 'profile'] as const,
+    queryFn: async () => {
+      const response = await apiClient.get<BrandResponse>('/brand/profile');
+      return response.data;
+    },
+  };
+}
+
+export function useBrandProfile(enabled = true) {
+  return useQuery<BrandResponse>({
+    ...brandProfileQueryOptions(),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useUpdateBrandProfile() {
+  const queryClient = useQueryClient();
+  return useMutation<BrandResponse, Error, UpdateBrandRequest>({
+    mutationFn: async (data) => {
+      const response = await apiClient.patch<BrandResponse>('/brand/profile', data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] });
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'brands'] });
+    },
+  });
+}
+

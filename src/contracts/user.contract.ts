@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UpdateBrandSchema } from './brand.contract';
 import {
   boolQuery,
   count,
@@ -116,7 +117,14 @@ export const UpdateProfileSchema = z.object({
   displayName: safeText(120).optional(),
   avatarUrl: httpUrl.optional(),
   bio: safeMultilineText(2000).optional(),
+  industry: safeText(120).optional(),
+  website: httpUrl.optional(),
+  address: safeText(400).optional(),
+  city: safeText(120).optional(),
+  contactPhone: phone.optional(),
+  contactEmail: email.optional(),
   influencer: UpdateInfluencerSchema.optional(),
+  brand: UpdateBrandSchema.optional(),
 });
 export type UpdateProfileRequest = z.infer<typeof UpdateProfileSchema>;
 
@@ -157,10 +165,53 @@ export type SetUserBlockedRequest = z.infer<typeof SetUserBlockedSchema>;
  * from `isActive` because it can also express "both", which an optional
  * boolean cannot — an absent `isActive` already means "active only".
  */
-export const UserStatusFilterSchema = z.union([
-  z.enum(['ACTIVE', 'INACTIVE', 'ALL']),
-  z.enum(['active', 'inactive', 'all']).transform((v) => v.toUpperCase() as 'ACTIVE' | 'INACTIVE' | 'ALL'),
-]);
+export const UserStatusFilterSchema = z.preprocess((val) => {
+  if (val === undefined || val === null || val === '') return undefined;
+  if (typeof val === 'boolean') {
+    return val ? 'ACTIVE' : 'INACTIVE';
+  }
+  const str = String(val).trim().toUpperCase();
+  const normalized = str.replace(/[\s+_,&/-]+/g, '_');
+  if (
+    normalized === 'INACTIVE' ||
+    normalized === 'DEACTIVATED' ||
+    normalized === 'DEACTIVE' ||
+    normalized === 'BLOCKED' ||
+    normalized === 'DISABLED' ||
+    normalized === 'FALSE' ||
+    normalized === '0'
+  ) {
+    return 'INACTIVE';
+  }
+  if (
+    normalized === 'ACTIVE' ||
+    normalized === 'LIVE' ||
+    normalized === 'ENABLED' ||
+    normalized === 'TRUE' ||
+    normalized === '1'
+  ) {
+    return 'ACTIVE';
+  }
+  if (
+    normalized === 'ALL' ||
+    normalized === 'BOTH' ||
+    normalized === 'ANY' ||
+    normalized === '*' ||
+    normalized === 'ACTIVE_DEACTIVATED' ||
+    normalized === 'ACTIVE_DEACTIVE' ||
+    normalized === 'ACTIVE_INACTIVE' ||
+    normalized === 'ACTIVE_AND_DEACTIVATED' ||
+    normalized === 'ACTIVE_AND_DEACTIVE' ||
+    normalized === 'ACTIVE_AND_INACTIVE' ||
+    normalized === 'DEACTIVATED_ACTIVE' ||
+    normalized === 'INACTIVE_ACTIVE' ||
+    ((normalized.includes('DEACTIV') || normalized.includes('INACTIV')) &&
+      (normalized.includes('_ACTIVE') || normalized.includes('ACTIVE_') || normalized.includes('AND')))
+  ) {
+    return 'ALL';
+  }
+  return str;
+}, z.enum(['ACTIVE', 'INACTIVE', 'ALL']).optional());
 export type UserStatusFilter = z.infer<typeof UserStatusFilterSchema>;
 
 export const InfluencerListQuerySchema = z
@@ -179,6 +230,8 @@ export const InfluencerListQuerySchema = z
     agencyId: z.string().uuid().optional(),
     isActive: boolQuery.optional(),
     status: UserStatusFilterSchema.optional(),
+    accountStatus: UserStatusFilterSchema.optional(),
+    userStatus: UserStatusFilterSchema.optional(),
     minPrice: moneyQuery,
     maxPrice: moneyQuery,
     minCommercial: moneyQuery,
@@ -234,6 +287,16 @@ export const InfluencerListQuerySchema = z
       (data.categories && data.categories.length > 0 ? data.categories[0] : undefined) ||
       (uniqueCategories && uniqueCategories.length === 1 ? uniqueCategories[0] : undefined);
 
+    const resolvedStatus = data.status ?? data.accountStatus ?? data.userStatus;
+    const resolvedIsActive =
+      resolvedStatus === 'ALL'
+        ? undefined
+        : resolvedStatus === 'ACTIVE'
+          ? true
+          : resolvedStatus === 'INACTIVE'
+            ? false
+            : data.isActive;
+
     return {
       page: data.page,
       limit: data.limit || data.pageSize,
@@ -247,14 +310,8 @@ export const InfluencerListQuerySchema = z
       agencyId: data.agencyId,
       minPrice,
       maxPrice,
-      isActive:
-        data.status === 'ALL'
-          ? undefined
-          : data.status === 'ACTIVE'
-            ? true
-            : data.status === 'INACTIVE'
-              ? false
-              : data.isActive,
+      status: resolvedStatus,
+      isActive: resolvedIsActive,
     };
   });
 export type InfluencerListQuery = z.input<typeof InfluencerListQuerySchema>;
@@ -282,6 +339,8 @@ export const UserListQuerySchema = z
     categories: multiStringQuery(120),
     isActive: boolQuery.optional(),
     status: UserStatusFilterSchema.optional(),
+    accountStatus: UserStatusFilterSchema.optional(),
+    userStatus: UserStatusFilterSchema.optional(),
     minPrice: moneyQuery,
     maxPrice: moneyQuery,
     minCommercial: moneyQuery,
@@ -357,6 +416,16 @@ export const UserListQuerySchema = z
       (data.categories && data.categories.length > 0 ? data.categories[0] : undefined) ||
       (uniqueCategories && uniqueCategories.length === 1 ? uniqueCategories[0] : undefined);
 
+    const resolvedStatus = data.status ?? data.accountStatus ?? data.userStatus;
+    const resolvedIsActive =
+      resolvedStatus === 'ALL'
+        ? undefined
+        : resolvedStatus === 'ACTIVE'
+          ? true
+          : resolvedStatus === 'INACTIVE'
+            ? false
+            : data.isActive;
+
     return {
       page: data.page,
       limit: data.limit || data.pageSize,
@@ -376,14 +445,8 @@ export const UserListQuerySchema = z
       categories: uniqueCategories,
       minPrice,
       maxPrice,
-      isActive:
-        data.status === 'ALL'
-          ? undefined
-          : data.status === 'ACTIVE'
-            ? true
-            : data.status === 'INACTIVE'
-              ? false
-              : data.isActive,
+      status: resolvedStatus,
+      isActive: resolvedIsActive,
     };
   });
 export type UserListQuery = z.input<typeof UserListQuerySchema>;

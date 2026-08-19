@@ -108,8 +108,16 @@ export const InfluencerHomeOrganism: React.FC = () => {
       id: 'campaign',
       header: 'Campaign Assignment',
       type: 'entity',
-      accessor: (row) => `Campaign #${row.campaignId.slice(0, 8)}`,
-      subAccessor: (row) => row.deliverables || 'Deliverables in brief',
+      accessor: (row) =>
+        row.campaignName ||
+        row.campaign?.name ||
+        `Campaign #${row.campaignId.slice(0, 8)}`,
+      subAccessor: (row) => {
+        const parts: string[] = [];
+        if (row.brandName) parts.push(row.brandName);
+        if (row.deliverables) parts.push(row.deliverables);
+        return parts.length > 0 ? parts.join(' · ') : 'Deliverables in brief';
+      },
     },
     {
       id: 'rateStatus',
@@ -200,7 +208,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             value={approvedCount}
             loading={isSummaryLoading}
             icon={<CheckCircleRoundedIcon fontSize="small" />}
-            subtitle="Agency approved rates"
+            deltaLabel="agreed"
           />
         </Grid>
 
@@ -216,19 +224,23 @@ export const InfluencerHomeOrganism: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* 2. Assignments Table */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      {/* 2. Current Campaign Assignments Section */}
+      <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <SectionHeading
           title="Current Campaign Assignments"
           subtitle="Submit your commercial rate and track agency approval status"
         />
 
         <FilterBar
-          pills={filterPills}
-          activePillId={activePill}
-          onPillChange={setActivePill}
+          searchPlaceholder="Search assignments..."
           searchValue={search}
           onSearchChange={setSearch}
+          pills={filterPills}
+          activePillId={activePill}
+          onPillChange={(pill) => {
+            setActivePill(pill);
+            setPage(0);
+          }}
         />
 
         <DataTable<InfluencerMapperResponse>
@@ -253,7 +265,11 @@ export const InfluencerHomeOrganism: React.FC = () => {
         <SubmitRateDialog
           open={Boolean(activeRateDialogMapper)}
           mapperId={activeRateDialogMapper.id}
-          campaignName={`Campaign #${activeRateDialogMapper.campaignId.slice(0, 8)}`}
+          campaignName={
+            activeRateDialogMapper.campaignName ||
+            activeRateDialogMapper.campaign?.name ||
+            `Campaign #${activeRateDialogMapper.campaignId.slice(0, 8)}`
+          }
           deliverables={activeRateDialogMapper.deliverables || undefined}
           currentRate={activeRateDialogMapper.influencerRate}
           loading={submitRateMutation.isPending}

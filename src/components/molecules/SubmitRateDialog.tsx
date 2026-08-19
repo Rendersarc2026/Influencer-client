@@ -18,6 +18,7 @@ export interface SubmitRateDialogProps {
   campaignName?: string;
   deliverables?: string;
   currentRate?: number | null;
+  revisionComment?: string | null;
   loading?: boolean;
   onSubmit: (mapperId: string, data: SubmitRateRequest) => Promise<void> | void;
   onClose: () => void;
@@ -29,6 +30,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
   campaignName,
   deliverables,
   currentRate,
+  revisionComment,
   loading = false,
   onSubmit,
   onClose,
@@ -98,6 +100,30 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            {revisionComment && (
+              <Box
+                sx={{
+                  padding: '12px 16px',
+                  backgroundColor: '#FDF4E7',
+                  border: '1px solid #F6D8A8',
+                  borderRadius: `${theme.customRadii.inner}px`,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{ color: '#B45309', fontWeight: 700, display: 'block', mb: 0.5 }}
+                >
+                  AGENCY REVISION FEEDBACK
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ color: '#92400E', fontWeight: 500 }}
+                >
+                  {revisionComment}
+                </Typography>
+              </Box>
+            )}
+
             {deliverables && (
               <Box
                 sx={{

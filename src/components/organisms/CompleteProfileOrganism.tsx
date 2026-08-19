@@ -12,6 +12,7 @@ import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
 import { useCategories } from '@api';
 import { UpdateProfileSchema, CategoryTypeCode } from '@contracts';
+import { z } from 'zod';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
 import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
@@ -24,12 +25,20 @@ export const CompleteProfileOrganism: React.FC = () => {
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   const isInfluencer = roleCode === 'INFLUENCER';
+  const isBrand = roleCode === 'BRAND';
+
   const { data: influencerCategoriesData } = useCategories(CategoryTypeCode.INFLUENCER);
   const influencerCategoryOptions = (influencerCategoriesData || []).map((c) => c.name);
 
+  const { data: brandCategoriesData } = useCategories(CategoryTypeCode.BRAND);
+  const brandCategoryOptions = (brandCategoriesData || []).map((c) => c.name);
+
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
-  const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
+  const [displayName, setDisplayName] = useState(user?.profile?.displayName || user?.brandName || '');
   const [bio, setBio] = useState(user?.profile?.bio || '');
+  const [brandCategory, setBrandCategory] = useState('');
+  const [website, setWebsite] = useState('');
+  const [contactPhone, setContactPhone] = useState(user?.phone || '');
   // Creator-only onboarding fields — they land on influencer_detail, not profile.
   const [city, setCity] = useState(user?.influencer?.location || '');
   const [category, setCategory] = useState(user?.influencer?.category || '');
@@ -47,6 +56,13 @@ export const CompleteProfileOrganism: React.FC = () => {
     e.preventDefault();
     setError('');
     setFieldErrors({});
+
+    const normalizeUrl = (val: string): string | undefined => {
+      const trimmed = val.trim();
+      if (!trimmed) return undefined;
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+      return `https://${trimmed}`;
+    };
 
     let parsedFollowers: number | undefined = undefined;
     if (followers.trim()) {
@@ -78,6 +94,23 @@ export const CompleteProfileOrganism: React.FC = () => {
       fullName: fullName.trim(),
       displayName: displayName.trim() || undefined,
       bio: bio.trim() || undefined,
+      city: city.trim() || undefined,
+      ...(isBrand
+        ? {
+            industry: brandCategory.trim() || undefined,
+            website: normalizeUrl(website),
+            contactPhone: contactPhone.trim() || undefined,
+            brand: {
+              name: displayName.trim() || undefined,
+              contactPerson: fullName.trim() || undefined,
+              industry: brandCategory.trim() || undefined,
+              website: normalizeUrl(website),
+              city: city.trim() || undefined,
+              contactPhone: contactPhone.trim() || undefined,
+              bio: bio.trim() || undefined,
+            },
+          }
+        : {}),
       ...(isInfluencer
         ? {
             influencer: {
@@ -91,10 +124,11 @@ export const CompleteProfileOrganism: React.FC = () => {
         : {}),
     };
 
+
     const validation = UpdateProfileSchema.safeParse(payload);
     if (!validation.success) {
       const errors: Record<string, string> = {};
-      validation.error.errors.forEach((err) => {
+      validation.error.errors.forEach((err: z.ZodIssue) => {
         // Creator fields are nested under influencerDetail; key on the leaf.
         const field = err.path[err.path.length - 1];
         if (field !== undefined) {
@@ -184,8 +218,9 @@ export const CompleteProfileOrganism: React.FC = () => {
             />
 
             <TextField
-              label="Display Name"
+              label={isBrand ? 'Brand Display Name *' : 'Display Name'}
               value={displayName}
+              placeholder={isBrand ? 'e.g. Jos Alukkas' : 'e.g. Alex Influencer'}
               onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
               error={Boolean(fieldErrors.displayName)}
               helperText={fieldErrors.displayName}
@@ -193,9 +228,55 @@ export const CompleteProfileOrganism: React.FC = () => {
               disabled={loading}
             />
 
+            {isBrand && (
+              <>
+                <TextField
+                  label="Contact Phone"
+                  placeholder="e.g. +91 9876543210"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  error={Boolean(fieldErrors.contactPhone)}
+                  helperText={fieldErrors.contactPhone || 'Manager phone line'}
+                  fullWidth
+                  disabled={loading}
+                />
+
+                <Autocomplete
+                  freeSolo
+                  options={brandCategoryOptions}
+                  value={brandCategory}
+                  onInputChange={(_, newInputValue) => setBrandCategory(newInputValue)}
+                  onChange={(_, newValue) => setBrandCategory(newValue || '')}
+                  disabled={loading}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Brand Category / Industry"
+                      placeholder="Select or enter industry (e.g. Fashion & Apparel)"
+                      error={Boolean(fieldErrors.industry)}
+                      helperText={fieldErrors.industry || 'Brand market domain'}
+                      fullWidth
+                    />
+                  )}
+                />
+
+                <TextField
+                  label="Official Website"
+                  placeholder="https://brand.com"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  error={Boolean(fieldErrors.website)}
+                  helperText={fieldErrors.website}
+                  fullWidth
+                  disabled={loading}
+                />
+              </>
+            )}
+
             <TextField
-              label="City"
+              label={isBrand ? 'City / Headquarters' : 'City'}
               value={city}
+              placeholder={isBrand ? 'e.g. Kochi, Mumbai' : 'e.g. Kochi'}
               onChange={(e) => setCity(capitalizeWords(e.target.value))}
               error={Boolean(fieldErrors.city)}
               helperText={fieldErrors.city}

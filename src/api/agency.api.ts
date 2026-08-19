@@ -21,7 +21,6 @@ import {
   InfluencerResponse,
   InfluencerListQuery,
   CreateInfluencerRequest,
-  InfluencerEngagementResponse,
   UserResponse,
   UserListQuery,
   PaginatedResult,
@@ -243,40 +242,6 @@ export function useCreateInfluencer() {
   });
 }
 
-/** The latest engagement metrics (ER, likes, comments, views) for an influencer. */
-export function useInfluencerEngagement(influencerId: string | undefined) {
-  return useQuery<InfluencerEngagementResponse>({
-    queryKey: ['agency', 'influencers', influencerId, 'engagement'],
-    queryFn: async () => {
-      if (!influencerId) throw new Error('Influencer ID required');
-      const response = await apiClient.get<InfluencerEngagementResponse>(
-        `/agency/influencers/${influencerId}/engagement`,
-      );
-      return response.data;
-    },
-    enabled: Boolean(influencerId),
-  });
-}
-
-/** Trigger recalculation of Instagram engagement metrics for an influencer. */
-export function useCalculateInfluencerEngagement(influencerId: string | undefined) {
-  const queryClient = useQueryClient();
-  return useMutation<InfluencerEngagementResponse, Error, void>({
-    mutationFn: async () => {
-      if (!influencerId) throw new Error('Influencer ID required');
-      const response = await apiClient.post<InfluencerEngagementResponse>(
-        `/agency/influencers/${influencerId}/engagement`,
-      );
-      return response.data;
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['agency', 'influencers', influencerId, 'engagement'], data);
-      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers', influencerId, 'engagement'] });
-    },
-  });
-}
-
-
 // -------------------------------------------------------------
 // 4. Campaign Influencer Mappers & Rates
 // -------------------------------------------------------------
@@ -464,6 +429,31 @@ export function useSubmitForBrandReview(campaignId?: string) {
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
         });
       }
+    },
+  });
+}
+
+export function useRevertApproval(campaignId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation<AgencyMapperResponse, Error, { mapperId: string; comment?: string }>({
+    mutationFn: async ({ mapperId, comment }) => {
+      const response = await apiClient.post<AgencyMapperResponse>(
+        `/agency/mappers/${mapperId}/revert-approval`,
+        { comment },
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      if (campaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['brand', 'campaigns', campaignId, 'influencers'],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
     },
   });
 }
