@@ -488,18 +488,6 @@ export function useRecordMetric(campaignId?: string) {
   });
 }
 
-export function useMapperMetrics(mapperId: string | undefined) {
-  return useQuery<MetricResponse[]>({
-    queryKey: ['agency', 'mappers', mapperId, 'metrics'],
-    queryFn: async () => {
-      if (!mapperId) return [];
-      const response = await apiClient.get<MetricResponse[]>(`/agency/mappers/${mapperId}/metrics`);
-      return response.data;
-    },
-    enabled: Boolean(mapperId),
-  });
-}
-
 // -------------------------------------------------------------
 // 6. Reports & Metrics Aggregates
 // -------------------------------------------------------------
@@ -516,20 +504,6 @@ export interface CampaignReportResponse {
   mappers: AgencyMapperResponse[];
 }
 
-export function useCampaignReport(campaignId: string | undefined) {
-  return useQuery<CampaignReportResponse>({
-    queryKey: ['agency', 'reports', 'campaigns', campaignId],
-    queryFn: async () => {
-      if (!campaignId) throw new Error('Campaign ID required');
-      const response = await apiClient.get<CampaignReportResponse>(
-        `/agency/reports/campaigns/${campaignId}`,
-      );
-      return response.data;
-    },
-    enabled: Boolean(campaignId),
-  });
-}
-
 /**
  * Fetches the aggregate report for several campaigns in a single request.
  *
@@ -538,9 +512,9 @@ export function useCampaignReport(campaignId: string | undefined) {
  * now accepts the whole id set at once, so the screen waits on one response
  * regardless of how many campaigns are on the page.
  *
- * Each report is also written into the per-campaign cache key that
- * `useCampaignReport` reads, so opening a campaign detail screen renders from
- * cache instead of refetching what the dashboard already has.
+ * Each report is also written into its own per-campaign cache key, so a
+ * detail screen opened from the dashboard can render from cache instead of
+ * refetching what the dashboard already has.
  */
 export function useCampaignReports(campaignIds: Array<string>) {
   const queryClient = useQueryClient();
@@ -577,27 +551,4 @@ export function useCampaignReports(campaignIds: Array<string>) {
     isFetching: key.length > 0 && query.isFetching,
     isError: query.isError,
   };
-}
-
-export interface InfluencerReportResponse {
-  influencer: { id: string; name: string; email: string };
-  campaignCount: number;
-  totalInfluencerRate: number;
-  totalReach: number;
-  totalEngagements: number;
-  averageErPercent: number;
-}
-
-export function useInfluencerReport(influencerId: string | undefined) {
-  return useQuery<InfluencerReportResponse>({
-    queryKey: ['agency', 'reports', 'influencers', influencerId],
-    queryFn: async () => {
-      if (!influencerId) throw new Error('Influencer ID required');
-      const response = await apiClient.get<InfluencerReportResponse>(
-        `/agency/reports/influencers/${influencerId}`,
-      );
-      return response.data;
-    },
-    enabled: Boolean(influencerId),
-  });
 }

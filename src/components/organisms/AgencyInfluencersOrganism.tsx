@@ -26,21 +26,7 @@ import {
 } from '@api';
 import { InfluencerResponse, CreateInfluencerRequest, CategoryTypeCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { getInfluencerTier, getTierInfo } from '@utils';
-
-/** "64.7k" reads better than "64700" in a list of reach numbers. */
-function formatFollowers(value: number | null): string {
-  if (value === null || value === undefined) return '—';
-  if (value >= 1_000_000) {
-    const m = value / 1_000_000;
-    return `${Number.isInteger(m) ? m : m.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    const k = value / 1_000;
-    return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
-  }
-  return String(value);
-}
+import { getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
 
 /** Indicative range, e.g. "20,000 - 25,000". Blank when a creator has not quoted one. */
 function formatCommercials(row: InfluencerResponse): string {
@@ -250,7 +236,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {formatFollowers(row.followers)}
+              {formatFollowersDisplay(row.followers)}
             </Typography>
             {tierInfo && (
               <Chip
@@ -524,7 +510,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
             ? [
                 {
                   label: 'Follower Reach',
-                  value: formatFollowers(selectedInfluencer.followers),
+                  value: formatFollowersDisplay(selectedInfluencer.followers),
                   tint: 'sky',
                 },
                 {
@@ -555,7 +541,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                     { label: 'Location', value: selectedInfluencer.location || 'Global' },
                     {
                       label: 'Follower Reach',
-                      value: formatFollowers(selectedInfluencer.followers),
+                      value: formatFollowersDisplay(selectedInfluencer.followers),
                     },
                   ],
                 },

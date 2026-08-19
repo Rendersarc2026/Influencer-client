@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -169,6 +169,21 @@ export function DataTable<T extends Record<string, unknown>>({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [internalPage, setInternalPage] = useState(0);
   const [internalRowsPerPage, setInternalRowsPerPage] = useState(initialRowsPerPage);
+
+  const { primaryColumn, starColumn, actionsColumn, detailColumns } = useMemo(() => {
+    const primary =
+      columns.find((c) => c.type === 'entity') ??
+      columns.find((c) => c.type !== 'actions' && c.type !== 'star');
+    const star = columns.find((c) => c.type === 'star');
+    const actions = columns.find((c) => c.type === 'actions');
+    return {
+      primaryColumn: primary,
+      starColumn: star,
+      actionsColumn: actions,
+      detailColumns: columns.filter((c) => c !== primary && c !== star && c !== actions),
+    };
+  }, [columns]);
+
 
   const isControlled = totalRows !== undefined;
   const page = isControlled && controlledPage !== undefined ? controlledPage : internalPage;
@@ -492,16 +507,10 @@ export function DataTable<T extends Record<string, unknown>>({
   // A row becomes a card: the entity column is its heading, an actions or star
   // column keeps its own affordance, and everything else drops to a labelled
   // row. Columns keep declaring themselves once — nothing here is per-page.
-  const primaryColumn =
-    columns.find((c) => c.type === 'entity') ??
-    columns.find((c) => c.type !== 'actions' && c.type !== 'star');
-  const starColumn = columns.find((c) => c.type === 'star');
-  const actionsColumn = columns.find((c) => c.type === 'actions');
-  const detailColumns = columns.filter(
-    (c) => c !== primaryColumn && c !== starColumn && c !== actionsColumn,
-  );
-
-  const mobileCards = (
+  // Built only on the layout that renders it. This tree is one element per
+  // row per column; constructing it on desktop just to drop it on the floor
+  // doubled the element allocation of every render on the widest tables.
+  const mobileCards = !isMobile ? null : (
     <Box
       sx={{
         display: 'flex',

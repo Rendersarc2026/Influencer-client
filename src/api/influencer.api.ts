@@ -25,20 +25,6 @@ export function useInfluencerCampaigns(params?: CampaignListQuery) {
   });
 }
 
-export function useInfluencerCampaign(campaignId: string | undefined) {
-  return useQuery<CampaignResponse>({
-    queryKey: ['influencer', 'campaigns', campaignId],
-    queryFn: async () => {
-      if (!campaignId) throw new Error('Campaign ID required');
-      const response = await apiClient.get<CampaignResponse>(
-        `/influencer/campaigns/${campaignId}`,
-      );
-      return response.data;
-    },
-    enabled: Boolean(campaignId),
-  });
-}
-
 export function useInfluencerAssignments(params?: CampaignMapperListQuery) {
   return useQuery<PaginatedResult<InfluencerMapperResponse>>({
     queryKey: ['influencer', 'assignments', params],

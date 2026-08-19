@@ -17,7 +17,6 @@ export * from './BrandCampaignDetailOrganism';
 export * from './BrandPaymentsOrganism';
 export * from './InfluencerHomeOrganism';
 export * from './InfluencerAssignmentDetailOrganism';
-export * from './InfluencerProfileOrganism';
 export * from './LoginOrganism';
 export * from './AcceptTermsOrganism';
 export * from './CompleteProfileOrganism';

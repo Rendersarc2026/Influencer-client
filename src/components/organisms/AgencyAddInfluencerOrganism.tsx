@@ -32,7 +32,7 @@ import {
   useCategories,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeImageUrl, getInfluencerTier, getTierInfo } from '@utils';
+import { safeImageUrl, getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
 import {
   AgencyMapperResponse,
   CreateInfluencerRequest,
@@ -41,20 +41,6 @@ import {
   CampaignStatusCode,
   CampaignStatusName,
 } from '@contracts';
-
-/** "64.7k" reads better than "64700" in a list of reach numbers. */
-function formatFollowers(value: number | null): string {
-  if (value === null || value === undefined) return '—';
-  if (value >= 1_000_000) {
-    const m = value / 1_000_000;
-    return `${Number.isInteger(m) ? m : m.toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    const k = value / 1_000;
-    return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
-  }
-  return String(value);
-}
 
 interface AvailableCreator {
   id: string;
@@ -91,7 +77,7 @@ function toAvailableCreator(influencer: InfluencerResponse): AvailableCreator {
     name: influencer.name,
     handle: formatDisplaySocial(influencer.instagram || influencer.youtube),
     category: influencer.category || 'Uncategorized',
-    followers: formatFollowers(influencer.followers),
+    followers: formatFollowersDisplay(influencer.followers),
     tier: tierInfo?.label,
   };
 }
@@ -715,7 +701,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
             ? [
                 {
                   label: 'Follower Reach',
-                  value: formatFollowers(detailCreator.followers),
+                  value: formatFollowersDisplay(detailCreator.followers),
                   tint: 'sky',
                 },
                 {
@@ -741,7 +727,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                         : '—',
                     },
                     { label: 'Location', value: detailCreator.location || 'Global' },
-                    { label: 'Follower Reach', value: formatFollowers(detailCreator.followers) },
+                    { label: 'Follower Reach', value: formatFollowersDisplay(detailCreator.followers) },
                   ],
                 },
                 {

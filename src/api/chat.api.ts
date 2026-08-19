@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
@@ -6,31 +5,8 @@ import {
   CreateChatRequest,
   MessageResponse,
   SendMessageRequest,
-  EditMessageRequest,
 } from '@contracts';
 import { UseChatsOptions } from '@types';
-
-// Hook to detect window focus state for dynamic polling intervals
-export function useWindowFocus(): boolean {
-  const [isFocused, setIsFocused] = useState(
-    typeof document !== 'undefined' ? document.hasFocus() : true,
-  );
-
-  useEffect(() => {
-    const handleFocus = () => setIsFocused(true);
-    const handleBlur = () => setIsFocused(false);
-
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, []);
-
-  return isFocused;
-}
 
 // -------------------------------------------------------------
 // 1. Conversation List Query (real-time updates driven via Socket.io)
@@ -166,40 +142,9 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
 // 5. Edit Message (PATCH /messages/:id)
 // -------------------------------------------------------------
 
-export function useEditMessage(chatId?: string) {
-  const queryClient = useQueryClient();
-  return useMutation<MessageResponse, Error, { messageId: string; data: EditMessageRequest }>({
-    mutationFn: async ({ messageId, data }) => {
-      const response = await apiClient.patch<MessageResponse>(`/messages/${messageId}`, data);
-      return response.data;
-    },
-    onSuccess: () => {
-      if (chatId) {
-        queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
-      }
-      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
-    },
-  });
-}
-
 // -------------------------------------------------------------
 // 6. Delete Message (DELETE /messages/:id)
 // -------------------------------------------------------------
-
-export function useDeleteMessage(chatId?: string) {
-  const queryClient = useQueryClient();
-  return useMutation<void, Error, string>({
-    mutationFn: async (messageId) => {
-      await apiClient.delete(`/messages/${messageId}`);
-    },
-    onSuccess: () => {
-      if (chatId) {
-        queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
-      }
-      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
-    },
-  });
-}
 
 // -------------------------------------------------------------
 // 7. Mark Chat as Read (POST /chats/:id/read)

@@ -26,7 +26,10 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
-    sourcemap: true,
+    // 'hidden' still emits maps for upload to an error tracker but drops the
+    // //# sourceMappingURL comment, so the deployed bundle does not advertise
+    // ~8.5MB of original TypeScript to anyone who fetches it.
+    sourcemap: 'hidden',
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -37,7 +40,7 @@ export default defineConfig({
             if (id.includes('@tanstack') || id.includes('axios') || id.includes('@reduxjs') || id.includes('react-redux')) {
               return 'vendor-data';
             }
-            if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) {
+            if (id.includes('zod')) {
               return 'vendor-forms';
             }
             if (id.includes('@mui') || id.includes('@emotion') || id.includes('react')) {

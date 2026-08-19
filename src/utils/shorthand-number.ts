@@ -53,12 +53,23 @@ export function formatShorthandNumber(value: number | null | undefined): string 
 }
 
 /**
- * Formats a follower count with fallback for display tables/cards (e.g. 10k, 100k, 1m, or "—").
+ * Formats a follower count for read-only display in tables, cards and drawers:
+ * "64.7k" reads better than "64700" in a list of reach numbers.
+ *
+ * Distinct from `formatShorthandNumber`, which round-trips values back into
+ * editable text inputs and must stay reversible by `parseShorthandNumber`.
  */
 export function formatFollowersDisplay(value: number | null | undefined): string {
-  if (value === null || value === undefined || isNaN(value) || value < 0) return '—';
-  if (value === 0) return '0';
-  return formatShorthandNumber(value);
+  if (value === null || value === undefined) return '—';
+  if (value >= 1_000_000) {
+    const m = value / 1_000_000;
+    return `${Number.isInteger(m) ? m : m.toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    const k = value / 1_000;
+    return `${Number.isInteger(k) ? k : k.toFixed(1)}k`;
+  }
+  return String(value);
 }
 
 export type InfluencerTier = 'NANO' | 'MICRO' | 'MACRO' | 'MEGA';
