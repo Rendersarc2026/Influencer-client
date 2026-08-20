@@ -11,10 +11,12 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText } from '@atoms';
+import { useInfluencerEngagement } from '@api';
 
 export interface ApproveRateDialogProps {
   open: boolean;
   mapperId: string;
+  influencerId?: string;
   influencerName?: string;
   influencerRate?: number | null;
   initialMargin?: number | null;
@@ -42,6 +44,7 @@ export interface ApproveRateDialogProps {
 export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   open,
   mapperId,
+  influencerId,
   influencerName,
   influencerRate,
   initialMargin,
@@ -56,6 +59,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
+  const { data: engagementData } = useInfluencerEngagement(influencerId);
   const [rateInput, setRateInput] = useState<string>('');
   const [marginInput, setMarginInput] = useState<string>('0');
   const [clientRateInput, setClientRateInput] = useState<string>('0');
@@ -83,16 +87,25 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
         setClientRateInput(String(marginVal));
       }
       setDeliverablesInput(initialDeliverables || '');
-      setPreEvalErInput(
+
+      const initialEr =
         initialPreEvalEr !== null && initialPreEvalEr !== undefined
           ? String(initialPreEvalEr)
-          : '',
-      );
-      setCommittedViewsInput(
+          : engagementData?.latest?.engagementRate !== undefined &&
+            engagementData?.latest?.engagementRate !== null
+          ? String(engagementData.latest.engagementRate)
+          : '';
+      setPreEvalErInput(initialEr);
+
+      const initialViews =
         initialCommittedViews !== null && initialCommittedViews !== undefined
           ? String(initialCommittedViews)
-          : '',
-      );
+          : engagementData?.latest?.avgViews !== undefined &&
+            engagementData?.latest?.avgViews !== null
+          ? String(engagementData.latest.avgViews)
+          : '';
+      setCommittedViewsInput(initialViews);
+
       setBrandFitInput(initialBrandFit || '');
       setRateError('');
       setMarginError('');
@@ -106,6 +119,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     initialPreEvalEr,
     initialBrandFit,
     initialCommittedViews,
+    engagementData,
   ]);
 
   const handleRateChange = (val: string) => {

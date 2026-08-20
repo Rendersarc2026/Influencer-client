@@ -13,6 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText, SectionHeading } from '@atoms';
 import { AgencyMapperResponse, UpdatePreEvalRequest } from '@contracts';
+import { useInfluencerEngagement } from '@api';
 
 export interface EditPreEvalDialogProps {
   open: boolean;
@@ -30,6 +31,8 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
+  const { data: engagementData } = useInfluencerEngagement(mapper?.influencerId);
+
   const [deliverables, setDeliverables] = useState('');
   const [preEvalEr, setPreEvalEr] = useState('');
   const [committedViews, setCommittedViews] = useState('');
@@ -39,18 +42,29 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   useEffect(() => {
     if (open && mapper) {
       setDeliverables(mapper.deliverables || '');
-      setPreEvalEr(
-        mapper.preEvalEr !== undefined && mapper.preEvalEr !== null ? String(mapper.preEvalEr) : '',
-      );
-      setCommittedViews(
+
+      const initialEr =
+        mapper.preEvalEr !== undefined && mapper.preEvalEr !== null
+          ? String(mapper.preEvalEr)
+          : engagementData?.latest?.engagementRate !== undefined &&
+            engagementData?.latest?.engagementRate !== null
+          ? String(engagementData.latest.engagementRate)
+          : '';
+      setPreEvalEr(initialEr);
+
+      const initialViews =
         mapper.committedViews !== undefined && mapper.committedViews !== null
           ? String(mapper.committedViews)
-          : '',
-      );
+          : engagementData?.latest?.avgViews !== undefined &&
+            engagementData?.latest?.avgViews !== null
+          ? String(engagementData.latest.avgViews)
+          : '';
+      setCommittedViews(initialViews);
+
       setBrandFit(mapper.brandFit || '');
       setError('');
     }
-  }, [open, mapper]);
+  }, [open, mapper, engagementData]);
 
   const committedViewsNum = parseInt(committedViews, 10) || 0;
   const preEvalErNum = parseFloat(preEvalEr) || 0;
@@ -128,6 +142,64 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            {engagementData?.latest && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: theme.palette.tokens.purpleBg,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 750,
+                      color: theme.palette.tokens.purpleText,
+                      display: 'block',
+                    }}
+                  >
+                    Recorded Baseline: {engagementData.latest.engagementRate.toFixed(2)}% ER
+                    {engagementData.latest.avgViews
+                      ? ` · ${engagementData.latest.avgViews.toLocaleString()} avg views`
+                      : ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    From {engagementData.latest.source === 'INSTAGRAM_LIVE_API' || engagementData.latest.source === 'INSTAGRAM_GRAPH_API' ? 'Instagram Profile Fetch' : 'ER Calculator'}
+                  </Typography>
+                </Box>
+                {(!preEvalEr || !committedViews) && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      if (engagementData.latest?.engagementRate) {
+                        setPreEvalEr(String(engagementData.latest.engagementRate));
+                      }
+                      if (engagementData.latest?.avgViews) {
+                        setCommittedViews(String(engagementData.latest.avgViews));
+                      }
+                    }}
+                    sx={{
+                      height: 28,
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: theme.palette.tokens.purpleText,
+                      borderColor: theme.palette.tokens.purpleText,
+                    }}
+                  >
+                    Auto-Fill
+                  </Button>
+                )}
+              </Box>
+            )}
+
             <TextField
               label="Deliverables & Formats"
               value={deliverables}

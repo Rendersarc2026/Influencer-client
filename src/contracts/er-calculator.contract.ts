@@ -7,6 +7,8 @@ import { safeText } from './primitives';
  */
 export const CalculateERRequestSchema = z.object({
   instagramHandle: safeText(200),
+  /** Skip the stored 24h copy and read Instagram live. */
+  forceRefresh: z.boolean().optional(),
 });
 export type CalculateERRequest = z.infer<typeof CalculateERRequestSchema>;
 
@@ -44,6 +46,11 @@ export const CalculateERResponseSchema = z.object({
   avgComments: z.number().nullable(),
   avgViews: z.number().nullable(),
   engagementRate: z.number(),
+  /**
+   * The creator hides like counts, so engagementRate is comments-only and
+   * understates reality. Not comparable with other creators' rates.
+   */
+  likesHidden: z.boolean(),
   source: z.string(),
   fetchedAt: z.string(),
   profile: ERProfileSchema.nullable(),

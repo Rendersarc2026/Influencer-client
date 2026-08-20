@@ -31,6 +31,7 @@ import {
   useCreateInfluencer,
   useCategories,
   useLocations,
+  useInfluencerEngagement,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import { safeImageUrl, getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
@@ -235,6 +236,7 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [removeDialogCreator, setRemoveDialogCreator] = useState<AvailableCreator | null>(null);
   const [detailCreator, setDetailCreator] = useState<InfluencerResponse | null>(null);
+  const { data: creatorEngagement } = useInfluencerEngagement(detailCreator?.id);
 
   /** The assignment id for a creator, from this visit's adds or the server list. */
   const mapperIdFor = (creatorId: string): string | undefined =>
@@ -724,12 +726,70 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                   value: isAssigned(detailCreator.id) ? 'Assigned' : 'Not assigned',
                   tint: isAssigned(detailCreator.id) ? 'mint' : 'sky',
                 },
+                ...(creatorEngagement?.latest?.engagementRate !== undefined &&
+                creatorEngagement?.latest?.engagementRate !== null
+                  ? [
+                      {
+                        label: 'Pre-Eval ER %',
+                        value: `${creatorEngagement.latest.engagementRate.toFixed(2)}%`,
+                        tint: 'butter' as const,
+                      },
+                    ]
+                  : []),
+                ...(creatorEngagement?.latest?.avgViews !== undefined &&
+                creatorEngagement?.latest?.avgViews !== null &&
+                creatorEngagement.latest.avgViews > 0
+                  ? [
+                      {
+                        label: 'Committed Views',
+                        value: formatFollowersDisplay(creatorEngagement.latest.avgViews),
+                        tint: 'lavender' as const,
+                      },
+                    ]
+                  : []),
               ]
             : []
         }
         sections={
           detailCreator
             ? [
+                ...(creatorEngagement?.latest
+                  ? [
+                      {
+                        title: 'Pre-Evaluation & Engagement Metrics',
+                        fields: [
+                          {
+                            label: 'Baseline Engagement Rate (ER)',
+                            value: `${creatorEngagement.latest.engagementRate.toFixed(2)}%`,
+                          },
+                          {
+                            label: 'Average Reel Views',
+                            value: creatorEngagement.latest.avgViews
+                              ? creatorEngagement.latest.avgViews.toLocaleString()
+                              : '—',
+                          },
+                          {
+                            label: 'Average Likes per Post',
+                            value: creatorEngagement.latest.avgLikes
+                              ? creatorEngagement.latest.avgLikes.toLocaleString()
+                              : '—',
+                          },
+                          {
+                            label: 'Average Comments per Post',
+                            value: creatorEngagement.latest.avgComments
+                              ? creatorEngagement.latest.avgComments.toLocaleString()
+                              : '—',
+                          },
+                          {
+                            label: 'Analyzed Posts Count',
+                            value: creatorEngagement.latest.postsCount
+                              ? `${creatorEngagement.latest.postsCount} posts`
+                              : '—',
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
                 {
                   title: 'Influencer Profile',
                   fields: [

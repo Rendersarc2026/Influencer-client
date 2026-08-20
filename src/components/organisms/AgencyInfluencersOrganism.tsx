@@ -28,6 +28,7 @@ import {
   useUpdateInfluencer,
   useCategories,
   useLocations,
+  useInfluencerEngagement,
 } from '@api';
 import {
   InfluencerResponse,
@@ -82,6 +83,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingInfluencer, setEditingInfluencer] = useState<InfluencerResponse | null>(null);
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
+  const { data: influencerEngagement } = useInfluencerEngagement(selectedInfluencer?.id);
   const [priceRangeFilter, setPriceRangeFilter] = useState<string>('');
   const createInfluencerMutation = useCreateInfluencer();
   const updateInfluencerMutation = useUpdateInfluencer();
@@ -610,12 +612,80 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                       : `${selectedInfluencer.currency} ${formatCommercials(selectedInfluencer)}`,
                   tint: 'mint',
                 },
+                ...(influencerEngagement?.latest?.engagementRate !== undefined &&
+                influencerEngagement?.latest?.engagementRate !== null
+                  ? [
+                      {
+                        label: 'Pre-Eval ER %',
+                        value: `${influencerEngagement.latest.engagementRate.toFixed(2)}%`,
+                        tint: 'butter' as const,
+                      },
+                    ]
+                  : []),
+                ...(influencerEngagement?.latest?.avgViews !== undefined &&
+                influencerEngagement?.latest?.avgViews !== null &&
+                influencerEngagement.latest.avgViews > 0
+                  ? [
+                      {
+                        label: 'Committed Views',
+                        value: formatFollowersDisplay(influencerEngagement.latest.avgViews),
+                        tint: 'lavender' as const,
+                      },
+                    ]
+                  : []),
               ]
             : []
         }
         sections={
           selectedInfluencer
             ? [
+                ...(influencerEngagement?.latest
+                  ? [
+                      {
+                        title: 'Pre-Evaluation & Engagement Metrics',
+                        fields: [
+                          {
+                            label: 'Baseline Engagement Rate (ER)',
+                            value: `${influencerEngagement.latest.engagementRate.toFixed(2)}%`,
+                          },
+                          {
+                            label: 'Average Reel Views (Committed)',
+                            value: influencerEngagement.latest.avgViews
+                              ? influencerEngagement.latest.avgViews.toLocaleString()
+                              : '—',
+                          },
+                          {
+                            label: 'Average Likes per Post',
+                            value: influencerEngagement.latest.avgLikes
+                              ? influencerEngagement.latest.avgLikes.toLocaleString()
+                              : '—',
+                          },
+                          {
+                            label: 'Average Comments per Post',
+                            value: influencerEngagement.latest.avgComments
+                              ? influencerEngagement.latest.avgComments.toLocaleString()
+                              : '—',
+                          },
+                          {
+                            label: 'Analyzed Posts Count',
+                            value: influencerEngagement.latest.postsCount
+                              ? `${influencerEngagement.latest.postsCount} posts`
+                              : '—',
+                          },
+                          {
+                            label: 'Calculation Source',
+                            value:
+                              influencerEngagement.latest.source === 'INSTAGRAM_LIVE_API' ||
+                              influencerEngagement.latest.source === 'INSTAGRAM_GRAPH_API'
+                                ? 'Instagram Profile Fetch'
+                                : influencerEngagement.latest.source === 'MANUAL_CALCULATOR'
+                                  ? 'Manual ER Calculator'
+                                  : influencerEngagement.latest.source,
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
                 {
                   title: 'Influencer Profile',
                   fields: [
@@ -700,6 +770,15 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         actions={
           selectedInfluencer
             ? [
+                {
+                  label: 'Calculate / Update ER',
+                  variant: 'outlined',
+                  onClick: () => {
+                    const infId = selectedInfluencer.id;
+                    setSelectedInfluencer(null);
+                    navigate(`/agency/er-calculator?influencerId=${infId}`);
+                  },
+                },
                 {
                   label: 'Edit Influencer',
                   variant: 'outlined',
