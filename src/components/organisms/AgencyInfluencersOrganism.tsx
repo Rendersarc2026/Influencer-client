@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -321,6 +322,21 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+          <Tooltip title="Calculate & Assign ER">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/agency/er-calculator?influencerId=${row.id}`);
+              }}
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                '&:hover': { color: theme.palette.primary.main },
+              }}
+            >
+              <CalculateRoundedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Edit Influencer">
             <IconButton
               size="small"

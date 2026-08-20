@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -23,6 +23,12 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid2';
+import Autocomplete from '@mui/material/Autocomplete';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Divider from '@mui/material/Divider';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
@@ -38,12 +44,19 @@ import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import PlaylistAddRoundedIcon from '@mui/icons-material/PlaylistAddRounded';
 import FunctionsRoundedIcon from '@mui/icons-material/FunctionsRounded';
+import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { SectionHeading, Pill } from '@atoms';
 import { useAuth, useToast } from '@hooks';
-import { apiClient } from '@api';
+import {
+  apiClient,
+  useAgencyInfluencers,
+  useAgencyCampaigns,
+  useAssignERToInfluencer,
+} from '@api';
 import {
   safeUrl,
   safeImageUrl,
@@ -114,6 +127,31 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   // Manual Mode Sub-entry: 'table' | 'summary'
   const [manualEntryMode, setManualEntryMode] = useState<'table' | 'summary'>('table');
 
+  // URL parameters (e.g. ?influencerId=...)
+  const [searchParams] = useSearchParams();
+  const initialInfluencerId = searchParams.get('influencerId') || '';
+
+  // Agency Roster Query
+  const { data: influencersData } = useAgencyInfluencers({ limit: 100 });
+  const influencersList = useMemo(() => influencersData?.items || [], [influencersData]);
+
+  // Selected Influencer from Roster
+  const [selectedInfluencerId, setSelectedInfluencerId] = useState<string>(initialInfluencerId);
+  const selectedInfluencer = useMemo(
+    () => influencersList.find((inf) => inf.id === selectedInfluencerId) || null,
+    [influencersList, selectedInfluencerId],
+  );
+
+  // Agency Campaigns Query (Optional campaign selection)
+  const { data: campaignsData } = useAgencyCampaigns({ limit: 100 });
+  const campaignsList = useMemo(() => campaignsData?.items || [], [campaignsData]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
+
+  // Assign ER Mutation & Dialog State
+  const assignERMutation = useAssignERToInfluencer();
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigningSource, setAssigningSource] = useState<'manual' | 'auto'>('manual');
+
   // Manual Mode Inputs
   const [manualHandle, setManualHandle] = useState('');
   const [manualFollowers, setManualFollowers] = useState('');
@@ -136,6 +174,30 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   const [autoCommercialFee, setAutoCommercialFee] = useState('');
   const [autoLoading, setAutoLoading] = useState(false);
   const [autoResult, setAutoResult] = useState<ERResult | null>(null);
+
+  // When initialInfluencerId arrives from URL query param
+  useEffect(() => {
+    if (initialInfluencerId && !selectedInfluencerId) {
+      setSelectedInfluencerId(initialInfluencerId);
+    }
+  }, [initialInfluencerId, selectedInfluencerId]);
+
+  // When selected influencer changes, auto-populate inputs
+  useEffect(() => {
+    if (selectedInfluencer) {
+      const handle = selectedInfluencer.instagram || selectedInfluencer.name || '';
+      setManualHandle(handle);
+      setAutoHandle(handle);
+      if (selectedInfluencer.followers && selectedInfluencer.followers > 0) {
+        setManualFollowers(String(selectedInfluencer.followers));
+      }
+      if (selectedInfluencer.avgCommercialMin || selectedInfluencer.avgCommercialMax) {
+        const fee = selectedInfluencer.avgCommercialMin || selectedInfluencer.avgCommercialMax || '';
+        setManualCommercialFee(String(fee));
+        setAutoCommercialFee(String(fee));
+      }
+    }
+  }, [selectedInfluencer]);
 
   // ---------------------------------------------------------------------------
   // Calculations for Manual Mode
@@ -449,6 +511,62 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
     showSuccess('Transferred Instagram profile data to Manual Calculator');
   };
 
+  const handleOpenAssignDialog = (source: 'manual' | 'auto') => {
+    setAssigningSource(source);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignToInfluencer = async () => {
+    const isManual = assigningSource === 'manual';
+    const targetInfluencerId = selectedInfluencerId;
+
+    if (!targetInfluencerId) {
+      showError('Please select an influencer from your roster to assign this ER value.');
+      return;
+    }
+
+    const erValue = isManual ? effectiveManual.erPercent : autoResult?.engagementRate || 0;
+    if (erValue <= 0) {
+      showError('Engagement Rate must be greater than 0% to assign.');
+      return;
+    }
+
+    const followers = isManual
+      ? manualFollowersNum
+      : (autoResult?.followersCount || manualFollowersNum);
+    const commFee = isManual ? manualCommercialFeeNum : (autoCommercialFeeNum || manualCommercialFeeNum);
+    const committedViews = isManual ? effectiveManual.committedViews : autoCommittedViews;
+    const handle = isManual ? manualHandle : (autoHandle || manualHandle);
+
+    try {
+      const res = await assignERMutation.mutateAsync({
+        influencerId: targetInfluencerId,
+        engagementRate: Number(erValue.toFixed(2)),
+        followersCount: followers > 0 ? followers : undefined,
+        commercialFee: commFee > 0 ? commFee : undefined,
+        avgViews: committedViews > 0 ? committedViews : undefined,
+        avgLikes: effectiveManual.avgLikes > 0 ? effectiveManual.avgLikes : (autoResult?.avgLikes ?? undefined),
+        avgComments: effectiveManual.avgComments > 0 ? effectiveManual.avgComments : (autoResult?.avgComments ?? undefined),
+        postsCount: isManual
+          ? (manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount)
+          : (autoResult?.postsCount ?? undefined),
+        instagramHandle: handle || undefined,
+        campaignMapperId: selectedCampaignId || undefined,
+        source: isManual ? 'MANUAL_CALCULATOR' : (autoResult?.source || 'AUTO_FETCH'),
+        rawResponse: isManual ? { tableData: manualRows, summaryData } : { autoResult },
+      });
+
+      showSuccess(
+        res.message ||
+          `Engagement rate of ${erValue.toFixed(2)}% successfully assigned to ${selectedInfluencer?.name || 'influencer'}!`,
+      );
+      setAssignDialogOpen(false);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign ER value.');
+    }
+  };
+
   // ---------------------------------------------------------------------------
   // Render Helpers
   // ---------------------------------------------------------------------------
@@ -708,9 +826,103 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               border: `1px solid ${theme.palette.tokens.divider}`,
             }}
           >
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-              Influencer & Deal Parameters
-            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                mb: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Influencer & Deal Parameters
+                </Typography>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Select an influencer from your roster to auto-fill details, or input parameters manually.
+                </Typography>
+              </Box>
+
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<PersonAddAlt1RoundedIcon />}
+                onClick={() => handleOpenAssignDialog('manual')}
+                disabled={effectiveManual.erPercent <= 0}
+                sx={{ height: 32 }}
+              >
+                Assign ER to Influencer
+              </Button>
+            </Box>
+
+            {/* Roster Autocomplete & Campaign Selector Row */}
+            <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  options={influencersList}
+                  getOptionLabel={(option) =>
+                    option.instagram ? `${option.name} (@${option.instagram})` : option.name
+                  }
+                  value={selectedInfluencer}
+                  onChange={(_, newValue) => {
+                    setSelectedInfluencerId(newValue?.id || '');
+                    setSelectedCampaignId('');
+                  }}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Influencer from Roster (Optional)"
+                      placeholder="Search by name or Instagram handle..."
+                      size="small"
+                      helperText={
+                        selectedInfluencer
+                          ? `Roster match: ${selectedInfluencer.name} • ${selectedInfluencer.followers ? `${selectedInfluencer.followers.toLocaleString()} followers` : 'Followers not set'}`
+                          : 'Optional — pick an existing influencer to assign this calculation to'
+                      }
+                      slotProps={{
+                        input: {
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <InputAdornment position="start">
+                                <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                              </InputAdornment>
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        },
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <FormControl size="small" fullWidth disabled={campaignsList.length === 0}>
+                  <InputLabel id="param-campaign-select-label">Assign to Campaign (Optional Pre-Eval)</InputLabel>
+                  <Select
+                    labelId="param-campaign-select-label"
+                    label="Assign to Campaign (Optional Pre-Eval)"
+                    value={selectedCampaignId}
+                    onChange={(e) => setSelectedCampaignId(e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>None (Save to Influencer Profile Only)</em>
+                    </MenuItem>
+                    {campaignsList.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+
+            <Divider sx={{ mb: 2.5 }} />
 
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 4 }}>
@@ -1547,6 +1759,15 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     >
                       Load into Manual Calc
                     </Button>
+
+                    <Button
+                      variant="contained"
+                      startIcon={<PersonAddAlt1RoundedIcon />}
+                      onClick={() => handleOpenAssignDialog('auto')}
+                      sx={{ height: 40 }}
+                    >
+                      Assign to Influencer
+                    </Button>
                   </Box>
                 </Paper>
               )}
@@ -1892,6 +2113,187 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
             disabled={parseNumberList(bulkInputText).length === 0}
           >
             Apply to Table
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* ASSIGN ER TO INFLUENCER DIALOG */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.accentBg,
+                color: theme.palette.tokens.accentText,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <PersonAddAlt1RoundedIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Assign Engagement Rate to Influencer
+              </Typography>
+              <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                Save calculated ER metrics to influencer profile and active campaign pre-evaluations.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
+            {/* Target Influencer Selection */}
+            <Autocomplete
+              options={influencersList}
+              getOptionLabel={(option) =>
+                option.instagram ? `${option.name} (@${option.instagram})` : option.name
+              }
+              value={selectedInfluencer}
+              onChange={(_, newValue) => {
+                setSelectedInfluencerId(newValue?.id || '');
+                setSelectedCampaignId('');
+              }}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Target Influencer *"
+                  placeholder="Search influencer roster..."
+                  size="small"
+                  helperText={
+                    selectedInfluencer
+                      ? `Selected: ${selectedInfluencer.name} (${selectedInfluencer.followers?.toLocaleString() || 0} followers)`
+                      : 'Choose an influencer from your roster to assign the ER value to'
+                  }
+                />
+              )}
+            />
+
+            {/* Campaign Selection (Optional) */}
+            {campaignsList.length > 0 && (
+              <FormControl size="small" fullWidth>
+                <InputLabel id="dialog-campaign-select-label">Assign to Campaign (Optional Pre-Evaluation)</InputLabel>
+                <Select
+                  labelId="dialog-campaign-select-label"
+                  label="Assign to Campaign (Optional Pre-Evaluation)"
+                  value={selectedCampaignId}
+                  onChange={(e) => setSelectedCampaignId(e.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>None (Save to Influencer Profile Only)</em>
+                  </MenuItem>
+                  {campaignsList.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {/* Metric Summary Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                border: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Metrics To Be Saved & Assigned
+              </Typography>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    Engagement Rate (ER%)
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}>
+                    {assigningSource === 'manual'
+                      ? `${effectiveManual.erPercent.toFixed(2)}%`
+                      : `${(autoResult?.engagementRate || 0).toFixed(2)}%`}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    Committed Views (Median)
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.tokens.purpleText }}>
+                    {assigningSource === 'manual'
+                      ? `${effectiveManual.committedViews.toLocaleString()} views`
+                      : `${(autoCommittedViews || 0).toLocaleString()} views`}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    Followers Count
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                    {assigningSource === 'manual'
+                      ? manualFollowersNum > 0
+                        ? manualFollowersNum.toLocaleString()
+                        : 'Not specified'
+                      : autoResult?.followersCount
+                        ? autoResult.followersCount.toLocaleString()
+                        : manualFollowersNum > 0
+                          ? manualFollowersNum.toLocaleString()
+                          : 'Not specified'}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    Commercial Fee
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                    {assigningSource === 'manual'
+                      ? manualCommercialFeeNum > 0
+                        ? `₹${manualCommercialFeeNum.toLocaleString()}`
+                        : 'Not specified'
+                      : autoCommercialFeeNum > 0
+                        ? `₹${autoCommercialFeeNum.toLocaleString()}`
+                        : manualCommercialFeeNum > 0
+                          ? `₹${manualCommercialFeeNum.toLocaleString()}`
+                          : 'Not specified'}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setAssignDialogOpen(false)} disabled={assignERMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAssignToInfluencer}
+            disabled={!selectedInfluencerId || assignERMutation.isPending}
+            startIcon={assignERMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <CheckCircleRoundedIcon />}
+          >
+            {assignERMutation.isPending ? 'Assigning...' : 'Confirm & Assign ER'}
           </Button>
         </DialogActions>
       </Dialog>

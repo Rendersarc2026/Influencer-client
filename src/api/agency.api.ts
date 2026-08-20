@@ -25,6 +25,9 @@ import {
   UserResponse,
   UserListQuery,
   PaginatedResult,
+  AssignERToInfluencerRequest,
+  AssignERResponse,
+  InfluencerEngagementResponse,
 } from '@contracts';
 
 // -------------------------------------------------------------
@@ -567,3 +570,45 @@ export function useCampaignReports(campaignIds: Array<string>) {
     isError: query.isError,
   };
 }
+
+// -------------------------------------------------------------
+// 7. Influencer Engagement & ER Calculator
+// -------------------------------------------------------------
+
+export function useAssignERToInfluencer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: AssignERToInfluencerRequest) => {
+      const response = await apiClient.post<AssignERResponse>('/er-calculator/assign', data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'mappers'] });
+      if (data.engagement?.influencerId) {
+        queryClient.invalidateQueries({
+          queryKey: ['agency', 'influencers', data.engagement.influencerId, 'engagement'],
+        });
+      }
+    },
+  });
+}
+
+export function useInfluencerEngagement(influencerId?: string) {
+  return useQuery<{
+    latest: InfluencerEngagementResponse | null;
+    history: InfluencerEngagementResponse[];
+  } | null>({
+    queryKey: ['agency', 'influencers', influencerId, 'engagement'] as const,
+    queryFn: async () => {
+      if (!influencerId) return null;
+      const response = await apiClient.get<{
+        latest: InfluencerEngagementResponse | null;
+        history: InfluencerEngagementResponse[];
+      }>(`/agency/influencers/${influencerId}/engagement`);
+      return response.data;
+    },
+    enabled: Boolean(influencerId),
+  });
+}
+

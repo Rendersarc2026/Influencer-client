@@ -64,7 +64,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         name: explicitUser.name,
         email: explicitUser.email || authUser?.email,
         roleCode: explicitUser.roleCode || authRoleCode || undefined,
-        avatarUrl: explicitUser.avatarUrl || authUser?.profile?.avatarUrl,
+        avatarUrl: explicitUser.avatarUrl || authUser?.profile?.avatarUrl || undefined,
       };
     }
     const defaultRoleName =
@@ -79,7 +79,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       name: authUser?.profile?.fullName || explicitUser?.name || defaultRoleName,
       email: authUser?.email || explicitUser?.email,
       roleCode: authRoleCode || explicitUser?.roleCode || undefined,
-      avatarUrl: authUser?.profile?.avatarUrl || explicitUser?.avatarUrl,
+      avatarUrl: authUser?.profile?.avatarUrl || explicitUser?.avatarUrl || undefined,
     };
   }, [explicitUser, authUser, authRoleCode]);
 
@@ -134,9 +134,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   const handleConfirmLogout = () => {
     setLogoutConfirmOpen(false);
-    if (onLogout) {
-      onLogout();
-    }
+    effectiveLogout();
   };
 
   return (

@@ -51,3 +51,69 @@ export const CalculateERResponseSchema = z.object({
   posts: z.array(AnalyzedPostSchema),
 });
 export type CalculateERResponse = z.infer<typeof CalculateERResponseSchema>;
+
+/**
+ * Request schema for assigning calculated engagement rate & metrics to an influencer.
+ */
+export const AssignERToInfluencerRequestSchema = z.object({
+  influencerId: z.string().uuid().optional(),
+  engagementRate: z.number().min(0).max(1000),
+  followersCount: z.number().int().nonnegative().max(2_147_483_647).nullable().optional(),
+  followingCount: z.number().int().nonnegative().max(2_147_483_647).nullable().optional(),
+  postsCount: z.number().int().nonnegative().max(2_147_483_647).nullable().optional(),
+  avgLikes: z.number().int().nonnegative().max(2_147_483_647).nullable().optional(),
+  avgComments: z.number().int().nonnegative().max(2_147_483_647).nullable().optional(),
+  avgViews: z.number().int().nonnegative().max(2_147_483_647).nullable().optional(),
+  instagramHandle: safeText(200).nullable().optional(),
+  commercialFee: z.number().finite().nonnegative().max(9_999_999_999).nullable().optional(),
+  campaignMapperId: z.string().uuid().nullable().optional(),
+  source: safeText(50).optional(),
+  rawResponse: z.unknown().optional(),
+});
+export type AssignERToInfluencerRequest = z.infer<typeof AssignERToInfluencerRequestSchema>;
+
+export const InfluencerEngagementResponseSchema = z.object({
+  id: z.string().uuid(),
+  influencerId: z.string().uuid(),
+  userId: z.string().uuid().nullable().optional(),
+  instagramHandle: z.string().nullable().optional(),
+  followersCount: z.number().nullable().optional(),
+  followingCount: z.number().nullable().optional(),
+  postsCount: z.number().nullable().optional(),
+  avgLikes: z.number().nullable().optional(),
+  avgComments: z.number().nullable().optional(),
+  avgViews: z.number().nullable().optional(),
+  engagementRate: z.number(),
+  source: z.string(),
+  rawResponse: z.unknown().optional(),
+  fetchedAt: z.date().or(z.string()),
+  isActive: z.boolean(),
+  createdOn: z.date().or(z.string()),
+  updatedOn: z.date().or(z.string()).optional(),
+});
+export type InfluencerEngagementResponse = z.infer<typeof InfluencerEngagementResponseSchema>;
+
+export const AssignERResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  engagement: InfluencerEngagementResponseSchema,
+  influencer: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      followers: z.number().nullable().optional(),
+      instagram: z.string().nullable().optional(),
+      avgCommercialMin: z.number().nullable().optional(),
+      avgCommercialMax: z.number().nullable().optional(),
+    })
+    .optional(),
+  mapper: z
+    .object({
+      id: z.string().uuid(),
+      preEvalEr: z.number().nullable().optional(),
+      committedViews: z.number().nullable().optional(),
+    })
+    .optional(),
+});
+export type AssignERResponse = z.infer<typeof AssignERResponseSchema>;
+
