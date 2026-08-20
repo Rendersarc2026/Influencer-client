@@ -1,5 +1,5 @@
 import React, { ReactNode, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { SidebarRail, TopBar } from '@organisms';
@@ -44,8 +44,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onBack,
   backLabel,
   navItems = [],
-  activePath = '',
-  user = { name: 'User' },
+  activePath: explicitActivePath,
+  user: explicitUser,
   onNavigate,
   onLogout,
   onSearchClick,
@@ -55,13 +55,42 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { roleCode: authRoleCode } = useAuth();
+  const location = useLocation();
+  const { user: authUser, roleCode: authRoleCode, logout: authLogout } = useAuth();
+
+  const user = useMemo(() => {
+    if (explicitUser && explicitUser.name && explicitUser.name !== 'User') {
+      return {
+        name: explicitUser.name,
+        email: explicitUser.email || authUser?.email,
+        roleCode: explicitUser.roleCode || authRoleCode || undefined,
+        avatarUrl: explicitUser.avatarUrl || authUser?.profile?.avatarUrl,
+      };
+    }
+    const defaultRoleName =
+      authRoleCode === 'AGENCY'
+        ? 'Agency Manager'
+        : authRoleCode === 'BRAND'
+        ? 'Brand Manager'
+        : authRoleCode === 'INFLUENCER'
+        ? 'Creator'
+        : 'User';
+    return {
+      name: authUser?.profile?.fullName || explicitUser?.name || defaultRoleName,
+      email: authUser?.email || explicitUser?.email,
+      roleCode: authRoleCode || explicitUser?.roleCode || undefined,
+      avatarUrl: authUser?.profile?.avatarUrl || explicitUser?.avatarUrl,
+    };
+  }, [explicitUser, authUser, authRoleCode]);
+
+  const activePath = explicitActivePath || location.pathname;
   const activeRoleCode = (user?.roleCode || authRoleCode) as RoleCode | undefined;
   const { data: dbNavItems, isLoading: isNavLoading } = useNavigation(activeRoleCode);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
+  const effectiveLogout = onLogout ?? authLogout;
 
   const { data: chats = [] } = useChats({ enabled: Boolean(user?.email) });
   const totalUnreadMessages = useMemo(
