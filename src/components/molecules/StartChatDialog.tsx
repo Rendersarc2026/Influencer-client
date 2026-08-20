@@ -210,6 +210,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 renderOption={(props, option) => (
                   <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
                     <Avatar
+                      src={safeImageUrl(option.avatarUrl)}
                       sx={{
                         width: 32,
                         height: 32,
