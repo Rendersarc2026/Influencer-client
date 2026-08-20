@@ -32,6 +32,7 @@ export const InfluencerResponseSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   email: z.string().nullable().optional(),
+  avatarUrl: z.string().nullable(),
   category: z.string().nullable(),
   location: z.string().nullable(),
   regions: z.array(z.string()).default([]),

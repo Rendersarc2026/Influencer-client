@@ -10,6 +10,8 @@ import TextField from '@mui/material/TextField';
 import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
+import Tooltip from '@mui/material/Tooltip';
+
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
@@ -18,6 +20,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import ImageRoundedIcon from '@mui/icons-material/ImageRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -33,12 +36,14 @@ import {
   useAgencyInfluencers,
   useAgencyBrands,
   useAgencyUsers,
+  uploadChatAttachment,
   getSocket,
   joinChat,
   leaveChat,
   sendTyping,
   sendStopTyping,
 } from '@api';
+
 import {
   ChatResponse,
   ChatTypeCode,
@@ -51,7 +56,24 @@ import {
 import { useAuth, useToast, useNotifications } from '@hooks';
 import { safeUrl, safeImageUrl } from '@utils';
 
+const isImageAttachmentUrl = (url?: string | null): boolean => {
+  if (!url) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return (
+    clean.endsWith('.jpg') ||
+    clean.endsWith('.jpeg') ||
+    clean.endsWith('.png') ||
+    clean.endsWith('.webp') ||
+    clean.endsWith('.gif') ||
+    clean.endsWith('.svg') ||
+    clean.includes('/storage/v1/object/public/') ||
+    clean.includes('/chat/') ||
+    clean.includes('/uploads/')
+  );
+};
+
 export const ChatOrganism: React.FC = () => {
+
   const theme = useTheme();
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -95,9 +117,14 @@ export const ChatOrganism: React.FC = () => {
   const [searchFilter, setSearchFilter] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [attachmentInput, setAttachmentInput] = useState('');
+  const [attachmentMeta, setAttachmentMeta] = useState<{ name: string; size: string } | null>(null);
   const [showAttachmentField, setShowAttachmentField] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const chatFileInputRef = useRef<HTMLInputElement | null>(null);
   const [partnerTyping, setPartnerTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+
 
   // New Chat Dialog state
   const [startChatOpen, setStartChatOpen] = useState(false);
@@ -361,9 +388,72 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !effectiveChatId) return;
+
+    // Strict validation: < 5MB
+    const MAX_CHAT_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    if (file.size === 0) {
+      showError('Selected file is empty.');
+      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > MAX_CHAT_IMAGE_SIZE) {
+      showError('Image size exceeds 5MB limit. Please upload an image smaller than 5MB.');
+      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+      return;
+    }
+
+    const allowed = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml',
+    ];
+    if (!allowed.includes(file.type.toLowerCase())) {
+      showError('Unsupported file type. Allowed image formats are JPEG, PNG, WEBP, GIF, and SVG.');
+      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+      return;
+    }
+
+    try {
+      setUploadingAttachment(true);
+      const res = await uploadChatAttachment(effectiveChatId, file);
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      setAttachmentMeta({ name: file.name, size: `${sizeMb} MB` });
+      setAttachmentInput(res.url);
+      setShowAttachmentField(true);
+      showSuccess('Image uploaded and attached successfully.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg =
+        errorObj?.response?.data?.message ||
+        errorObj?.message ||
+        'Failed to upload image.';
+      showError(msg);
+    } finally {
+      setUploadingAttachment(false);
+      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!messageInput.trim() || !effectiveChatId || sendMessageMutation.isPending) return;
+    const trimmedBody = messageInput.trim();
+    const trimmedAttachment = attachmentInput.trim();
+    if (
+      (!trimmedBody && !trimmedAttachment) ||
+      !effectiveChatId ||
+      sendMessageMutation.isPending ||
+      uploadingAttachment
+    ) {
+      return;
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -371,21 +461,26 @@ export const ChatOrganism: React.FC = () => {
     sendStopTyping(effectiveChatId);
 
     const payload = {
-      body: messageInput.trim(),
-      attachmentUrl: attachmentInput.trim() || undefined,
+      body: trimmedBody || (trimmedAttachment ? '📷 [Image attachment]' : ''),
+      attachmentUrl: trimmedAttachment || undefined,
     };
 
     setMessageInput('');
     setAttachmentInput('');
+    setAttachmentMeta(null);
     setShowAttachmentField(false);
+
 
     try {
       await sendMessageMutation.mutateAsync(payload);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to send message.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to send message.',
+      );
     }
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1179,44 +1274,83 @@ export const ChatOrganism: React.FC = () => {
                                 {msg.body}
                               </Typography>
 
-                              {/* Message attachment link if present */}
+                              {/* Message attachment link or inline image if present */}
                               {safeUrl(msg.attachmentUrl) && (
-                                <Box
-                                  component="a"
-                                  href={safeUrl(msg.attachmentUrl) as string}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  sx={{
-                                    mt: 1,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 0.75,
-                                    px: 1.25,
-                                    py: 0.75,
-                                    borderRadius: `${theme.customRadii.inner - 4}px`,
-                                    backgroundColor: isMine
-                                      ? 'rgba(255, 255, 255, 0.12)'
-                                      : theme.palette.tokens.surface,
-                                    border: `1px solid ${
-                                      isMine ? 'rgba(255, 255, 255, 0.2)' : theme.palette.tokens.divider
-                                    }`,
-                                    color: isMine ? '#FFFFFF' : theme.palette.tokens.accentText,
-                                    textDecoration: 'none',
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    transition: 'all 0.15s ease',
-                                    '&:hover': {
+                                isImageAttachmentUrl(msg.attachmentUrl) ? (
+                                  <Box
+                                    component="a"
+                                    href={safeUrl(msg.attachmentUrl) as string}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      mt: 1,
+                                      display: 'block',
+                                      borderRadius: `${theme.customRadii.inner - 4}px`,
+                                      overflow: 'hidden',
+                                      border: `1px solid ${
+                                        isMine ? 'rgba(255, 255, 255, 0.2)' : theme.palette.tokens.divider
+                                      }`,
+                                      maxHeight: 240,
+                                      maxWidth: 320,
+                                      backgroundColor: isMine ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.02)',
+                                    }}
+                                  >
+                                    <Box
+                                      component="img"
+                                      src={safeImageUrl(msg.attachmentUrl)}
+                                      alt="Attachment"
+                                      sx={{
+                                        width: '100%',
+                                        height: '100%',
+                                        maxHeight: 240,
+                                        objectFit: 'cover',
+                                        display: 'block',
+                                        transition: 'transform 0.2s ease',
+                                        '&:hover': {
+                                          transform: 'scale(1.02)',
+                                        },
+                                      }}
+                                    />
+                                  </Box>
+                                ) : (
+                                  <Box
+                                    component="a"
+                                    href={safeUrl(msg.attachmentUrl) as string}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      mt: 1,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 0.75,
+                                      px: 1.25,
+                                      py: 0.75,
+                                      borderRadius: `${theme.customRadii.inner - 4}px`,
                                       backgroundColor: isMine
-                                        ? 'rgba(255, 255, 255, 0.22)'
-                                        : theme.palette.tokens.fieldBg,
-                                    },
-                                  }}
-                                >
-                                  <AttachFileRoundedIcon sx={{ fontSize: '14px' }} />
-                                  <span>View Attachment</span>
-                                  <OpenInNewRoundedIcon sx={{ fontSize: '12px', opacity: 0.8 }} />
-                                </Box>
+                                        ? 'rgba(255, 255, 255, 0.12)'
+                                        : theme.palette.tokens.surface,
+                                      border: `1px solid ${
+                                        isMine ? 'rgba(255, 255, 255, 0.2)' : theme.palette.tokens.divider
+                                      }`,
+                                      color: isMine ? '#FFFFFF' : theme.palette.tokens.accentText,
+                                      textDecoration: 'none',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      transition: 'all 0.15s ease',
+                                      '&:hover': {
+                                        backgroundColor: isMine
+                                          ? 'rgba(255, 255, 255, 0.22)'
+                                          : theme.palette.tokens.fieldBg,
+                                      },
+                                    }}
+                                  >
+                                    <AttachFileRoundedIcon sx={{ fontSize: '14px' }} />
+                                    <span>View Attachment</span>
+                                    <OpenInNewRoundedIcon sx={{ fontSize: '12px', opacity: 0.8 }} />
+                                  </Box>
+                                )
                               )}
+
 
                               {/* Message Footer: Timestamp only (Clean & Minimal) */}
                               <Box
@@ -1262,8 +1396,102 @@ export const ChatOrganism: React.FC = () => {
                     gap: 1,
                   }}
                 >
-                  {/* Attachment input bar if toggled */}
-                  {showAttachmentField && (
+                  {/* Attachment Preview Banner if an attachment is selected/uploaded */}
+                  {attachmentInput.trim() && (
+                    <Box
+                      sx={{
+                        p: 1.25,
+                        px: 1.75,
+                        borderRadius: `${theme.customRadii.inner}px`,
+                        backgroundColor: theme.palette.tokens.fieldBg,
+                        border: `1px solid ${theme.palette.tokens.accent}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1.5,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                        {isImageAttachmentUrl(attachmentInput) ? (
+                          <Box
+                            component="img"
+                            src={safeImageUrl(attachmentInput)}
+                            alt="Attachment preview"
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: '8px',
+                              objectFit: 'cover',
+                              border: `1px solid ${theme.palette.tokens.divider}`,
+                              flexShrink: 0,
+                            }}
+                          />
+                        ) : (
+                          <AttachFileRoundedIcon
+                            fontSize="small"
+                            sx={{ color: theme.palette.tokens.accentText, flexShrink: 0 }}
+                          />
+                        )}
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              color: theme.palette.tokens.textPrimary,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: { xs: 200, sm: 380 },
+                            }}
+                          >
+                            {attachmentMeta?.name ||
+                              (isImageAttachmentUrl(attachmentInput)
+                                ? 'Image attachment'
+                                : attachmentInput)}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: theme.palette.tokens.textSecondary,
+                              fontSize: '11px',
+                              display: 'block',
+                            }}
+                          >
+                            {attachmentMeta?.size
+                              ? `${attachmentMeta.size} • Ready to send (< 5MB)`
+                              : 'Ready to send with message'}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setAttachmentInput('');
+                          setAttachmentMeta(null);
+                          setShowAttachmentField(false);
+                        }}
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          p: 0,
+                          backgroundColor: 'transparent',
+                          color: theme.palette.tokens.textSecondary,
+                          '&:hover': {
+                            backgroundColor: theme.palette.tokens.divider,
+                            color: theme.palette.tokens.negative,
+                          },
+                        }}
+                      >
+                        <CloseRoundedIcon sx={{ fontSize: '18px' }} />
+                      </IconButton>
+                    </Box>
+                  )}
+
+
+                  {/* Manual URL attachment input bar if toggled and no image uploaded */}
+                  {showAttachmentField && !attachmentInput.trim() && (
                     <Box
                       sx={{
                         p: 1,
@@ -1321,7 +1549,7 @@ export const ChatOrganism: React.FC = () => {
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 1,
+                      gap: 0.75,
                       p: 0.75,
                       pl: 1,
                       borderRadius: `${theme.customRadii.pill}px`,
@@ -1329,38 +1557,86 @@ export const ChatOrganism: React.FC = () => {
                       border: `1px solid ${theme.palette.tokens.divider}`,
                     }}
                   >
-                    <IconButton
-                      size="small"
-                      onClick={() => setShowAttachmentField(!showAttachmentField)}
-                      sx={{
-                        width: 36,
-                        height: 36,
-                        backgroundColor: showAttachmentField
-                          ? theme.palette.tokens.accentBg
-                          : 'transparent',
-                        color: showAttachmentField
-                          ? theme.palette.tokens.accentText
-                          : theme.palette.tokens.textSecondary,
-                        borderRadius: `${theme.customRadii.pill}px`,
-                        transition: 'all 0.15s ease',
-                        '&:hover': {
-                          backgroundColor: theme.palette.tokens.divider,
-                        },
-                      }}
-                    >
-                      <AttachFileRoundedIcon fontSize="small" />
-                    </IconButton>
+                    {/* Hidden Native File Input for Direct Image Upload */}
+                    <input
+                      type="file"
+                      ref={chatFileInputRef}
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                      onChange={handleImageUpload}
+                      style={{ display: 'none' }}
+                    />
+
+                    {/* Direct Image Upload Button */}
+                    <Tooltip title="Upload Image (< 5MB)">
+                      <IconButton
+
+                        size="small"
+                        onClick={() => chatFileInputRef.current?.click()}
+                        disabled={uploadingAttachment || sendMessageMutation.isPending}
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          backgroundColor: uploadingAttachment
+                            ? theme.palette.tokens.accentBg
+                            : 'transparent',
+                          color: uploadingAttachment
+                            ? theme.palette.tokens.accentText
+                            : theme.palette.tokens.textSecondary,
+                          borderRadius: `${theme.customRadii.pill}px`,
+                          transition: 'all 0.15s ease',
+                          '&:hover': {
+                            backgroundColor: theme.palette.tokens.divider,
+                            color: theme.palette.tokens.accentText,
+                          },
+                        }}
+                      >
+                        {uploadingAttachment ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : (
+                          <ImageRoundedIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+
+                    {/* Attach URL Button */}
+                    <Tooltip title="Attach Link / URL">
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowAttachmentField(!showAttachmentField)}
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          backgroundColor: showAttachmentField
+                            ? theme.palette.tokens.accentBg
+                            : 'transparent',
+                          color: showAttachmentField
+                            ? theme.palette.tokens.accentText
+                            : theme.palette.tokens.textSecondary,
+                          borderRadius: `${theme.customRadii.pill}px`,
+                          transition: 'all 0.15s ease',
+                          '&:hover': {
+                            backgroundColor: theme.palette.tokens.divider,
+                          },
+                        }}
+                      >
+                        <AttachFileRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
 
                     <TextField
                       size="small"
-                      placeholder="Type your message... (Press Enter to send)"
+                      placeholder={
+                        uploadingAttachment
+                          ? 'Uploading image to S3...'
+                          : 'Type your message... (Press Enter to send)'
+                      }
                       value={messageInput}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       variant="standard"
                       InputProps={{ disableUnderline: true }}
                       fullWidth
-                      disabled={sendMessageMutation.isPending}
+                      disabled={sendMessageMutation.isPending || uploadingAttachment}
                       sx={{
                         '& input': {
                           fontSize: '14px',
@@ -1372,22 +1648,29 @@ export const ChatOrganism: React.FC = () => {
 
                     <IconButton
                       type="submit"
-                      disabled={!messageInput.trim() || sendMessageMutation.isPending}
+                      disabled={
+                        (!messageInput.trim() && !attachmentInput.trim()) ||
+                        sendMessageMutation.isPending ||
+                        uploadingAttachment
+                      }
                       sx={{
                         width: 36,
                         height: 36,
                         borderRadius: `${theme.customRadii.pill}px`,
-                        backgroundColor: messageInput.trim()
-                          ? theme.palette.tokens.accent
-                          : theme.palette.tokens.divider,
-                        color: messageInput.trim()
-                          ? '#FFFFFF'
-                          : theme.palette.tokens.textSecondary,
+                        backgroundColor:
+                          messageInput.trim() || attachmentInput.trim()
+                            ? theme.palette.tokens.accent
+                            : theme.palette.tokens.divider,
+                        color:
+                          messageInput.trim() || attachmentInput.trim()
+                            ? '#FFFFFF'
+                            : theme.palette.tokens.textSecondary,
                         transition: 'all 0.15s ease',
                         '&:hover': {
-                          backgroundColor: messageInput.trim()
-                            ? theme.palette.tokens.accentHover
-                            : theme.palette.tokens.divider,
+                          backgroundColor:
+                            messageInput.trim() || attachmentInput.trim()
+                              ? theme.palette.tokens.accentHover
+                              : theme.palette.tokens.divider,
                         },
                         '&.Mui-disabled': {
                           backgroundColor: theme.palette.tokens.divider,
@@ -1400,6 +1683,7 @@ export const ChatOrganism: React.FC = () => {
                     </IconButton>
                   </Box>
                 </Box>
+
               </>
             ) : (
               <Box

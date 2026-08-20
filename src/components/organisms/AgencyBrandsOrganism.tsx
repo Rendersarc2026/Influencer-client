@@ -84,6 +84,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
       header: 'Brand Name',
       type: 'entity',
       accessor: 'name',
+      iconAccessor: (row) => row.logoUrl,
       subAccessor: (row) => row.industry || 'General Industry',
     },
     {

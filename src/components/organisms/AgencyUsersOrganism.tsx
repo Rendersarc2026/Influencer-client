@@ -100,6 +100,7 @@ export const AgencyUsersOrganism: React.FC = () => {
       header: 'User Name',
       type: 'entity',
       accessor: (row) => row.profile?.fullName || row.profile?.displayName || row.email,
+      iconAccessor: (row) => row.profile?.avatarUrl ?? row.influencer?.avatarUrl ?? null,
       subAccessor: (row) => row.email,
     },
     {

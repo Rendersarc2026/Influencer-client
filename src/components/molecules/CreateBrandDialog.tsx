@@ -1,20 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Tooltip from '@mui/material/Tooltip';
+import Avatar from '@mui/material/Avatar';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
+import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { useCategories, useLocations } from '@api';
+import { useCategories, useLocations, uploadImage } from '@api';
 import { CreateBrandRequest, UpdateBrandRequest, BrandResponse, CategoryTypeCode } from '@contracts';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, safeImageUrl } from '@utils';
+
 
 export interface CreateBrandDialogProps {
   open: boolean;
@@ -78,11 +84,48 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   const [bio, setBio] = useState('');
   const [isActive, setIsActive] = useState<boolean>(true);
 
+  const brandLogoFileRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [websiteError, setWebsiteError] = useState('');
   const [logoUrlError, setLogoUrlError] = useState('');
   const [error, setError] = useState('');
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size === 0) {
+      setLogoUrlError('Selected file is empty.');
+      if (brandLogoFileRef.current) brandLogoFileRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoUrlError('Image size exceeds 5MB limit. Please upload an image smaller than 5MB.');
+      if (brandLogoFileRef.current) brandLogoFileRef.current.value = '';
+      return;
+    }
+
+
+    try {
+      setUploadingLogo(true);
+      setLogoUrlError('');
+      const res = await uploadImage(file, 'brands');
+      setLogoUrl(res.url);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      setLogoUrlError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to upload brand logo.',
+      );
+    } finally {
+      setUploadingLogo(false);
+      if (brandLogoFileRef.current) brandLogoFileRef.current.value = '';
+    }
+  };
+
 
   const validateEmail = (val: string) => {
     if (!val) return '';
@@ -373,26 +416,65 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 sx={{ flex: 1 }}
               />
 
-              <TextField
-                label="Logo / Avatar URL"
-                value={logoUrl}
-                onChange={(e) => {
-                  setLogoUrl(e.target.value);
-                  if (logoUrlError) setLogoUrlError('');
-                }}
-                onBlur={() => {
-                  if (logoUrl.trim()) {
-                    setLogoUrlError(validateHttpUrl(logoUrl));
-                  }
-                }}
-                error={Boolean(logoUrlError)}
-                helperText={logoUrlError || 'Public image URL for brand logo'}
-                placeholder="https://brand.com/logo.png"
-                fullWidth
-                disabled={busy}
-                sx={{ flex: 1 }}
-              />
+              <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 0.5 }}>
+                <input
+                  type="file"
+                  ref={brandLogoFileRef}
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                  onChange={handleLogoUpload}
+                  style={{ display: 'none' }}
+                />
+                <TextField
+                  label="Logo / Avatar URL"
+                  value={logoUrl}
+                  onChange={(e) => {
+                    setLogoUrl(e.target.value);
+                    if (logoUrlError) setLogoUrlError('');
+                  }}
+                  onBlur={() => {
+                    if (logoUrl.trim()) {
+                      setLogoUrlError(validateHttpUrl(logoUrl));
+                    }
+                  }}
+                  error={Boolean(logoUrlError)}
+                  helperText={logoUrlError || 'Public image URL or upload directly to S3'}
+                  placeholder="https://brand.com/logo.png"
+                  fullWidth
+                  disabled={busy || uploadingLogo}
+                  InputProps={{
+                    startAdornment: logoUrl ? (
+                      <InputAdornment position="start">
+                        <Avatar
+                          src={safeImageUrl(logoUrl)}
+                          sx={{ width: 24, height: 24, borderRadius: '4px' }}
+                        >
+                          B
+                        </Avatar>
+                      </InputAdornment>
+                    ) : undefined,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title="Upload Logo Image">
+                          <IconButton
+                            size="small"
+                            onClick={() => brandLogoFileRef.current?.click()}
+                            disabled={busy || uploadingLogo}
+                            edge="end"
+                          >
+                            {uploadingLogo ? (
+                              <CircularProgress size={18} />
+                            ) : (
+                              <PhotoCameraRoundedIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
             </Box>
+
 
             <TextField
               label="Bio & Brand Overview"

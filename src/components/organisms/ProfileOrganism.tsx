@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -10,13 +10,21 @@ import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
-import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
-import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
+import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
+
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
-import { apiClient, useCategories, useLocations, useBrandProfile, useUpdateBrandProfile } from '@api';
+import {
+  apiClient,
+  useCategories,
+  useLocations,
+  useBrandProfile,
+  useUpdateBrandProfile,
+  uploadAvatar,
+} from '@api';
+
 import {
   UpdateProfileSchema,
   UpdateProfileRequest,
@@ -87,6 +95,65 @@ export const ProfileOrganism: React.FC = () => {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate size <= 5MB
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      showError('Image size exceeds 5MB limit. Please upload an image smaller than 5MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+
+    // Validate MIME
+    const allowed = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml',
+    ];
+    if (!allowed.includes(file.type.toLowerCase())) {
+      showError('Unsupported file type. Please upload a JPEG, PNG, WEBP, GIF, or SVG image.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    try {
+      setUploadingAvatar(true);
+      const res = await uploadAvatar(file);
+      if (isBrand && res.avatarUrl) {
+        setLogoUrl(res.avatarUrl);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      await queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] });
+      await refetchUser();
+      showSuccess(
+        isBrand
+          ? 'Brand logo uploaded successfully.'
+          : 'Profile picture uploaded successfully.',
+      );
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg =
+        errorObj?.response?.data?.message ||
+        errorObj?.message ||
+        'Failed to upload image. Please try again.';
+      showError(msg);
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
 
   useEffect(() => {
     if (isBrand && brandData) {
@@ -365,55 +432,174 @@ export const ProfileOrganism: React.FC = () => {
             boxShadow: 'none',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {isBrand && (logoUrl || brandData?.logoUrl) ? (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 3,
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              gap: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, minWidth: 0 }}>
+              <Box
+                sx={{
+                  position: 'relative',
+                  cursor: 'pointer',
+                  borderRadius: `${theme.customRadii.card}px`,
+                  flexShrink: 0,
+                  '&:hover .avatar-upload-overlay': {
+                    opacity: 1,
+                  },
+                }}
+                onClick={() => !uploadingAvatar && !fieldsLocked && fileInputRef.current?.click()}
+              >
                 <Avatar
-                  src={safeImageUrl(logoUrl || brandData?.logoUrl)}
-                  alt={displayName || brandData?.name || 'Brand Logo'}
+                  src={safeImageUrl(
+                    isBrand
+                      ? logoUrl || brandData?.logoUrl || user?.profile?.avatarUrl
+                      : user?.profile?.avatarUrl,
+                  )}
+
+                  alt={displayName || brandData?.name || fullName || 'Profile Photo'}
                   sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: `${theme.customRadii.inner}px`,
+                    width: 68,
+                    height: 68,
+                    borderRadius: `${theme.customRadii.card}px`,
                     backgroundColor: theme.palette.tokens.fieldBg,
-                    border: `1px solid ${theme.palette.tokens.divider}`,
-                  }}
-                >
-                  {(displayName || brandData?.name || 'B').charAt(0).toUpperCase()}
-                </Avatar>
-              ) : (
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: `${theme.customRadii.inner}px`,
-                    backgroundColor: theme.palette.tokens.fieldBg,
-                    color: theme.palette.tokens.accent,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    border: `1.5px solid ${theme.palette.tokens.divider}`,
+                    color: theme.palette.tokens.accentText,
+                    fontWeight: 700,
+                    fontSize: '24px',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
                   }}
                 >
                   {isBrand ? (
-                    <BusinessRoundedIcon fontSize="medium" />
+                    (displayName || brandData?.name || fullName || 'B').charAt(0).toUpperCase()
                   ) : (
-                    <PersonOutlineRoundedIcon fontSize="medium" />
+                    (fullName || user?.profile?.fullName || 'U').charAt(0).toUpperCase()
+                  )}
+                </Avatar>
+
+                {/* Hover overlay with camera icon */}
+                <Box
+                  className="avatar-upload-overlay"
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: `${theme.customRadii.card}px`,
+                    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: uploadingAvatar ? 1 : 0,
+                    transition: 'opacity 0.2s ease',
+                    color: '#FFFFFF',
+                  }}
+                >
+                  {uploadingAvatar ? (
+                    <CircularProgress size={22} sx={{ color: '#FFFFFF' }} />
+                  ) : (
+                    <>
+                      <PhotoCameraRoundedIcon sx={{ fontSize: '20px' }} />
+                      <Typography sx={{ fontSize: '10px', fontWeight: 700, mt: 0.25, color: '#FFFFFF' }}>
+                        Change
+                      </Typography>
+                    </>
                   )}
                 </Box>
-              )}
-              <Box>
-                <Typography variant="h2">
-                  {isBrand
-                    ? displayName || brandData?.name || fullName || 'Brand Profile'
-                    : user?.profile?.fullName || 'User Profile'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+              </Box>
+
+              <Box sx={{ minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                  <Typography variant="h2" sx={{ fontSize: '18px', fontWeight: 700 }}>
+                    {isBrand
+                      ? displayName || brandData?.name || fullName || 'Brand Profile'
+                      : fullName || user?.profile?.fullName || 'User Profile'}
+                  </Typography>
+                  <Chip label={roleCode || 'USER'} size="small" />
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: theme.palette.tokens.textSecondary, display: 'block', mb: 1 }}
+                >
                   {brandData?.contactEmail || user?.email}
                 </Typography>
+
+                {/* Upload action button and format tip */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                    onChange={handleAvatarFileChange}
+                    style={{ display: 'none' }}
+                  />
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={
+                      uploadingAvatar ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : (
+                        <PhotoCameraRoundedIcon fontSize="small" />
+                      )
+                    }
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAvatar || fieldsLocked}
+                    sx={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      height: 30,
+                      px: 1.5,
+                      borderRadius: `${theme.customRadii.pill}px`,
+                      borderColor: theme.palette.tokens.divider,
+                      color: theme.palette.tokens.textPrimary,
+                      backgroundColor: theme.palette.tokens.fieldBg,
+                      '&:hover': {
+                        borderColor: theme.palette.tokens.accent,
+                        backgroundColor: theme.palette.tokens.surface,
+                      },
+                    }}
+                  >
+                    {uploadingAvatar
+                      ? 'Uploading...'
+                      : isBrand
+                      ? logoUrl || brandData?.logoUrl
+                        ? 'Change Brand Logo'
+                        : 'Upload Brand Logo'
+                      : user?.profile?.avatarUrl
+                      ? 'Change Picture'
+                      : 'Upload Picture'}
+                  </Button>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}
+                  >
+                    JPG, PNG, WEBP or SVG (Max 5MB)
+
+                  </Typography>
+                </Box>
               </Box>
             </Box>
-            <Chip label={roleCode || 'USER'} size="small" />
+            <Chip
+              label={
+                roleCode === 'INFLUENCER'
+                  ? 'INFLUENCER'
+                  : roleCode === 'BRAND'
+                  ? 'BRAND'
+                  : roleCode === 'AGENCY'
+                  ? 'AGENCY'
+                  : 'USER'
+              }
+              size="small"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            />
           </Box>
+
 
           <SectionHeading
             title={isBrand ? 'Personal & Brand Details' : 'Personal & Workspace Details'}

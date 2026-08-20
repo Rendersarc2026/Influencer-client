@@ -256,6 +256,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       header: 'Influencer',
       type: 'entity',
       accessor: (row) => row.name,
+      iconAccessor: (row) => row.avatarUrl,
       subAccessor: (row) => formatDisplaySocial(row.instagram || row.youtube),
     },
     {
