@@ -12,7 +12,30 @@ import {
   PaginatedResult,
   BrandResponse,
   UpdateBrandRequest,
+  BrandDashboardSummary,
 } from '@contracts';
+
+/**
+ * The home screen's tiles, aggregated in Postgres rather than by counting every
+ * campaign and every assignment the brand has in the browser.
+ */
+/** Shared with the boot-time prefetch, so the key cannot drift from the hook's. */
+export function brandDashboardSummaryQueryOptions() {
+  return {
+    queryKey: ['brand', 'dashboard', 'summary'] as const,
+    queryFn: async () => {
+      const response = await apiClient.get<BrandDashboardSummary>('/brand/dashboard/summary');
+      return response.data;
+    },
+  };
+}
+
+export function useBrandDashboardSummary() {
+  return useQuery<BrandDashboardSummary>({
+    ...brandDashboardSummaryQueryOptions(),
+    staleTime: 1000 * 60,
+  });
+}
 
 /** Shared with the boot-time prefetch, so the key cannot drift from the hook's. */
 export function brandCampaignsQueryOptions(params?: CampaignListQuery) {

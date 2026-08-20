@@ -45,7 +45,6 @@ import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { FilterBar } from '@molecules';
 import {
   useAgencyCampaign,
-  useAgencyBrands,
   useCampaignInfluencers,
   useApproveRate,
   useRequestRevision,
@@ -416,8 +415,6 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const debouncedSearch = useDebounce(search, 300);
 
   const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
-  const { data: brandsData } = useAgencyBrands();
-  const brands = brandsData?.items || [];
   const {
     data: mappersData,
     isLoading: mappersLoading,
@@ -455,7 +452,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const [deleteDialogMapper, setDeleteDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [editCampaignOpen, setEditCampaignOpen] = useState(false);
 
-  const brand = brands.find((b) => b.id === campaign?.brandId);
+  // The campaign row carries its brand's id and name, which is all this screen
+  // shows. It used to fetch the agency's whole brand list to look them up.
+  const brand = campaign?.brandId
+    ? { id: campaign.brandId, name: campaign.brandName ?? '' }
+    : null;
 
   // 0. Handle Update Campaign Details & Status
   const handleEditCampaign = async (data: UpdateCampaignRequest) => {
@@ -648,7 +649,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
       // 3. Export structured multi-sheet Excel workbook
       const brandName =
-        brands.find((b) => b.id === campaign.brandId)?.name || campaign.brandName || 'Brand Partner';
+        campaign.brandName || 'Brand Partner';
 
       await exportCampaignPerformanceReport({
         campaign: {

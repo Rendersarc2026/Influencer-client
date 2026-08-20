@@ -1,6 +1,10 @@
 import { queryClient } from './query.client';
-import { agencyBrandsQueryOptions, agencyCampaignsQueryOptions } from './agency.api';
-import { brandCampaignsQueryOptions, brandProfileQueryOptions } from './brand.api';
+import { agencyCampaignsQueryOptions, agencyDashboardSummaryQueryOptions } from './agency.api';
+import {
+  brandCampaignsQueryOptions,
+  brandDashboardSummaryQueryOptions,
+  brandProfileQueryOptions,
+} from './brand.api';
 
 /**
  * Boot-time data prefetch.
@@ -27,14 +31,15 @@ const FIRST_PAGE = { page: 1, limit: 10 };
 export function prefetchForRoute(pathname: string): void {
   if (pathname.startsWith('/agency')) {
     void queryClient.prefetchQuery(agencyCampaignsQueryOptions(FIRST_PAGE));
-    // AgencyHomeOrganism mounts `useAgencyBrands()` with no params, so the
-    // warmed key has to carry `undefined` too.
-    void queryClient.prefetchQuery(agencyBrandsQueryOptions());
+    // The home screen's tiles come from the summary now; warming the brand
+    // list here fetched rows the screen no longer reads.
+    void queryClient.prefetchQuery(agencyDashboardSummaryQueryOptions());
     return;
   }
 
   if (pathname.startsWith('/brand')) {
     void queryClient.prefetchQuery(brandCampaignsQueryOptions(FIRST_PAGE));
+    void queryClient.prefetchQuery(brandDashboardSummaryQueryOptions());
     void queryClient.prefetchQuery(brandProfileQueryOptions());
   }
 }

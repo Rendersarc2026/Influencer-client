@@ -28,6 +28,7 @@ import {
   useAddInfluencerToCampaign,
   useRemoveInfluencerFromCampaign,
   useAgencyInfluencers,
+  useInfluencerFilterOptions,
   useCreateInfluencer,
   useCategories,
   useLocations,
@@ -165,22 +166,23 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
   });
 
   // The unfiltered set to complement DB categories and build location filter options
-  const { data: allCreatorsData } = useAgencyInfluencers();
-  const allCreators = useMemo(() => allCreatorsData?.items ?? [], [allCreatorsData]);
+  // Distinct values from the database rather than every creator row fetched
+  // and de-duplicated here.
+  const { data: filterOptions } = useInfluencerFilterOptions();
 
   const categoryOptions = useMemo(() => {
     const dbCategoryNames = dbCategories.map((c) => c.name).filter(Boolean);
-    const creatorCategoryNames = allCreators.map((c) => c.category).filter(Boolean) as string[];
+    const creatorCategoryNames = filterOptions?.categories ?? [];
     const combined = [...new Set([...dbCategoryNames, ...creatorCategoryNames])].sort();
     return combined.map((v) => ({ value: v, label: v }));
-  }, [dbCategories, allCreators]);
+  }, [dbCategories, filterOptions]);
 
   const locationOptions = useMemo(() => {
     const dbLocationNames = dbLocations.map((l) => l.name).filter(Boolean);
-    const creatorLocationNames = allCreators.map((c) => c.location).filter(Boolean) as string[];
+    const creatorLocationNames = filterOptions?.locations ?? [];
     const combined = [...new Set([...dbLocationNames, ...creatorLocationNames])].sort();
     return combined.map((v) => ({ value: v, label: v }));
-  }, [dbLocations, allCreators]);
+  }, [dbLocations, filterOptions]);
 
   const handleRemoveCategory = (catToRemove: string) => {
     const next = selectedCategories.filter((c) => c !== catToRemove);

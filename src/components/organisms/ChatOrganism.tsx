@@ -85,6 +85,33 @@ const IMAGE_ATTACHMENT_PLACEHOLDER = '📷 [Image attachment]';
 const visibleMessageBody = (body?: string | null): string =>
   !body || body.trim() === IMAGE_ATTACHMENT_PLACEHOLDER ? '' : body;
 
+/**
+ * The counterpart's name as the chat list payload already gives it. Anything
+ * this cannot answer needs the account lists as a fallback - which is the only
+ * reason those lists are ever fetched on this screen.
+ */
+const chatNameFromPayload = (chat: ChatResponse, roleCode?: string | null): string | null => {
+  if (roleCode === 'AGENCY') {
+    if (chat.type === ChatTypeCode.AGENCY_BRAND && chat.brandName) return chat.brandName;
+    if (chat.type === ChatTypeCode.AGENCY_INFLUENCER && chat.influencerName) {
+      return chat.influencerName;
+    }
+    return null;
+  }
+  return chat.agencyName ?? null;
+};
+
+const chatAvatarFromPayload = (chat: ChatResponse, roleCode?: string | null): string | null => {
+  if (roleCode === 'AGENCY') {
+    if (chat.type === ChatTypeCode.AGENCY_BRAND && chat.brandAvatarUrl) return chat.brandAvatarUrl;
+    if (chat.type === ChatTypeCode.AGENCY_INFLUENCER && chat.influencerAvatarUrl) {
+      return chat.influencerAvatarUrl;
+    }
+    return null;
+  }
+  return chat.agencyAvatarUrl ?? null;
+};
+
 /** Authors may edit their own text for this long after sending. Mirrors the server rule. */
 const MESSAGE_EDIT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -109,14 +136,28 @@ export const ChatOrganism: React.FC = () => {
 
   const isAgency = roleCode === 'AGENCY';
   const { data: chats = [], isLoading: chatsLoading } = useChats();
+  // Three hundred rows of accounts, fetched on every visit, existed only to
+  // name a chat the server had already named. They are fetched now when - and
+  // only when - a chat turns up that the payload could not name.
+  const needsAccountFallback = useMemo(
+    () =>
+      isAgency &&
+      chats.some(
+        (c) =>
+          !chatNameFromPayload(c, roleCode) ||
+          !chatAvatarFromPayload(c, roleCode),
+      ),
+    [isAgency, chats, roleCode],
+  );
+
   const { data: influencersData } = useAgencyInfluencers(isAgency ? { limit: 100 } : undefined, {
-    enabled: isAgency,
+    enabled: needsAccountFallback,
   });
   const { data: brandsData } = useAgencyBrands(isAgency ? { limit: 100 } : undefined, {
-    enabled: isAgency,
+    enabled: needsAccountFallback,
   });
   const { data: usersData } = useAgencyUsers(isAgency ? { limit: 100 } : undefined, {
-    enabled: isAgency,
+    enabled: needsAccountFallback,
   });
 
   const influencers: InfluencerResponse[] = useMemo(
@@ -160,6 +201,17 @@ export const ChatOrganism: React.FC = () => {
 
   const totalUnread = useMemo(
     () => chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    [chats],
+  );
+
+  const hasAgencyChat = useMemo(
+    () =>
+      chats.some(
+        (c) =>
+          c.type === ChatTypeCode.AGENCY_BRAND ||
+          c.type === ChatTypeCode.AGENCY_INFLUENCER ||
+          Boolean(c.agencyUserId),
+      ),
     [chats],
   );
 
@@ -611,18 +663,8 @@ export const ChatOrganism: React.FC = () => {
   const getChatPartnerName = React.useCallback(
     (chat: ChatResponse) => {
       // 1. Direct from server payload if present
-      if (roleCode === 'AGENCY') {
-        if (chat.type === ChatTypeCode.AGENCY_BRAND && chat.brandName) {
-          return chat.brandName;
-        }
-        if (chat.type === ChatTypeCode.AGENCY_INFLUENCER && chat.influencerName) {
-          return chat.influencerName;
-        }
-      } else if (roleCode === 'BRAND' || roleCode === 'INFLUENCER') {
-        if (chat.agencyName) {
-          return chat.agencyName;
-        }
-      }
+      const fromPayload = chatNameFromPayload(chat, roleCode);
+      if (fromPayload) return fromPayload;
 
       // 2. Client-side lookup fallback across users, brands, and influencers
       if (chat.type === ChatTypeCode.AGENCY_BRAND) {
@@ -662,28 +704,49 @@ export const ChatOrganism: React.FC = () => {
   );
 
   const getChatPartnerAvatar = React.useCallback(
-    (chat: ChatResponse) => {
+    (chat: ChatResponse | null | undefined) => {
+      if (!chat) return undefined;
+      const fromPayload = chatAvatarFromPayload(chat, roleCode);
+      if (fromPayload) return fromPayload;
+
       if (chat.type === ChatTypeCode.AGENCY_BRAND) {
-        if (chat.brandUserId) {
-          const matchedUser = users.find((u) => u.id === chat.brandUserId);
-          if (matchedUser?.profile?.avatarUrl) return matchedUser.profile.avatarUrl;
-          const matchedBrand = brands.find(
-            (b) =>
-              b.id === chat.brandUserId ||
-              b.id === matchedUser?.brandId ||
-              (matchedUser?.email && b.contactEmail === matchedUser.email),
-          );
-          if (matchedBrand?.logoUrl) return matchedBrand.logoUrl;
+        if (roleCode === 'AGENCY') {
+          if (chat.brandUserId) {
+            const matchedUser = users.find((u) => u.id === chat.brandUserId);
+            if (matchedUser?.profile?.avatarUrl) return matchedUser.profile.avatarUrl;
+            const matchedBrand = brands.find(
+              (b) =>
+                b.id === chat.brandUserId ||
+                b.id === matchedUser?.brandId ||
+                (matchedUser?.email && b.contactEmail === matchedUser.email),
+            );
+            if (matchedBrand?.logoUrl) return matchedBrand.logoUrl;
+          }
+        } else {
+          const matchedAgencyUser = users.find((u) => u.id === chat.agencyUserId);
+          if (matchedAgencyUser?.profile?.avatarUrl) return matchedAgencyUser.profile.avatarUrl;
         }
       } else if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
-        if (chat.influencerId) {
-          const matchedUser = users.find((u) => u.id === chat.influencerId);
-          if (matchedUser?.profile?.avatarUrl) return matchedUser.profile.avatarUrl;
+        if (roleCode === 'AGENCY') {
+          if (chat.influencerId) {
+            const matchedUser = users.find((u) => u.id === chat.influencerId);
+            if (matchedUser?.profile?.avatarUrl) return matchedUser.profile.avatarUrl;
+            const matchedInfluencer = influencers.find(
+              (i) =>
+                i.id === chat.influencerId ||
+                i.id === matchedUser?.influencer?.id ||
+                (matchedUser?.email && i.email === matchedUser.email),
+            );
+            if (matchedInfluencer?.avatarUrl) return matchedInfluencer.avatarUrl;
+          }
+        } else {
+          const matchedAgencyUser = users.find((u) => u.id === chat.agencyUserId);
+          if (matchedAgencyUser?.profile?.avatarUrl) return matchedAgencyUser.profile.avatarUrl;
         }
       }
       return undefined;
     },
-    [brands, users],
+    [brands, influencers, users, roleCode],
   );
 
   const formatMessageTime = (dateInput?: Date | string | null) => {
@@ -738,6 +801,7 @@ export const ChatOrganism: React.FC = () => {
         name: user?.profile?.fullName || 'User',
         email: user?.email,
         roleCode: roleCode || 'AGENCY',
+        avatarUrl: user?.profile?.avatarUrl || undefined,
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
@@ -799,10 +863,26 @@ export const ChatOrganism: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  gap: 1,
+                  // The pane is a fixed 340px and the contents are not: an
+                  // unread pill next to the wide "Message Agency" button
+                  // overflows it. Wrapping drops the button to its own line
+                  // instead of letting the two overlap.
+                  flexWrap: 'wrap',
+                  rowGap: 1,
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexShrink: 1 }}>
-                  <Typography variant="h3" sx={{ fontSize: '17px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontSize: '17px',
+                      fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
                     Conversations
                   </Typography>
                   {totalUnread > 0 ? (
@@ -862,11 +942,14 @@ export const ChatOrganism: React.FC = () => {
                       height: 32,
                       px: 1.5,
                       borderRadius: `${theme.customRadii.pill}px`,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                      ml: 'auto',
                     }}
                   >
                     New
                   </Button>
-                ) : (
+                ) : !hasAgencyChat && !chatsLoading ? (
                   <Button
                     variant="outlined"
                     size="small"
@@ -886,11 +969,14 @@ export const ChatOrganism: React.FC = () => {
                       height: 32,
                       px: 1.5,
                       borderRadius: `${theme.customRadii.pill}px`,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                      ml: 'auto',
                     }}
                   >
                     {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
                   </Button>
-                )}
+                ) : null}
               </Box>
 
               {/* Search conversations */}
@@ -963,7 +1049,11 @@ export const ChatOrganism: React.FC = () => {
                   <EmptyState
                     icon={<ChatBubbleOutlineRoundedIcon />}
                     title="No conversations"
-                    description="Start a direct thread with a brand or creator to collaborate."
+                    description={
+                      roleCode === 'AGENCY'
+                        ? 'Start a direct thread with a brand or creator to collaborate.'
+                        : 'Start a direct thread with your agency account manager.'
+                    }
                     action={
                       roleCode === 'AGENCY' ? (
                         <Button
@@ -977,7 +1067,23 @@ export const ChatOrganism: React.FC = () => {
                         >
                           Start a Chat
                         </Button>
-                      ) : undefined
+                      ) : (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={
+                            createChatMutation.isPending ? (
+                              <CircularProgress size={14} color="inherit" />
+                            ) : (
+                              <ChatBubbleOutlineRoundedIcon fontSize="small" />
+                            )
+                          }
+                          onClick={handleStartAgencyChat}
+                          disabled={createChatMutation.isPending}
+                        >
+                          {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
+                        </Button>
+                      )
                     }
                   />
                 </Box>
@@ -1217,7 +1323,7 @@ export const ChatOrganism: React.FC = () => {
                           {roleCode === 'AGENCY'
                             ? activeChat.type === ChatTypeCode.AGENCY_INFLUENCER
                               ? 'Creator'
-                              : 'Brand Client'
+                              : 'Brand'
                             : 'Agency Account Manager'}
                         </Box>
                       </Box>
@@ -1983,8 +2089,14 @@ export const ChatOrganism: React.FC = () => {
               >
                 <EmptyState
                   icon={<ChatBubbleOutlineRoundedIcon />}
-                  title="Select a conversation"
-                  description="Choose a thread from the list on the left to view messages and collaborate."
+                  title={chats.length === 0 ? 'No conversations yet' : 'Select a conversation'}
+                  description={
+                    chats.length === 0
+                      ? roleCode === 'AGENCY'
+                        ? 'Start a new conversation with a brand or influencer.'
+                        : 'Start a conversation with your agency account manager.'
+                      : 'Choose a thread from the list on the left to view messages and collaborate.'
+                  }
                   action={
                     roleCode === 'AGENCY' ? (
                       <Button
@@ -1998,7 +2110,7 @@ export const ChatOrganism: React.FC = () => {
                       >
                         New Conversation
                       </Button>
-                    ) : (
+                    ) : !hasAgencyChat && !chatsLoading ? (
                       <Button
                         variant="contained"
                         size="small"
@@ -2014,7 +2126,7 @@ export const ChatOrganism: React.FC = () => {
                       >
                         {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
                       </Button>
-                    )
+                    ) : undefined
                   }
                 />
               </Box>

@@ -26,7 +26,6 @@ export const navConfig: Record<RoleCode, NavItem[]> = {
       iconName: 'Category',
     },
     { id: 'agency-users', label: 'All Users', path: '/agency/users', iconName: 'People' },
-    { id: 'agency-reports', label: 'Reports', path: '/agency/reports', iconName: 'Assessment' },
     { id: 'agency-messages', label: 'Messages', path: '/agency/chats', iconName: 'Chat' },
     {
       id: 'agency-er-calculator',

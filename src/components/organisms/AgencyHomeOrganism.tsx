@@ -12,8 +12,9 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
-import { CampaignResponse, CampaignStatusCode, RateStatusCode, BrandStatusCode } from '@contracts';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAgencyCampaigns, useAgencyDashboardSummary, agencyCampaignsQueryOptions } from '@api';
+import { CampaignResponse } from '@contracts';
 import { useAuth } from '@hooks';
 import { formatCurrency } from '@utils';
 
@@ -33,31 +34,15 @@ export const AgencyHomeOrganism: React.FC = () => {
     page: page + 1,
     limit: rowsPerPage,
   });
-  const { data: allCampaignsData, isLoading: allCampaignsLoading } = useAgencyCampaigns();
-  const { data: brandsData } = useAgencyBrands();
+  // Every tile comes from one aggregate query. The page used to fetch every
+  // campaign, every brand and a full report per campaign - four requests whose
+  // size grew with the agency - and count the rows here to get the same numbers.
+  const { data: summary, isLoading: summaryLoading } = useAgencyDashboardSummary();
+
   const campaigns = useMemo(() => campaignsData?.items || [], [campaignsData?.items]);
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
-  const allCampaigns = useMemo(() => allCampaignsData?.items || [], [allCampaignsData?.items]);
-  const brands = brandsData?.items || [];
 
-  const campaignIds = useMemo(() => allCampaigns.map((c) => c.id), [allCampaigns]);
-  const { reports, isLoading: reportsLoading } = useCampaignReports(campaignIds);
-
-  const activeCampaignsCount = allCampaigns.filter(
-    (c) => c.status === CampaignStatusCode.ACTIVE,
-  ).length;
-
-  // Every tile below is derived from the campaign report aggregates, which carry
-  // the mapper rows with their current rate and brand statuses.
-  const summary = useMemo(() => {
-    const mappers = reports.flatMap((r) => r.mappers || []);
-    return {
-      pendingRates: mappers.filter((m) => m?.rateStatus === RateStatusCode.SUBMITTED).length,
-      awaitingBrand: mappers.filter((m) => m?.brandStatus === BrandStatusCode.PENDING_REVIEW)
-        .length,
-      totalMargin: reports.reduce((sum, r) => sum + (r.totalMargin || 0), 0),
-    };
-  }, [reports]);
+  const queryClient = useQueryClient();
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -65,10 +50,7 @@ export const AgencyHomeOrganism: React.FC = () => {
       header: 'Campaign',
       type: 'entity',
       accessor: 'name',
-      subAccessor: (row) => {
-        const brand = brands.find((b) => b.id === row.brandId);
-        return brand ? brand.name : 'Managed Brand';
-      },
+      subAccessor: (row) => row.brandName || 'Managed Brand',
     },
     {
       id: 'status',
@@ -125,8 +107,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Active Campaigns"
-            value={activeCampaignsCount}
-            loading={allCampaignsLoading}
+            value={summary?.activeCampaigns ?? 0}
+            loading={summaryLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Currently in market"
             onClick={() => navigate('/agency/campaigns')}
@@ -137,8 +119,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Pending Rates"
-            value={summary.pendingRates}
-            loading={allCampaignsLoading || reportsLoading}
+            value={summary?.pendingRateApprovals ?? 0}
+            loading={summaryLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
             subtitle="Submitted, awaiting your approval"
             onClick={() => navigate('/agency/campaigns')}
@@ -149,8 +131,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Awaiting Brand"
-            value={summary.awaitingBrand}
-            loading={allCampaignsLoading || reportsLoading}
+            value={summary?.awaitingBrandReview ?? 0}
+            loading={summaryLoading}
             icon={<VisibilityRoundedIcon fontSize="small" />}
             subtitle="Rates submitted to brand"
             onClick={() => navigate('/agency/campaigns')}
@@ -161,11 +143,11 @@ export const AgencyHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Total Margin"
-            value={formatCurrency(summary.totalMargin)}
-            loading={allCampaignsLoading || reportsLoading}
+            value={formatCurrency(summary?.totalMargin ?? 0)}
+            loading={summaryLoading}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             subtitle="Approved rates across campaigns"
-            onClick={() => navigate('/agency/reports')}
+            onClick={() => navigate('/agency/campaigns')}
           />
         </Grid>
       </Grid>
@@ -200,7 +182,12 @@ export const AgencyHomeOrganism: React.FC = () => {
           isFetching={campaignsFetching}
           exportFilename="recent_campaigns"
           exportSheetName="Campaigns"
-          onExportAll={async () => allCampaigns}
+          onExportAll={async () => {
+            // Fetched when the user actually exports. Holding the unpaginated
+            // list just in case is what made this screen load the whole table.
+            const all = await queryClient.fetchQuery(agencyCampaignsQueryOptions());
+            return all.items;
+          }}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

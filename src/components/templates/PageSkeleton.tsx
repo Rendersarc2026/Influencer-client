@@ -8,6 +8,7 @@ import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks';
 import { SidebarRail } from '../organisms/SidebarRail';
+import { TOPBAR_PADDING } from '../organisms/topBar.spacing';
 
 export type PageSkeletonVariant =
   | 'dashboard'
@@ -62,7 +63,7 @@ const TopBarShimmer: React.FC<{ hasBack?: boolean }> = ({ hasBack = false }) => 
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
-        padding: { xs: '12px 14px', sm: '16px 20px', md: '20px 24px 18px 24px' },
+        padding: TOPBAR_PADDING,
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
         borderTopLeftRadius: { xs: '16px', md: `${theme.customRadii.card}px` },

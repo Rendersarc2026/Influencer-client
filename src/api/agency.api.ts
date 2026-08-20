@@ -28,7 +28,75 @@ import {
   AssignERToInfluencerRequest,
   AssignERResponse,
   InfluencerEngagementResponse,
+  AgencyDashboardSummary,
+  InfluencerFilterOptions,
+  CampaignRollup,
 } from '@contracts';
+
+// -------------------------------------------------------------
+// 0. Dashboard summary
+// -------------------------------------------------------------
+
+/**
+ * The home screen's tiles, aggregated in Postgres.
+ *
+ * What this replaces: the page used to fetch every campaign, every brand and a
+ * full report for each campaign, then count and sum the rows in the browser -
+ * four requests and a payload that grew with the agency, to render six numbers.
+ */
+/** Shared with the boot-time prefetch, so the key cannot drift from the hook's. */
+export function agencyDashboardSummaryQueryOptions() {
+  return {
+    queryKey: ['agency', 'dashboard', 'summary'] as const,
+    queryFn: async () => {
+      const response = await apiClient.get<AgencyDashboardSummary>('/agency/dashboard/summary');
+      return response.data;
+    },
+  };
+}
+
+export function useAgencyDashboardSummary() {
+  return useQuery<AgencyDashboardSummary>({
+    ...agencyDashboardSummaryQueryOptions(),
+    staleTime: 1000 * 60,
+  });
+}
+
+/**
+ * Distinct categories and locations across the agency's creators, for the
+ * filter dropdowns. Previously derived by downloading every creator row.
+ */
+export function useInfluencerFilterOptions() {
+  return useQuery<InfluencerFilterOptions>({
+    queryKey: ['agency', 'influencers', 'filter-options'],
+    queryFn: async () => {
+      const response = await apiClient.get<InfluencerFilterOptions>(
+        '/agency/influencers/filter-options',
+      );
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Every campaign's figures, one small row each, for the reports table.
+ *
+ * Replaces a full report per campaign (each carrying every mapper row) through
+ * an endpoint that rejects more than 100 ids at a time - so an agency's 101st
+ * campaign used to break the screen outright.
+ */
+export function useCampaignRollups() {
+  return useQuery<CampaignRollup[]>({
+    queryKey: ['agency', 'reports', 'rollup'],
+    queryFn: async () => {
+      const response = await apiClient.get<CampaignRollup[]>('/agency/reports/rollup');
+      return response.data;
+    },
+    staleTime: 1000 * 60,
+    placeholderData: keepPreviousData,
+  });
+}
 
 // -------------------------------------------------------------
 // 0. Accounts

@@ -12,12 +12,16 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
-import { useInfluencerAssignments, useSubmitInfluencerRate, apiClient } from '@api';
+import {
+  useInfluencerAssignments,
+  useInfluencerDashboardSummary,
+  useSubmitInfluencerRate,
+  apiClient,
+} from '@api';
 import {
   InfluencerMapperResponse,
   SubmitRateRequest,
   RateStatusEnum,
-  RateStatusCode,
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
@@ -53,33 +57,18 @@ export const InfluencerHomeOrganism: React.FC = () => {
     limit: rowsPerPage,
   });
 
-  const { data: allAssignmentsData, isLoading: isSummaryLoading } = useInfluencerAssignments();
+  // Counted and summed in Postgres. The tiles used to be derived from a second,
+  // unpaginated fetch of every assignment this creator has ever been given.
+  const { data: summary, isLoading: isSummaryLoading } = useInfluencerDashboardSummary();
 
   const assignments = assignmentsData?.items || [];
   const totalAssignments = assignmentsData?.total ?? assignments.length;
-  const allAssignments = allAssignmentsData?.items || [];
 
   const submitRateMutation = useSubmitInfluencerRate();
 
   const [activeRateDialogMapper, setActiveRateDialogMapper] =
     useState<InfluencerMapperResponse | null>(null);
 
-  const pendingRatesCount = allAssignments.filter(
-    (a) =>
-      a?.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
-      a?.rateStatus === RateStatusCode.REVISION_REQUESTED,
-  ).length;
-  const approvedCount = allAssignments.filter(
-    (a) => a?.rateStatus === RateStatusCode.AGENCY_APPROVED,
-  ).length;
-
-  const totalEarned = allAssignments
-    .filter(
-      (a) =>
-        a?.rateStatus === RateStatusCode.AGENCY_APPROVED &&
-        typeof a.influencerRate === 'number',
-    )
-    .reduce((sum, a) => sum + (a.influencerRate || 0), 0);
 
   // The set comes from the registry; only the wording is creator-facing. This
   // also restores REVISION_REQUESTED, which the hardcoded list omitted — a
@@ -200,7 +189,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Active Campaigns"
-            value={allAssignments.length}
+            value={summary?.totalAssignments ?? 0}
             loading={isSummaryLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="Invited & assigned briefs"
@@ -212,7 +201,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Awaiting My Rate"
-            value={pendingRatesCount}
+            value={summary?.pendingRates ?? 0}
             loading={isSummaryLoading}
             icon={<EditNoteRoundedIcon fontSize="small" />}
             deltaLabel="quotes needed"
@@ -223,7 +212,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Approved Deals"
-            value={approvedCount}
+            value={summary?.approvedRates ?? 0}
             loading={isSummaryLoading}
             icon={<CheckCircleRoundedIcon fontSize="small" />}
             deltaLabel="agreed"
@@ -234,7 +223,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Total Earned"
-            value={formatCurrency(totalEarned)}
+            value={formatCurrency(summary?.totalEarnings ?? 0)}
             loading={isSummaryLoading}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
             subtitle="From approved collaborations"

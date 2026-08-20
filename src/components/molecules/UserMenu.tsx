@@ -67,7 +67,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: { xs: 0.5, sm: 1.25 },
-          padding: { xs: '2px 4px 2px 2px', sm: '5px 12px 5px 6px' },
+          padding: { xs: '2px 6px 2px 2px', sm: '4px 10px 4px 5px' },
           borderRadius: `${theme.customRadii.pill}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,

@@ -9,7 +9,25 @@ import {
   UpdateProfileRequest,
   UserResponse,
   PaginatedResult,
+  InfluencerDashboardSummary,
 } from '@contracts';
+
+/**
+ * The creator home tiles, aggregated in Postgres. The page used to fetch every
+ * assignment it had ever been given to count three of them and sum a fourth.
+ */
+export function useInfluencerDashboardSummary() {
+  return useQuery<InfluencerDashboardSummary>({
+    queryKey: ['influencer', 'dashboard', 'summary'],
+    queryFn: async () => {
+      const response = await apiClient.get<InfluencerDashboardSummary>(
+        '/influencer/dashboard/summary',
+      );
+      return response.data;
+    },
+    staleTime: 1000 * 60,
+  });
+}
 
 export function useInfluencerCampaigns(params?: CampaignListQuery) {
   return useQuery<PaginatedResult<CampaignResponse>>({

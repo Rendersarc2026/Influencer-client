@@ -15,6 +15,7 @@ import { useTheme } from '@mui/material/styles';
 import { UserMenu, NotificationCenter } from '@molecules';
 import { useNotifications } from '@hooks';
 import { BreadcrumbItem, TopBarProps, TopBarUser } from '@types';
+import { TOPBAR_PADDING } from './topBar.spacing';
 
 export type { BreadcrumbItem, TopBarProps, TopBarUser };
 
@@ -57,7 +58,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
-        padding: { xs: '12px 14px', sm: '16px 20px', md: '20px 24px 18px 24px' },
+        padding: TOPBAR_PADDING,
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
         borderTopLeftRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
@@ -145,7 +146,12 @@ export const TopBar: React.FC<TopBarProps> = ({
                 '& .MuiBreadcrumbs-separator': { mx: 0.25 },
                 color: theme.palette.tokens.textSecondary,
                 '& .MuiBreadcrumbs-ol': { flexWrap: 'nowrap', overflow: 'hidden' },
-                '& .MuiBreadcrumbs-li': { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+                '& .MuiBreadcrumbs-li': {
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                },
               }}
             >
               {breadcrumbs!.map((crumb, i) =>
@@ -292,17 +298,19 @@ export const TopBar: React.FC<TopBarProps> = ({
         <Tooltip title={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}>
           <IconButton
             onClick={handleOpenNotifications}
-            aria-label={
-              unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
-            }
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
             sx={{
               width: { xs: 34, sm: 38 },
               height: { xs: 34, sm: 38 },
               p: 0,
               borderRadius: '50%',
               border: `1px solid ${theme.palette.tokens.divider}`,
-              backgroundColor: notificationAnchor ? theme.palette.tokens.accentBg : theme.palette.tokens.fieldBg,
-              color: notificationAnchor ? theme.palette.tokens.accentText : theme.palette.tokens.textPrimary,
+              backgroundColor: notificationAnchor
+                ? theme.palette.tokens.accentBg
+                : theme.palette.tokens.fieldBg,
+              color: notificationAnchor
+                ? theme.palette.tokens.accentText
+                : theme.palette.tokens.textPrimary,
               '&:hover': {
                 backgroundColor: theme.palette.tokens.surface,
               },
@@ -329,11 +337,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           </IconButton>
         </Tooltip>
 
-        <UserMenu
-          user={user}
-          onProfileClick={onProfileClick}
-          onLogoutClick={onLogoutClick}
-        />
+        <UserMenu user={user} onProfileClick={onProfileClick} onLogoutClick={onLogoutClick} />
 
         <NotificationCenter
           anchorEl={notificationAnchor}

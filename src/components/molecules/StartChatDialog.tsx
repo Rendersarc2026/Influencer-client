@@ -60,8 +60,17 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
   const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
   const [error, setError] = useState('');
 
-  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers({ limit: 100 });
-  const { data: brandsData, isLoading: brandsLoading } = useAgencyBrands({ limit: 100 });
+  // The dialog stays mounted so it can animate, so these must not fetch until
+  // it is actually opened - otherwise every visit to Messages pulls two
+  // hundred rows for a picker the user may never open.
+  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers(
+    { limit: 100 },
+    { enabled: open },
+  );
+  const { data: brandsData, isLoading: brandsLoading } = useAgencyBrands(
+    { limit: 100 },
+    { enabled: open },
+  );
 
   const influencers: InfluencerResponse[] = React.useMemo(
     () => influencersData?.items || [],

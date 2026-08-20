@@ -11,12 +11,13 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, ChartCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
-import { useAgencyCampaigns, useAgencyBrands, useCampaignReports } from '@api';
+import { useCampaignRollups } from '@api';
 import { useAuth, useViewFilters, useTableExport } from '@hooks';
 import { formatCurrency, ExcelColumnConfig } from '@utils';
 
 interface CampaignMetricRow extends Record<string, unknown> {
   id: string;
+  brandId: string;
   campaignName: string;
   brandName: string;
   influencerCount: number;
@@ -35,21 +36,15 @@ export const AgencyReportsOrganism: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  // One row per campaign, aggregated in Postgres. This screen used to fetch
+  // every campaign, then a full report for each of them - mapper rows included
+  // - through an endpoint that rejects more than 100 ids per request.
   const {
-    data: campaignsData,
-    isLoading: campaignsLoading,
-    isFetching: campaignsFetching,
-  } = useAgencyCampaigns();
-  const { data: brandsData } = useAgencyBrands();
-  const campaigns = useMemo(() => campaignsData?.items || [], [campaignsData?.items]);
-  const brands = useMemo(() => brandsData?.items || [], [brandsData?.items]);
-
-  const campaignIds = useMemo(() => campaigns.map((c) => c.id), [campaigns]);
-  const {
-    reports,
-    isLoading: reportsLoading,
-    isFetching: reportsFetching,
-  } = useCampaignReports(campaignIds);
+    data: rollupData,
+    isLoading: rollupLoading,
+    isFetching: rollupFetching,
+  } = useCampaignRollups();
+  const rollups = useMemo(() => rollupData ?? [], [rollupData]);
 
   const {
     search,
@@ -58,31 +53,35 @@ export const AgencyReportsOrganism: React.FC = () => {
     setSelectedSelect: setSelectedBrand,
   } = useViewFilters('agencyReports');
 
-  const brandOptions = [
-    { value: '', label: 'All Brands' },
-    ...brands.map((b) => ({ value: b.id, label: b.name })),
-  ];
+  // The brands that actually have campaigns - the only ones this report can
+  // show a row for - taken from the roll-up instead of a second brand fetch.
+  const brandOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of rollups) seen.set(row.brandId, row.brandName);
+    return [
+      { value: '', label: 'All Brands' },
+      ...[...seen.entries()]
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [rollups]);
 
-  // Every figure below comes from GET /agency/reports/campaigns/:id, where the
-  // aggregates and engagement rate are computed server side.
+  // Every figure here is computed by the `campaign_rollup` view; the browser
+  // only reshapes it for the table.
   const reportRows: CampaignMetricRow[] = useMemo(
     () =>
-      reports
-        .filter((report) => report?.campaign)
-        .map((report) => {
-          const brand = brands.find((b) => b.id === report.campaign.brandId);
-          return {
-            id: report.campaign.id,
-            campaignName: report.campaign.name,
-            brandName: brand?.name ?? '—',
-            influencerCount: report.influencerCount ?? 0,
-            totalClientRate: report.totalClientRate ?? 0,
-            totalMargin: report.totalMargin ?? 0,
-            totalReach: report.totalReach ?? 0,
-            erPercent: report.averageErPercent ?? 0,
-          };
-        }),
-    [reports, brands],
+      rollups.map((row) => ({
+        id: row.campaignId,
+        brandId: row.brandId,
+        campaignName: row.campaignName,
+        brandName: row.brandName || '—',
+        influencerCount: row.influencerCount,
+        totalClientRate: row.totalClientRate,
+        totalMargin: row.totalMargin,
+        totalReach: row.totalReach,
+        erPercent: row.avgErPercent,
+      })),
+    [rollups],
   );
 
   const totals = useMemo(() => {
@@ -111,11 +110,11 @@ export const AgencyReportsOrganism: React.FC = () => {
         term.length === 0 ||
         row.campaignName.toLowerCase().includes(term) ||
         row.brandName.toLowerCase().includes(term);
-      const matchesBrand =
-        !selectedBrand || brands.find((b) => b.id === selectedBrand)?.name === row.brandName;
+      // Compared on the id the row carries, rather than by matching names.
+      const matchesBrand = !selectedBrand || row.brandId === selectedBrand;
       return matchesSearch && matchesBrand;
     });
-  }, [reportRows, search, selectedBrand, brands]);
+  }, [reportRows, search, selectedBrand]);
 
   // Reach per campaign, highest first. The API exposes aggregates rather than a
   // time series, so this is a comparison across campaigns, not a trend over time.
@@ -276,8 +275,8 @@ export const AgencyReportsOrganism: React.FC = () => {
         <DataTable<CampaignMetricRow>
           columns={columns}
           rows={filteredRows}
-          loading={campaignsLoading || reportsLoading}
-          isFetching={campaignsFetching || reportsFetching}
+          loading={rollupLoading}
+          isFetching={rollupFetching}
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />
       </Box>

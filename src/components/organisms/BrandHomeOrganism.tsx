@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,12 +12,9 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn } from '@molecules';
 import { SectionHeading } from '@atoms';
-import { useBrandCampaigns, useBrandCampaignsInfluencers } from '@api';
-import {
-  CampaignResponse,
-  CampaignStatusCode,
-  BrandStatusCode,
-} from '@contracts';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBrandCampaigns, useBrandDashboardSummary, brandCampaignsQueryOptions } from '@api';
+import { CampaignResponse } from '@contracts';
 import { useAuth } from '@hooks';
 
 export const BrandHomeOrganism: React.FC = () => {
@@ -36,25 +33,14 @@ export const BrandHomeOrganism: React.FC = () => {
     page: page + 1,
     limit: rowsPerPage,
   });
-  const { data: allCampaignsData, isLoading: allCampaignsLoading } = useBrandCampaigns();
-
   const campaigns = campaignsData?.items || [];
   const campaignsTotal = campaignsData?.total ?? campaigns.length;
-  const allCampaigns = useMemo(() => allCampaignsData?.items || [], [allCampaignsData]);
 
-  const campaignIds = useMemo(() => allCampaigns.map((c) => c.id), [allCampaigns]);
-  const { mappers, isLoading: mappersLoading } = useBrandCampaignsInfluencers(campaignIds);
+  // One aggregate query behind every tile. The screen used to pull every
+  // campaign and then a mapper list for each of them to count four numbers.
+  const { data: summary, isLoading: summaryLoading } = useBrandDashboardSummary();
 
-  const activeCampaigns = allCampaigns.filter((c) => c.status === CampaignStatusCode.ACTIVE).length;
-  const pendingApprovalCount = mappers.filter(
-    (m) => m.brandStatus === BrandStatusCode.PENDING_REVIEW,
-  ).length;
-  const approvedInfluencersCount = mappers.filter(
-    (m) => m.brandStatus === BrandStatusCode.APPROVED,
-  ).length;
-  const completedCampaigns = allCampaigns.filter(
-    (c) => c.status === CampaignStatusCode.COMPLETED,
-  ).length;
+  const queryClient = useQueryClient();
 
   const columns: Array<DataTableColumn<CampaignResponse>> = [
     {
@@ -119,8 +105,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Active Campaigns"
-            value={activeCampaigns}
-            loading={allCampaignsLoading}
+            value={summary?.activeCampaigns ?? 0}
+            loading={summaryLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
             subtitle="In progress with agency"
             onClick={() => navigate('/brand/campaigns')}
@@ -131,8 +117,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Awaiting My Approval"
-            value={pendingApprovalCount}
-            loading={allCampaignsLoading || mappersLoading}
+            value={summary?.pendingApprovals ?? 0}
+            loading={summaryLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
             deltaLabel="influencers pending review"
             onClick={() => navigate('/brand/campaigns')}
@@ -143,8 +129,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Approved Influencers"
-            value={approvedInfluencersCount}
-            loading={allCampaignsLoading || mappersLoading}
+            value={summary?.approvedInfluencers ?? 0}
+            loading={summaryLoading}
             icon={<CheckCircleOutlineRoundedIcon fontSize="small" />}
             subtitle="Active across campaigns"
             onClick={() => navigate('/brand/campaigns')}
@@ -155,8 +141,8 @@ export const BrandHomeOrganism: React.FC = () => {
           <MetricCard
             tint="butter"
             title="Completed Campaigns"
-            value={completedCampaigns}
-            loading={allCampaignsLoading}
+            value={summary?.completedCampaigns ?? 0}
+            loading={summaryLoading}
             icon={<HistoryRoundedIcon fontSize="small" />}
             subtitle="Past campaign archives"
             onClick={() => navigate('/brand/campaigns')}
@@ -195,7 +181,10 @@ export const BrandHomeOrganism: React.FC = () => {
           isFetching={campaignsFetching}
           exportFilename="campaigns_needing_review"
           exportSheetName="Campaigns"
-          onExportAll={async () => allCampaigns}
+          onExportAll={async () => {
+            const all = await queryClient.fetchQuery(brandCampaignsQueryOptions());
+            return all.items;
+          }}
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />
       </Box>

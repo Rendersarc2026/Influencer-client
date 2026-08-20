@@ -49,9 +49,6 @@ const AgencyAddInfluencerPage = lazy(() =>
 const AgencyInfluencersPage = lazy(() =>
   import('../pages/AgencyInfluencersPage').then((m) => ({ default: m.AgencyInfluencersPage })),
 );
-const AgencyReportsPage = lazy(() =>
-  import('../pages/AgencyReportsPage').then((m) => ({ default: m.AgencyReportsPage })),
-);
 const AgencyERCalculatorPage = lazy(() =>
   import('../pages/AgencyERCalculatorPage').then((m) => ({ default: m.AgencyERCalculatorPage })),
 );
@@ -103,7 +100,6 @@ const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
     () => import('../pages/AgencyCampaignDetailPage'),
     () => import('../pages/AgencyAddInfluencerPage'),
     () => import('../pages/AgencyInfluencersPage'),
-    () => import('../pages/AgencyReportsPage'),
     () => import('../pages/AgencyERCalculatorPage'),
   ],
   BRAND: [
@@ -267,14 +263,6 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
         {withBoundary(AgencyUsersPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/reports',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="reports">
-        {withBoundary(AgencyReportsPage, 'reports')}
       </ProtectedRoute>
     ),
   },
