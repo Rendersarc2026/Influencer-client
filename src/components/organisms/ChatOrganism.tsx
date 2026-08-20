@@ -21,6 +21,8 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import ImageRoundedIcon from '@mui/icons-material/ImageRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -31,6 +33,7 @@ import {
   useChats,
   useChatMessages,
   useSendMessage,
+  useEditMessage,
   useMarkChatAsRead,
   useCreateOrFindChat,
   useAgencyInfluencers,
@@ -71,6 +74,22 @@ const isImageAttachmentUrl = (url?: string | null): boolean => {
     clean.includes('/uploads/')
   );
 };
+
+/**
+ * Body stored on an attachment-only message. The server requires a non-empty
+ * body, so the send path fills this in; the bubble hides it again so an image
+ * posted on its own renders as just the image.
+ */
+const IMAGE_ATTACHMENT_PLACEHOLDER = '📷 [Image attachment]';
+
+const visibleMessageBody = (body?: string | null): string =>
+  !body || body.trim() === IMAGE_ATTACHMENT_PLACEHOLDER ? '' : body;
+
+/** Authors may edit their own text for this long after sending. Mirrors the server rule. */
+const MESSAGE_EDIT_WINDOW_MS = 5 * 60 * 1000;
+
+const isWithinEditWindow = (createdOn: Date | string, now: number): boolean =>
+  now - new Date(createdOn).getTime() <= MESSAGE_EDIT_WINDOW_MS;
 
 export const ChatOrganism: React.FC = () => {
 
@@ -124,6 +143,12 @@ export const ChatOrganism: React.FC = () => {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Inline edit of an own message, plus the clock that retires the action once
+  // the five-minute window closes on a bubble already on screen.
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingBody, setEditingBody] = useState('');
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
 
 
   // New Chat Dialog state
@@ -150,6 +175,7 @@ export const ChatOrganism: React.FC = () => {
 
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(effectiveChatId);
   const sendMessageMutation = useSendMessage(effectiveChatId, user?.id);
+  const editMessageMutation = useEditMessage(effectiveChatId);
   const markReadMutation = useMarkChatAsRead();
   // The mutation object is a fresh reference on every render; `mutate` is stable.
   // Depending on the object made the socket effect leave/rejoin the room and
@@ -163,6 +189,29 @@ export const ChatOrganism: React.FC = () => {
     () => messages.filter((m) => m.isActive !== false),
     [messages],
   );
+
+  // The edit action has to disappear on its own once a bubble already on screen
+  // ages out. The clock only runs while something is still editable, so an idle
+  // thread costs no re-renders.
+  const hasEditableOwnMessage = useMemo(
+    () =>
+      activeMessages.some(
+        (m) => m.senderId === user?.id && isWithinEditWindow(m.createdOn, nowTick),
+      ),
+    [activeMessages, user?.id, nowTick],
+  );
+
+  useEffect(() => {
+    if (!hasEditableOwnMessage) return;
+    const timer = setInterval(() => setNowTick(Date.now()), 20000);
+    return () => clearInterval(timer);
+  }, [hasEditableOwnMessage]);
+
+  // Switching threads abandons an open edit rather than carrying the draft over.
+  useEffect(() => {
+    setEditingMessageId(null);
+    setEditingBody('');
+  }, [effectiveChatId]);
 
   // -------------------------------------------------------------
   // Real-Time Socket.io Thread Sync (Messages, Read Receipts, Typing)
@@ -209,7 +258,16 @@ export const ChatOrganism: React.FC = () => {
       if (msg.chatId === effectiveChatId) {
         queryClient.setQueryData<MessageResponse[]>(
           ['chats', effectiveChatId, 'messages'],
-          (old = []) => old.map((m) => (m.id === msg.id ? msg : m)),
+          (old = []) => {
+            // An edit arrives as a new row that supersedes the one it points
+            // back at, so the swap is keyed on `editedFromId`, not on the id.
+            if (old.some((m) => m.id === msg.id)) {
+              return old.map((m) => (m.id === msg.id ? msg : m));
+            }
+            const replacedId = msg.editedFromId;
+            if (!replacedId || !old.some((m) => m.id === replacedId)) return old;
+            return old.map((m) => (m.id === replacedId ? msg : m));
+          },
         );
       }
     };
@@ -461,7 +519,7 @@ export const ChatOrganism: React.FC = () => {
     sendStopTyping(effectiveChatId);
 
     const payload = {
-      body: trimmedBody || (trimmedAttachment ? '📷 [Image attachment]' : ''),
+      body: trimmedBody || (trimmedAttachment ? IMAGE_ATTACHMENT_PLACEHOLDER : ''),
       attachmentUrl: trimmedAttachment || undefined,
     };
 
@@ -486,6 +544,67 @@ export const ChatOrganism: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Inline Message Edit (own messages, five minutes after sending)
+  // -------------------------------------------------------------
+
+  const beginEditMessage = (msg: MessageResponse) => {
+    setEditingMessageId(msg.id);
+    setEditingBody(visibleMessageBody(msg.body));
+  };
+
+  const cancelEditMessage = () => {
+    setEditingMessageId(null);
+    setEditingBody('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessageId || editMessageMutation.isPending) return;
+
+    const original = activeMessages.find((m) => m.id === editingMessageId);
+    const trimmed = editingBody.trim();
+
+    if (!original) {
+      cancelEditMessage();
+      return;
+    }
+    if (!trimmed) {
+      showError('A message cannot be left empty.');
+      return;
+    }
+    if (trimmed === visibleMessageBody(original.body)) {
+      cancelEditMessage();
+      return;
+    }
+    // Re-checked against the wall clock rather than the ticking state, so a
+    // form left open past the deadline cannot slip an edit through.
+    if (!isWithinEditWindow(original.createdOn, Date.now())) {
+      showError('Messages can only be edited within 5 minutes of sending.');
+      cancelEditMessage();
+      return;
+    }
+
+    try {
+      await editMessageMutation.mutateAsync({ messageId: editingMessageId, body: trimmed });
+      cancelEditMessage();
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to edit message.',
+      );
+    }
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditMessage();
     }
   };
 
@@ -1145,6 +1264,17 @@ export const ChatOrganism: React.FC = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     backgroundColor: theme.palette.tokens.surface,
+                    // Declared once for the whole thread rather than per bubble.
+                    // Each side rises from its own edge, so a message reads as
+                    // coming from where its author sits.
+                    '@keyframes messagePopInMine': {
+                      from: { opacity: 0, transform: 'translate3d(8px, 10px, 0) scale(0.96)' },
+                      to: { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' },
+                    },
+                    '@keyframes messagePopInTheirs': {
+                      from: { opacity: 0, transform: 'translate3d(-8px, 10px, 0) scale(0.96)' },
+                      to: { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' },
+                    },
                   }}
                 >
                   {messagesLoading ? (
@@ -1192,6 +1322,21 @@ export const ChatOrganism: React.FC = () => {
                   ) : (
                     activeMessages.map((msg, index) => {
                       const isMine = msg.senderId === user?.id || msg.id.startsWith('temp-');
+                      const isEditing = editingMessageId === msg.id;
+                      // A message I send renders twice: as the optimistic
+                      // placeholder, then again under the id the server
+                      // assigned, which remounts the bubble. The placeholder is
+                      // the one the eye follows, so the row that replaces it
+                      // arrives without replaying the entrance.
+                      const isOwnServerEcho =
+                        isMine &&
+                        !msg.id.startsWith('temp-') &&
+                        nowTick - new Date(msg.createdOn).getTime() < 15000;
+                      const canEditMessage =
+                        isMine &&
+                        !msg.id.startsWith('temp-') &&
+                        Boolean(visibleMessageBody(msg.body)) &&
+                        isWithinEditWindow(msg.createdOn, nowTick);
 
                       // Date grouping
                       const currentDateGroup = formatMessageDateGroup(msg.createdOn);
@@ -1233,16 +1378,56 @@ export const ChatOrganism: React.FC = () => {
                           <Box
                             sx={{
                               display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
                               justifyContent: isMine ? 'flex-end' : 'flex-start',
                               mb: 1.5,
+                              '&:hover .message-edit-action': { opacity: 1 },
                             }}
                           >
+                            {canEditMessage && !isEditing && (
+                              <Tooltip title="Edit message" placement="left">
+                                <IconButton
+                                  className="message-edit-action"
+                                  size="small"
+                                  onClick={() => beginEditMessage(msg)}
+                                  sx={{
+                                    width: 28,
+                                    height: 28,
+                                    flexShrink: 0,
+                                    color: theme.palette.tokens.textSecondary,
+                                    // Always reachable on touch, where there is no hover.
+                                    opacity: { xs: 1, md: 0 },
+                                    transition: 'opacity 0.15s ease',
+                                    '&:hover': {
+                                      backgroundColor: theme.palette.tokens.fieldBg,
+                                      color: theme.palette.tokens.accentText,
+                                    },
+                                  }}
+                                >
+                                  <EditRoundedIcon sx={{ fontSize: '15px' }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+
                             <Box
                               sx={{
                                 maxWidth: '72%',
                                 minWidth: '80px',
                                 px: 2,
                                 py: 1.5,
+                                // Runs once per bubble, on mount: a message that
+                                // arrives pops in, and a re-render (a read
+                                // receipt, the edit clock) does not replay it.
+                                animation: isOwnServerEcho
+                                  ? 'none'
+                                  : `${
+                                      isMine ? 'messagePopInMine' : 'messagePopInTheirs'
+                                    } 0.22s cubic-bezier(0.22, 1, 0.36, 1)`,
+                                transformOrigin: isMine ? 'bottom right' : 'bottom left',
+                                '@media (prefers-reduced-motion: reduce)': {
+                                  animation: 'none',
+                                },
                                 borderRadius: isMine
                                   ? `${theme.customRadii.inner}px ${theme.customRadii.inner}px 4px ${theme.customRadii.inner}px`
                                   : `${theme.customRadii.inner}px ${theme.customRadii.inner}px ${theme.customRadii.inner}px 4px`,
@@ -1261,18 +1446,118 @@ export const ChatOrganism: React.FC = () => {
                                   : 'none',
                               }}
                             >
-                              {/* Message text */}
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: '13.5px',
-                                  lineHeight: 1.5,
-                                  whiteSpace: 'pre-wrap',
-                                  color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
-                                }}
-                              >
-                                {msg.body}
-                              </Typography>
+                              {/* Message text — omitted for attachment-only messages */}
+                              {isEditing ? (
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 0.75,
+                                    minWidth: { xs: 180, sm: 260 },
+                                  }}
+                                >
+                                  <TextField
+                                    value={editingBody}
+                                    onChange={(e) => setEditingBody(e.target.value)}
+                                    onKeyDown={handleEditKeyDown}
+                                    autoFocus
+                                    multiline
+                                    maxRows={6}
+                                    size="small"
+                                    fullWidth
+                                    inputProps={{ maxLength: 4000 }}
+                                    sx={{
+                                      '& .MuiOutlinedInput-root': {
+                                        fontSize: '13.5px',
+                                        lineHeight: 1.5,
+                                        borderRadius: `${theme.customRadii.inner - 4}px`,
+                                        backgroundColor: isMine
+                                          ? 'rgba(255, 255, 255, 0.14)'
+                                          : theme.palette.tokens.surface,
+                                        color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                                        '& fieldset': {
+                                          borderColor: isMine
+                                            ? 'rgba(255, 255, 255, 0.35)'
+                                            : theme.palette.tokens.divider,
+                                        },
+                                        '&:hover fieldset': {
+                                          borderColor: isMine
+                                            ? 'rgba(255, 255, 255, 0.55)'
+                                            : theme.palette.tokens.accent,
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                          borderColor: isMine
+                                            ? 'rgba(255, 255, 255, 0.75)'
+                                            : theme.palette.tokens.accent,
+                                        },
+                                      },
+                                    }}
+                                  />
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'flex-end',
+                                      gap: 0.75,
+                                    }}
+                                  >
+                                    <Button
+                                      size="small"
+                                      onClick={cancelEditMessage}
+                                      sx={{
+                                        minWidth: 0,
+                                        px: 1.25,
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        color: isMine
+                                          ? 'rgba(255, 255, 255, 0.8)'
+                                          : theme.palette.tokens.textSecondary,
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      disableElevation
+                                      onClick={handleSaveEdit}
+                                      disabled={editMessageMutation.isPending}
+                                      startIcon={
+                                        editMessageMutation.isPending ? (
+                                          <CircularProgress size={12} color="inherit" />
+                                        ) : (
+                                          <CheckRoundedIcon sx={{ fontSize: '14px' }} />
+                                        )
+                                      }
+                                      sx={{
+                                        minWidth: 0,
+                                        px: 1.5,
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        borderRadius: `${theme.customRadii.pill}px`,
+                                      }}
+                                    >
+                                      Save
+                                    </Button>
+                                  </Box>
+                                </Box>
+                              ) : (
+                                visibleMessageBody(msg.body) && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontSize: '13.5px',
+                                      lineHeight: 1.5,
+                                      whiteSpace: 'pre-wrap',
+                                      color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                                    }}
+                                  >
+                                    {visibleMessageBody(msg.body)}
+                                  </Typography>
+                                )
+                              )}
 
                               {/* Message attachment link or inline image if present */}
                               {safeUrl(msg.attachmentUrl) && (
@@ -1371,6 +1656,7 @@ export const ChatOrganism: React.FC = () => {
                                     userSelect: 'none',
                                   }}
                                 >
+                                  {msg.editedFromId ? 'Edited • ' : ''}
                                   {formatMessageTime(msg.createdOn)}
                                 </Typography>
                               </Box>

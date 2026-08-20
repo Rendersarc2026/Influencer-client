@@ -3,6 +3,7 @@ import { apiClient } from './axios.client';
 import {
   ChatResponse,
   CreateChatRequest,
+  EditMessageRequest,
   MessageResponse,
   SendMessageRequest,
 } from '@contracts';
@@ -141,6 +142,32 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
 // -------------------------------------------------------------
 // 5. Edit Message (PATCH /messages/:id)
 // -------------------------------------------------------------
+
+/**
+ * The server stores an edit as a new row that supersedes the original, so the
+ * response carries a different id and points back at the one it replaced. The
+ * cache swaps the old row for it in place - the edit keeps the original
+ * `createdOn`, so the thread order does not move.
+ */
+export function useEditMessage(chatId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation<MessageResponse, Error, { messageId: string } & EditMessageRequest>({
+    mutationFn: async ({ messageId, body }) => {
+      const response = await apiClient.patch<MessageResponse>(`/messages/${messageId}`, { body });
+      return response.data;
+    },
+    onSuccess: (edited, { messageId }) => {
+      if (!chatId) return;
+      queryClient.setQueryData<MessageResponse[]>(['chats', chatId, 'messages'], (old = []) => {
+        // The socket echo may have applied the swap already.
+        if (old.some((m) => m.id === edited.id)) return old;
+        return old.map((m) => (m.id === messageId ? edited : m));
+      });
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+    },
+  });
+}
 
 // -------------------------------------------------------------
 // 6. Delete Message (DELETE /messages/:id)
