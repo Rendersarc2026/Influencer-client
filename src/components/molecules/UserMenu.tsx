@@ -66,8 +66,12 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: { xs: 0.5, sm: 1.25 },
-          padding: { xs: '2px 6px 2px 2px', sm: '4px 10px 4px 5px' },
+          gap: { xs: 0.5, sm: 1 },
+          // Matches the square header controls (TOPBAR_CONTROL_SIZE) so the
+          // right-hand cluster sits on one baseline and never sets the header height.
+          height: { xs: 34, sm: 38 },
+          boxSizing: 'border-box',
+          padding: { xs: '0 6px 0 2px', sm: '0 10px 0 3px' },
           borderRadius: `${theme.customRadii.pill}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
@@ -85,8 +89,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         <Avatar
           src={safeImageUrl(user.avatarUrl)}
           sx={{
-            width: { xs: 26, sm: 34 },
-            height: { xs: 26, sm: 34 },
+            width: { xs: 28, sm: 30 },
+            height: { xs: 28, sm: 30 },
+            flexShrink: 0,
             backgroundColor: theme.palette.tokens.accentBg,
             color: theme.palette.tokens.accentText,
             fontWeight: 700,

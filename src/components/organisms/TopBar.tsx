@@ -15,7 +15,14 @@ import { useTheme } from '@mui/material/styles';
 import { UserMenu, NotificationCenter } from '@molecules';
 import { useNotifications } from '@hooks';
 import { BreadcrumbItem, TopBarProps, TopBarUser } from '@types';
-import { TOPBAR_PADDING } from './topBar.spacing';
+import {
+  TOPBAR_CONTROL_GAP,
+  TOPBAR_CONTROL_RADIUS,
+  TOPBAR_CONTROL_SIZE,
+  TOPBAR_HEIGHT,
+  TOPBAR_ICON_SIZE,
+  TOPBAR_PADDING,
+} from './topBar.spacing';
 
 export type { BreadcrumbItem, TopBarProps, TopBarUser };
 
@@ -49,6 +56,22 @@ export const TopBar: React.FC<TopBarProps> = ({
     setNotificationAnchor(null);
   };
 
+  // Every square control in the header — menu, back, search, bell — sits on the
+  // same footprint so the row reads as one set regardless of which are present.
+  const controlSx = {
+    flexShrink: 0,
+    width: TOPBAR_CONTROL_SIZE,
+    height: TOPBAR_CONTROL_SIZE,
+    p: 0,
+    borderRadius: TOPBAR_CONTROL_RADIUS,
+    border: `1px solid ${theme.palette.tokens.divider}`,
+    backgroundColor: theme.palette.tokens.fieldBg,
+    color: theme.palette.tokens.textPrimary,
+    '&:hover': {
+      backgroundColor: theme.palette.tokens.surface,
+    },
+  };
+
   return (
     <Box
       component="header"
@@ -58,7 +81,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
+        // Fixed height + horizontal-only padding: breadcrumbs, a back button or
+        // a missing subtitle no longer change how tall the header is.
+        height: TOPBAR_HEIGHT,
+        minHeight: TOPBAR_HEIGHT,
         padding: TOPBAR_PADDING,
+        boxSizing: 'border-box',
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
         borderTopLeftRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
@@ -76,6 +104,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           gap: { xs: 1, sm: 1.5 },
           minWidth: 0,
           flex: 1,
+          height: '100%',
           overflow: 'hidden',
         }}
       >
@@ -84,45 +113,17 @@ export const TopBar: React.FC<TopBarProps> = ({
             <IconButton
               onClick={onMenuClick}
               aria-label="Open menu"
-              sx={{
-                display: { xs: 'inline-flex', md: 'none' },
-                flexShrink: 0,
-                width: { xs: 34, sm: 38 },
-                height: { xs: 34, sm: 38 },
-                p: 0,
-                borderRadius: '10px',
-                border: `1px solid ${theme.palette.tokens.divider}`,
-                backgroundColor: theme.palette.tokens.fieldBg,
-                color: theme.palette.tokens.textPrimary,
-                '&:hover': {
-                  backgroundColor: theme.palette.tokens.surface,
-                },
-              }}
+              sx={{ ...controlSx, display: { xs: 'inline-flex', md: 'none' } }}
             >
-              <MenuRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
+              <MenuRoundedIcon sx={{ fontSize: TOPBAR_ICON_SIZE }} />
             </IconButton>
           </Tooltip>
         )}
 
         {onBack && (
           <Tooltip title={backLabel}>
-            <IconButton
-              onClick={onBack}
-              aria-label={backLabel}
-              sx={{
-                flexShrink: 0,
-                width: { xs: 34, sm: 38 },
-                height: { xs: 34, sm: 38 },
-                p: 0,
-                borderRadius: '10px',
-                border: `1px solid ${theme.palette.tokens.divider}`,
-                backgroundColor: theme.palette.tokens.fieldBg,
-                '&:hover': {
-                  backgroundColor: theme.palette.tokens.surface,
-                },
-              }}
-            >
-              <ArrowBackRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
+            <IconButton onClick={onBack} aria-label={backLabel} sx={controlSx}>
+              <ArrowBackRoundedIcon sx={{ fontSize: TOPBAR_ICON_SIZE }} />
             </IconButton>
           </Tooltip>
         )}
@@ -165,6 +166,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     sx={{
                       font: 'inherit',
                       fontSize: { xs: '11px', sm: '12px' },
+                      lineHeight: 1.4,
                       fontWeight: 500,
                       color: theme.palette.tokens.textSecondary,
                       cursor: 'pointer',
@@ -181,7 +183,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                     key={`${crumb.label}-${i}`}
                     variant="caption"
                     noWrap
-                    sx={{ fontSize: { xs: '11px', sm: '12px' }, fontWeight: 500 }}
+                    sx={{ fontSize: { xs: '11px', sm: '12px' }, lineHeight: 1.4, fontWeight: 500 }}
                   >
                     {crumb.label}
                   </Typography>
@@ -192,6 +194,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 noWrap
                 sx={{
                   fontSize: { xs: '11px', sm: '12px' },
+                  lineHeight: 1.4,
                   fontWeight: 600,
                   color: theme.palette.tokens.textPrimary,
                 }}
@@ -225,6 +228,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 color: theme.palette.tokens.textSecondary,
                 mt: '1px',
                 fontSize: { xs: '11px', sm: '12px' },
+                lineHeight: 1.4,
                 display: { xs: 'none', sm: 'block' },
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -242,8 +246,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: { xs: 0.75, sm: 1.25 },
+          gap: TOPBAR_CONTROL_GAP,
           flexShrink: 0,
+          height: '100%',
           justifyContent: 'flex-end',
         }}
       >
@@ -251,10 +256,13 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Box
             sx={{
               flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
               '& .MuiButton-root': {
-                height: { xs: 34, sm: 38 },
+                height: TOPBAR_CONTROL_SIZE,
                 minWidth: { xs: 34, sm: 'auto' },
                 px: { xs: 1.25, sm: 2 },
+                py: 0,
                 fontSize: { xs: '12px', sm: '13px' },
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
@@ -276,21 +284,8 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {onSearchClick && (
           <Tooltip title="Search">
-            <IconButton
-              onClick={onSearchClick}
-              sx={{
-                width: { xs: 34, sm: 38 },
-                height: { xs: 34, sm: 38 },
-                p: 0,
-                borderRadius: '10px',
-                border: `1px solid ${theme.palette.tokens.divider}`,
-                backgroundColor: theme.palette.tokens.fieldBg,
-                '&:hover': {
-                  backgroundColor: theme.palette.tokens.surface,
-                },
-              }}
-            >
-              <SearchRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
+            <IconButton onClick={onSearchClick} aria-label="Search" sx={controlSx}>
+              <SearchRoundedIcon sx={{ fontSize: TOPBAR_ICON_SIZE }} />
             </IconButton>
           </Tooltip>
         )}
@@ -300,20 +295,14 @@ export const TopBar: React.FC<TopBarProps> = ({
             onClick={handleOpenNotifications}
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
             sx={{
-              width: { xs: 34, sm: 38 },
-              height: { xs: 34, sm: 38 },
-              p: 0,
+              ...controlSx,
               borderRadius: '50%',
-              border: `1px solid ${theme.palette.tokens.divider}`,
               backgroundColor: notificationAnchor
                 ? theme.palette.tokens.accentBg
                 : theme.palette.tokens.fieldBg,
               color: notificationAnchor
                 ? theme.palette.tokens.accentText
                 : theme.palette.tokens.textPrimary,
-              '&:hover': {
-                backgroundColor: theme.palette.tokens.surface,
-              },
             }}
           >
             <Badge
@@ -332,7 +321,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 },
               }}
             >
-              <NotificationsNoneRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 } }} />
+              <NotificationsNoneRoundedIcon sx={{ fontSize: TOPBAR_ICON_SIZE }} />
             </Badge>
           </IconButton>
         </Tooltip>

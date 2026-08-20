@@ -8,7 +8,12 @@ import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks';
 import { SidebarRail } from '../organisms/SidebarRail';
-import { TOPBAR_PADDING } from '../organisms/topBar.spacing';
+import {
+  TOPBAR_CONTROL_GAP,
+  TOPBAR_CONTROL_SIZE,
+  TOPBAR_HEIGHT,
+  TOPBAR_PADDING,
+} from '../organisms/topBar.spacing';
 
 export type PageSkeletonVariant =
   | 'dashboard'
@@ -63,7 +68,10 @@ const TopBarShimmer: React.FC<{ hasBack?: boolean }> = ({ hasBack = false }) => 
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
+        height: TOPBAR_HEIGHT,
+        minHeight: TOPBAR_HEIGHT,
         padding: TOPBAR_PADDING,
+        boxSizing: 'border-box',
         borderBottom: `1px solid ${theme.palette.tokens.divider}`,
         backgroundColor: theme.palette.tokens.surface,
         borderTopLeftRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
@@ -85,8 +93,8 @@ const TopBarShimmer: React.FC<{ hasBack?: boolean }> = ({ hasBack = false }) => 
       >
         {hasBack && (
           <Block
-            width={38}
-            height={38}
+            width={TOPBAR_CONTROL_SIZE.sm}
+            height={TOPBAR_CONTROL_SIZE.sm}
             radius={10}
             sx={{ flexShrink: 0 }}
           />
@@ -115,20 +123,25 @@ const TopBarShimmer: React.FC<{ hasBack?: boolean }> = ({ hasBack = false }) => 
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: { xs: 0.75, sm: 1.25 },
+          gap: TOPBAR_CONTROL_GAP,
           flexShrink: 0,
         }}
       >
         <Block
           width={130}
-          height={38}
+          height={TOPBAR_CONTROL_SIZE.sm}
           radius={theme.customRadii.pill}
           sx={{ display: { xs: 'none', sm: 'block' } }}
         />
-        <Skeleton animation="wave" variant="circular" width={36} height={36} />
+        <Skeleton
+          animation="wave"
+          variant="circular"
+          width={TOPBAR_CONTROL_SIZE.sm}
+          height={TOPBAR_CONTROL_SIZE.sm}
+        />
         <Block
           width={120}
-          height={38}
+          height={TOPBAR_CONTROL_SIZE.sm}
           radius={theme.customRadii.pill}
           sx={{ display: { xs: 'none', md: 'block' } }}
         />
