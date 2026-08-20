@@ -101,7 +101,8 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
         initialCommittedViews !== null && initialCommittedViews !== undefined
           ? String(initialCommittedViews)
           : engagementData?.latest?.avgViews !== undefined &&
-            engagementData?.latest?.avgViews !== null
+            engagementData?.latest?.avgViews !== null &&
+            engagementData.latest.avgViews > 0
           ? String(engagementData.latest.avgViews)
           : '';
       setCommittedViewsInput(initialViews);

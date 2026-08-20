@@ -56,7 +56,8 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
         mapper.committedViews !== undefined && mapper.committedViews !== null
           ? String(mapper.committedViews)
           : engagementData?.latest?.avgViews !== undefined &&
-            engagementData?.latest?.avgViews !== null
+            engagementData?.latest?.avgViews !== null &&
+            engagementData.latest.avgViews > 0
           ? String(engagementData.latest.avgViews)
           : '';
       setCommittedViews(initialViews);

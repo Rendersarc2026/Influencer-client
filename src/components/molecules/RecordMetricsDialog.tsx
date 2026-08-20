@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,7 +13,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { RecordMetricRequest } from '@contracts';
+import { RecordMetricRequest, RecordMetricPost, MAX_METRIC_POSTS } from '@contracts';
 import { parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export interface RecordMetricsDialogProps {
@@ -25,7 +25,33 @@ export interface RecordMetricsDialogProps {
   onClose: () => void;
 }
 
-const MAX_POST_URLS = 10;
+/** One post's row in the form, held as typed text so shorthand ("5k") survives editing. */
+interface PostDraft {
+  url: string;
+  likes: string;
+  comments: string;
+  shares: string;
+  saves: string;
+}
+
+/** The engagement components captured for every post. */
+const POST_FIELDS = [
+  { key: 'likes', label: 'Likes', placeholder: 'e.g. 5k' },
+  { key: 'comments', label: 'Comments', placeholder: 'e.g. 320' },
+  { key: 'shares', label: 'Shares', placeholder: 'e.g. 180' },
+  { key: 'saves', label: 'Saves', placeholder: 'e.g. 90' },
+] as const;
+
+type PostFieldKey = (typeof POST_FIELDS)[number]['key'];
+
+const EMPTY_POST: PostDraft = { url: '', likes: '', comments: '', shares: '', saves: '' };
+
+/** A typed field's value, with blank read as zero and a bad value as null. */
+function readCount(raw: string): number | null {
+  if (!raw.trim()) return 0;
+  const parsed = parseShorthandNumber(raw);
+  return parsed !== null && parsed >= 0 ? parsed : null;
+}
 
 export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   open,
@@ -39,11 +65,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   const [reach, setReach] = useState<string>('');
   const [impressions, setImpressions] = useState<string>('');
   const [totalViews, setTotalViews] = useState<string>('');
-  const [engagements, setEngagements] = useState<string>('');
-  const [likes, setLikes] = useState<string>('');
   const [watchTime, setWatchTime] = useState<string>('');
   const [skipRate, setSkipRate] = useState<string>('');
-  const [postUrls, setPostUrls] = useState<string[]>(['']);
+  const [posts, setPosts] = useState<PostDraft[]>([{ ...EMPTY_POST }]);
   const [recordedFor, setRecordedFor] = useState<string>(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState('');
 
@@ -52,52 +76,61 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       setReach('');
       setImpressions('');
       setTotalViews('');
-      setEngagements('');
-      setLikes('');
       setWatchTime('');
       setSkipRate('');
-      setPostUrls(['']);
+      setPosts([{ ...EMPTY_POST }]);
       setRecordedFor(new Date().toISOString().split('T')[0]);
       setError('');
     }
   }, [open]);
 
-  const handleAddPostUrl = () => {
-    if (postUrls.length >= MAX_POST_URLS) return;
-    setPostUrls((prev) => (prev.length < MAX_POST_URLS ? [...prev, ''] : prev));
+  // The summary is the breakdown: every engagement figure below is the sum of
+  // what was entered per post, so the totals can never disagree with the posts
+  // they came from. The server derives the same sums from the same payload.
+  const totals = useMemo(() => {
+    const sum = (key: PostFieldKey) =>
+      posts.reduce((acc, post) => acc + (readCount(post[key]) ?? 0), 0);
+
+    const likes = sum('likes');
+    const comments = sum('comments');
+    const shares = sum('shares');
+    const saves = sum('saves');
+
+    return { likes, comments, shares, saves, engagements: likes + comments + shares + saves };
+  }, [posts]);
+
+  const reachValue = parseShorthandNumber(reach);
+  const erPercent =
+    reachValue && reachValue > 0
+      ? Number(((totals.engagements / reachValue) * 100).toFixed(2))
+      : null;
+
+  const filledPostCount = posts.filter((post) => post.url.trim()).length;
+
+  const handleAddPost = () => {
+    setPosts((prev) => (prev.length < MAX_METRIC_POSTS ? [...prev, { ...EMPTY_POST }] : prev));
   };
 
-  const handleRemovePostUrl = (index: number) => {
-    setPostUrls((prev) => {
+  const handleRemovePost = (index: number) => {
+    setPosts((prev) => {
       const next = prev.filter((_, i) => i !== index);
-      return next.length > 0 ? next : [''];
+      return next.length > 0 ? next : [{ ...EMPTY_POST }];
     });
   };
 
-  const handlePostUrlChange = (index: number, val: string) => {
-    setPostUrls((prev) => {
-      const next = [...prev];
-      next[index] = val;
-      return next;
-    });
+  const handlePostChange = (index: number, field: keyof PostDraft, val: string) => {
+    setPosts((prev) => prev.map((post, i) => (i === index ? { ...post, [field]: val } : post)));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const reachNum = parseShorthandNumber(reach);
-    const engagementsNum = parseShorthandNumber(engagements);
     const impressionsParsed = impressions.trim() ? parseShorthandNumber(impressions) : undefined;
     const totalViewsParsed = totalViews.trim() ? parseShorthandNumber(totalViews) : undefined;
-    const likesParsed = likes.trim() ? parseShorthandNumber(likes) : undefined;
     const skipRateParsed = skipRate.trim() ? parseFloat(skipRate) : undefined;
 
     if (reachNum === null || reachNum <= 0) {
       setError('Please enter a valid positive Reach count (e.g. 10k, 100k, 1m)');
-      return;
-    }
-
-    if (engagementsNum === null || engagementsNum < 0) {
-      setError('Please enter a valid non-negative Engagements count (e.g. 5k, 10k)');
       return;
     }
 
@@ -111,38 +144,67 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       return;
     }
 
-    if (likes.trim() && (likesParsed === null || likesParsed === undefined || likesParsed < 0)) {
-      setError('Please enter a valid Likes count');
-      return;
-    }
-
     if (skipRate.trim() && (skipRateParsed === undefined || isNaN(skipRateParsed) || skipRateParsed < 0 || skipRateParsed > 100)) {
       setError('Please enter a valid Skip Rate percentage between 0 and 100');
       return;
     }
 
-    const validUrls: string[] = [];
-    for (let i = 0; i < postUrls.length; i++) {
-      const raw = postUrls[i].trim();
-      if (raw) {
-        if (!/^https?:\/\//i.test(raw)) {
-          setError(`Post URL ${postUrls.length > 1 ? `#${i + 1} ` : ''}must begin with http:// or https://`);
+    const validPosts: RecordMetricPost[] = [];
+    for (let i = 0; i < posts.length; i++) {
+      const post = posts[i];
+      const url = post.url.trim();
+      const label = posts.length > 1 ? `Post #${i + 1}` : 'Post';
+
+      const values: Partial<Record<PostFieldKey, number | undefined>> = {};
+      let hasValue = false;
+      for (const field of POST_FIELDS) {
+        const raw = post[field.key];
+        if (!raw.trim()) continue;
+        const parsed = parseShorthandNumber(raw);
+        if (parsed === null || parsed < 0) {
+          setError(`${label}: please enter a valid ${field.label} count`);
           return;
         }
-        validUrls.push(raw);
+        values[field.key] = parsed;
+        hasValue = true;
       }
+
+      if (!url) {
+        // A row with numbers but no link cannot be attributed to anything, and
+        // dropping it silently would quietly shrink the totals shown above.
+        if (hasValue) {
+          setError(`${label}: enter the post URL these numbers belong to`);
+          return;
+        }
+        continue;
+      }
+
+      if (!/^https?:\/\//i.test(url)) {
+        setError(`${label}: URL must begin with http:// or https://`);
+        return;
+      }
+
+      validPosts.push({ postUrl: url, ...values });
+    }
+
+    if (validPosts.length === 0) {
+      setError('Add at least one post URL with its performance numbers');
+      return;
+    }
+
+    if (totals.engagements > reachNum) {
+      setError('Total engagements across the posts cannot exceed Reach');
+      return;
     }
 
     setError('');
     const data: RecordMetricRequest = {
       reach: reachNum,
-      engagements: engagementsNum,
       impressions: impressionsParsed ?? undefined,
       totalViews: totalViewsParsed ?? undefined,
-      likes: likesParsed ?? undefined,
       watchTime: watchTime.trim() || undefined,
       skipRate: skipRateParsed ?? undefined,
-      liveLink: validUrls.length > 0 ? validUrls.join('\n') : undefined,
+      posts: validPosts,
       recordedFor: new Date(recordedFor),
     };
 
@@ -228,39 +290,6 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
-                label="Post Eval - Engagements *"
-                value={engagements}
-                onChange={(e) => setEngagements(e.target.value.replace(/-/g, ''))}
-                onBlur={() => {
-                  const parsed = parseShorthandNumber(engagements);
-                  if (parsed !== null) setEngagements(formatShorthandNumber(parsed));
-                }}
-                placeholder="e.g. 10k, 50k"
-                helperText={
-                  engagements && parseShorthandNumber(engagements) !== null
-                    ? `${parseShorthandNumber(engagements)?.toLocaleString('en-IN')} interactions`
-                    : undefined
-                }
-                fullWidth
-                disabled={loading}
-              />
-
-              <TextField
-                label="Post Eval - Likes"
-                value={likes}
-                onChange={(e) => setLikes(e.target.value.replace(/-/g, ''))}
-                onBlur={() => {
-                  const parsed = parseShorthandNumber(likes);
-                  if (parsed !== null) setLikes(formatShorthandNumber(parsed));
-                }}
-                placeholder="e.g. 8.5k, 40k"
-                fullWidth
-                disabled={loading}
-              />
-            </Box>
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-              <TextField
                 label="Post Eval - Impressions"
                 value={impressions}
                 onChange={(e) => setImpressions(e.target.value.replace(/-/g, ''))}
@@ -305,8 +334,8 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               />
             </Box>
 
-            {/* Post URLs section */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+            {/* Per-post engagement breakdown */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography
                   variant="caption"
@@ -317,63 +346,142 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                     color: theme.palette.tokens.textSecondary,
                   }}
                 >
-                  Post URLs (Published Deliverables)
+                  Published Posts ({filledPostCount}/{MAX_METRIC_POSTS})
                 </Typography>
                 <Button
                   size="small"
                   startIcon={<AddRoundedIcon fontSize="small" />}
-                  onClick={handleAddPostUrl}
-                  disabled={loading || postUrls.length >= MAX_POST_URLS}
-                  sx={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    py: 0.25,
-                    px: 1,
-                  }}
+                  onClick={handleAddPost}
+                  disabled={loading || posts.length >= MAX_METRIC_POSTS}
+                  sx={{ fontWeight: 600, textTransform: 'none', py: 0.25, px: 1 }}
                 >
-                  Add Post URL {postUrls.length >= MAX_POST_URLS ? '(Max 10)' : `(${postUrls.length}/${MAX_POST_URLS})`}
+                  {posts.length >= MAX_METRIC_POSTS ? 'Max 10 Posts' : 'Add Post'}
                 </Button>
               </Box>
 
-              {postUrls.map((url, idx) => (
-                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {posts.map((post, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.5,
+                    padding: 2,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary }}
+                    >
+                      POST #{idx + 1}
+                    </Typography>
+                    <Box sx={{ flex: 1 }} />
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      {readEngagements(post).toLocaleString('en-IN')} engagements
+                    </Typography>
+                    {posts.length > 1 && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemovePost(idx)}
+                        disabled={loading}
+                        title="Remove post"
+                        sx={{
+                          color: theme.palette.tokens.textSecondary,
+                          '&:hover': { color: theme.palette.tokens.negative },
+                          p: 0.5,
+                        }}
+                      >
+                        <DeleteOutlineRoundedIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+
                   <TextField
-                    label={postUrls.length > 1 ? `Post URL #${idx + 1}` : 'Post URL'}
-                    value={url}
-                    onChange={(e) => handlePostUrlChange(idx, e.target.value)}
+                    label="Post URL *"
+                    value={post.url}
+                    onChange={(e) => handlePostChange(idx, 'url', e.target.value)}
                     placeholder="https://www.instagram.com/reel/..."
+                    size="small"
                     fullWidth
                     disabled={loading}
                   />
-                  {postUrls.length > 1 && (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemovePostUrl(idx)}
-                      disabled={loading}
-                      title="Remove URL"
-                      sx={{
-                        color: theme.palette.tokens.textSecondary,
-                        '&:hover': { color: theme.palette.tokens.negative },
-                        p: 1,
-                      }}
-                    >
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconButton>
-                  )}
+
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, 1fr)' },
+                      gap: 1.5,
+                    }}
+                  >
+                    {POST_FIELDS.map((field) => (
+                      <TextField
+                        key={field.key}
+                        label={field.label}
+                        value={post[field.key]}
+                        onChange={(e) =>
+                          handlePostChange(idx, field.key, e.target.value.replace(/-/g, ''))
+                        }
+                        onBlur={() => {
+                          const parsed = parseShorthandNumber(post[field.key]);
+                          if (parsed !== null) {
+                            handlePostChange(idx, field.key, formatShorthandNumber(parsed));
+                          }
+                        }}
+                        placeholder={field.placeholder}
+                        size="small"
+                        fullWidth
+                        disabled={loading}
+                      />
+                    ))}
+                  </Box>
                 </Box>
               ))}
             </Box>
 
+            {/* Totals, computed from the posts above */}
             <Box
               sx={{
-                padding: '12px 16px',
+                padding: 2,
                 backgroundColor: theme.palette.tokens.fieldBg,
                 borderRadius: `${theme.customRadii.inner}px`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.5,
               }}
             >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: theme.palette.tokens.textSecondary,
+                }}
+              >
+                Totals (Computed From Posts)
+              </Typography>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                  gap: 1.5,
+                }}
+              >
+                <TotalTile label="Engagements" value={totals.engagements.toLocaleString('en-IN')} />
+                <TotalTile label="Likes" value={totals.likes.toLocaleString('en-IN')} />
+                <TotalTile label="Comments" value={totals.comments.toLocaleString('en-IN')} />
+                <TotalTile label="Shares" value={totals.shares.toLocaleString('en-IN')} />
+                <TotalTile label="Saves" value={totals.saves.toLocaleString('en-IN')} />
+                <TotalTile label="Post-Eval ER%" value={erPercent !== null ? `${erPercent}%` : '—'} />
+              </Box>
+
               <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                💡 Note: Post-Eval ER% (Engagements / Reach) and Post-Eval CPV (Commercial / Total Views) will be computed automatically.
+                💡 Engagements are the sum of likes, comments, shares and saves across every post. ER%
+                (Engagements / Reach) and CPV (Commercial / Total Views) are computed and stored server-side.
               </Typography>
             </Box>
 
@@ -392,7 +500,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || !reach || !engagements}
+            disabled={loading || !reach || filledPostCount === 0}
             sx={{ minWidth: 140 }}
           >
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Post-Eval Metrics'}
@@ -400,5 +508,24 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         </DialogActions>
       </form>
     </Dialog>
+  );
+};
+
+/** One post's engagements as typed so far; unparseable text counts as nothing. */
+function readEngagements(post: PostDraft): number {
+  return POST_FIELDS.reduce((sum, field) => sum + (readCount(post[field.key]) ?? 0), 0);
+}
+
+const TotalTile: React.FC<{ label: string; value: string }> = ({ label, value }) => {
+  const theme = useTheme();
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+        {label}
+      </Typography>
+      <Typography variant="body1" sx={{ fontWeight: 700, color: theme.palette.tokens.textPrimary }}>
+        {value}
+      </Typography>
+    </Box>
   );
 };

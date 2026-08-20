@@ -128,6 +128,12 @@ export type AgencyMapperResponse = z.infer<typeof AgencyMapperResponseSchema>;
 export const AddInfluencerToCampaignSchema = z.object({
   influencerId: z.string().uuid(),
   deliverables: safeMultilineText(2000).optional(),
+  committedViews: z.number().int().min(0).optional(),
+  preEvalEr: z.number().min(0).max(100).optional(),
+  reachFromRegion: safeMultilineText(255).optional(),
+  brandFit: safeMultilineText(2000).optional(),
+  influencerRate: money.optional(),
+  margin: money.optional(),
 });
 export type AddInfluencerToCampaignRequest = z.infer<typeof AddInfluencerToCampaignSchema>;
 

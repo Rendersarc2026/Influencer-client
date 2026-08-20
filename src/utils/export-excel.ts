@@ -223,10 +223,21 @@ export interface CampaignReportExportInput {
       erPercent: number;
       totalViews?: number | null;
       likes?: number | null;
+      comments?: number | null;
+      shares?: number | null;
+      saves?: number | null;
       watchTime?: string | null;
       skipRate?: number | null;
       liveLink?: string | null;
       postEvalCpv?: number | null;
+      posts?: Array<{
+        position: number;
+        postUrl: string;
+        likes?: number | null;
+        comments?: number | null;
+        shares?: number | null;
+        saves?: number | null;
+      }>;
       recordedFor: string | Date;
     }>
   >;
@@ -250,6 +261,12 @@ export async function exportCampaignPerformanceReport(
   let totalViews = 0;
   let totalImpressions = 0;
   let totalLikes = 0;
+  let totalComments = 0;
+  let totalShares = 0;
+  let totalSaves = 0;
+
+  // Every recorded post across every influencer, for the post-level sheet.
+  const postRows: Array<Array<string | number>> = [];
 
   const influencerRows = mappers.map((mapper, index) => {
     const infRate = mapper.influencerRate ?? 0;
@@ -269,6 +286,9 @@ export async function exportCampaignPerformanceReport(
     const mapperViews = latestMetric?.totalViews ?? 0;
     const mapperImpressions = latestMetric?.impressions ?? 0;
     const mapperLikes = latestMetric?.likes ?? 0;
+    const mapperComments = latestMetric?.comments ?? 0;
+    const mapperShares = latestMetric?.shares ?? 0;
+    const mapperSaves = latestMetric?.saves ?? 0;
     const mapperEr =
       latestMetric?.erPercent ??
       (mapperReach > 0 ? Number(((mapperEngagements / mapperReach) * 100).toFixed(2)) : 0);
@@ -281,6 +301,9 @@ export async function exportCampaignPerformanceReport(
     totalViews += mapperViews;
     totalImpressions += mapperImpressions;
     totalLikes += mapperLikes;
+    totalComments += mapperComments;
+    totalShares += mapperShares;
+    totalSaves += mapperSaves;
 
     const rateStatusLabel =
       mapper.rateStatus !== undefined
@@ -300,6 +323,22 @@ export async function exportCampaignPerformanceReport(
       ? new Date(latestMetric.recordedFor).toLocaleDateString('en-IN')
       : '—';
 
+    for (const post of latestMetric?.posts ?? []) {
+      const postEngagements =
+        (post.likes ?? 0) + (post.comments ?? 0) + (post.shares ?? 0) + (post.saves ?? 0);
+      postRows.push([
+        mapper.influencerName || '—',
+        post.position,
+        post.postUrl,
+        post.likes ?? '—',
+        post.comments ?? '—',
+        post.shares ?? '—',
+        post.saves ?? '—',
+        postEngagements,
+        recordedDate,
+      ]);
+    }
+
     return [
       index + 1,
       mapper.influencerName || '—',
@@ -318,6 +357,10 @@ export async function exportCampaignPerformanceReport(
       mapperViews > 0 ? mapperViews : '—',
       mapperCpv !== null ? mapperCpv : '—',
       mapperLikes > 0 ? mapperLikes : '—',
+      mapperComments > 0 ? mapperComments : '—',
+      mapperShares > 0 ? mapperShares : '—',
+      mapperSaves > 0 ? mapperSaves : '—',
+      latestMetric?.posts?.length || '—',
       mapperImpressions > 0 ? mapperImpressions : '—',
       latestMetric?.watchTime || '—',
       latestMetric?.skipRate !== undefined && latestMetric?.skipRate !== null
@@ -365,6 +408,10 @@ export async function exportCampaignPerformanceReport(
     ['Average Cost Per View (CPV)', overallCpv !== null ? `₹${overallCpv}` : '—'],
     ['Total Impressions', totalImpressions > 0 ? totalImpressions : '—'],
     ['Total Likes', totalLikes > 0 ? totalLikes : '—'],
+    ['Total Comments', totalComments > 0 ? totalComments : '—'],
+    ['Total Shares', totalShares > 0 ? totalShares : '—'],
+    ['Total Saves', totalSaves > 0 ? totalSaves : '—'],
+    ['Total Published Posts', postRows.length > 0 ? postRows.length : '—'],
   ];
 
   // 3. Build Sheet 2: Influencer Post-Eval Metrics
@@ -386,6 +433,10 @@ export async function exportCampaignPerformanceReport(
     'Total Views',
     'Post-Eval CPV (₹)',
     'Likes',
+    'Comments',
+    'Shares',
+    'Saves',
+    'Published Posts',
     'Impressions',
     'Watch Time',
     'Skip Rate %',
@@ -417,6 +468,10 @@ export async function exportCampaignPerformanceReport(
     { wch: 16 }, // Views
     { wch: 18 }, // CPV
     { wch: 14 }, // Likes
+    { wch: 14 }, // Comments
+    { wch: 14 }, // Shares
+    { wch: 14 }, // Saves
+    { wch: 16 }, // Published Posts
     { wch: 16 }, // Impressions
     { wch: 14 }, // Watch Time
     { wch: 14 }, // Skip Rate
@@ -424,9 +479,41 @@ export async function exportCampaignPerformanceReport(
     { wch: 16 }, // Recorded Date
   ];
 
+  // Sheet 3: the per-post breakdown the influencer totals were summed from.
+  // Omitted entirely when nothing was recorded per post, rather than shipping an
+  // empty sheet that reads as "these posts performed at zero".
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Campaign Summary');
   XLSX.utils.book_append_sheet(wb, wsInfluencers, 'Influencer Performance');
+
+  if (postRows.length > 0) {
+    const wsPosts = XLSX.utils.aoa_to_sheet([
+      [
+        'Influencer Name',
+        'Post #',
+        'Post URL',
+        'Likes',
+        'Comments',
+        'Shares',
+        'Saves',
+        'Engagements',
+        'Recorded Date',
+      ],
+      ...postRows,
+    ]);
+    wsPosts['!cols'] = [
+      { wch: 22 }, // Influencer Name
+      { wch: 8 },  // Post #
+      { wch: 45 }, // Post URL
+      { wch: 14 }, // Likes
+      { wch: 14 }, // Comments
+      { wch: 14 }, // Shares
+      { wch: 14 }, // Saves
+      { wch: 16 }, // Engagements
+      { wch: 16 }, // Recorded Date
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPosts, 'Post-Level Performance');
+  }
 
   const cleanName = campaign.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   const dateStamp = new Date().toISOString().split('T')[0];
