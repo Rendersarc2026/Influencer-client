@@ -428,7 +428,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         <FilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder={`Search ${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'} categories...`}
+          searchPlaceholder="Search"
           pills={statusPillOptions}
           activePillId={statusFilter || 'ALL'}
           onPillChange={setStatusFilter}

@@ -85,7 +85,7 @@ export type RecordMetricPost = z.infer<typeof RecordMetricPostSchema>;
  */
 export const RecordMetricRequestSchema = z
   .object({
-    reach: count.refine((v) => v > 0, 'Reach must be greater than 0'),
+    reach: count.optional(),
     impressions: count.optional(),
     engagements: count.optional(),
     watchTime: safeText(100).optional(),
@@ -99,18 +99,39 @@ export const RecordMetricRequestSchema = z
     posts: z.array(RecordMetricPostSchema).max(MAX_METRIC_POSTS).optional(),
     recordedFor: z.coerce.date(),
   })
-  .refine((d) => (d.posts && d.posts.length > 0) || d.engagements !== undefined, {
-    message: 'Record at least one post, or an overall engagements count',
-    path: ['posts'],
-  })
-  .refine((d) => d.engagements === undefined || d.engagements <= d.reach, {
-    message: 'Engagements cannot exceed reach',
-    path: ['engagements'],
-  })
-  .refine((d) => metricPostEngagements(d.posts) <= d.reach, {
-    message: 'Engagements across all posts cannot exceed reach',
-    path: ['posts'],
-  });
+  .refine(
+    (d) =>
+      (d.posts && d.posts.length > 0) ||
+      d.engagements !== undefined ||
+      d.reach !== undefined ||
+      d.totalViews !== undefined ||
+      d.impressions !== undefined,
+    {
+      message: 'Record at least one post, or an overall metric count',
+      path: ['posts'],
+    },
+  )
+  .refine(
+    (d) =>
+      d.reach === undefined ||
+      d.reach === 0 ||
+      d.engagements === undefined ||
+      d.engagements <= d.reach,
+    {
+      message: 'Engagements cannot exceed reach',
+      path: ['engagements'],
+    },
+  )
+  .refine(
+    (d) =>
+      d.reach === undefined ||
+      d.reach === 0 ||
+      metricPostEngagements(d.posts) <= d.reach,
+    {
+      message: 'Engagements across all posts cannot exceed reach',
+      path: ['posts'],
+    },
+  );
 export type RecordMetricRequest = z.infer<typeof RecordMetricRequestSchema>;
 
 /** Sums one post's likes, comments, shares and saves into its engagement count. */

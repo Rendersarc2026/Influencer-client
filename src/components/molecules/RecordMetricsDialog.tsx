@@ -36,10 +36,10 @@ interface PostDraft {
 
 /** The engagement components captured for every post. */
 const POST_FIELDS = [
-  { key: 'likes', label: 'Likes', placeholder: 'e.g. 5k' },
-  { key: 'comments', label: 'Comments', placeholder: 'e.g. 320' },
-  { key: 'shares', label: 'Shares', placeholder: 'e.g. 180' },
-  { key: 'saves', label: 'Saves', placeholder: 'e.g. 90' },
+  { key: 'likes', label: 'Likes *', placeholder: 'e.g. 5k' },
+  { key: 'comments', label: 'Comments *', placeholder: 'e.g. 320' },
+  { key: 'shares', label: 'Shares *', placeholder: 'e.g. 180' },
+  { key: 'saves', label: 'Saves *', placeholder: 'e.g. 90' },
 ] as const;
 
 type PostFieldKey = (typeof POST_FIELDS)[number]['key'];
@@ -105,7 +105,29 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       ? Number(((totals.engagements / reachValue) * 100).toFixed(2))
       : null;
 
-  const filledPostCount = posts.filter((post) => post.url.trim()).length;
+  const isPostsComplete =
+    posts.length > 0 &&
+    posts.every(
+      (post) =>
+        post.url.trim().length > 0 &&
+        post.likes.trim().length > 0 &&
+        parseShorthandNumber(post.likes) !== null &&
+        post.comments.trim().length > 0 &&
+        parseShorthandNumber(post.comments) !== null &&
+        post.shares.trim().length > 0 &&
+        parseShorthandNumber(post.shares) !== null &&
+        post.saves.trim().length > 0 &&
+        parseShorthandNumber(post.saves) !== null,
+    );
+
+  const filledPostCount = posts.filter(
+    (post) =>
+      post.url.trim() &&
+      post.likes.trim() &&
+      post.comments.trim() &&
+      post.shares.trim() &&
+      post.saves.trim(),
+  ).length;
 
   const handleAddPost = () => {
     setPosts((prev) => (prev.length < MAX_METRIC_POSTS ? [...prev, { ...EMPTY_POST }] : prev));
@@ -124,12 +146,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const reachNum = parseShorthandNumber(reach);
+    const reachNum = reach.trim() ? parseShorthandNumber(reach) : undefined;
     const impressionsParsed = impressions.trim() ? parseShorthandNumber(impressions) : undefined;
     const totalViewsParsed = totalViews.trim() ? parseShorthandNumber(totalViews) : undefined;
     const skipRateParsed = skipRate.trim() ? parseFloat(skipRate) : undefined;
 
-    if (reachNum === null || reachNum <= 0) {
+    if (reach.trim() && (reachNum === null || reachNum === undefined || reachNum < 0)) {
       setError('Please enter a valid positive Reach count (e.g. 10k, 100k, 1m)');
       return;
     }
@@ -155,28 +177,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       const url = post.url.trim();
       const label = posts.length > 1 ? `Post #${i + 1}` : 'Post';
 
-      const values: Partial<Record<PostFieldKey, number | undefined>> = {};
-      let hasValue = false;
-      for (const field of POST_FIELDS) {
-        const raw = post[field.key];
-        if (!raw.trim()) continue;
-        const parsed = parseShorthandNumber(raw);
-        if (parsed === null || parsed < 0) {
-          setError(`${label}: please enter a valid ${field.label} count`);
-          return;
-        }
-        values[field.key] = parsed;
-        hasValue = true;
-      }
-
       if (!url) {
-        // A row with numbers but no link cannot be attributed to anything, and
-        // dropping it silently would quietly shrink the totals shown above.
-        if (hasValue) {
-          setError(`${label}: enter the post URL these numbers belong to`);
-          return;
-        }
-        continue;
+        setError(`${label}: enter the post URL`);
+        return;
       }
 
       if (!/^https?:\/\//i.test(url)) {
@@ -184,7 +187,29 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         return;
       }
 
-      validPosts.push({ postUrl: url, ...values });
+      const values: Partial<Record<PostFieldKey, number>> = {};
+      for (const field of POST_FIELDS) {
+        const raw = post[field.key];
+        const cleanLabel = field.label.replace(' *', '');
+        if (!raw.trim()) {
+          setError(`${label}: please enter ${cleanLabel} count (enter 0 if none)`);
+          return;
+        }
+        const parsed = parseShorthandNumber(raw);
+        if (parsed === null || parsed < 0) {
+          setError(`${label}: please enter a valid ${cleanLabel} count (e.g. 0, 500, 5k)`);
+          return;
+        }
+        values[field.key] = parsed;
+      }
+
+      validPosts.push({
+        postUrl: url,
+        likes: values.likes ?? 0,
+        comments: values.comments ?? 0,
+        shares: values.shares ?? 0,
+        saves: values.saves ?? 0,
+      });
     }
 
     if (validPosts.length === 0) {
@@ -192,14 +217,14 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       return;
     }
 
-    if (totals.engagements > reachNum) {
+    if (reachNum && reachNum > 0 && totals.engagements > reachNum) {
       setError('Total engagements across the posts cannot exceed Reach');
       return;
     }
 
     setError('');
     const data: RecordMetricRequest = {
-      reach: reachNum,
+      reach: reachNum ?? 0,
       impressions: impressionsParsed ?? undefined,
       totalViews: totalViewsParsed ?? undefined,
       watchTime: watchTime.trim() || undefined,
@@ -252,7 +277,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
               <TextField
-                label="Post Eval - Reach (Unique) *"
+                label="Post Eval - Reach (Unique)"
                 value={reach}
                 onChange={(e) => setReach(e.target.value.replace(/-/g, ''))}
                 onBlur={() => {
@@ -263,7 +288,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 helperText={
                   reach && parseShorthandNumber(reach) !== null
                     ? `${parseShorthandNumber(reach)?.toLocaleString('en-IN')} accounts`
-                    : undefined
+                    : 'Optional (e.g. 100k, 1m)'
                 }
                 fullWidth
                 disabled={loading}
@@ -500,7 +525,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || !reach || filledPostCount === 0}
+            disabled={loading || !isPostsComplete}
             sx={{ minWidth: 140 }}
           >
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Post-Eval Metrics'}
