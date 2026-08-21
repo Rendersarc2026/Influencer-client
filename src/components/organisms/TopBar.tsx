@@ -11,7 +11,9 @@ import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneR
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import { useTheme } from '@mui/material/styles';
+import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { UserMenu, NotificationCenter } from '@molecules';
 import { useNotifications } from '@hooks';
 import { BreadcrumbItem, TopBarProps, TopBarUser } from '@types';
@@ -38,12 +40,36 @@ export const TopBar: React.FC<TopBarProps> = ({
   onProfileClick,
   onLogoutClick,
   onMenuClick,
+  onRefresh,
+  isRefreshing,
+  showRefresh = true,
   rightAction,
   className,
 }) => {
   const theme = useTheme();
+  const queryClient = useQueryClient();
+  const isGlobalFetching = useIsFetching();
+  const [localRefreshing, setLocalRefreshing] = useState(false);
   const { unreadCount } = useNotifications();
   const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
+
+  const activeRefreshing = Boolean(isRefreshing ?? (localRefreshing || isGlobalFetching > 0));
+
+  const handleRefresh = async () => {
+    if (activeRefreshing) return;
+    setLocalRefreshing(true);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        await queryClient.invalidateQueries();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setTimeout(() => setLocalRefreshing(false), 500);
+    }
+  };
 
   const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
     setNotificationAnchor(event.currentTarget);
@@ -287,6 +313,34 @@ export const TopBar: React.FC<TopBarProps> = ({
             <IconButton onClick={onSearchClick} aria-label="Search" sx={controlSx}>
               <SearchRoundedIcon sx={{ fontSize: TOPBAR_ICON_SIZE }} />
             </IconButton>
+          </Tooltip>
+        )}
+
+        {showRefresh !== false && (
+          <Tooltip title={activeRefreshing ? 'Refreshing data...' : 'Reload data'}>
+            <span>
+              <IconButton
+                onClick={handleRefresh}
+                disabled={activeRefreshing}
+                aria-label="Reload data"
+                sx={{
+                  ...controlSx,
+                  borderRadius: '50%',
+                  cursor: activeRefreshing ? 'default' : 'pointer',
+                }}
+              >
+                <RefreshRoundedIcon
+                  sx={{
+                    fontSize: TOPBAR_ICON_SIZE,
+                    animation: activeRefreshing ? 'topbarSpin 0.75s linear infinite' : 'none',
+                    '@keyframes topbarSpin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' },
+                    },
+                  }}
+                />
+              </IconButton>
+            </span>
           </Tooltip>
         )}
 

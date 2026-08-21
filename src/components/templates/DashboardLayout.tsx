@@ -33,6 +33,9 @@ export interface DashboardLayoutProps {
   onLogout?: () => void;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
+  onRefresh?: () => void | Promise<void>;
+  isRefreshing?: boolean;
+  showRefresh?: boolean;
   rightAction?: ReactNode;
   children: ReactNode;
 }
@@ -50,6 +53,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onLogout,
   onSearchClick,
   onNotificationsClick,
+  onRefresh,
+  isRefreshing,
+  showRefresh = true,
   rightAction,
   children,
 }) => {
@@ -199,6 +205,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onNotificationsClick={onNotificationsClick}
           onProfileClick={() => effectiveNavigate('/profile')}
           onLogoutClick={handleLogoutClick}
+          onRefresh={onRefresh}
+          isRefreshing={isRefreshing}
+          showRefresh={showRefresh}
           rightAction={rightAction}
         />
 

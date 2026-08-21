@@ -34,6 +34,12 @@ export interface TopBarProps {
   onProfileClick?: () => void;
   onLogoutClick?: () => void;
   onMenuClick?: () => void;
+  /** Triggers data refresh. Defaults to invalidating active React Query queries. */
+  onRefresh?: () => void | Promise<void>;
+  /** Indicates active refresh state to show spinning indicator. */
+  isRefreshing?: boolean;
+  /** Whether to show the reload/refetch button. Defaults to true. */
+  showRefresh?: boolean;
   rightAction?: ReactNode;
   className?: string;
 }
