@@ -41,6 +41,7 @@ import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import PlaylistAddRoundedIcon from '@mui/icons-material/PlaylistAddRounded';
 import FunctionsRoundedIcon from '@mui/icons-material/FunctionsRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -58,7 +59,10 @@ import {
   calculateEngagementRate,
   calculatePreEvalCpv,
   parseNumberInput,
-  parseNumberList,
+  validateNumericInput,
+  parseAndValidateBulkInput,
+  cleanInstagramHandle,
+  formatInstagramHandle,
   ManualPostRowData,
 } from '@utils';
 import type { CalculateERResponse } from '@contracts';
@@ -125,6 +129,11 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkTargetField, setBulkTargetField] = useState<'views' | 'likes' | 'comments'>('views');
   const [bulkInputText, setBulkInputText] = useState('');
+
+  // Assign ER Modal Dialog State
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignDialogTargetId, setAssignDialogTargetId] = useState<string>('');
+  const [assignDialogSource, setAssignDialogSource] = useState<'manual' | 'auto'>('manual');
 
   // Auto Mode Inputs & State
   const [autoHandle, setAutoHandle] = useState('');
@@ -352,10 +361,57 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     setBulkDialogOpen(true);
   };
 
+  const bulkValidation = useMemo(
+    () => parseAndValidateBulkInput(bulkInputText),
+    [bulkInputText],
+  );
+
+  const isCellInvalid = (val: string) => {
+    if (!val || val.trim() === '') return false;
+    return !validateNumericInput(val).isValid;
+  };
+
   const handleApplyBulkData = () => {
-    const parsedList = parseNumberList(bulkInputText);
+    if (bulkValidation.validValues.length === 0) {
+      showError('Please enter at least one valid number before applying to table');
+      return;
+    }
+
+    if (bulkValidation.hasErrors) {
+      showError(`Please fix or remove the ${bulkValidation.invalidCount} invalid entry/entries before applying`);
+      return;
+    }
+
+    const parsedList = bulkValidation.validValues;
+
+    setManualRows((prev) => {
+      const targetLength = Math.max(prev.length, parsedList.length);
+      const next: ManualPostRowData[] = [];
+
+      for (let i = 0; i < targetLength; i++) {
+        const existing = prev[i] || {
+          id: String(i + 1),
+          likes: '',
+          comments: '',
+          views: '',
+        };
+        const valToSet = i < parsedList.length ? String(parsedList[i]) : existing[bulkTargetField];
+        next.push({
+          ...existing,
+          [bulkTargetField]: valToSet,
+        });
+      }
+      return next;
+    });
+
+    setBulkDialogOpen(false);
+    showSuccess(`Applied ${parsedList.length} ${bulkTargetField} values to table`);
+  };
+
+  const handleApplyOnlyValidBulkData = () => {
+    const parsedList = bulkValidation.validValues;
     if (parsedList.length === 0) {
-      showError('No valid numbers found in the pasted text');
+      showError('No valid numbers to apply');
       return;
     }
 
@@ -380,15 +436,11 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     });
 
     setBulkDialogOpen(false);
-    showSuccess(`Applied ${parsedList.length} values to ${bulkTargetField}`);
+    showSuccess(`Applied ${parsedList.length} valid ${bulkTargetField} values to table`);
   };
 
   const handleCopySummary = () => {
-    const handleLabel = manualHandle.trim()
-      ? manualHandle.startsWith('@')
-        ? manualHandle.trim()
-        : `@${manualHandle.trim()}`
-      : 'Influencer';
+    const handleLabel = formatInstagramHandle(manualHandle, 'Influencer');
 
     const postsAnalyzed =
       manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount;
@@ -403,6 +455,33 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
 • Pre-Eval Committed Views: ${effectiveManual.committedViews > 0 ? `${effectiveManual.committedViews.toLocaleString()} views` : 'Not specified'}
 • Reel Commercial Fee: ${manualCommercialFeeNum > 0 ? `₹${manualCommercialFeeNum.toLocaleString()}` : 'Not specified'}
 • Pre-Eval CPV: ${effectiveManual.cpv !== null ? `₹${effectiveManual.cpv.toFixed(2)} / view` : 'Not specified'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Formula: ER% = [(Likes + Comments) ÷ Posts] ÷ Followers × 100
+Formula: Committed Views = Median of Latest 10 Reel Views
+Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
+
+    navigator.clipboard.writeText(reportText);
+    showSuccess('Evaluation report copied to clipboard');
+  };
+
+  const handleCopyAutoSummary = () => {
+    if (!autoResult) return;
+    const handleLabel = formatInstagramHandle(autoHandle || autoResult.instagramHandle, 'Influencer');
+
+    const postsCount = autoResult.posts?.length || autoResult.postsCount || 10;
+    const totalLikes = autoResult.avgLikes ? autoResult.avgLikes * postsCount : 0;
+    const totalComments = autoResult.avgComments ? autoResult.avgComments * postsCount : 0;
+
+    const reportText = `📊 Influencer Evaluation Report: ${handleLabel}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Followers: ${autoResult.followersCount ? autoResult.followersCount.toLocaleString() : 'Not specified'}
+• Analyzed Posts: ${postsCount}
+• Total Likes: ${totalLikes.toLocaleString()} (Avg: ${autoResult.avgLikes?.toLocaleString() ?? 0}/post)
+• Total Comments: ${totalComments.toLocaleString()} (Avg: ${autoResult.avgComments?.toLocaleString() ?? 0}/post)
+• Engagement Rate (ER%): ${autoResult.engagementRate.toFixed(2)}%
+• Pre-Eval Committed Views: ${autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : 'Not specified'}
+• Reel Commercial Fee: ${autoCommercialFeeNum > 0 ? `₹${autoCommercialFeeNum.toLocaleString()}` : 'Not specified'}
+• Pre-Eval CPV: ${autoCpv !== null ? `₹${autoCpv.toFixed(2)} / view` : 'Not specified'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Formula: ER% = [(Likes + Comments) ÷ Posts] ÷ Followers × 100
 Formula: Committed Views = Median of Latest 10 Reel Views
@@ -437,9 +516,6 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
     } catch (err: unknown) {
       const response = (err as { response?: { data?: { message?: string; code?: string } } })
         ?.response?.data;
-      // The server now distinguishes real failures from a genuine zero. A
-      // failed fetch used to come back as a 0.00% engagement rate, which read
-      // as a real — and very bad — score for the creator.
       setAutoErrorCode(response?.code ?? null);
       showError(response?.message || 'Failed to calculate engagement rate');
     } finally {
@@ -491,12 +567,40 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
     showSuccess('Transferred Instagram profile data to Manual Calculator');
   };
 
-  const handleAssignToInfluencer = async (source: 'manual' | 'auto' = activeTab) => {
+  const openAssignDialog = (source: 'manual' | 'auto' = activeTab) => {
+    setAssignDialogSource(source);
+    if (selectedInfluencerId) {
+      setAssignDialogTargetId(selectedInfluencerId);
+    } else {
+      const handleToMatch = source === 'manual' ? manualHandle : autoHandle;
+      const clean = cleanInstagramHandle(handleToMatch).toLowerCase();
+      if (clean) {
+        const match = influencersList.find(
+          (inf) =>
+            (inf.instagram && cleanInstagramHandle(inf.instagram).toLowerCase() === clean) ||
+            inf.name.toLowerCase() === handleToMatch.trim().toLowerCase(),
+        );
+        if (match) {
+          setAssignDialogTargetId(match.id);
+        } else {
+          setAssignDialogTargetId('');
+        }
+      } else {
+        setAssignDialogTargetId('');
+      }
+    }
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignToInfluencer = async (
+    source: 'manual' | 'auto' = activeTab,
+    targetIdOverride?: string,
+  ) => {
     const isManual = source === 'manual';
-    const targetInfluencerId = selectedInfluencerId;
+    const targetInfluencerId = targetIdOverride || selectedInfluencerId;
 
     if (!targetInfluencerId) {
-      showError('Please select an influencer from your roster to assign this ER value.');
+      openAssignDialog(source);
       return;
     }
 
@@ -511,7 +615,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       : (autoResult?.followersCount || manualFollowersNum);
     const commFee = isManual ? manualCommercialFeeNum : (autoCommercialFeeNum || manualCommercialFeeNum);
     const committedViews = isManual ? effectiveManual.committedViews : autoCommittedViews;
-    const handle = isManual ? manualHandle : (autoHandle || manualHandle);
+    const rawHandle = isManual ? manualHandle : (autoHandle || manualHandle);
+    const handle = cleanInstagramHandle(rawHandle);
 
     try {
       const res = await assignERMutation.mutateAsync({
@@ -520,8 +625,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         followersCount: followers > 0 ? followers : undefined,
         commercialFee: commFee > 0 ? commFee : undefined,
         avgViews: committedViews > 0 ? committedViews : undefined,
-        avgLikes: effectiveManual.avgLikes > 0 ? effectiveManual.avgLikes : (autoResult?.avgLikes ?? undefined),
-        avgComments: effectiveManual.avgComments > 0 ? effectiveManual.avgComments : (autoResult?.avgComments ?? undefined),
+        avgLikes: isManual
+          ? (effectiveManual.avgLikes > 0 ? effectiveManual.avgLikes : undefined)
+          : (autoResult?.avgLikes ?? undefined),
+        avgComments: isManual
+          ? (effectiveManual.avgComments > 0 ? effectiveManual.avgComments : undefined)
+          : (autoResult?.avgComments ?? undefined),
         postsCount: isManual
           ? (manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount)
           : (autoResult?.postsCount ?? undefined),
@@ -530,9 +639,15 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         rawResponse: isManual ? { tableData: manualRows, summaryData } : { autoResult },
       });
 
+      if (targetInfluencerId !== selectedInfluencerId) {
+        setSelectedInfluencerId(targetInfluencerId);
+      }
+      setAssignDialogOpen(false);
+
+      const targetInfluencerObj = influencersList.find((inf) => inf.id === targetInfluencerId);
       showSuccess(
         res.message ||
-          `Engagement rate of ${erValue.toFixed(2)}% successfully assigned to ${selectedInfluencer?.name || 'influencer'}!`,
+          `Engagement rate of ${erValue.toFixed(2)}% successfully assigned to ${targetInfluencerObj?.name || 'influencer'}!`,
       );
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -873,8 +988,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
 
               <Button
                 variant="contained"
-                onClick={() => handleAssignToInfluencer('manual')}
-                disabled={!selectedInfluencerId || effectiveManual.erPercent <= 0 || assignERMutation.isPending}
+                onClick={() => {
+                  if (selectedInfluencerId) {
+                    handleAssignToInfluencer('manual');
+                  } else {
+                    openAssignDialog('manual');
+                  }
+                }}
+                disabled={effectiveManual.erPercent <= 0 || assignERMutation.isPending}
                 startIcon={
                   assignERMutation.isPending ? (
                     <CircularProgress size={16} color="inherit" />
@@ -895,7 +1016,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   ? 'Assigning...'
                   : selectedInfluencer
                   ? `Assign ER % (${effectiveManual.erPercent.toFixed(2)}%)`
-                  : 'Assign ER %'}
+                  : 'Assign ER to Influencer'}
               </Button>
             </Box>
 
@@ -928,10 +1049,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   placeholder="e.g. 100k or 100000"
                   value={manualFollowers}
                   onChange={(e) => setManualFollowers(e.target.value)}
+                  error={manualFollowers.trim() !== '' && !validateNumericInput(manualFollowers).isValid}
                   size="small"
                   fullWidth
                   helperText={
-                    manualFollowersNum > 0
+                    manualFollowers.trim() !== '' && !validateNumericInput(manualFollowers).isValid
+                      ? 'Invalid follower count (e.g. 100k or 100000)'
+                      : manualFollowersNum > 0
                       ? `Parsed: ${manualFollowersNum.toLocaleString()} followers`
                       : 'Required to compute ER%'
                   }
@@ -953,10 +1077,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   placeholder="e.g. 50k or 50000"
                   value={manualCommercialFee}
                   onChange={(e) => setManualCommercialFee(e.target.value)}
+                  error={manualCommercialFee.trim() !== '' && !validateNumericInput(manualCommercialFee).isValid}
                   size="small"
                   fullWidth
                   helperText={
-                    manualCommercialFeeNum > 0
+                    manualCommercialFee.trim() !== '' && !validateNumericInput(manualCommercialFee).isValid
+                      ? 'Invalid fee amount (e.g. 50k or 50000)'
+                      : manualCommercialFeeNum > 0
                       ? `Parsed: ₹${manualCommercialFeeNum.toLocaleString()}`
                       : 'Required to compute Pre-Eval CPV'
                   }
@@ -1350,6 +1477,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               placeholder="e.g. 1200 or 1.2k"
                               value={manualRows[index]?.likes ?? ''}
                               onChange={(e) => handleRowChange(index, 'likes', e.target.value)}
+                              error={isCellInvalid(manualRows[index]?.likes ?? '')}
+                              helperText={isCellInvalid(manualRows[index]?.likes ?? '') ? 'Invalid format' : undefined}
                               fullWidth
                               slotProps={{
                                 input: {
@@ -1368,6 +1497,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               placeholder="e.g. 85"
                               value={manualRows[index]?.comments ?? ''}
                               onChange={(e) => handleRowChange(index, 'comments', e.target.value)}
+                              error={isCellInvalid(manualRows[index]?.comments ?? '')}
+                              helperText={isCellInvalid(manualRows[index]?.comments ?? '') ? 'Invalid format' : undefined}
                               fullWidth
                               slotProps={{
                                 input: {
@@ -1386,6 +1517,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               placeholder="e.g. 45000 or 45k"
                               value={manualRows[index]?.views ?? ''}
                               onChange={(e) => handleRowChange(index, 'views', e.target.value)}
+                              error={isCellInvalid(manualRows[index]?.views ?? '')}
+                              helperText={isCellInvalid(manualRows[index]?.views ?? '') ? 'Invalid format' : undefined}
                               fullWidth
                               slotProps={{
                                 input: {
@@ -1472,10 +1605,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 45000 or 45k"
                       value={summaryLikes}
                       onChange={(e) => setSummaryLikes(e.target.value)}
+                      error={summaryLikes.trim() !== '' && !validateNumericInput(summaryLikes).isValid}
                       size="small"
                       fullWidth
                       helperText={
-                        summaryData.totalLikes > 0
+                        summaryLikes.trim() !== '' && !validateNumericInput(summaryLikes).isValid
+                          ? 'Invalid format (e.g. 45k or 45000)'
+                          : summaryData.totalLikes > 0
                           ? `Parsed: ${summaryData.totalLikes.toLocaleString()}`
                           : 'Sum of likes across all analyzed posts'
                       }
@@ -1488,10 +1624,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 3200 or 3.2k"
                       value={summaryComments}
                       onChange={(e) => setSummaryComments(e.target.value)}
+                      error={summaryComments.trim() !== '' && !validateNumericInput(summaryComments).isValid}
                       size="small"
                       fullWidth
                       helperText={
-                        summaryData.totalComments > 0
+                        summaryComments.trim() !== '' && !validateNumericInput(summaryComments).isValid
+                          ? 'Invalid format (e.g. 3.2k or 3200)'
+                          : summaryData.totalComments > 0
                           ? `Parsed: ${summaryData.totalComments.toLocaleString()}`
                           : 'Sum of comments across all analyzed posts'
                       }
@@ -1504,9 +1643,18 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 10"
                       value={summaryPostsCount}
                       onChange={(e) => setSummaryPostsCount(e.target.value)}
+                      error={
+                        summaryPostsCount.trim() !== '' &&
+                        (!validateNumericInput(summaryPostsCount).isValid || parseNumberInput(summaryPostsCount) <= 0)
+                      }
                       size="small"
                       fullWidth
-                      helperText="Default is 10 latest posts"
+                      helperText={
+                        summaryPostsCount.trim() !== '' &&
+                        (!validateNumericInput(summaryPostsCount).isValid || parseNumberInput(summaryPostsCount) <= 0)
+                          ? 'Must be a positive integer (e.g. 10)'
+                          : 'Default is 10 latest posts'
+                      }
                     />
                   </Grid>
 
@@ -1516,10 +1664,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 35000 or 35k"
                       value={summaryCommittedViews}
                       onChange={(e) => setSummaryCommittedViews(e.target.value)}
+                      error={summaryCommittedViews.trim() !== '' && !validateNumericInput(summaryCommittedViews).isValid}
                       size="small"
                       fullWidth
                       helperText={
-                        summaryData.committedViews > 0
+                        summaryCommittedViews.trim() !== '' && !validateNumericInput(summaryCommittedViews).isValid
+                          ? 'Invalid format (e.g. 35k or 35000)'
+                          : summaryData.committedViews > 0
                           ? `Parsed: ${summaryData.committedViews.toLocaleString()} views`
                           : 'Median of latest 10 reels'
                       }
@@ -1540,18 +1691,35 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               border: `1px solid ${theme.palette.tokens.divider}`,
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Influencer Evaluation Summary
-              </Typography>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<ContentCopyRoundedIcon />}
-                onClick={handleCopySummary}
-              >
-                Copy Evaluation Report
-              </Button>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Influencer Evaluation Summary
+                </Typography>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Shareable summary report & direct ER assignment to roster
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ContentCopyRoundedIcon />}
+                  onClick={handleCopySummary}
+                >
+                  Copy Evaluation Report
+                </Button>
+              </Box>
             </Box>
 
             <Box
@@ -1567,13 +1735,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 lineHeight: 1.6,
               }}
             >
-              {`📊 Influencer Evaluation Report: ${
-                manualHandle.trim()
-                  ? manualHandle.startsWith('@')
-                    ? manualHandle.trim()
-                    : `@${manualHandle.trim()}`
-                  : 'Influencer'
-              }
+              {`📊 Influencer Evaluation Report: ${formatInstagramHandle(manualHandle, 'Influencer')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Followers: ${manualFollowersNum > 0 ? manualFollowersNum.toLocaleString() : 'Not specified'}
 • Analyzed Posts / Reels: ${manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount}
@@ -1584,6 +1746,131 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
 • Reel Commercial Fee: ${manualCommercialFeeNum > 0 ? `₹${manualCommercialFeeNum.toLocaleString()}` : 'Not specified'}
 • Pre-Eval CPV: ${effectiveManual.cpv !== null ? `₹${effectiveManual.cpv.toFixed(2)} / view` : 'Not specified'}`}
             </Box>
+
+            {/* Roster Assignment Link Status Strip */}
+            {selectedInfluencer ? (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 1.75,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: theme.palette.background.paper,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 1.5,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      bgcolor: theme.palette.primary.main,
+                      color: theme.palette.primary.contrastText,
+                      fontWeight: 700,
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    {selectedInfluencer.name.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {selectedInfluencer.name}
+                      </Typography>
+                      {selectedInfluencer.instagram && (
+                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                          {formatInstagramHandle(selectedInfluencer.instagram)}
+                        </Typography>
+                      )}
+                      <Chip
+                        label="Selected Roster Influencer"
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          backgroundColor: theme.palette.tokens.purpleBg,
+                          color: theme.palette.tokens.purpleText,
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      {selectedInfluencer.followers ? `${selectedInfluencer.followers.toLocaleString()} followers` : 'Followers not set'}
+                      {' • '}Ready to assign calculated ER of {effectiveManual.erPercent.toFixed(2)}%
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <Button
+                    variant="text"
+                    size="small"
+                    startIcon={<SwapHorizRoundedIcon />}
+                    onClick={() => openAssignDialog('manual')}
+                    sx={{ fontSize: '0.8rem', textTransform: 'none', color: theme.palette.tokens.textSecondary }}
+                  >
+                    Change Influencer
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={
+                      assignERMutation.isPending ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : (
+                        <CheckCircleRoundedIcon />
+                      )
+                    }
+                    onClick={() => handleAssignToInfluencer('manual')}
+                    disabled={effectiveManual.erPercent <= 0 || assignERMutation.isPending}
+                    sx={{ fontWeight: 700 }}
+                  >
+                    {assignERMutation.isPending ? 'Assigning...' : `Assign ER to ${selectedInfluencer.name}`}
+                  </Button>
+                </Box>
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 1.75,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                  border: `1px dashed ${theme.palette.tokens.divider}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 1.5,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 24 }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      No Influencer Linked to this Calculation
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      Assign this calculated Engagement Rate ({effectiveManual.erPercent.toFixed(2)}%) to an influencer in your roster.
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PeopleAltRoundedIcon />}
+                  onClick={() => openAssignDialog('manual')}
+                  disabled={effectiveManual.erPercent <= 0}
+                  sx={{ fontWeight: 700 }}
+                >
+                  Select Influencer & Assign ER
+                </Button>
+              </Box>
+            )}
           </Paper>
         </Box>
       )}
@@ -1790,8 +2077,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           <CheckCircleRoundedIcon />
                         )
                       }
-                      onClick={() => handleAssignToInfluencer('auto')}
-                      disabled={!selectedInfluencerId || (autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending}
+                      onClick={() => {
+                        if (selectedInfluencerId) {
+                          handleAssignToInfluencer('auto');
+                        } else {
+                          openAssignDialog('auto');
+                        }
+                      }}
+                      disabled={(autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending}
                       sx={{ height: 40, fontWeight: 700 }}
                     >
                       {assignERMutation.isPending
@@ -1821,9 +2114,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 50000 or 50k"
                       value={autoCommercialFee}
                       onChange={(e) => setAutoCommercialFee(e.target.value)}
+                      error={autoCommercialFee.trim() !== '' && !validateNumericInput(autoCommercialFee).isValid}
                       size="small"
                       fullWidth
-                      helperText="Enter commercial fee to compute Pre-Eval CPV"
+                      helperText={
+                        autoCommercialFee.trim() !== '' && !validateNumericInput(autoCommercialFee).isValid
+                          ? 'Invalid fee amount (e.g. 50k or 50000)'
+                          : autoCommercialFeeNum > 0
+                          ? `Parsed: ₹${autoCommercialFeeNum.toLocaleString()}`
+                          : 'Enter commercial fee to compute Pre-Eval CPV'
+                      }
                       slotProps={{
                         input: {
                           startAdornment: (
@@ -2087,6 +2387,198 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   </TableContainer>
                 </Paper>
               )}
+
+              {/* Auto Mode Evaluation Summary Sheet */}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: `${theme.customRadii.card}px`,
+                  backgroundColor: theme.palette.background.paper,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 2,
+                    mb: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                      Influencer Evaluation Summary
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      Shareable summary report & direct ER assignment to roster
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<ContentCopyRoundedIcon />}
+                      onClick={handleCopyAutoSummary}
+                    >
+                      Copy Evaluation Report
+                    </Button>
+                  </Box>
+                </Box>
+
+                <Box
+                  sx={{
+                    p: 2.5,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.tokens.fieldBg,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap',
+                    fontSize: theme.typography.body2.fontSize,
+                    color: theme.palette.tokens.textPrimary,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {`📊 Influencer Evaluation Report: ${formatInstagramHandle(autoHandle || autoResult.instagramHandle, 'Influencer')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Followers: ${autoResult.followersCount ? autoResult.followersCount.toLocaleString() : 'Not specified'}
+• Analyzed Posts / Reels: ${autoResult.posts.length}
+• Total Likes: ${(autoResult.avgLikes ? autoResult.avgLikes * autoResult.posts.length : 0).toLocaleString()} (Avg: ${autoResult.avgLikes?.toLocaleString() ?? 0}/post)
+• Total Comments: ${(autoResult.avgComments ? autoResult.avgComments * autoResult.posts.length : 0).toLocaleString()} (Avg: ${autoResult.avgComments?.toLocaleString() ?? 0}/post)
+• Engagement Rate (ER%): ${autoResult.engagementRate.toFixed(2)}%
+• Pre-Eval Committed Views: ${autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : 'Not specified'}
+• Reel Commercial Fee: ${autoCommercialFeeNum > 0 ? `₹${autoCommercialFeeNum.toLocaleString()}` : 'Not specified'}
+• Pre-Eval CPV: ${autoCpv !== null ? `₹${autoCpv.toFixed(2)} / view` : 'Not specified'}`}
+                </Box>
+
+                {/* Auto Mode Roster Assignment Link Status Strip */}
+                {selectedInfluencer ? (
+                  <Box
+                    sx={{
+                      mt: 2,
+                      p: 1.75,
+                      borderRadius: `${theme.customRadii.inner}px`,
+                      backgroundColor: theme.palette.background.paper,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          bgcolor: theme.palette.primary.main,
+                          color: theme.palette.primary.contrastText,
+                          fontWeight: 700,
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {selectedInfluencer.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {selectedInfluencer.name}
+                          </Typography>
+                          {selectedInfluencer.instagram && (
+                            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                              {formatInstagramHandle(selectedInfluencer.instagram)}
+                            </Typography>
+                          )}
+                          <Chip
+                            label="Selected Roster Influencer"
+                            size="small"
+                            sx={{
+                              height: 20,
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              backgroundColor: theme.palette.tokens.purpleBg,
+                              color: theme.palette.tokens.purpleText,
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                          {selectedInfluencer.followers ? `${selectedInfluencer.followers.toLocaleString()} followers` : 'Followers not set'}
+                          {' • '}Ready to assign calculated ER of {autoResult.engagementRate.toFixed(2)}%
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<SwapHorizRoundedIcon />}
+                        onClick={() => openAssignDialog('auto')}
+                        sx={{ fontSize: '0.8rem', textTransform: 'none', color: theme.palette.tokens.textSecondary }}
+                      >
+                        Change Influencer
+                      </Button>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={
+                          assignERMutation.isPending ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : (
+                            <CheckCircleRoundedIcon />
+                          )
+                        }
+                        onClick={() => handleAssignToInfluencer('auto')}
+                        disabled={(autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending}
+                        sx={{ fontWeight: 700 }}
+                      >
+                        {assignERMutation.isPending ? 'Assigning...' : `Assign ER to ${selectedInfluencer.name}`}
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box
+                    sx={{
+                      mt: 2,
+                      p: 1.75,
+                      borderRadius: `${theme.customRadii.inner}px`,
+                      backgroundColor: theme.palette.tokens.fieldBg,
+                      border: `1px dashed ${theme.palette.tokens.divider}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 1.5,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 24 }} />
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          No Influencer Linked to this Calculation
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                          Assign this calculated Engagement Rate ({autoResult.engagementRate.toFixed(2)}%) to an influencer in your roster.
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<PeopleAltRoundedIcon />}
+                      onClick={() => openAssignDialog('auto')}
+                      disabled={(autoResult?.engagementRate || 0) <= 0}
+                      sx={{ fontWeight: 700 }}
+                    >
+                      Select Influencer & Assign ER
+                    </Button>
+                  </Box>
+                )}
+              </Paper>
             </>
           )}
         </Box>
@@ -2126,26 +2618,122 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               placeholder="Paste numbers here (e.g. 45000, 32000, 28000, 51000... or 45k 32k 28k)"
               value={bulkInputText}
               onChange={(e) => setBulkInputText(e.target.value)}
+              error={bulkValidation.hasErrors}
+              helperText={
+                bulkValidation.hasErrors
+                  ? `${bulkValidation.invalidCount} invalid entry/entries detected. Please correct or remove them.`
+                  : undefined
+              }
               fullWidth
               autoFocus
             />
 
-            {bulkInputText.trim() && (
+            {/* Invalid Entries Warning Box */}
+            {bulkValidation.hasErrors && (
+              <Box
+                sx={{
+                  p: 1.75,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: `${theme.palette.error.main}12`,
+                  border: `1px solid ${theme.palette.error.main}40`,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+                  <WarningAmberRoundedIcon sx={{ color: theme.palette.error.main, fontSize: 18 }} />
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.error.main }}>
+                    {bulkValidation.invalidCount} invalid {bulkValidation.invalidCount === 1 ? 'entry' : 'entries'} found:
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: theme.palette.error.main,
+                    wordBreak: 'break-word',
+                    fontFamily: 'monospace',
+                    fontSize: '0.8rem',
+                    backgroundColor: theme.palette.background.paper,
+                    p: 1,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    mb: 1,
+                  }}
+                >
+                  {bulkValidation.invalidStrings.slice(0, 10).map((s) => `"${s}"`).join(', ')}
+                  {bulkValidation.invalidStrings.length > 10 ? ` +${bulkValidation.invalidStrings.length - 10} more` : ''}
+                </Typography>
+                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                  Please enter valid numbers or shorthand formats (e.g. 45000, 45k, 1.2M, 50,000). Text strings and special characters cannot be assigned as {bulkTargetField}.
+                </Typography>
+              </Box>
+            )}
+
+            {/* Valid Preview Box */}
+            {bulkInputText.trim() && bulkValidation.validCount > 0 && (
+              <Box
+                sx={{
+                  p: 1.75,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  backgroundColor: bulkValidation.hasErrors
+                    ? theme.palette.tokens.fieldBg
+                    : theme.palette.tokens.positiveBg,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <CheckCircleRoundedIcon
+                      sx={{
+                        color: bulkValidation.hasErrors
+                          ? theme.palette.tokens.accentText
+                          : theme.palette.tokens.positiveText,
+                        fontSize: 16,
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 700,
+                        color: bulkValidation.hasErrors
+                          ? theme.palette.tokens.accentText
+                          : theme.palette.tokens.positiveText,
+                      }}
+                    >
+                      Recognized {bulkValidation.validCount} valid {bulkValidation.validCount === 1 ? 'number' : 'numbers'}:
+                    </Typography>
+                  </Box>
+                  {bulkValidation.hasErrors && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setBulkInputText(bulkValidation.validValues.join(', '))}
+                      sx={{ fontSize: '0.75rem', p: 0, textTransform: 'none' }}
+                    >
+                      Keep only valid values
+                    </Button>
+                  )}
+                </Box>
+                <Typography variant="body2" sx={{ wordBreak: 'break-word', color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                  {bulkValidation.validValues.map((n) => n.toLocaleString()).join(', ')}
+                </Typography>
+                {!bulkValidation.hasErrors && (
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}>
+                    Will populate Reel 1 to Reel {bulkValidation.validCount} in the {bulkTargetField} column.
+                  </Typography>
+                )}
+              </Box>
+            )}
+
+            {bulkInputText.trim() && bulkValidation.validCount === 0 && (
               <Box
                 sx={{
                   p: 1.5,
                   borderRadius: `${theme.customRadii.inner}px`,
                   backgroundColor: theme.palette.tokens.fieldBg,
                   border: `1px solid ${theme.palette.tokens.divider}`,
+                  textAlign: 'center',
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}>
-                  Preview ({parseNumberList(bulkInputText).length} numbers recognized):
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5, wordBreak: 'break-word' }}>
-                  {parseNumberList(bulkInputText)
-                    .map((n) => n.toLocaleString())
-                    .join(', ') || 'No valid numbers found'}
+                <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  No valid numbers recognized. Example format: <code>45k, 32k, 18000, 25k</code>
                 </Typography>
               </Box>
             )}
@@ -2156,12 +2744,287 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
           <Button variant="outlined" onClick={() => setBulkDialogOpen(false)}>
             Cancel
           </Button>
+          {bulkValidation.hasErrors && bulkValidation.validCount > 0 && (
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={handleApplyOnlyValidBulkData}
+            >
+              Apply Only Valid ({bulkValidation.validCount})
+            </Button>
+          )}
           <Button
             variant="contained"
             onClick={handleApplyBulkData}
-            disabled={parseNumberList(bulkInputText).length === 0}
+            disabled={bulkValidation.validCount === 0 || bulkValidation.hasErrors}
           >
             Apply to Table
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* ASSIGN ER TO INFLUENCER DIALOG */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={assignDialogOpen}
+        onClose={() => !assignERMutation.isPending && setAssignDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.purpleBg,
+                color: theme.palette.tokens.purpleText,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <CalculateRoundedIcon />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Assign ER to Influencer
+              </Typography>
+              <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                Assign calculated engagement rate and metrics to an agency roster profile
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Calculation Preview Summary Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                border: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                    color: theme.palette.tokens.textSecondary,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Calculated Metrics ({assignDialogSource === 'manual' ? 'Manual Calc' : 'Auto Fetch'})
+                </Typography>
+                {getErTierBadge(
+                  assignDialogSource === 'manual'
+                    ? effectiveManual.erPercent
+                    : (autoResult?.engagementRate || 0),
+                )}
+              </Box>
+
+              <Grid container spacing={1.5}>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                    Engagement Rate
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}>
+                    {assignDialogSource === 'manual'
+                      ? `${effectiveManual.erPercent.toFixed(2)}%`
+                      : `${autoResult?.engagementRate?.toFixed(2) || '0.00'}%`}
+                  </Typography>
+                </Grid>
+
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                    Followers
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    {assignDialogSource === 'manual'
+                      ? manualFollowersNum > 0
+                        ? manualFollowersNum.toLocaleString()
+                        : '—'
+                      : autoResult?.followersCount
+                      ? autoResult.followersCount.toLocaleString()
+                      : '—'}
+                  </Typography>
+                </Grid>
+
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                    Committed Views
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    {assignDialogSource === 'manual'
+                      ? effectiveManual.committedViews > 0
+                        ? effectiveManual.committedViews.toLocaleString()
+                        : '—'
+                      : autoCommittedViews > 0
+                      ? autoCommittedViews.toLocaleString()
+                      : '—'}
+                  </Typography>
+                </Grid>
+
+                <Grid size={{ xs: 6, sm: 3 }}>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                    Reel Fee
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    {assignDialogSource === 'manual'
+                      ? manualCommercialFeeNum > 0
+                        ? `₹${manualCommercialFeeNum.toLocaleString()}`
+                        : '—'
+                      : autoCommercialFeeNum > 0
+                      ? `₹${autoCommercialFeeNum.toLocaleString()}`
+                      : '—'}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Target Influencer Selection */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                Select Target Influencer from Roster
+              </Typography>
+              <Autocomplete
+                options={influencersList}
+                getOptionLabel={(option) =>
+                  option.instagram ? `${option.name} (@${option.instagram})` : option.name
+                }
+                value={influencersList.find((inf) => inf.id === assignDialogTargetId) || null}
+                onChange={(_, newValue) => {
+                  setAssignDialogTargetId(newValue?.id || '');
+                }}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                fullWidth
+                renderOption={(props, option) => {
+                  const { key, ...otherProps } = props;
+                  return (
+                    <Box
+                      component="li"
+                      key={key}
+                      {...otherProps}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
+                    >
+                      <Avatar
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          bgcolor: theme.palette.primary.main,
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {option.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {option.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                          {option.instagram ? `@${option.instagram}` : 'No Instagram handle'}
+                          {option.followers ? ` • ${option.followers.toLocaleString()} followers` : ''}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Target Influencer *"
+                    placeholder="Search by name or Instagram handle..."
+                    size="medium"
+                    slotProps={{
+                      input: {
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <InputAdornment position="start">
+                              <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 20 }} />
+                            </InputAdornment>
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Box>
+
+            {/* Selected influencer confirmation details */}
+            {(() => {
+              const target = influencersList.find((inf) => inf.id === assignDialogTargetId);
+              if (!target) return null;
+              return (
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    backgroundColor: theme.palette.tokens.positiveBg,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText, display: 'block' }}
+                  >
+                    Assigning to: {target.name} {target.instagram ? `(@${target.instagram})` : ''}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}>
+                    This will persist an engagement calculation record and update the influencer profile's ER metrics in your agency roster.
+                  </Typography>
+                </Box>
+              );
+            })()}
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setAssignDialogOpen(false)}
+            disabled={assignERMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => handleAssignToInfluencer(assignDialogSource, assignDialogTargetId)}
+            disabled={
+              !assignDialogTargetId ||
+              (assignDialogSource === 'manual'
+                ? effectiveManual.erPercent
+                : (autoResult?.engagementRate || 0)) <= 0 ||
+              assignERMutation.isPending
+            }
+            startIcon={
+              assignERMutation.isPending ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <CheckCircleRoundedIcon />
+              )
+            }
+            sx={{ fontWeight: 700 }}
+          >
+            {assignERMutation.isPending ? 'Assigning ER...' : 'Confirm & Assign ER'}
           </Button>
         </DialogActions>
       </Dialog>
