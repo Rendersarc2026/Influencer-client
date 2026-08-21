@@ -335,13 +335,13 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               onChange={(e) => {
                 const val = capitalizeWords(e.target.value);
                 setName(val);
-                if (nameError) {
-                  if (!val.trim()) setNameError('Influencer name is required');
-                  else setNameError('');
+                if (val.trim()) {
+                  setNameError('');
                 }
               }}
-              onBlur={() => {
-                if (!name.trim()) {
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                if (!val) {
                   setNameError('Influencer name is required');
                 } else {
                   setNameError('');
@@ -361,16 +361,16 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setEmail(val);
-                  if (emailError) {
-                    if (!val.trim()) setEmailError('Email is required');
-                    else setEmailError(validateEmail(val));
+                  if (val.trim()) {
+                    setEmailError(validateEmail(val));
                   }
                 }}
-                onBlur={() => {
-                  if (!email.trim()) {
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  if (!val) {
                     setEmailError('Email is required');
                   } else {
-                    setEmailError(validateEmail(email));
+                    setEmailError(validateEmail(val));
                   }
                 }}
                 error={Boolean(emailError)}
@@ -387,16 +387,16 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setContactPhone(val);
-                  if (phoneError) {
-                    if (!val.trim()) setPhoneError('Phone number is required');
-                    else setPhoneError(validatePhone(val));
+                  if (val.trim()) {
+                    setPhoneError(validatePhone(val));
                   }
                 }}
-                onBlur={() => {
-                  if (!contactPhone.trim()) {
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  if (!val) {
                     setPhoneError('Phone number is required');
                   } else {
-                    setPhoneError(validatePhone(contactPhone));
+                    setPhoneError(validatePhone(val));
                   }
                 }}
                 error={Boolean(phoneError)}

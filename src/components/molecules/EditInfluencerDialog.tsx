@@ -330,13 +330,13 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               onChange={(e) => {
                 const val = e.target.value;
                 setName(val);
-                if (nameError) {
-                  if (!val.trim()) setNameError('Influencer name is required');
-                  else setNameError('');
+                if (val.trim()) {
+                  setNameError('');
                 }
               }}
-              onBlur={() => {
-                if (!name.trim()) {
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                if (!val) {
                   setNameError('Influencer name is required');
                 } else {
                   setNameError('');
@@ -347,18 +347,20 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               placeholder="e.g. Varsha, Neha Nazneen"
               fullWidth
               disabled={loading}
-              autoFocus
             />
 
             <TextField
               label="Contact Phone"
               value={contactPhone}
               onChange={(e) => {
-                setContactPhone(e.target.value);
-                if (phoneError) setPhoneError(validatePhone(e.target.value));
+                const val = e.target.value;
+                setContactPhone(val);
+                if (phoneError) setPhoneError(validatePhone(val));
               }}
-              onBlur={() => {
-                if (contactPhone.trim()) setPhoneError(validatePhone(contactPhone));
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                if (val) setPhoneError(validatePhone(val));
+                else setPhoneError('');
               }}
               placeholder="+91 98765 43210"
               error={Boolean(phoneError)}
