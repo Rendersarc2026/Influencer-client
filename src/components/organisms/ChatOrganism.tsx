@@ -121,6 +121,19 @@ const MESSAGE_EDIT_WINDOW_MS = 5 * 60 * 1000;
 const isWithinEditWindow = (createdOn: Date | string, now: number): boolean =>
   now - new Date(createdOn).getTime() <= MESSAGE_EDIT_WINDOW_MS;
 
+const pickBestChat = (candidates: ChatResponse[]): ChatResponse | undefined => {
+  if (candidates.length === 0) return undefined;
+  if (candidates.length === 1) return candidates[0];
+  return [...candidates].sort((a, b) => {
+    const timeA = a.lastMessageOn ? new Date(a.lastMessageOn).getTime() : 0;
+    const timeB = b.lastMessageOn ? new Date(b.lastMessageOn).getTime() : 0;
+    if (timeA !== timeB) return timeB - timeA;
+    const createdA = new Date(a.createdOn).getTime();
+    const createdB = new Date(b.createdOn).getTime();
+    return createdB - createdA;
+  })[0];
+};
+
 const findExistingChat = (
   chats: ChatResponse[],
   participantId?: string | null,
@@ -131,36 +144,47 @@ const findExistingChat = (
 ): ChatResponse | undefined => {
   if (!participantId || !chats.length) return undefined;
 
-  // 1. Direct match on chat.id, chat.influencerId, or chat.brandUserId
-  const directMatch = chats.find((c) => {
-    if (c.id === participantId) return true;
-    if (type === 'INFLUENCER') {
-      return c.type === ChatTypeCode.AGENCY_INFLUENCER && c.influencerId === participantId;
+  const matches: ChatResponse[] = [];
+
+  // Direct match on chat.id
+  const byId = chats.find((c) => c.id === participantId);
+  if (byId) return byId;
+
+  // 1. Direct match on chat.influencerId or chat.brandUserId
+  for (const c of chats) {
+    if (type === 'INFLUENCER' || !type) {
+      if (c.type === ChatTypeCode.AGENCY_INFLUENCER && c.influencerId === participantId) {
+        matches.push(c);
+      }
     }
-    if (type === 'BRAND') {
-      return c.type === ChatTypeCode.AGENCY_BRAND && c.brandUserId === participantId;
+    if (type === 'BRAND' || !type) {
+      if (c.type === ChatTypeCode.AGENCY_BRAND && c.brandUserId === participantId) {
+        matches.push(c);
+      }
     }
-    return c.influencerId === participantId || c.brandUserId === participantId;
-  });
-  if (directMatch) return directMatch;
+  }
 
   // 2. Brand match via brand ID -> brand name / user ID
   if (type === 'BRAND' || !type) {
     const matchedBrand = brands.find((b) => b.id === participantId);
     if (matchedBrand) {
-      const brandChat = chats.find((c) => {
-        if (c.type !== ChatTypeCode.AGENCY_BRAND) return false;
-        if (c.brandUserId === matchedBrand.id) return true;
-        if (c.brandName && c.brandName.toLowerCase() === matchedBrand.name.toLowerCase()) return true;
-        const brandUser = users.find(
-          (u) =>
-            u.brandId === matchedBrand.id ||
-            (matchedBrand.contactEmail && u.email?.toLowerCase() === matchedBrand.contactEmail.toLowerCase()),
-        );
-        if (brandUser && (c.brandUserId === brandUser.id || c.brandUserId === brandUser.brandId)) return true;
-        return false;
-      });
-      if (brandChat) return brandChat;
+      for (const c of chats) {
+        if (c.type !== ChatTypeCode.AGENCY_BRAND) continue;
+        if (c.brandUserId === matchedBrand.id) {
+          matches.push(c);
+        } else if (c.brandName && c.brandName.toLowerCase().trim() === matchedBrand.name.toLowerCase().trim()) {
+          matches.push(c);
+        } else {
+          const brandUser = users.find(
+            (u) =>
+              u.brandId === matchedBrand.id ||
+              (matchedBrand.contactEmail && u.email?.toLowerCase() === matchedBrand.contactEmail.toLowerCase()),
+          );
+          if (brandUser && (c.brandUserId === brandUser.id || c.brandUserId === brandUser.brandId)) {
+            matches.push(c);
+          }
+        }
+      }
     }
   }
 
@@ -168,56 +192,60 @@ const findExistingChat = (
   if (type === 'INFLUENCER' || !type) {
     const matchedInfluencer = influencers.find((i) => i.id === participantId);
     if (matchedInfluencer) {
-      const influencerChat = chats.find((c) => {
-        if (c.type !== ChatTypeCode.AGENCY_INFLUENCER) return false;
-        if (c.influencerId === matchedInfluencer.id) return true;
-        if (c.influencerName && c.influencerName.toLowerCase() === matchedInfluencer.name.toLowerCase()) return true;
-        const infUser = users.find(
-          (u) =>
-            u.influencer?.id === matchedInfluencer.id ||
-            (matchedInfluencer.email && u.email?.toLowerCase() === matchedInfluencer.email.toLowerCase()),
-        );
-        if (
-          infUser &&
-          (c.influencerId === infUser.id ||
-            c.influencerId === infUser.influencer?.id)
-        ) {
-          return true;
+      for (const c of chats) {
+        if (c.type !== ChatTypeCode.AGENCY_INFLUENCER) continue;
+        if (c.influencerId === matchedInfluencer.id) {
+          matches.push(c);
+        } else if (c.influencerName && c.influencerName.toLowerCase().trim() === matchedInfluencer.name.toLowerCase().trim()) {
+          matches.push(c);
+        } else {
+          const infUser = users.find(
+            (u) =>
+              u.influencer?.id === matchedInfluencer.id ||
+              (matchedInfluencer.email && u.email?.toLowerCase() === matchedInfluencer.email.toLowerCase()),
+          );
+          if (infUser && (c.influencerId === infUser.id || c.influencerId === infUser.influencer?.id)) {
+            matches.push(c);
+          }
         }
-        return false;
-      });
-      if (influencerChat) return influencerChat;
+      }
     }
   }
 
   // 4. User ID match (if participantId is a User ID)
   const matchedUser = users.find((u) => u.id === participantId);
   if (matchedUser) {
-    const userChat = chats.find((c) => {
-      if (c.brandUserId === matchedUser.id || (matchedUser.brandId && c.brandUserId === matchedUser.brandId)) return true;
-      if (c.influencerId === matchedUser.id || (matchedUser.influencer?.id && c.influencerId === matchedUser.influencer.id)) return true;
-      if (matchedUser.brandName && c.brandName?.toLowerCase() === matchedUser.brandName.toLowerCase()) return true;
-      if (matchedUser.profile?.fullName && c.influencerName?.toLowerCase() === matchedUser.profile.fullName.toLowerCase()) return true;
-      return false;
-    });
-    if (userChat) return userChat;
+    for (const c of chats) {
+      if (c.brandUserId === matchedUser.id || (matchedUser.brandId && c.brandUserId === matchedUser.brandId)) {
+        matches.push(c);
+      } else if (c.influencerId === matchedUser.id || (matchedUser.influencer?.id && c.influencerId === matchedUser.influencer.id)) {
+        matches.push(c);
+      } else if (matchedUser.brandName && c.brandName?.toLowerCase().trim() === matchedUser.brandName.toLowerCase().trim()) {
+        matches.push(c);
+      } else if (matchedUser.profile?.fullName && c.influencerName?.toLowerCase().trim() === matchedUser.profile.fullName.toLowerCase().trim()) {
+        matches.push(c);
+      }
+    }
   }
 
-  return undefined;
+  return pickBestChat(matches);
 };
 
 const getChatDeduplicationKey = (
   chat: ChatResponse,
-  roleCode: string | undefined,
+  roleCode: string | null | undefined,
   brands: BrandResponse[] = [],
   influencers: InfluencerResponse[] = [],
   users: UserResponse[] = [],
 ): string => {
-  if (chat.type === ChatTypeCode.CAMPAIGN) {
-    return `campaign:${chat.campaignId || chat.id}`;
+  if (chat.campaignId) {
+    return `campaign:${chat.campaignId}`;
   }
 
   if (chat.type === ChatTypeCode.AGENCY_BRAND) {
+    if (chat.brandName) {
+      return `brand_name:${chat.brandName.toLowerCase().trim()}`;
+    }
     if (chat.brandUserId) {
       const u = users.find((usr) => usr.id === chat.brandUserId);
       const b = brands.find(
@@ -226,16 +254,18 @@ const getChatDeduplicationKey = (
           brand.id === u?.brandId ||
           (u?.email && brand.contactEmail?.toLowerCase() === u.email.toLowerCase()),
       );
-      if (b?.id) return `brand:${b.id}`;
+      if (b?.name) return `brand_name:${b.name.toLowerCase().trim()}`;
+      if (b?.id) return `brand_id:${b.id}`;
+      if (u?.brandName) return `brand_name:${u.brandName.toLowerCase().trim()}`;
       if (u?.id) return `brand_user:${u.id}`;
       return `brand_raw:${chat.brandUserId}`;
-    }
-    if (chat.brandName) {
-      return `brand_name:${chat.brandName.toLowerCase().trim()}`;
     }
   }
 
   if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
+    if (chat.influencerName) {
+      return `influencer_name:${chat.influencerName.toLowerCase().trim()}`;
+    }
     if (chat.influencerId) {
       const u = users.find((usr) => usr.id === chat.influencerId);
       const inf = influencers.find(
@@ -244,12 +274,12 @@ const getChatDeduplicationKey = (
           i.id === u?.influencer?.id ||
           (u?.email && i.email?.toLowerCase() === u.email.toLowerCase()),
       );
-      if (inf?.id) return `influencer:${inf.id}`;
+      if (inf?.name) return `influencer_name:${inf.name.toLowerCase().trim()}`;
+      if (inf?.id) return `influencer_id:${inf.id}`;
+      if (u?.influencer?.name) return `influencer_name:${u.influencer.name.toLowerCase().trim()}`;
+      if (u?.profile?.fullName) return `influencer_name:${u.profile.fullName.toLowerCase().trim()}`;
       if (u?.id) return `influencer_user:${u.id}`;
       return `influencer_raw:${chat.influencerId}`;
-    }
-    if (chat.influencerName) {
-      return `influencer_name:${chat.influencerName.toLowerCase().trim()}`;
     }
   }
 
@@ -279,19 +309,9 @@ export const ChatOrganism: React.FC = () => {
 
   const isAgency = roleCode === 'AGENCY';
   const { data: chats = [], isLoading: chatsLoading } = useChats();
-  // Three hundred rows of accounts, fetched on every visit, existed only to
-  // name a chat the server had already named. They are fetched now when - and
-  // only when - a chat turns up that the payload could not name.
   const needsAccountFallback = useMemo(
-    () =>
-      isAgency &&
-      (Boolean(queryParticipantId) ||
-        chats.some(
-          (c) =>
-            !chatNameFromPayload(c, roleCode) ||
-            !chatAvatarFromPayload(c, roleCode),
-        )),
-    [isAgency, queryParticipantId, chats, roleCode],
+    () => isAgency,
+    [isAgency],
   );
 
   const { data: influencersData } = useAgencyInfluencers(isAgency ? { limit: 100 } : undefined, {
@@ -365,15 +385,65 @@ export const ChatOrganism: React.FC = () => {
     [chats],
   );
 
+  // Deduplicated conversations list (merges any duplicate threads for the same participant)
+  const uniqueChats = useMemo(() => {
+    const map = new Map<string, ChatResponse>();
+
+    for (const chat of chats) {
+      const key = getChatDeduplicationKey(chat, roleCode, brands, influencers, users);
+      const existing = map.get(key);
+
+      if (!existing) {
+        map.set(key, chat);
+      } else {
+        const timeChat = chat.lastMessageOn ? new Date(chat.lastMessageOn).getTime() : 0;
+        const timeExisting = existing.lastMessageOn ? new Date(existing.lastMessageOn).getTime() : 0;
+
+        let primary: ChatResponse = existing;
+        if (timeChat > timeExisting) {
+          primary = chat;
+        } else if (timeChat === timeExisting && !existing.lastMessageOn) {
+          const createdChat = new Date(chat.createdOn).getTime();
+          const createdExisting = new Date(existing.createdOn).getTime();
+          if (createdChat > createdExisting) {
+            primary = chat;
+          }
+        }
+
+        map.set(key, {
+          ...primary,
+          unreadCount: Math.max(chat.unreadCount || 0, existing.unreadCount || 0),
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      const timeA = a.lastMessageOn ? new Date(a.lastMessageOn).getTime() : new Date(a.createdOn).getTime();
+      const timeB = b.lastMessageOn ? new Date(b.lastMessageOn).getTime() : new Date(b.createdOn).getTime();
+      return timeB - timeA;
+    });
+  }, [chats, roleCode, brands, influencers, users]);
+
   // Active chat & messages
   const activeChat = useMemo(() => {
-    if (selectedChatId) {
-      return chats.find((c) => c.id === selectedChatId) || null;
-    }
-    return null;
-  }, [chats, selectedChatId]);
+    if (!selectedChatId) return null;
+    const directMatch = uniqueChats.find((c) => c.id === selectedChatId);
+    if (directMatch) return directMatch;
 
-  const effectiveChatId = selectedChatId || undefined;
+    const rawChat = chats.find((c) => c.id === selectedChatId);
+    if (rawChat) {
+      const key = getChatDeduplicationKey(rawChat, roleCode, brands, influencers, users);
+      const canonical = uniqueChats.find(
+        (c) => getChatDeduplicationKey(c, roleCode, brands, influencers, users) === key,
+      );
+      if (canonical) return canonical;
+      return rawChat;
+    }
+
+    return null;
+  }, [chats, uniqueChats, selectedChatId, roleCode, brands, influencers, users]);
+
+  const effectiveChatId = activeChat?.id || selectedChatId || undefined;
 
   const handleCloseConversation = () => {
     setSelectedChatId(null);
@@ -988,48 +1058,6 @@ export const ChatOrganism: React.FC = () => {
     if (roleCode === 'BRAND') return navConfig.BRAND;
     return navConfig.INFLUENCER;
   };
-
-  // Deduplicated conversations list (merges any duplicate threads for the same participant)
-  const uniqueChats = useMemo(() => {
-    const map = new Map<string, ChatResponse>();
-
-    for (const chat of chats) {
-      const key = getChatDeduplicationKey(chat, roleCode, brands, influencers, users);
-      const existing = map.get(key);
-
-      if (!existing) {
-        map.set(key, chat);
-      } else {
-        const isCurrentSelected = chat.id === selectedChatId;
-        const isExistingSelected = existing.id === selectedChatId;
-
-        if (isCurrentSelected && !isExistingSelected) {
-          map.set(key, {
-            ...chat,
-            unreadCount: Math.max(chat.unreadCount || 0, existing.unreadCount || 0),
-          });
-        } else if (!isExistingSelected) {
-          const timeA = chat.lastMessageOn
-            ? new Date(chat.lastMessageOn).getTime()
-            : new Date(chat.createdOn).getTime();
-          const timeB = existing.lastMessageOn
-            ? new Date(existing.lastMessageOn).getTime()
-            : new Date(existing.createdOn).getTime();
-
-          if (timeA > timeB) {
-            map.set(key, {
-              ...chat,
-              unreadCount: Math.max(chat.unreadCount || 0, existing.unreadCount || 0),
-            });
-          } else {
-            existing.unreadCount = Math.max(existing.unreadCount || 0, chat.unreadCount || 0);
-          }
-        }
-      }
-    }
-
-    return Array.from(map.values());
-  }, [chats, roleCode, brands, influencers, users, selectedChatId]);
 
   // Filtered conversation list
   const filteredChats = useMemo(() => {
@@ -2441,7 +2469,7 @@ export const ChatOrganism: React.FC = () => {
         loading={createChatMutation.isPending}
         preselectedType={dialogType}
         preselectedParticipantId={dialogParticipantId}
-        existingChats={chats}
+        existingChats={uniqueChats}
         onStartChat={handleStartChat}
         onClose={() => {
           setStartChatOpen(false);
