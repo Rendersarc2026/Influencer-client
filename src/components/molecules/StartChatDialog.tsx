@@ -17,7 +17,7 @@ import RecordVoiceOverRoundedIcon from '@mui/icons-material/RecordVoiceOverRound
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { useAgencyInfluencers, useAgencyBrands } from '@api';
-import { InfluencerResponse, BrandResponse } from '@contracts';
+import { InfluencerResponse, BrandResponse, ChatResponse, ChatTypeCode } from '@contracts';
 import { safeImageUrl } from '@utils';
 
 function formatDisplaySocial(urlOrHandle: string | null | undefined): string {
@@ -42,6 +42,7 @@ export interface StartChatDialogProps {
   loading?: boolean;
   preselectedType?: 'INFLUENCER' | 'BRAND';
   preselectedParticipantId?: string;
+  existingChats?: ChatResponse[];
   onStartChat: (participantId: string) => Promise<void> | void;
   onClose: () => void;
 }
@@ -51,6 +52,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
   loading = false,
   preselectedType = 'INFLUENCER',
   preselectedParticipantId,
+  existingChats,
   onStartChat,
   onClose,
 }) => {
@@ -80,6 +82,39 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
     () => brandsData?.items || [],
     [brandsData],
   );
+
+  const isInfluencerChatActive = React.useCallback(
+    (influencer: InfluencerResponse) => {
+      if (!existingChats || existingChats.length === 0) return false;
+      return existingChats.some(
+        (c) =>
+          c.type === ChatTypeCode.AGENCY_INFLUENCER &&
+          (c.influencerId === influencer.id ||
+            (influencer.name && c.influencerName?.toLowerCase() === influencer.name.toLowerCase())),
+      );
+    },
+    [existingChats],
+  );
+
+  const isBrandChatActive = React.useCallback(
+    (brand: BrandResponse) => {
+      if (!existingChats || existingChats.length === 0) return false;
+      return existingChats.some(
+        (c) =>
+          c.type === ChatTypeCode.AGENCY_BRAND &&
+          (c.brandUserId === brand.id ||
+            (brand.name && c.brandName?.toLowerCase() === brand.name.toLowerCase())),
+      );
+    },
+    [existingChats],
+  );
+
+  const isSelectedChatActive = React.useMemo(() => {
+    if (recipientType === 'INFLUENCER') {
+      return selectedInfluencer ? isInfluencerChatActive(selectedInfluencer) : false;
+    }
+    return selectedBrand ? isBrandChatActive(selectedBrand) : false;
+  }, [recipientType, selectedInfluencer, selectedBrand, isInfluencerChatActive, isBrandChatActive]);
 
   useEffect(() => {
     if (open) {
@@ -231,10 +266,29 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                     >
                       {option.name[0]?.toUpperCase()}
                     </Avatar>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {option.name}
-                      </Typography>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {option.name}
+                        </Typography>
+                        {isInfluencerChatActive(option) && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: theme.palette.tokens.accentText,
+                              backgroundColor: theme.palette.tokens.accentBg,
+                              borderRadius: `${theme.customRadii.pill}px`,
+                              px: 1,
+                              py: 0.25,
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            Active
+                          </Typography>
+                        )}
+                      </Box>
                       <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                         {option.instagram
                           ? formatDisplaySocial(option.instagram)
@@ -281,10 +335,29 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                     >
                       {option.name[0]?.toUpperCase()}
                     </Avatar>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {option.name}
-                      </Typography>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {option.name}
+                        </Typography>
+                        {isBrandChatActive(option) && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: theme.palette.tokens.accentText,
+                              backgroundColor: theme.palette.tokens.accentBg,
+                              borderRadius: `${theme.customRadii.pill}px`,
+                              px: 1,
+                              py: 0.25,
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            Active
+                          </Typography>
+                        )}
+                      </Box>
                       <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                         {option.industry || option.contactPerson || 'Brand Account'}
                       </Typography>
@@ -322,7 +395,13 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
             disabled={loading || (recipientType === 'INFLUENCER' ? !selectedInfluencer : !selectedBrand)}
             sx={{ minWidth: 140 }}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Start Chat'}
+            {loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : isSelectedChatActive ? (
+              'Open Conversation'
+            ) : (
+              'Start Chat'
+            )}
           </Button>
         </DialogActions>
       </form>

@@ -4,7 +4,7 @@ import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import ButtonBase from '@mui/material/ButtonBase';
-import Skeleton from '@mui/material/Skeleton';
+import CircularProgress from '@mui/material/CircularProgress';
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
@@ -141,41 +141,17 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         <Box
           sx={{
             display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
             width: '100%',
+            py: 4,
           }}
         >
-          {[1, 2, 3, 4, 5, 6].map((k) => (
-            <Box
-              key={k}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
-                width: '100%',
-                height: 44,
-                px: 1.5,
-                borderRadius: `${theme.customRadii.inner}px`,
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              }}
-            >
-              <Skeleton
-                variant="circular"
-                width={20}
-                height={20}
-                animation="wave"
-                sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', flexShrink: 0 }}
-              />
-              <Skeleton
-                variant="rounded"
-                width={`${50 + (k % 3) * 18}%`}
-                height={14}
-                animation="wave"
-                sx={{ bgcolor: 'rgba(255, 255, 255, 0.07)', borderRadius: '4px' }}
-              />
-            </Box>
-          ))}
+          <CircularProgress
+            size={24}
+            thickness={4}
+            sx={{ color: 'rgba(255, 255, 255, 0.4)' }}
+          />
         </Box>
       ) : (
         items.map((item) => {
@@ -261,47 +237,34 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         pt: 1,
       }}
     >
-      {loading ? (
-        <Skeleton
-          variant="rounded"
-          width="100%"
-          height={44}
-          animation="wave"
-          sx={{
-            bgcolor: 'rgba(255, 255, 255, 0.04)',
-            borderRadius: `${theme.customRadii.inner}px`,
-          }}
-        />
-      ) : (
-        <ButtonBase
-          onClick={handleLogout}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            gap: 1.5,
-            width: '100%',
-            height: 44,
-            px: 1.5,
-            borderRadius: `${theme.customRadii.inner}px`,
-            backgroundColor: 'transparent',
-            color: theme.palette.tokens.textSecondary,
-            transition: 'all 0.15s ease',
-            '&:hover': {
-              backgroundColor: 'rgba(239, 68, 68, 0.12)',
-              color: theme.palette.tokens.negative,
-            },
-          }}
+      <ButtonBase
+        onClick={handleLogout}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          gap: 1.5,
+          width: '100%',
+          height: 44,
+          px: 1.5,
+          borderRadius: `${theme.customRadii.inner}px`,
+          backgroundColor: 'transparent',
+          color: theme.palette.tokens.textSecondary,
+          transition: 'all 0.15s ease',
+          '&:hover': {
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            color: theme.palette.tokens.negative,
+          },
+        }}
+      >
+        <LogoutRoundedIcon fontSize="small" />
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit' }}
         >
-          <LogoutRoundedIcon fontSize="small" />
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit' }}
-          >
-            Log Out
-          </Typography>
-        </ButtonBase>
-      )}
+          Log Out
+        </Typography>
+      </ButtonBase>
     </Box>
   );
 
@@ -332,89 +295,57 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         }}
       >
         {/* Top Header */}
-        {loading ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 0.5, mb: 1.5 }}>
-            <Skeleton
-              variant="rounded"
-              width={36}
-              height={36}
-              animation="wave"
-              sx={{
-                bgcolor: 'rgba(255, 255, 255, 0.08)',
-                borderRadius: `${theme.customRadii.inner}px`,
-                flexShrink: 0,
-              }}
-            />
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              <Skeleton
-                variant="rounded"
-                width={96}
-                height={14}
-                animation="wave"
-                sx={{ bgcolor: 'rgba(255, 255, 255, 0.08)', borderRadius: '4px' }}
-              />
-              <Skeleton
-                variant="rounded"
-                width={56}
-                height={10}
-                animation="wave"
-                sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px' }}
-              />
-            </Box>
-          </Box>
-        ) : (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            px: 0.5,
+            mb: 1.5,
+            cursor: 'pointer',
+          }}
+          onClick={() => handleNavigate('/')}
+        >
           <Box
+            component="img"
+            src="/fetch-logo.jpeg"
+            alt="Fetch"
             sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              px: 0.5,
-              mb: 1.5,
-              cursor: 'pointer',
+              width: 36,
+              height: 36,
+              borderRadius: `${theme.customRadii.inner}px`,
+              objectFit: 'cover',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
             }}
-            onClick={() => handleNavigate('/')}
-          >
-            <Box
-              component="img"
-              src="/fetch-logo.jpeg"
-              alt="Fetch"
+          />
+          <Box sx={{ overflow: 'hidden' }}>
+            <Typography
+              variant="body2"
               sx={{
-                width: 36,
-                height: 36,
-                borderRadius: `${theme.customRadii.inner}px`,
-                objectFit: 'cover',
-                flexShrink: 0,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                fontSize: '14px',
+                letterSpacing: '-0.01em',
               }}
-            />
-            <Box sx={{ overflow: 'hidden' }}>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: 800,
-                  color: '#FFFFFF',
-                  lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Fetch
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: theme.palette.tokens.textSecondary,
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  display: 'block',
-                }}
-              >
-                Workspace
-              </Typography>
-            </Box>
+            >
+              Fetch
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                fontSize: '11px',
+                fontWeight: 500,
+                display: 'block',
+              }}
+            >
+              Workspace
+            </Typography>
           </Box>
-        )}
+        </Box>
 
         {/* Navigation List */}
         {renderNavList()}

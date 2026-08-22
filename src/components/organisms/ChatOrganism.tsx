@@ -23,6 +23,9 @@ import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineR
 import ImageRoundedIcon from '@mui/icons-material/ImageRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import DoneAllRoundedIcon from '@mui/icons-material/DoneAllRounded';
+import DoneRoundedIcon from '@mui/icons-material/DoneRounded';
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -118,6 +121,146 @@ const MESSAGE_EDIT_WINDOW_MS = 5 * 60 * 1000;
 const isWithinEditWindow = (createdOn: Date | string, now: number): boolean =>
   now - new Date(createdOn).getTime() <= MESSAGE_EDIT_WINDOW_MS;
 
+const findExistingChat = (
+  chats: ChatResponse[],
+  participantId?: string | null,
+  type?: 'INFLUENCER' | 'BRAND',
+  brands: BrandResponse[] = [],
+  influencers: InfluencerResponse[] = [],
+  users: UserResponse[] = [],
+): ChatResponse | undefined => {
+  if (!participantId || !chats.length) return undefined;
+
+  // 1. Direct match on chat.id, chat.influencerId, or chat.brandUserId
+  const directMatch = chats.find((c) => {
+    if (c.id === participantId) return true;
+    if (type === 'INFLUENCER') {
+      return c.type === ChatTypeCode.AGENCY_INFLUENCER && c.influencerId === participantId;
+    }
+    if (type === 'BRAND') {
+      return c.type === ChatTypeCode.AGENCY_BRAND && c.brandUserId === participantId;
+    }
+    return c.influencerId === participantId || c.brandUserId === participantId;
+  });
+  if (directMatch) return directMatch;
+
+  // 2. Brand match via brand ID -> brand name / user ID
+  if (type === 'BRAND' || !type) {
+    const matchedBrand = brands.find((b) => b.id === participantId);
+    if (matchedBrand) {
+      const brandChat = chats.find((c) => {
+        if (c.type !== ChatTypeCode.AGENCY_BRAND) return false;
+        if (c.brandUserId === matchedBrand.id) return true;
+        if (c.brandName && c.brandName.toLowerCase() === matchedBrand.name.toLowerCase()) return true;
+        const brandUser = users.find(
+          (u) =>
+            u.brandId === matchedBrand.id ||
+            (matchedBrand.contactEmail && u.email?.toLowerCase() === matchedBrand.contactEmail.toLowerCase()),
+        );
+        if (brandUser && (c.brandUserId === brandUser.id || c.brandUserId === brandUser.brandId)) return true;
+        return false;
+      });
+      if (brandChat) return brandChat;
+    }
+  }
+
+  // 3. Influencer match via influencer ID -> influencer name / user ID
+  if (type === 'INFLUENCER' || !type) {
+    const matchedInfluencer = influencers.find((i) => i.id === participantId);
+    if (matchedInfluencer) {
+      const influencerChat = chats.find((c) => {
+        if (c.type !== ChatTypeCode.AGENCY_INFLUENCER) return false;
+        if (c.influencerId === matchedInfluencer.id) return true;
+        if (c.influencerName && c.influencerName.toLowerCase() === matchedInfluencer.name.toLowerCase()) return true;
+        const infUser = users.find(
+          (u) =>
+            u.influencer?.id === matchedInfluencer.id ||
+            (matchedInfluencer.email && u.email?.toLowerCase() === matchedInfluencer.email.toLowerCase()),
+        );
+        if (
+          infUser &&
+          (c.influencerId === infUser.id ||
+            c.influencerId === infUser.influencer?.id)
+        ) {
+          return true;
+        }
+        return false;
+      });
+      if (influencerChat) return influencerChat;
+    }
+  }
+
+  // 4. User ID match (if participantId is a User ID)
+  const matchedUser = users.find((u) => u.id === participantId);
+  if (matchedUser) {
+    const userChat = chats.find((c) => {
+      if (c.brandUserId === matchedUser.id || (matchedUser.brandId && c.brandUserId === matchedUser.brandId)) return true;
+      if (c.influencerId === matchedUser.id || (matchedUser.influencer?.id && c.influencerId === matchedUser.influencer.id)) return true;
+      if (matchedUser.brandName && c.brandName?.toLowerCase() === matchedUser.brandName.toLowerCase()) return true;
+      if (matchedUser.profile?.fullName && c.influencerName?.toLowerCase() === matchedUser.profile.fullName.toLowerCase()) return true;
+      return false;
+    });
+    if (userChat) return userChat;
+  }
+
+  return undefined;
+};
+
+const getChatDeduplicationKey = (
+  chat: ChatResponse,
+  roleCode: string | undefined,
+  brands: BrandResponse[] = [],
+  influencers: InfluencerResponse[] = [],
+  users: UserResponse[] = [],
+): string => {
+  if (chat.type === ChatTypeCode.CAMPAIGN) {
+    return `campaign:${chat.campaignId || chat.id}`;
+  }
+
+  if (chat.type === ChatTypeCode.AGENCY_BRAND) {
+    if (chat.brandUserId) {
+      const u = users.find((usr) => usr.id === chat.brandUserId);
+      const b = brands.find(
+        (brand) =>
+          brand.id === chat.brandUserId ||
+          brand.id === u?.brandId ||
+          (u?.email && brand.contactEmail?.toLowerCase() === u.email.toLowerCase()),
+      );
+      if (b?.id) return `brand:${b.id}`;
+      if (u?.id) return `brand_user:${u.id}`;
+      return `brand_raw:${chat.brandUserId}`;
+    }
+    if (chat.brandName) {
+      return `brand_name:${chat.brandName.toLowerCase().trim()}`;
+    }
+  }
+
+  if (chat.type === ChatTypeCode.AGENCY_INFLUENCER) {
+    if (chat.influencerId) {
+      const u = users.find((usr) => usr.id === chat.influencerId);
+      const inf = influencers.find(
+        (i) =>
+          i.id === chat.influencerId ||
+          i.id === u?.influencer?.id ||
+          (u?.email && i.email?.toLowerCase() === u.email.toLowerCase()),
+      );
+      if (inf?.id) return `influencer:${inf.id}`;
+      if (u?.id) return `influencer_user:${u.id}`;
+      return `influencer_raw:${chat.influencerId}`;
+    }
+    if (chat.influencerName) {
+      return `influencer_name:${chat.influencerName.toLowerCase().trim()}`;
+    }
+  }
+
+  const partner = chatNameFromPayload(chat, roleCode);
+  if (partner) {
+    return `${chat.type}:${partner.toLowerCase().trim()}`;
+  }
+
+  return `chat:${chat.id}`;
+};
+
 export const ChatOrganism: React.FC = () => {
 
   const theme = useTheme();
@@ -142,12 +285,13 @@ export const ChatOrganism: React.FC = () => {
   const needsAccountFallback = useMemo(
     () =>
       isAgency &&
-      chats.some(
-        (c) =>
-          !chatNameFromPayload(c, roleCode) ||
-          !chatAvatarFromPayload(c, roleCode),
-      ),
-    [isAgency, chats, roleCode],
+      (Boolean(queryParticipantId) ||
+        chats.some(
+          (c) =>
+            !chatNameFromPayload(c, roleCode) ||
+            !chatAvatarFromPayload(c, roleCode),
+        )),
+    [isAgency, queryParticipantId, chats, roleCode],
   );
 
   const { data: influencersData } = useAgencyInfluencers(isAgency ? { limit: 100 } : undefined, {
@@ -197,6 +341,12 @@ export const ChatOrganism: React.FC = () => {
   const [dialogParticipantId, setDialogParticipantId] = useState<string | undefined>(queryParticipantId || undefined);
   const [dialogType, setDialogType] = useState<'INFLUENCER' | 'BRAND'>(queryType || 'INFLUENCER');
 
+  const openNewChatDialog = (type: 'INFLUENCER' | 'BRAND' = 'INFLUENCER') => {
+    setDialogParticipantId(undefined);
+    setDialogType(type);
+    setStartChatOpen(true);
+  };
+
   const createChatMutation = useCreateOrFindChat();
 
   const totalUnread = useMemo(
@@ -220,10 +370,30 @@ export const ChatOrganism: React.FC = () => {
     if (selectedChatId) {
       return chats.find((c) => c.id === selectedChatId) || null;
     }
-    return chats.length > 0 && !isMobile ? chats[0] : null;
-  }, [chats, selectedChatId, isMobile]);
+    return null;
+  }, [chats, selectedChatId]);
 
-  const effectiveChatId = selectedChatId || activeChat?.id;
+  const effectiveChatId = selectedChatId || undefined;
+
+  const handleCloseConversation = () => {
+    setSelectedChatId(null);
+    setEditingMessageId(null);
+    setEditingBody('');
+    setMessageInput('');
+    setAttachmentInput('');
+    setAttachmentMeta(null);
+    setShowAttachmentField(false);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('chatId');
+        next.delete('participantId');
+        next.delete('type');
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const { data: messages = [], isLoading: messagesLoading } = useChatMessages(effectiveChatId);
   const sendMessageMutation = useSendMessage(effectiveChatId, user?.id);
@@ -381,23 +551,47 @@ export const ChatOrganism: React.FC = () => {
   useEffect(() => {
     if (queryChatId) {
       setSelectedChatId(queryChatId);
+    } else if (!queryParticipantId) {
+      setSelectedChatId(null);
     }
-  }, [queryChatId]);
+  }, [queryChatId, queryParticipantId]);
 
+  // When leaving / unmounting the chat page, close active thread
   useEffect(() => {
-    if (queryParticipantId) {
-      setDialogParticipantId(queryParticipantId);
-      setDialogType(queryType || 'INFLUENCER');
-      setStartChatOpen(true);
-    }
-  }, [queryParticipantId, queryType]);
+    return () => {
+      setSelectedChatId(null);
+      setEditingMessageId(null);
+      setEditingBody('');
+      setMessageInput('');
+      setAttachmentInput('');
+      setAttachmentMeta(null);
+      setShowAttachmentField(false);
+    };
+  }, []);
 
-  // Auto select first chat on desktop if none selected
+  // Handle URL participant navigation (e.g. ?participantId=...&type=BRAND)
+  // If the conversation is already started, directly select it and DO NOT open the dialog.
+  // If not started yet, start or find the conversation via API and select it directly.
   useEffect(() => {
-    if (!selectedChatId && chats.length > 0 && !isMobile) {
-      setSelectedChatId(chats[0].id);
+    if (!queryParticipantId || chatsLoading) return;
+
+    const existingChat = findExistingChat(
+      chats,
+      queryParticipantId,
+      queryType,
+      brands,
+      influencers,
+      users,
+    );
+
+    if (existingChat) {
+      setSelectedChatId(existingChat.id);
+      setStartChatOpen(false);
+      setSearchParams({ chatId: existingChat.id }, { replace: true });
+    } else {
+      handleStartChat(queryParticipantId);
     }
-  }, [chats, selectedChatId, isMobile]);
+  }, [queryParticipantId, queryType, chatsLoading, chats, brands, influencers, users]);
 
   // Keep the open thread in the URL
   useEffect(() => {
@@ -458,16 +652,31 @@ export const ChatOrganism: React.FC = () => {
 
   const handleStartChat = async (participantId: string) => {
     try {
+      const existing = findExistingChat(
+        chats,
+        participantId,
+        dialogType,
+        brands,
+        influencers,
+        users,
+      );
+      if (existing) {
+        setSelectedChatId(existing.id);
+        setStartChatOpen(false);
+        setSearchParams({ chatId: existing.id }, { replace: true });
+        return;
+      }
       const newChat = await createChatMutation.mutateAsync({
         participantId,
       });
       setSelectedChatId(newChat.id);
       setStartChatOpen(false);
-      setSearchParams({ chatId: newChat.id });
+      setSearchParams({ chatId: newChat.id }, { replace: true });
       showSuccess('Conversation started.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.');
+      setSearchParams({}, { replace: true });
     }
   };
 
@@ -780,16 +989,58 @@ export const ChatOrganism: React.FC = () => {
     return navConfig.INFLUENCER;
   };
 
+  // Deduplicated conversations list (merges any duplicate threads for the same participant)
+  const uniqueChats = useMemo(() => {
+    const map = new Map<string, ChatResponse>();
+
+    for (const chat of chats) {
+      const key = getChatDeduplicationKey(chat, roleCode, brands, influencers, users);
+      const existing = map.get(key);
+
+      if (!existing) {
+        map.set(key, chat);
+      } else {
+        const isCurrentSelected = chat.id === selectedChatId;
+        const isExistingSelected = existing.id === selectedChatId;
+
+        if (isCurrentSelected && !isExistingSelected) {
+          map.set(key, {
+            ...chat,
+            unreadCount: Math.max(chat.unreadCount || 0, existing.unreadCount || 0),
+          });
+        } else if (!isExistingSelected) {
+          const timeA = chat.lastMessageOn
+            ? new Date(chat.lastMessageOn).getTime()
+            : new Date(chat.createdOn).getTime();
+          const timeB = existing.lastMessageOn
+            ? new Date(existing.lastMessageOn).getTime()
+            : new Date(existing.createdOn).getTime();
+
+          if (timeA > timeB) {
+            map.set(key, {
+              ...chat,
+              unreadCount: Math.max(chat.unreadCount || 0, existing.unreadCount || 0),
+            });
+          } else {
+            existing.unreadCount = Math.max(existing.unreadCount || 0, chat.unreadCount || 0);
+          }
+        }
+      }
+    }
+
+    return Array.from(map.values());
+  }, [chats, roleCode, brands, influencers, users, selectedChatId]);
+
   // Filtered conversation list
   const filteredChats = useMemo(() => {
-    if (!searchFilter.trim()) return chats;
+    if (!searchFilter.trim()) return uniqueChats;
     const term = searchFilter.toLowerCase();
-    return chats.filter((c) => {
+    return uniqueChats.filter((c) => {
       const partner = getChatPartnerName(c).toLowerCase();
       const typeLabel = ChatTypeName[c.type]?.toLowerCase() || '';
       return partner.includes(term) || typeLabel.includes(term);
     });
-  }, [chats, searchFilter, getChatPartnerName]);
+  }, [uniqueChats, searchFilter, getChatPartnerName]);
 
   return (
     <DashboardLayout
@@ -810,10 +1061,7 @@ export const ChatOrganism: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<AddRoundedIcon fontSize="small" />}
-            onClick={() => {
-              setDialogParticipantId(undefined);
-              setStartChatOpen(true);
-            }}
+            onClick={() => openNewChatDialog()}
           >
             New Conversation
           </Button>
@@ -922,7 +1170,7 @@ export const ChatOrganism: React.FC = () => {
                         alignItems: 'center',
                       }}
                     >
-                      {chats.length}
+                      {uniqueChats.length}
                     </Box>
                   )}
                 </Box>
@@ -931,10 +1179,7 @@ export const ChatOrganism: React.FC = () => {
                     variant="outlined"
                     size="small"
                     startIcon={<AddRoundedIcon fontSize="small" />}
-                    onClick={() => {
-                      setDialogParticipantId(undefined);
-                      setStartChatOpen(true);
-                    }}
+                    onClick={() => openNewChatDialog()}
                     sx={{
                       fontSize: '12px',
                       fontWeight: 700,
@@ -1060,10 +1305,7 @@ export const ChatOrganism: React.FC = () => {
                           variant="contained"
                           size="small"
                           startIcon={<AddRoundedIcon fontSize="small" />}
-                          onClick={() => {
-                            setDialogParticipantId(undefined);
-                            setStartChatOpen(true);
-                          }}
+                          onClick={() => openNewChatDialog()}
                         >
                           Start a Chat
                         </Button>
@@ -1275,7 +1517,7 @@ export const ChatOrganism: React.FC = () => {
                     {isMobile && (
                       <IconButton
                         size="small"
-                        onClick={() => setSelectedChatId(null)}
+                        onClick={handleCloseConversation}
                         sx={{
                           width: 32,
                           height: 32,
@@ -1342,22 +1584,47 @@ export const ChatOrganism: React.FC = () => {
                   </Box>
 
                   {/* Header Right */}
-                  <Box
-                    sx={{
-                      fontSize: '11px',
-                      color: theme.palette.tokens.textSecondary,
-                      display: { xs: 'none', sm: 'flex' },
-                      alignItems: 'center',
-                      gap: 0.5,
-                      px: 1,
-                      py: 0.25,
-                      borderRadius: `${theme.customRadii.pill}px`,
-                      backgroundColor: theme.palette.tokens.fieldBg,
-                      border: `1px solid ${theme.palette.tokens.divider}`,
-                      flexShrink: 0,
-                    }}
-                  >
-                    💬 Direct Thread
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                    <Box
+                      sx={{
+                        fontSize: '11px',
+                        color: theme.palette.tokens.textSecondary,
+                        display: { xs: 'none', sm: 'flex' },
+                        alignItems: 'center',
+                        gap: 0.5,
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: `${theme.customRadii.pill}px`,
+                        backgroundColor: theme.palette.tokens.fieldBg,
+                        border: `1px solid ${theme.palette.tokens.divider}`,
+                      }}
+                    >
+                      💬 Direct Thread
+                    </Box>
+
+                    <Tooltip title="Close conversation">
+                      <IconButton
+                        size="small"
+                        onClick={handleCloseConversation}
+                        aria-label="Close conversation"
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: `${theme.customRadii.pill}px`,
+                          backgroundColor: theme.palette.tokens.fieldBg,
+                          color: theme.palette.tokens.textSecondary,
+                          border: `1px solid ${theme.palette.tokens.divider}`,
+                          transition: 'all 0.15s ease',
+                          '&:hover': {
+                            backgroundColor: theme.palette.tokens.surface,
+                            color: theme.palette.tokens.textPrimary,
+                            borderColor: theme.palette.tokens.textSecondary,
+                          },
+                        }}
+                      >
+                        <CloseRoundedIcon sx={{ fontSize: '18px' }} />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </Box>
 
@@ -1743,12 +2010,13 @@ export const ChatOrganism: React.FC = () => {
                               )}
 
 
-                              {/* Message Footer: Timestamp only (Clean & Minimal) */}
+                              {/* Message Footer: Timestamp & Read / Viewed receipt */}
                               <Box
                                 sx={{
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'flex-end',
+                                  gap: 0.5,
                                   mt: 0.5,
                                 }}
                               >
@@ -1757,7 +2025,7 @@ export const ChatOrganism: React.FC = () => {
                                   sx={{
                                     fontSize: '10.5px',
                                     color: isMine
-                                      ? 'rgba(255, 255, 255, 0.65)'
+                                      ? 'rgba(255, 255, 255, 0.7)'
                                       : theme.palette.tokens.textSecondary,
                                     userSelect: 'none',
                                   }}
@@ -1765,6 +2033,41 @@ export const ChatOrganism: React.FC = () => {
                                   {msg.editedFromId ? 'Edited • ' : ''}
                                   {formatMessageTime(msg.createdOn)}
                                 </Typography>
+
+                                {isMine && (
+                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', ml: 0.25 }}>
+                                    {msg.id.startsWith('temp-') ? (
+                                      <Tooltip title="Sending...">
+                                        <AccessTimeRoundedIcon
+                                          sx={{
+                                            fontSize: '12px',
+                                            color: 'rgba(255, 255, 255, 0.5)',
+                                          }}
+                                        />
+                                      </Tooltip>
+                                    ) : msg.readOn ? (
+                                      <Tooltip
+                                        title={`Viewed • ${formatMessageTime(msg.readOn)}`}
+                                      >
+                                        <DoneAllRoundedIcon
+                                          sx={{
+                                            fontSize: '14px',
+                                            color: theme.palette.tints.butter,
+                                          }}
+                                        />
+                                      </Tooltip>
+                                    ) : (
+                                      <Tooltip title="Delivered">
+                                        <DoneRoundedIcon
+                                          sx={{
+                                            fontSize: '13px',
+                                            color: 'rgba(255, 255, 255, 0.65)',
+                                          }}
+                                        />
+                                      </Tooltip>
+                                    )}
+                                  </Box>
+                                )}
                               </Box>
                             </Box>
                           </Box>
@@ -2103,10 +2406,7 @@ export const ChatOrganism: React.FC = () => {
                         variant="contained"
                         size="small"
                         startIcon={<AddRoundedIcon fontSize="small" />}
-                        onClick={() => {
-                          setDialogParticipantId(undefined);
-                          setStartChatOpen(true);
-                        }}
+                        onClick={() => openNewChatDialog()}
                       >
                         New Conversation
                       </Button>
@@ -2141,10 +2441,14 @@ export const ChatOrganism: React.FC = () => {
         loading={createChatMutation.isPending}
         preselectedType={dialogType}
         preselectedParticipantId={dialogParticipantId}
+        existingChats={chats}
         onStartChat={handleStartChat}
         onClose={() => {
           setStartChatOpen(false);
-          setSearchParams({});
+          setDialogParticipantId(undefined);
+          if (queryParticipantId) {
+            setSearchParams(effectiveChatId ? { chatId: effectiveChatId } : {}, { replace: true });
+          }
         }}
       />
     </DashboardLayout>

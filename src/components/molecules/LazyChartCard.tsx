@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import Box from '@mui/material/Box';
-import Skeleton from '@mui/material/Skeleton';
+import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import type { ChartCardProps } from './ChartCard';
 
@@ -21,7 +21,7 @@ const ChartCardImpl = lazy(() =>
   import('./ChartCard').then((m) => ({ default: m.ChartCard || m.default })),
 );
 
-const ChartCardSkeleton: React.FC<{ height: number }> = ({ height }) => {
+const ChartCardLoading: React.FC<{ height: number }> = ({ height }) => {
   const theme = useTheme();
   return (
     <Box
@@ -32,23 +32,21 @@ const ChartCardSkeleton: React.FC<{ height: number }> = ({ height }) => {
         border: `1px solid ${theme.palette.tokens.divider}`,
         minHeight: height + 90,
         display: 'flex',
-        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <Skeleton animation="wave" variant="text" width={200} height={28} />
-      <Skeleton animation="wave" variant="text" width={140} height={40} />
-      <Skeleton
-        animation="wave"
-        variant="rounded"
-        height={height}
-        sx={{ mt: 2, borderRadius: `${theme.customRadii.inner}px`, flexGrow: 1 }}
+      <CircularProgress
+        size={32}
+        thickness={4}
+        sx={{ color: theme.palette.tokens.accent }}
       />
     </Box>
   );
 };
 
 export const ChartCard: React.FC<ChartCardProps> = (props) => (
-  <Suspense fallback={<ChartCardSkeleton height={props.height ?? 240} />}>
+  <Suspense fallback={<ChartCardLoading height={props.height ?? 240} />}>
     <ChartCardImpl {...props} />
   </Suspense>
 );
