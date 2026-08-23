@@ -36,6 +36,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   const [deliverables, setDeliverables] = useState('');
   const [preEvalEr, setPreEvalEr] = useState('');
   const [committedViews, setCommittedViews] = useState('');
+  const [reachFromRegion, setReachFromRegion] = useState('');
   const [brandFit, setBrandFit] = useState('');
   const [error, setError] = useState('');
 
@@ -47,21 +48,22 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
         mapper.preEvalEr !== undefined && mapper.preEvalEr !== null
           ? String(mapper.preEvalEr)
           : engagementData?.latest?.engagementRate !== undefined &&
-            engagementData?.latest?.engagementRate !== null
-          ? String(engagementData.latest.engagementRate)
-          : '';
+              engagementData?.latest?.engagementRate !== null
+            ? String(engagementData.latest.engagementRate)
+            : '';
       setPreEvalEr(initialEr);
 
       const initialViews =
         mapper.committedViews !== undefined && mapper.committedViews !== null
           ? String(mapper.committedViews)
           : engagementData?.latest?.avgViews !== undefined &&
-            engagementData?.latest?.avgViews !== null &&
-            engagementData.latest.avgViews > 0
-          ? String(engagementData.latest.avgViews)
-          : '';
+              engagementData?.latest?.avgViews !== null &&
+              engagementData.latest.avgViews > 0
+            ? String(engagementData.latest.avgViews)
+            : '';
       setCommittedViews(initialViews);
 
+      setReachFromRegion(mapper.reachFromRegion || '');
       setBrandFit(mapper.brandFit || '');
       setError('');
     }
@@ -96,6 +98,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
       deliverables: deliverables.trim() || null,
       preEvalEr: preEvalEr.trim() ? preEvalErNum : null,
       committedViews: committedViews.trim() ? committedViewsNum : null,
+      reachFromRegion: reachFromRegion.trim() || null,
       brandFit: brandFit.trim() || null,
     };
 
@@ -172,7 +175,11 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                       : ''}
                   </Typography>
                   <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    From {engagementData.latest.source === 'INSTAGRAM_LIVE_API' || engagementData.latest.source === 'INSTAGRAM_GRAPH_API' ? 'Instagram Profile Fetch' : 'ER Calculator'}
+                    From{' '}
+                    {engagementData.latest.source === 'INSTAGRAM_LIVE_API' ||
+                    engagementData.latest.source === 'INSTAGRAM_GRAPH_API'
+                      ? 'Instagram Profile Fetch'
+                      : 'ER Calculator'}
                   </Typography>
                 </Box>
                 {(!preEvalEr || !committedViews) && (
@@ -211,7 +218,9 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
               disabled={loading}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Committed Views (Optional)"
                 type="text"
@@ -233,6 +242,16 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 disabled={loading}
               />
             </Box>
+
+            <TextField
+              label="Reach from the region"
+              value={reachFromRegion}
+              onChange={(e) => setReachFromRegion(e.target.value)}
+              placeholder="e.g. 75% or 45,000"
+              helperText="% or number of their audience based in your target region - ask influencer for their Insights > Audience > Locations screenshot."
+              fullWidth
+              disabled={loading}
+            />
 
             <TextField
               label="Brand Fit (Qualitative Comments)"
@@ -291,7 +310,9 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
 
               {/* Client Commercial Rate */}
               {mapper?.clientRate !== null && mapper?.clientRate !== undefined && (
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box
+                  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
                   <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                     Client Commercial Rate:
                   </Typography>
@@ -325,7 +346,11 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                   {preEvalErNum > 0 && (
                     <Chip
                       label={
-                        preEvalErNum >= 4.0 ? '🔥 High' : preEvalErNum >= 2.0 ? '✨ Good' : 'Standard'
+                        preEvalErNum >= 4.0
+                          ? '🔥 High'
+                          : preEvalErNum >= 2.0
+                            ? '✨ Good'
+                            : 'Standard'
                       }
                       size="small"
                       sx={{
@@ -349,6 +374,20 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                   {committedViewsNum > 0 ? committedViewsNum.toLocaleString() : 'Not specified'}
                 </Typography>
               </Box>
+
+              {/* Reach from Region */}
+              {reachFromRegion && (
+                <Box
+                  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    Reach from Region:
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {reachFromRegion}
+                  </Typography>
+                </Box>
+              )}
 
               <Divider sx={{ my: 0.25, borderColor: 'rgba(0,0,0,0.08)' }} />
 
@@ -381,12 +420,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading}
-            sx={{ minWidth: 140 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Pre-Eval'}
           </Button>
         </DialogActions>
@@ -394,4 +428,3 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
     </Dialog>
   );
 };
-

@@ -208,6 +208,7 @@ export interface CampaignReportExportInput {
     category?: string | null;
     followers?: number | null;
     deliverables?: string | null;
+    reachFromRegion?: string | null;
     influencerRate?: number | null;
     margin?: number | null;
     clientRate?: number | null;
@@ -306,18 +307,13 @@ export async function exportCampaignPerformanceReport(
     totalSaves += mapperSaves;
 
     const rateStatusLabel =
-      mapper.rateStatus !== undefined
-        ? getStatusLabel('RATE_STATUS', mapper.rateStatus)
-        : '—';
+      mapper.rateStatus !== undefined ? getStatusLabel('RATE_STATUS', mapper.rateStatus) : '—';
     const brandStatusLabel =
-      mapper.brandStatus !== undefined
-        ? getStatusLabel('BRAND_STATUS', mapper.brandStatus)
-        : '—';
+      mapper.brandStatus !== undefined ? getStatusLabel('BRAND_STATUS', mapper.brandStatus) : '—';
 
-    const handle =
-      mapper.instagram
-        ? `@${mapper.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}`
-        : mapper.youtube || '—';
+    const handle = mapper.instagram
+      ? `@${mapper.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}`
+      : mapper.youtube || '—';
 
     const recordedDate = latestMetric
       ? new Date(latestMetric.recordedFor).toLocaleDateString('en-IN')
@@ -386,7 +382,10 @@ export async function exportCampaignPerformanceReport(
     [],
     ['Campaign Name', campaign.name],
     ['Client Brand', campaign.brandName || '—'],
-    ['Campaign Status', campaign.status ? getStatusLabel('CAMPAIGN_STATUS', Number(campaign.status)) : '—'],
+    [
+      'Campaign Status',
+      campaign.status ? getStatusLabel('CAMPAIGN_STATUS', Number(campaign.status)) : '—',
+    ],
     [
       'Campaign Timeline',
       `${campaign.startDate ? new Date(campaign.startDate).toLocaleDateString('en-IN') : 'TBD'} — ${campaign.endDate ? new Date(campaign.endDate).toLocaleDateString('en-IN') : 'TBD'}`,
@@ -451,7 +450,7 @@ export async function exportCampaignPerformanceReport(
 
   const wsInfluencers = XLSX.utils.aoa_to_sheet(influencerAoa);
   wsInfluencers['!cols'] = [
-    { wch: 8 },  // Sr No
+    { wch: 8 }, // Sr No
     { wch: 22 }, // Influencer Name
     { wch: 20 }, // Social Handle
     { wch: 18 }, // Category
@@ -503,7 +502,7 @@ export async function exportCampaignPerformanceReport(
     ]);
     wsPosts['!cols'] = [
       { wch: 22 }, // Influencer Name
-      { wch: 8 },  // Post #
+      { wch: 8 }, // Post #
       { wch: 45 }, // Post URL
       { wch: 14 }, // Likes
       { wch: 14 }, // Comments

@@ -47,11 +47,7 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { Pill } from '@atoms';
 import { useAuth, useToast } from '@hooks';
-import {
-  apiClient,
-  useAgencyInfluencers,
-  useAssignERToInfluencer,
-} from '@api';
+import { apiClient, useAgencyInfluencers, useAssignERToInfluencer } from '@api';
 import {
   safeUrl,
   safeImageUrl,
@@ -160,7 +156,8 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
         setManualFollowers(String(selectedInfluencer.followers));
       }
       if (selectedInfluencer.avgCommercialMin || selectedInfluencer.avgCommercialMax) {
-        const fee = selectedInfluencer.avgCommercialMin || selectedInfluencer.avgCommercialMax || '';
+        const fee =
+          selectedInfluencer.avgCommercialMin || selectedInfluencer.avgCommercialMax || '';
         setManualCommercialFee(String(fee));
         setAutoCommercialFee(String(fee));
       }
@@ -171,10 +168,7 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   // Calculations for Manual Mode
   // ---------------------------------------------------------------------------
 
-  const manualFollowersNum = useMemo(
-    () => parseNumberInput(manualFollowers),
-    [manualFollowers],
-  );
+  const manualFollowersNum = useMemo(() => parseNumberInput(manualFollowers), [manualFollowers]);
 
   const manualCommercialFeeNum = useMemo(
     () => parseNumberInput(manualCommercialFee),
@@ -288,18 +282,13 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     return autoResult.posts
       .filter(
         (p) =>
-          (p.mediaKind === 'REEL' || p.mediaKind === 'VIDEO') &&
-          p.views !== null &&
-          p.views > 0,
+          (p.mediaKind === 'REEL' || p.mediaKind === 'VIDEO') && p.views !== null && p.views > 0,
       )
       .slice(0, 10)
       .map((p) => p.views as number);
   }, [autoResult]);
 
-  const autoCommittedViews = useMemo(
-    () => calculateMedian(autoReelViews),
-    [autoReelViews],
-  );
+  const autoCommittedViews = useMemo(() => calculateMedian(autoReelViews), [autoReelViews]);
 
   const autoCpv = useMemo(
     () => calculatePreEvalCpv(autoCommercialFeeNum, autoCommittedViews),
@@ -310,11 +299,7 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleRowChange = (
-    index: number,
-    field: 'likes' | 'comments' | 'views',
-    value: string,
-  ) => {
+  const handleRowChange = (index: number, field: 'likes' | 'comments' | 'views', value: string) => {
     setManualRows((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
@@ -361,10 +346,7 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     setBulkDialogOpen(true);
   };
 
-  const bulkValidation = useMemo(
-    () => parseAndValidateBulkInput(bulkInputText),
-    [bulkInputText],
-  );
+  const bulkValidation = useMemo(() => parseAndValidateBulkInput(bulkInputText), [bulkInputText]);
 
   const isCellInvalid = (val: string) => {
     if (!val || val.trim() === '') return false;
@@ -378,7 +360,9 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     }
 
     if (bulkValidation.hasErrors) {
-      showError(`Please fix or remove the ${bulkValidation.invalidCount} invalid entry/entries before applying`);
+      showError(
+        `Please fix or remove the ${bulkValidation.invalidCount} invalid entry/entries before applying`,
+      );
       return;
     }
 
@@ -466,7 +450,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
 
   const handleCopyAutoSummary = () => {
     if (!autoResult) return;
-    const handleLabel = formatInstagramHandle(autoHandle || autoResult.instagramHandle, 'Influencer');
+    const handleLabel = formatInstagramHandle(
+      autoHandle || autoResult.instagramHandle,
+      'Influencer',
+    );
 
     const postsCount = autoResult.posts?.length || autoResult.postsCount || 10;
     const totalLikes = autoResult.avgLikes ? autoResult.avgLikes * postsCount : 0;
@@ -541,14 +528,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
     }
 
     if (autoResult.posts.length > 0) {
-      const transferredRows: ManualPostRowData[] = autoResult.posts
-        .slice(0, 10)
-        .map((p, idx) => ({
-          id: String(idx + 1),
-          likes: String(p.likes),
-          comments: String(p.comments),
-          views: p.views !== null ? String(p.views) : '',
-        }));
+      const transferredRows: ManualPostRowData[] = autoResult.posts.slice(0, 10).map((p, idx) => ({
+        id: String(idx + 1),
+        likes: String(p.likes),
+        comments: String(p.comments),
+        views: p.views !== null ? String(p.views) : '',
+      }));
 
       while (transferredRows.length < 10) {
         transferredRows.push({
@@ -604,7 +589,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       return;
     }
 
-    const erValue = isManual ? effectiveManual.erPercent : (autoResult?.engagementRate || 0);
+    const erValue = isManual ? effectiveManual.erPercent : autoResult?.engagementRate || 0;
     if (erValue <= 0) {
       showError('Please enter data so ER% is calculated before assigning.');
       return;
@@ -612,10 +597,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
 
     const followers = isManual
       ? manualFollowersNum
-      : (autoResult?.followersCount || manualFollowersNum);
-    const commFee = isManual ? manualCommercialFeeNum : (autoCommercialFeeNum || manualCommercialFeeNum);
+      : autoResult?.followersCount || manualFollowersNum;
+    const commFee = isManual
+      ? manualCommercialFeeNum
+      : autoCommercialFeeNum || manualCommercialFeeNum;
     const committedViews = isManual ? effectiveManual.committedViews : autoCommittedViews;
-    const rawHandle = isManual ? manualHandle : (autoHandle || manualHandle);
+    const rawHandle = isManual ? manualHandle : autoHandle || manualHandle;
     const handle = cleanInstagramHandle(rawHandle);
 
     try {
@@ -626,16 +613,22 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         commercialFee: commFee > 0 ? commFee : undefined,
         avgViews: committedViews > 0 ? committedViews : undefined,
         avgLikes: isManual
-          ? (effectiveManual.avgLikes > 0 ? effectiveManual.avgLikes : undefined)
+          ? effectiveManual.avgLikes > 0
+            ? effectiveManual.avgLikes
+            : undefined
           : (autoResult?.avgLikes ?? undefined),
         avgComments: isManual
-          ? (effectiveManual.avgComments > 0 ? effectiveManual.avgComments : undefined)
+          ? effectiveManual.avgComments > 0
+            ? effectiveManual.avgComments
+            : undefined
           : (autoResult?.avgComments ?? undefined),
         postsCount: isManual
-          ? (manualEntryMode === 'table' ? tableData.activeRowsCount : summaryData.postsCount)
+          ? manualEntryMode === 'table'
+            ? tableData.activeRowsCount
+            : summaryData.postsCount
           : (autoResult?.postsCount ?? undefined),
         instagramHandle: handle || undefined,
-        source: isManual ? 'MANUAL_CALCULATOR' : (autoResult?.source || 'AUTO_FETCH'),
+        source: isManual ? 'MANUAL_CALCULATOR' : autoResult?.source || 'AUTO_FETCH',
         rawResponse: isManual ? { tableData: manualRows, summaryData } : { autoResult },
       });
 
@@ -651,7 +644,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       );
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign ER value.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign ER value.',
+      );
     }
   };
 
@@ -823,7 +818,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       {/* MANUAL CALCULATOR TAB */}
       {/* ========================================================================= */}
       {activeTab === 'manual' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${theme.customSpacing.cardGap}px`, pb: 4 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: `${theme.customSpacing.cardGap}px`,
+            pb: 4,
+          }}
+        >
           {/* Formula Reference Explainer Card */}
           <Paper
             elevation={0}
@@ -852,11 +854,18 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 >
                   <Typography
                     variant="caption"
-                    sx={{ fontWeight: 700, color: theme.palette.tokens.accentText, display: 'block' }}
+                    sx={{
+                      fontWeight: 700,
+                      color: theme.palette.tokens.accentText,
+                      display: 'block',
+                    }}
                   >
                     1. ER% (Engagement Rate)
                   </Typography>
-                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}
+                  >
                     [(Total Likes + Total Comments) ÷ Number of Posts] ÷ Followers × 100
                   </Typography>
                 </Box>
@@ -873,11 +882,18 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 >
                   <Typography
                     variant="caption"
-                    sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText, display: 'block' }}
+                    sx={{
+                      fontWeight: 700,
+                      color: theme.palette.tokens.purpleText,
+                      display: 'block',
+                    }}
                   >
                     2. Pre Eval Committed Views
                   </Typography>
-                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}
+                  >
                     Committed Views = Median of Latest 10 Reel Views
                   </Typography>
                 </Box>
@@ -894,11 +910,18 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 >
                   <Typography
                     variant="caption"
-                    sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText, display: 'block' }}
+                    sx={{
+                      fontWeight: 700,
+                      color: theme.palette.tokens.positiveText,
+                      display: 'block',
+                    }}
                   >
                     3. Pre Eval CPV (Cost Per View)
                   </Typography>
-                  <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.textPrimary, mt: 0.5 }}
+                  >
                     Reel Commercial Fee ÷ Pre Eval Committed Views
                   </Typography>
                 </Box>
@@ -931,7 +954,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   Influencer & Deal Parameters
                 </Typography>
                 <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                  Select an influencer from your roster to auto-fill details, or input parameters manually.
+                  Select an influencer from your roster to auto-fill details, or input parameters
+                  manually.
                 </Typography>
               </Box>
             </Box>
@@ -975,7 +999,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         startAdornment: (
                           <>
                             <InputAdornment position="start">
-                              <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                              <PeopleAltRoundedIcon
+                                sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
+                              />
                             </InputAdornment>
                             {params.InputProps.startAdornment}
                           </>
@@ -1015,8 +1041,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 {assignERMutation.isPending
                   ? 'Assigning...'
                   : selectedInfluencer
-                  ? `Assign ER % (${effectiveManual.erPercent.toFixed(2)}%)`
-                  : 'Assign ER to Influencer'}
+                    ? `Assign ER % (${effectiveManual.erPercent.toFixed(2)}%)`
+                    : 'Assign ER to Influencer'}
               </Button>
             </Box>
 
@@ -1035,7 +1061,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
-                          <InstagramIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                          <InstagramIcon
+                            sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
+                          />
                         </InputAdornment>
                       ),
                     },
@@ -1049,21 +1077,25 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   placeholder="e.g. 100k or 100000"
                   value={manualFollowers}
                   onChange={(e) => setManualFollowers(e.target.value)}
-                  error={manualFollowers.trim() !== '' && !validateNumericInput(manualFollowers).isValid}
+                  error={
+                    manualFollowers.trim() !== '' && !validateNumericInput(manualFollowers).isValid
+                  }
                   size="small"
                   fullWidth
                   helperText={
                     manualFollowers.trim() !== '' && !validateNumericInput(manualFollowers).isValid
                       ? 'Invalid follower count (e.g. 100k or 100000)'
                       : manualFollowersNum > 0
-                      ? `Parsed: ${manualFollowersNum.toLocaleString()} followers`
-                      : 'Required to compute ER%'
+                        ? `Parsed: ${manualFollowersNum.toLocaleString()} followers`
+                        : 'Required to compute ER%'
                   }
                   slotProps={{
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
-                          <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                          <PeopleAltRoundedIcon
+                            sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
+                          />
                         </InputAdornment>
                       ),
                     },
@@ -1077,21 +1109,27 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   placeholder="e.g. 50k or 50000"
                   value={manualCommercialFee}
                   onChange={(e) => setManualCommercialFee(e.target.value)}
-                  error={manualCommercialFee.trim() !== '' && !validateNumericInput(manualCommercialFee).isValid}
+                  error={
+                    manualCommercialFee.trim() !== '' &&
+                    !validateNumericInput(manualCommercialFee).isValid
+                  }
                   size="small"
                   fullWidth
                   helperText={
-                    manualCommercialFee.trim() !== '' && !validateNumericInput(manualCommercialFee).isValid
+                    manualCommercialFee.trim() !== '' &&
+                    !validateNumericInput(manualCommercialFee).isValid
                       ? 'Invalid fee amount (e.g. 50k or 50000)'
                       : manualCommercialFeeNum > 0
-                      ? `Parsed: ₹${manualCommercialFeeNum.toLocaleString()}`
-                      : 'Required to compute Pre-Eval CPV'
+                        ? `Parsed: ₹${manualCommercialFeeNum.toLocaleString()}`
+                        : 'Required to compute Pre-Eval CPV'
                   }
                   slotProps={{
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
-                          <CurrencyRupeeRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                          <CurrencyRupeeRoundedIcon
+                            sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
+                          />
                         </InputAdornment>
                       ),
                     },
@@ -1119,7 +1157,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 }}
               >
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      mb: 1,
+                    }}
+                  >
                     <Typography
                       variant="caption"
                       sx={{
@@ -1145,7 +1190,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       my: 1,
                     }}
                   >
-                    {effectiveManual.erPercent > 0 ? `${effectiveManual.erPercent.toFixed(2)}%` : '0.00%'}
+                    {effectiveManual.erPercent > 0
+                      ? `${effectiveManual.erPercent.toFixed(2)}%`
+                      : '0.00%'}
                   </Typography>
 
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
@@ -1162,7 +1209,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     borderTop: `1px dashed ${theme.palette.tokens.divider}`,
                   }}
                 >
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.accentText, fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.accentText, fontWeight: 600 }}
+                  >
                     Formula: [(Likes + Comments) ÷ Posts] ÷ Followers × 100
                   </Typography>
                 </Box>
@@ -1185,7 +1235,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 }}
               >
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      mb: 1,
+                    }}
+                  >
                     <Typography
                       variant="caption"
                       sx={{
@@ -1244,7 +1301,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     borderTop: `1px dashed ${theme.palette.tokens.divider}`,
                   }}
                 >
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.purpleText, fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.purpleText, fontWeight: 600 }}
+                  >
                     Formula: Committed Views = Median of Latest 10 Reel Views
                   </Typography>
                 </Box>
@@ -1267,7 +1327,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 }}
               >
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      mb: 1,
+                    }}
+                  >
                     <Typography
                       variant="caption"
                       sx={{
@@ -1293,7 +1360,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       my: 1,
                     }}
                   >
-                    {effectiveManual.cpv !== null ? `₹${effectiveManual.cpv.toFixed(2)} / view` : '—'}
+                    {effectiveManual.cpv !== null
+                      ? `₹${effectiveManual.cpv.toFixed(2)} / view`
+                      : '—'}
                   </Typography>
 
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
@@ -1310,7 +1379,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     borderTop: `1px dashed ${theme.palette.tokens.divider}`,
                   }}
                 >
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.positiveText, fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.positiveText, fontWeight: 600 }}
+                  >
                     Formula: Reel Commercial Fee ÷ Pre Eval Committed Views
                   </Typography>
                 </Box>
@@ -1380,7 +1452,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   }}
                 >
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary, mr: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontWeight: 700, color: theme.palette.tokens.textSecondary, mr: 1 }}
+                    >
                       Quick Bulk Paste:
                     </Typography>
                     <Button
@@ -1437,12 +1512,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     <TableHead sx={{ backgroundColor: theme.palette.tokens.fieldBg }}>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 700, width: 80 }}>Post #</TableCell>
-                        <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>
-                          Likes
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>
-                          Comments
-                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Likes</TableCell>
+                        <TableCell sx={{ fontWeight: 700, minWidth: 160 }}>Comments</TableCell>
                         <TableCell sx={{ fontWeight: 700, minWidth: 180 }}>
                           Reel Views (for Median)
                         </TableCell>
@@ -1467,7 +1538,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               index % 2 === 0 ? 'transparent' : theme.palette.tokens.tableHover,
                           }}
                         >
-                          <TableCell sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}>
+                          <TableCell
+                            sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}
+                          >
                             Reel {index + 1}
                           </TableCell>
 
@@ -1478,7 +1551,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               value={manualRows[index]?.likes ?? ''}
                               onChange={(e) => handleRowChange(index, 'likes', e.target.value)}
                               error={isCellInvalid(manualRows[index]?.likes ?? '')}
-                              helperText={isCellInvalid(manualRows[index]?.likes ?? '') ? 'Invalid format' : undefined}
+                              helperText={
+                                isCellInvalid(manualRows[index]?.likes ?? '')
+                                  ? 'Invalid format'
+                                  : undefined
+                              }
                               fullWidth
                               slotProps={{
                                 input: {
@@ -1498,7 +1575,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               value={manualRows[index]?.comments ?? ''}
                               onChange={(e) => handleRowChange(index, 'comments', e.target.value)}
                               error={isCellInvalid(manualRows[index]?.comments ?? '')}
-                              helperText={isCellInvalid(manualRows[index]?.comments ?? '') ? 'Invalid format' : undefined}
+                              helperText={
+                                isCellInvalid(manualRows[index]?.comments ?? '')
+                                  ? 'Invalid format'
+                                  : undefined
+                              }
                               fullWidth
                               slotProps={{
                                 input: {
@@ -1518,7 +1599,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               value={manualRows[index]?.views ?? ''}
                               onChange={(e) => handleRowChange(index, 'views', e.target.value)}
                               error={isCellInvalid(manualRows[index]?.views ?? '')}
-                              helperText={isCellInvalid(manualRows[index]?.views ?? '') ? 'Invalid format' : undefined}
+                              helperText={
+                                isCellInvalid(manualRows[index]?.views ?? '')
+                                  ? 'Invalid format'
+                                  : undefined
+                              }
                               fullWidth
                               slotProps={{
                                 input: {
@@ -1535,7 +1620,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                             {row.rowEngagement > 0 ? row.rowEngagement.toLocaleString() : '—'}
                           </TableCell>
 
-                          <TableCell align="right" sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}>
+                          <TableCell
+                            align="right"
+                            sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}
+                          >
                             {row.rowEr > 0 ? `${row.rowEr.toFixed(2)}%` : '—'}
                           </TableCell>
 
@@ -1565,26 +1653,38 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         </TableCell>
                         <TableCell sx={{ fontWeight: 800 }}>
                           {tableData.totalLikes.toLocaleString()} likes
-                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                          >
                             Avg: {tableData.avgLikes.toLocaleString()}/post
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ fontWeight: 800 }}>
                           {tableData.totalComments.toLocaleString()} comments
-                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                          >
                             Avg: {tableData.avgComments.toLocaleString()}/post
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ fontWeight: 800, color: theme.palette.tokens.purpleText }}>
                           Median: {tableData.committedViews.toLocaleString()} views
-                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                          >
                             From {tableData.validViews.length} reel view inputs
                           </Typography>
                         </TableCell>
                         <TableCell align="right" sx={{ fontWeight: 800 }}>
                           {(tableData.totalLikes + tableData.totalComments).toLocaleString()}
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}>
+                        <TableCell
+                          align="right"
+                          sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}
+                        >
                           {tableData.erPercent > 0 ? `${tableData.erPercent.toFixed(2)}%` : '0.00%'}
                         </TableCell>
                         <TableCell />
@@ -1605,15 +1705,17 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 45000 or 45k"
                       value={summaryLikes}
                       onChange={(e) => setSummaryLikes(e.target.value)}
-                      error={summaryLikes.trim() !== '' && !validateNumericInput(summaryLikes).isValid}
+                      error={
+                        summaryLikes.trim() !== '' && !validateNumericInput(summaryLikes).isValid
+                      }
                       size="small"
                       fullWidth
                       helperText={
                         summaryLikes.trim() !== '' && !validateNumericInput(summaryLikes).isValid
                           ? 'Invalid format (e.g. 45k or 45000)'
                           : summaryData.totalLikes > 0
-                          ? `Parsed: ${summaryData.totalLikes.toLocaleString()}`
-                          : 'Sum of likes across all analyzed posts'
+                            ? `Parsed: ${summaryData.totalLikes.toLocaleString()}`
+                            : 'Sum of likes across all analyzed posts'
                       }
                     />
                   </Grid>
@@ -1624,15 +1726,19 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 3200 or 3.2k"
                       value={summaryComments}
                       onChange={(e) => setSummaryComments(e.target.value)}
-                      error={summaryComments.trim() !== '' && !validateNumericInput(summaryComments).isValid}
+                      error={
+                        summaryComments.trim() !== '' &&
+                        !validateNumericInput(summaryComments).isValid
+                      }
                       size="small"
                       fullWidth
                       helperText={
-                        summaryComments.trim() !== '' && !validateNumericInput(summaryComments).isValid
+                        summaryComments.trim() !== '' &&
+                        !validateNumericInput(summaryComments).isValid
                           ? 'Invalid format (e.g. 3.2k or 3200)'
                           : summaryData.totalComments > 0
-                          ? `Parsed: ${summaryData.totalComments.toLocaleString()}`
-                          : 'Sum of comments across all analyzed posts'
+                            ? `Parsed: ${summaryData.totalComments.toLocaleString()}`
+                            : 'Sum of comments across all analyzed posts'
                       }
                     />
                   </Grid>
@@ -1645,13 +1751,15 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       onChange={(e) => setSummaryPostsCount(e.target.value)}
                       error={
                         summaryPostsCount.trim() !== '' &&
-                        (!validateNumericInput(summaryPostsCount).isValid || parseNumberInput(summaryPostsCount) <= 0)
+                        (!validateNumericInput(summaryPostsCount).isValid ||
+                          parseNumberInput(summaryPostsCount) <= 0)
                       }
                       size="small"
                       fullWidth
                       helperText={
                         summaryPostsCount.trim() !== '' &&
-                        (!validateNumericInput(summaryPostsCount).isValid || parseNumberInput(summaryPostsCount) <= 0)
+                        (!validateNumericInput(summaryPostsCount).isValid ||
+                          parseNumberInput(summaryPostsCount) <= 0)
                           ? 'Must be a positive integer (e.g. 10)'
                           : 'Default is 10 latest posts'
                       }
@@ -1664,15 +1772,19 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 35000 or 35k"
                       value={summaryCommittedViews}
                       onChange={(e) => setSummaryCommittedViews(e.target.value)}
-                      error={summaryCommittedViews.trim() !== '' && !validateNumericInput(summaryCommittedViews).isValid}
+                      error={
+                        summaryCommittedViews.trim() !== '' &&
+                        !validateNumericInput(summaryCommittedViews).isValid
+                      }
                       size="small"
                       fullWidth
                       helperText={
-                        summaryCommittedViews.trim() !== '' && !validateNumericInput(summaryCommittedViews).isValid
+                        summaryCommittedViews.trim() !== '' &&
+                        !validateNumericInput(summaryCommittedViews).isValid
                           ? 'Invalid format (e.g. 35k or 35000)'
                           : summaryData.committedViews > 0
-                          ? `Parsed: ${summaryData.committedViews.toLocaleString()} views`
-                          : 'Median of latest 10 reels'
+                            ? `Parsed: ${summaryData.committedViews.toLocaleString()} views`
+                            : 'Median of latest 10 reels'
                       }
                     />
                   </Grid>
@@ -1782,7 +1894,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         {selectedInfluencer.name}
                       </Typography>
                       {selectedInfluencer.instagram && (
-                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: theme.palette.tokens.textSecondary }}
+                        >
                           {formatInstagramHandle(selectedInfluencer.instagram)}
                         </Typography>
                       )}
@@ -1798,9 +1913,15 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         }}
                       />
                     </Box>
-                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                      {selectedInfluencer.followers ? `${selectedInfluencer.followers.toLocaleString()} followers` : 'Followers not set'}
-                      {' • '}Ready to assign calculated ER of {effectiveManual.erPercent.toFixed(2)}%
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary }}
+                    >
+                      {selectedInfluencer.followers
+                        ? `${selectedInfluencer.followers.toLocaleString()} followers`
+                        : 'Followers not set'}
+                      {' • '}Ready to assign calculated ER of {effectiveManual.erPercent.toFixed(2)}
+                      %
                     </Typography>
                   </Box>
                 </Box>
@@ -1811,7 +1932,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     size="small"
                     startIcon={<SwapHorizRoundedIcon />}
                     onClick={() => openAssignDialog('manual')}
-                    sx={{ fontSize: '0.8rem', textTransform: 'none', color: theme.palette.tokens.textSecondary }}
+                    sx={{
+                      fontSize: '0.8rem',
+                      textTransform: 'none',
+                      color: theme.palette.tokens.textSecondary,
+                    }}
                   >
                     Change Influencer
                   </Button>
@@ -1829,7 +1954,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     disabled={effectiveManual.erPercent <= 0 || assignERMutation.isPending}
                     sx={{ fontWeight: 700 }}
                   >
-                    {assignERMutation.isPending ? 'Assigning...' : `Assign ER to ${selectedInfluencer.name}`}
+                    {assignERMutation.isPending
+                      ? 'Assigning...'
+                      : `Assign ER to ${selectedInfluencer.name}`}
                   </Button>
                 </Box>
               </Box>
@@ -1849,13 +1976,19 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 24 }} />
+                  <PeopleAltRoundedIcon
+                    sx={{ color: theme.palette.tokens.textSecondary, fontSize: 24 }}
+                  />
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       No Influencer Linked to this Calculation
                     </Typography>
-                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                      Assign this calculated Engagement Rate ({effectiveManual.erPercent.toFixed(2)}%) to an influencer in your roster.
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary }}
+                    >
+                      Assign this calculated Engagement Rate ({effectiveManual.erPercent.toFixed(2)}
+                      %) to an influencer in your roster.
                     </Typography>
                   </Box>
                 </Box>
@@ -1879,7 +2012,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       {/* AUTO INSTAGRAM PROFILE FETCH TAB */}
       {/* ========================================================================= */}
       {activeTab === 'auto' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${theme.customSpacing.cardGap}px`, pb: 4 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: `${theme.customSpacing.cardGap}px`,
+            pb: 4,
+          }}
+        >
           {/* Profile Search Section */}
           <Paper
             elevation={0}
@@ -1950,8 +2090,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               >
                 <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary }}>
                   <strong>@{autoHandle.trim()}</strong> is not an Instagram Business or Creator
-                  account. Instagram does not publish metrics for personal accounts, so they have
-                  to be entered by hand.
+                  account. Instagram does not publish metrics for personal accounts, so they have to
+                  be entered by hand.
                 </Typography>
                 <Button
                   variant="contained"
@@ -1992,16 +2132,22 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       imgProps={{ referrerPolicy: 'no-referrer' }}
                       sx={{ width: 72, height: 72 }}
                     >
-                      {(autoResult.profile.fullName ?? autoResult.instagramHandle).charAt(0).toUpperCase()}
+                      {(autoResult.profile.fullName ?? autoResult.instagramHandle)
+                        .charAt(0)
+                        .toUpperCase()}
                     </Avatar>
 
                     <Box sx={{ minWidth: 200 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}
+                      >
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>
                           {autoResult.profile.fullName || `@${autoResult.instagramHandle}`}
                         </Typography>
                         {autoResult.profile.isVerified && (
-                          <VerifiedRoundedIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+                          <VerifiedRoundedIcon
+                            sx={{ fontSize: 20, color: theme.palette.primary.main }}
+                          />
                         )}
                         {autoResult.profile.isPrivate && (
                           <Chip label="Private" size="small" color="warning" variant="outlined" />
@@ -2024,7 +2170,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       {autoResult.profile.biography && (
                         <Typography
                           variant="body2"
-                          sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, whiteSpace: 'pre-line' }}
+                          sx={{
+                            color: theme.palette.tokens.textSecondary,
+                            mt: 0.5,
+                            whiteSpace: 'pre-line',
+                          }}
                         >
                           {autoResult.profile.biography}
                         </Typography>
@@ -2037,22 +2187,31 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       {[
                         {
                           label: 'Followers',
-                          value: autoResult.followersCount ? autoResult.followersCount.toLocaleString() : '—',
+                          value: autoResult.followersCount
+                            ? autoResult.followersCount.toLocaleString()
+                            : '—',
                         },
                         {
                           label: 'Following',
-                          value: autoResult.followingCount ? autoResult.followingCount.toLocaleString() : '—',
+                          value: autoResult.followingCount
+                            ? autoResult.followingCount.toLocaleString()
+                            : '—',
                         },
                         {
                           label: 'Total Posts',
-                          value: autoResult.profile.totalPosts ? autoResult.profile.totalPosts.toLocaleString() : '—',
+                          value: autoResult.profile.totalPosts
+                            ? autoResult.profile.totalPosts.toLocaleString()
+                            : '—',
                         },
                       ].map((item) => (
                         <Box key={item.label} sx={{ textAlign: 'center' }}>
                           <Typography variant="h6" sx={{ fontWeight: 700 }}>
                             {item.value}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: theme.palette.tokens.textSecondary }}
+                          >
                             {item.label}
                           </Typography>
                         </Box>
@@ -2084,14 +2243,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           openAssignDialog('auto');
                         }
                       }}
-                      disabled={(autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending}
+                      disabled={
+                        (autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending
+                      }
                       sx={{ height: 40, fontWeight: 700 }}
                     >
                       {assignERMutation.isPending
                         ? 'Assigning...'
                         : selectedInfluencer
-                        ? `Assign ER% (${autoResult?.engagementRate || 0}%)`
-                        : 'Assign to Influencer'}
+                          ? `Assign ER% (${autoResult?.engagementRate || 0}%)`
+                          : 'Assign to Influencer'}
                     </Button>
                   </Box>
                 </Paper>
@@ -2114,21 +2275,27 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       placeholder="e.g. 50000 or 50k"
                       value={autoCommercialFee}
                       onChange={(e) => setAutoCommercialFee(e.target.value)}
-                      error={autoCommercialFee.trim() !== '' && !validateNumericInput(autoCommercialFee).isValid}
+                      error={
+                        autoCommercialFee.trim() !== '' &&
+                        !validateNumericInput(autoCommercialFee).isValid
+                      }
                       size="small"
                       fullWidth
                       helperText={
-                        autoCommercialFee.trim() !== '' && !validateNumericInput(autoCommercialFee).isValid
+                        autoCommercialFee.trim() !== '' &&
+                        !validateNumericInput(autoCommercialFee).isValid
                           ? 'Invalid fee amount (e.g. 50k or 50000)'
                           : autoCommercialFeeNum > 0
-                          ? `Parsed: ₹${autoCommercialFeeNum.toLocaleString()}`
-                          : 'Enter commercial fee to compute Pre-Eval CPV'
+                            ? `Parsed: ₹${autoCommercialFeeNum.toLocaleString()}`
+                            : 'Enter commercial fee to compute Pre-Eval CPV'
                       }
                       slotProps={{
                         input: {
                           startAdornment: (
                             <InputAdornment position="start">
-                              <CurrencyRupeeRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }} />
+                              <CurrencyRupeeRoundedIcon
+                                sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
+                              />
                             </InputAdornment>
                           ),
                         },
@@ -2137,7 +2304,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   </Grid>
 
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                    >
                       Pre-Evaluation CPV = Reel Fee ÷ Committed Views (Median of 10 Reels)
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
@@ -2146,7 +2316,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         component="span"
                         sx={{
                           fontWeight: 700,
-                          color: autoCpv ? theme.palette.tokens.positiveText : theme.palette.tokens.textSecondary,
+                          color: autoCpv
+                            ? theme.palette.tokens.positiveText
+                            : theme.palette.tokens.textSecondary,
                         }}
                       >
                         {autoCpv ? `₹${autoCpv.toFixed(2)} / view` : 'Enter fee above'}
@@ -2170,7 +2342,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       textAlign: 'center',
                     }}
                   >
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontWeight: 700, color: theme.palette.tokens.accentText }}
+                    >
                       ENGAGEMENT RATE (ER%)
                     </Typography>
                     <Typography
@@ -2218,7 +2393,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       textAlign: 'center',
                     }}
                   >
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontWeight: 700, color: theme.palette.tokens.purpleText }}
+                    >
                       PRE-EVAL COMMITTED VIEWS
                     </Typography>
                     <Typography
@@ -2229,7 +2407,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         my: 1,
                       }}
                     >
-                      {autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : '—'}
+                      {autoCommittedViews > 0
+                        ? `${autoCommittedViews.toLocaleString()} views`
+                        : '—'}
                     </Typography>
                     <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
                       Median of latest {autoReelViews.length} reel views
@@ -2249,14 +2429,19 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       textAlign: 'center',
                     }}
                   >
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText }}
+                    >
                       PRE-EVAL CPV (COST PER VIEW)
                     </Typography>
                     <Typography
                       variant="h3"
                       sx={{
                         fontWeight: 800,
-                        color: autoCpv ? theme.palette.tokens.positiveText : theme.palette.tokens.textSecondary,
+                        color: autoCpv
+                          ? theme.palette.tokens.positiveText
+                          : theme.palette.tokens.textSecondary,
                         my: 1,
                       }}
                     >
@@ -2285,7 +2470,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       Analyzed Posts ({autoResult.posts.length})
                     </Typography>
                     <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-                      Latest {autoResult.posts.length} posts retrieved by publish date. Committed views is calculated from the median of reel views.
+                      Latest {autoResult.posts.length} posts retrieved by publish date. Committed
+                      views is calculated from the median of reel views.
                     </Typography>
                   </Box>
 
@@ -2293,14 +2479,24 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     <Table size="small" sx={{ minWidth: 720 }}>
                       <TableHead sx={{ backgroundColor: theme.palette.tokens.fieldBg }}>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 700, width: 48, textAlign: 'center' }}>#</TableCell>
+                          <TableCell sx={{ fontWeight: 700, width: 48, textAlign: 'center' }}>
+                            #
+                          </TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>Post</TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 700 }}>Likes</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 700 }}>Comments</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 700 }}>Views</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 700 }}>ER %</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            Likes
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            Comments
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            Views
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            ER %
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -2308,7 +2504,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           const isReel = post.mediaKind === 'REEL' || post.mediaKind === 'VIDEO';
                           return (
                             <TableRow key={post.shortcode ?? index} hover>
-                              <TableCell align="center" sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}>
+                              <TableCell
+                                align="center"
+                                sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}
+                              >
                                 {index + 1}
                               </TableCell>
                               <TableCell sx={{ maxWidth: 320 }}>
@@ -2321,10 +2520,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                       width: 44,
                                       height: 44,
                                       bgcolor: theme.palette.tokens.fieldBg,
-                                      color: isReel ? theme.palette.tokens.purpleText : theme.palette.tokens.accentText,
+                                      color: isReel
+                                        ? theme.palette.tokens.purpleText
+                                        : theme.palette.tokens.accentText,
                                     }}
                                   >
-                                    {isReel ? <MovieCreationRoundedIcon /> : <CollectionsRoundedIcon />}
+                                    {isReel ? (
+                                      <MovieCreationRoundedIcon />
+                                    ) : (
+                                      <CollectionsRoundedIcon />
+                                    )}
                                   </Avatar>
                                   <Box sx={{ minWidth: 0 }}>
                                     <Typography
@@ -2345,7 +2550,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         variant="caption"
-                                        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 0.25,
+                                        }}
                                       >
                                         View post
                                         <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
@@ -2365,8 +2574,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                   size="small"
                                   variant="outlined"
                                   sx={{
-                                    borderColor: isReel ? theme.palette.tokens.purpleText : theme.palette.tokens.accentText,
-                                    color: isReel ? theme.palette.tokens.purpleText : theme.palette.tokens.accentText,
+                                    borderColor: isReel
+                                      ? theme.palette.tokens.purpleText
+                                      : theme.palette.tokens.accentText,
+                                    color: isReel
+                                      ? theme.palette.tokens.purpleText
+                                      : theme.palette.tokens.accentText,
                                   }}
                                 />
                               </TableCell>
@@ -2376,7 +2589,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               <TableCell align="right">
                                 {post.views === null ? '—' : post.views.toLocaleString()}
                               </TableCell>
-                              <TableCell align="right" sx={{ fontWeight: 600, color: theme.palette.tokens.accentText }}>
+                              <TableCell
+                                align="right"
+                                sx={{ fontWeight: 600, color: theme.palette.tokens.accentText }}
+                              >
                                 {post.engagementRate.toFixed(2)}%
                               </TableCell>
                             </TableRow>
@@ -2412,7 +2628,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>
                       Influencer Evaluation Summary
                     </Typography>
-                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary }}
+                    >
                       Shareable summary report & direct ER assignment to roster
                     </Typography>
                   </Box>
@@ -2484,12 +2703,17 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         {selectedInfluencer.name.charAt(0).toUpperCase()}
                       </Avatar>
                       <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Box
+                          sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+                        >
                           <Typography variant="body2" sx={{ fontWeight: 700 }}>
                             {selectedInfluencer.name}
                           </Typography>
                           {selectedInfluencer.instagram && (
-                            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: theme.palette.tokens.textSecondary }}
+                            >
                               {formatInstagramHandle(selectedInfluencer.instagram)}
                             </Typography>
                           )}
@@ -2505,9 +2729,15 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                             }}
                           />
                         </Box>
-                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                          {selectedInfluencer.followers ? `${selectedInfluencer.followers.toLocaleString()} followers` : 'Followers not set'}
-                          {' • '}Ready to assign calculated ER of {autoResult.engagementRate.toFixed(2)}%
+                        <Typography
+                          variant="caption"
+                          sx={{ color: theme.palette.tokens.textSecondary }}
+                        >
+                          {selectedInfluencer.followers
+                            ? `${selectedInfluencer.followers.toLocaleString()} followers`
+                            : 'Followers not set'}
+                          {' • '}Ready to assign calculated ER of{' '}
+                          {autoResult.engagementRate.toFixed(2)}%
                         </Typography>
                       </Box>
                     </Box>
@@ -2518,7 +2748,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         size="small"
                         startIcon={<SwapHorizRoundedIcon />}
                         onClick={() => openAssignDialog('auto')}
-                        sx={{ fontSize: '0.8rem', textTransform: 'none', color: theme.palette.tokens.textSecondary }}
+                        sx={{
+                          fontSize: '0.8rem',
+                          textTransform: 'none',
+                          color: theme.palette.tokens.textSecondary,
+                        }}
                       >
                         Change Influencer
                       </Button>
@@ -2533,10 +2767,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           )
                         }
                         onClick={() => handleAssignToInfluencer('auto')}
-                        disabled={(autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending}
+                        disabled={
+                          (autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending
+                        }
                         sx={{ fontWeight: 700 }}
                       >
-                        {assignERMutation.isPending ? 'Assigning...' : `Assign ER to ${selectedInfluencer.name}`}
+                        {assignERMutation.isPending
+                          ? 'Assigning...'
+                          : `Assign ER to ${selectedInfluencer.name}`}
                       </Button>
                     </Box>
                   </Box>
@@ -2556,13 +2794,19 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 24 }} />
+                      <PeopleAltRoundedIcon
+                        sx={{ color: theme.palette.tokens.textSecondary, fontSize: 24 }}
+                      />
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           No Influencer Linked to this Calculation
                         </Typography>
-                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                          Assign this calculated Engagement Rate ({autoResult.engagementRate.toFixed(2)}%) to an influencer in your roster.
+                        <Typography
+                          variant="caption"
+                          sx={{ color: theme.palette.tokens.textSecondary }}
+                        >
+                          Assign this calculated Engagement Rate (
+                          {autoResult.engagementRate.toFixed(2)}%) to an influencer in your roster.
                         </Typography>
                       </Box>
                     </Box>
@@ -2603,10 +2847,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       >
         <DialogTitle sx={{ pb: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Bulk Paste {bulkTargetField === 'views' ? 'Reel Views' : bulkTargetField === 'likes' ? 'Likes' : 'Comments'}
+            Bulk Paste{' '}
+            {bulkTargetField === 'views'
+              ? 'Reel Views'
+              : bulkTargetField === 'likes'
+                ? 'Likes'
+                : 'Comments'}
           </Typography>
           <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-            Paste numbers from a spreadsheet column or comma/space-separated text (e.g. 45k, 32k, 18k, 25k...)
+            Paste numbers from a spreadsheet column or comma/space-separated text (e.g. 45k, 32k,
+            18k, 25k...)
           </Typography>
         </DialogTitle>
 
@@ -2640,8 +2890,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
                   <WarningAmberRoundedIcon sx={{ color: theme.palette.error.main, fontSize: 18 }} />
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.error.main }}>
-                    {bulkValidation.invalidCount} invalid {bulkValidation.invalidCount === 1 ? 'entry' : 'entries'} found:
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: theme.palette.error.main }}
+                  >
+                    {bulkValidation.invalidCount} invalid{' '}
+                    {bulkValidation.invalidCount === 1 ? 'entry' : 'entries'} found:
                   </Typography>
                 </Box>
                 <Typography
@@ -2657,11 +2911,20 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     mb: 1,
                   }}
                 >
-                  {bulkValidation.invalidStrings.slice(0, 10).map((s) => `"${s}"`).join(', ')}
-                  {bulkValidation.invalidStrings.length > 10 ? ` +${bulkValidation.invalidStrings.length - 10} more` : ''}
+                  {bulkValidation.invalidStrings
+                    .slice(0, 10)
+                    .map((s) => `"${s}"`)
+                    .join(', ')}
+                  {bulkValidation.invalidStrings.length > 10
+                    ? ` +${bulkValidation.invalidStrings.length - 10} more`
+                    : ''}
                 </Typography>
-                <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
-                  Please enter valid numbers or shorthand formats (e.g. 45000, 45k, 1.2M, 50,000). Text strings and special characters cannot be assigned as {bulkTargetField}.
+                <Typography
+                  variant="caption"
+                  sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                >
+                  Please enter valid numbers or shorthand formats (e.g. 45000, 45k, 1.2M, 50,000).
+                  Text strings and special characters cannot be assigned as {bulkTargetField}.
                 </Typography>
               </Box>
             )}
@@ -2678,7 +2941,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   border: `1px solid ${theme.palette.tokens.divider}`,
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 0.5,
+                  }}
+                >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                     <CheckCircleRoundedIcon
                       sx={{
@@ -2697,7 +2967,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           : theme.palette.tokens.positiveText,
                       }}
                     >
-                      Recognized {bulkValidation.validCount} valid {bulkValidation.validCount === 1 ? 'number' : 'numbers'}:
+                      Recognized {bulkValidation.validCount} valid{' '}
+                      {bulkValidation.validCount === 1 ? 'number' : 'numbers'}:
                     </Typography>
                   </Box>
                   {bulkValidation.hasErrors && (
@@ -2711,12 +2982,19 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     </Button>
                   )}
                 </Box>
-                <Typography variant="body2" sx={{ wordBreak: 'break-word', color: theme.palette.tokens.textPrimary, mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ wordBreak: 'break-word', color: theme.palette.tokens.textPrimary, mt: 0.5 }}
+                >
                   {bulkValidation.validValues.map((n) => n.toLocaleString()).join(', ')}
                 </Typography>
                 {!bulkValidation.hasErrors && (
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}>
-                    Will populate Reel 1 to Reel {bulkValidation.validCount} in the {bulkTargetField} column.
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}
+                  >
+                    Will populate Reel 1 to Reel {bulkValidation.validCount} in the{' '}
+                    {bulkTargetField} column.
                   </Typography>
                 )}
               </Box>
@@ -2745,11 +3023,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
             Cancel
           </Button>
           {bulkValidation.hasErrors && bulkValidation.validCount > 0 && (
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleApplyOnlyValidBulkData}
-            >
+            <Button variant="outlined" color="primary" onClick={handleApplyOnlyValidBulkData}>
               Apply Only Valid ({bulkValidation.validCount})
             </Button>
           )}
@@ -2819,7 +3093,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 border: `1px solid ${theme.palette.tokens.divider}`,
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 1.5,
+                }}
+              >
                 <Typography
                   variant="caption"
                   sx={{
@@ -2829,21 +3110,28 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     letterSpacing: 0.5,
                   }}
                 >
-                  Calculated Metrics ({assignDialogSource === 'manual' ? 'Manual Calc' : 'Auto Fetch'})
+                  Calculated Metrics (
+                  {assignDialogSource === 'manual' ? 'Manual Calc' : 'Auto Fetch'})
                 </Typography>
                 {getErTierBadge(
                   assignDialogSource === 'manual'
                     ? effectiveManual.erPercent
-                    : (autoResult?.engagementRate || 0),
+                    : autoResult?.engagementRate || 0,
                 )}
               </Box>
 
               <Grid container spacing={1.5}>
                 <Grid size={{ xs: 6, sm: 3 }}>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                  >
                     Engagement Rate
                   </Typography>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}
+                  >
                     {assignDialogSource === 'manual'
                       ? `${effectiveManual.erPercent.toFixed(2)}%`
                       : `${autoResult?.engagementRate?.toFixed(2) || '0.00'}%`}
@@ -2851,7 +3139,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 </Grid>
 
                 <Grid size={{ xs: 6, sm: 3 }}>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                  >
                     Followers
                   </Typography>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -2860,13 +3151,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         ? manualFollowersNum.toLocaleString()
                         : '—'
                       : autoResult?.followersCount
-                      ? autoResult.followersCount.toLocaleString()
-                      : '—'}
+                        ? autoResult.followersCount.toLocaleString()
+                        : '—'}
                   </Typography>
                 </Grid>
 
                 <Grid size={{ xs: 6, sm: 3 }}>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                  >
                     Committed Views
                   </Typography>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -2875,13 +3169,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         ? effectiveManual.committedViews.toLocaleString()
                         : '—'
                       : autoCommittedViews > 0
-                      ? autoCommittedViews.toLocaleString()
-                      : '—'}
+                        ? autoCommittedViews.toLocaleString()
+                        : '—'}
                   </Typography>
                 </Grid>
 
                 <Grid size={{ xs: 6, sm: 3 }}>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                  >
                     Reel Fee
                   </Typography>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -2890,8 +3187,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         ? `₹${manualCommercialFeeNum.toLocaleString()}`
                         : '—'
                       : autoCommercialFeeNum > 0
-                      ? `₹${autoCommercialFeeNum.toLocaleString()}`
-                      : '—'}
+                        ? `₹${autoCommercialFeeNum.toLocaleString()}`
+                        : '—'}
                   </Typography>
                 </Grid>
               </Grid>
@@ -2914,12 +3211,11 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 fullWidth
                 renderOption={(props, option) => {
-                  const { key, ...otherProps } = props;
                   return (
                     <Box
                       component="li"
-                      key={key}
-                      {...otherProps}
+                      {...props}
+                      key={option.id}
                       sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
                     >
                       <Avatar
@@ -2931,15 +3227,21 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           fontWeight: 700,
                         }}
                       >
-                        {option.name.charAt(0).toUpperCase()}
+                        {option.name?.slice(0, 1).toUpperCase()}
                       </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box sx={{ minWidth: 0 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {option.name}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                          {option.instagram ? `@${option.instagram}` : 'No Instagram handle'}
-                          {option.followers ? ` • ${option.followers.toLocaleString()} followers` : ''}
+                        <Typography
+                          variant="caption"
+                          sx={{ color: theme.palette.tokens.textSecondary }}
+                        >
+                          {option.instagram ? `@${option.instagram}` : option.category || 'Creator'}{' '}
+                          ·{' '}
+                          {option.followers
+                            ? `${option.followers.toLocaleString()} followers`
+                            : 'Followers pending'}
                         </Typography>
                       </Box>
                     </Box>
@@ -2957,7 +3259,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         startAdornment: (
                           <>
                             <InputAdornment position="start">
-                              <PeopleAltRoundedIcon sx={{ color: theme.palette.tokens.textSecondary, fontSize: 20 }} />
+                              <PeopleAltRoundedIcon
+                                sx={{ color: theme.palette.tokens.textSecondary, fontSize: 20 }}
+                              />
                             </InputAdornment>
                             {params.InputProps.startAdornment}
                           </>
@@ -2976,20 +3280,28 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               return (
                 <Box
                   sx={{
-                    p: 1.5,
+                    p: 2,
+                    backgroundColor: theme.palette.tokens.fieldBg,
                     borderRadius: `${theme.customRadii.inner}px`,
-                    backgroundColor: theme.palette.tokens.positiveBg,
                     border: `1px solid ${theme.palette.tokens.divider}`,
                   }}
                 >
                   <Typography
                     variant="caption"
-                    sx={{ fontWeight: 700, color: theme.palette.tokens.positiveText, display: 'block' }}
+                    sx={{
+                      fontWeight: 700,
+                      color: theme.palette.tokens.positiveText,
+                      display: 'block',
+                    }}
                   >
                     Assigning to: {target.name} {target.instagram ? `(@${target.instagram})` : ''}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}>
-                    This will persist an engagement calculation record and update the influencer profile's ER metrics in your agency roster.
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}
+                  >
+                    This will persist an engagement calculation record and update the influencer
+                    profile&apos;s ER metrics in your agency roster.
                   </Typography>
                 </Box>
               );
@@ -3012,7 +3324,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               !assignDialogTargetId ||
               (assignDialogSource === 'manual'
                 ? effectiveManual.erPercent
-                : (autoResult?.engagementRate || 0)) <= 0 ||
+                : autoResult?.engagementRate || 0) <= 0 ||
               assignERMutation.isPending
             }
             startIcon={
@@ -3028,7 +3340,6 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
           </Button>
         </DialogActions>
       </Dialog>
-
     </DashboardLayout>
   );
 };

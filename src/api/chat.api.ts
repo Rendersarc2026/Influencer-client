@@ -68,6 +68,14 @@ export function useCreateOrFindChat() {
 // 4. Send Message (with optimistic append and rollback)
 // -------------------------------------------------------------
 
+export async function sendMessageApi(
+  chatId: string,
+  data: SendMessageRequest,
+): Promise<MessageResponse> {
+  const response = await apiClient.post<MessageResponse>(`/chats/${chatId}/messages`, data);
+  return response.data;
+}
+
 export function useSendMessage(chatId: string | undefined, currentUserId?: string) {
   const queryClient = useQueryClient();
 
@@ -79,8 +87,7 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
   >({
     mutationFn: async (data) => {
       if (!chatId) throw new Error('No active conversation selected.');
-      const response = await apiClient.post<MessageResponse>(`/chats/${chatId}/messages`, data);
-      return response.data;
+      return sendMessageApi(chatId, data);
     },
     onMutate: async (newMessage) => {
       if (!chatId) return {};

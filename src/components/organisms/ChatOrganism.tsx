@@ -43,6 +43,7 @@ import {
   useAgencyBrands,
   useAgencyUsers,
   uploadChatAttachment,
+  sendMessageApi,
   getSocket,
   joinChat,
   leaveChat,
@@ -172,15 +173,22 @@ const findExistingChat = (
         if (c.type !== ChatTypeCode.AGENCY_BRAND) continue;
         if (c.brandUserId === matchedBrand.id) {
           matches.push(c);
-        } else if (c.brandName && c.brandName.toLowerCase().trim() === matchedBrand.name.toLowerCase().trim()) {
+        } else if (
+          c.brandName &&
+          c.brandName.toLowerCase().trim() === matchedBrand.name.toLowerCase().trim()
+        ) {
           matches.push(c);
         } else {
           const brandUser = users.find(
             (u) =>
               u.brandId === matchedBrand.id ||
-              (matchedBrand.contactEmail && u.email?.toLowerCase() === matchedBrand.contactEmail.toLowerCase()),
+              (matchedBrand.contactEmail &&
+                u.email?.toLowerCase() === matchedBrand.contactEmail.toLowerCase()),
           );
-          if (brandUser && (c.brandUserId === brandUser.id || c.brandUserId === brandUser.brandId)) {
+          if (
+            brandUser &&
+            (c.brandUserId === brandUser.id || c.brandUserId === brandUser.brandId)
+          ) {
             matches.push(c);
           }
         }
@@ -196,15 +204,22 @@ const findExistingChat = (
         if (c.type !== ChatTypeCode.AGENCY_INFLUENCER) continue;
         if (c.influencerId === matchedInfluencer.id) {
           matches.push(c);
-        } else if (c.influencerName && c.influencerName.toLowerCase().trim() === matchedInfluencer.name.toLowerCase().trim()) {
+        } else if (
+          c.influencerName &&
+          c.influencerName.toLowerCase().trim() === matchedInfluencer.name.toLowerCase().trim()
+        ) {
           matches.push(c);
         } else {
           const infUser = users.find(
             (u) =>
               u.influencer?.id === matchedInfluencer.id ||
-              (matchedInfluencer.email && u.email?.toLowerCase() === matchedInfluencer.email.toLowerCase()),
+              (matchedInfluencer.email &&
+                u.email?.toLowerCase() === matchedInfluencer.email.toLowerCase()),
           );
-          if (infUser && (c.influencerId === infUser.id || c.influencerId === infUser.influencer?.id)) {
+          if (
+            infUser &&
+            (c.influencerId === infUser.id || c.influencerId === infUser.influencer?.id)
+          ) {
             matches.push(c);
           }
         }
@@ -216,13 +231,25 @@ const findExistingChat = (
   const matchedUser = users.find((u) => u.id === participantId);
   if (matchedUser) {
     for (const c of chats) {
-      if (c.brandUserId === matchedUser.id || (matchedUser.brandId && c.brandUserId === matchedUser.brandId)) {
+      if (
+        c.brandUserId === matchedUser.id ||
+        (matchedUser.brandId && c.brandUserId === matchedUser.brandId)
+      ) {
         matches.push(c);
-      } else if (c.influencerId === matchedUser.id || (matchedUser.influencer?.id && c.influencerId === matchedUser.influencer.id)) {
+      } else if (
+        c.influencerId === matchedUser.id ||
+        (matchedUser.influencer?.id && c.influencerId === matchedUser.influencer.id)
+      ) {
         matches.push(c);
-      } else if (matchedUser.brandName && c.brandName?.toLowerCase().trim() === matchedUser.brandName.toLowerCase().trim()) {
+      } else if (
+        matchedUser.brandName &&
+        c.brandName?.toLowerCase().trim() === matchedUser.brandName.toLowerCase().trim()
+      ) {
         matches.push(c);
-      } else if (matchedUser.profile?.fullName && c.influencerName?.toLowerCase().trim() === matchedUser.profile.fullName.toLowerCase().trim()) {
+      } else if (
+        matchedUser.profile?.fullName &&
+        c.influencerName?.toLowerCase().trim() === matchedUser.profile.fullName.toLowerCase().trim()
+      ) {
         matches.push(c);
       }
     }
@@ -292,7 +319,6 @@ const getChatDeduplicationKey = (
 };
 
 export const ChatOrganism: React.FC = () => {
-
   const theme = useTheme();
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -309,10 +335,7 @@ export const ChatOrganism: React.FC = () => {
 
   const isAgency = roleCode === 'AGENCY';
   const { data: chats = [], isLoading: chatsLoading } = useChats();
-  const needsAccountFallback = useMemo(
-    () => isAgency,
-    [isAgency],
-  );
+  const needsAccountFallback = useMemo(() => isAgency, [isAgency]);
 
   const { data: influencersData } = useAgencyInfluencers(isAgency ? { limit: 100 } : undefined, {
     enabled: needsAccountFallback,
@@ -328,14 +351,8 @@ export const ChatOrganism: React.FC = () => {
     () => influencersData?.items || [],
     [influencersData],
   );
-  const brands: BrandResponse[] = useMemo(
-    () => brandsData?.items || [],
-    [brandsData],
-  );
-  const users: UserResponse[] = useMemo(
-    () => usersData?.items || [],
-    [usersData],
-  );
+  const brands: BrandResponse[] = useMemo(() => brandsData?.items || [], [brandsData]);
+  const users: UserResponse[] = useMemo(() => usersData?.items || [], [usersData]);
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(queryChatId || null);
   const [searchFilter, setSearchFilter] = useState('');
@@ -354,11 +371,11 @@ export const ChatOrganism: React.FC = () => {
   const [editingBody, setEditingBody] = useState('');
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-
-
   // New Chat Dialog state
   const [startChatOpen, setStartChatOpen] = useState(false);
-  const [dialogParticipantId, setDialogParticipantId] = useState<string | undefined>(queryParticipantId || undefined);
+  const [dialogParticipantId, setDialogParticipantId] = useState<string | undefined>(
+    queryParticipantId || undefined,
+  );
   const [dialogType, setDialogType] = useState<'INFLUENCER' | 'BRAND'>(queryType || 'INFLUENCER');
 
   const openNewChatDialog = (type: 'INFLUENCER' | 'BRAND' = 'INFLUENCER') => {
@@ -397,7 +414,9 @@ export const ChatOrganism: React.FC = () => {
         map.set(key, chat);
       } else {
         const timeChat = chat.lastMessageOn ? new Date(chat.lastMessageOn).getTime() : 0;
-        const timeExisting = existing.lastMessageOn ? new Date(existing.lastMessageOn).getTime() : 0;
+        const timeExisting = existing.lastMessageOn
+          ? new Date(existing.lastMessageOn).getTime()
+          : 0;
 
         let primary: ChatResponse = existing;
         if (timeChat > timeExisting) {
@@ -418,8 +437,12 @@ export const ChatOrganism: React.FC = () => {
     }
 
     return Array.from(map.values()).sort((a, b) => {
-      const timeA = a.lastMessageOn ? new Date(a.lastMessageOn).getTime() : new Date(a.createdOn).getTime();
-      const timeB = b.lastMessageOn ? new Date(b.lastMessageOn).getTime() : new Date(b.createdOn).getTime();
+      const timeA = a.lastMessageOn
+        ? new Date(a.lastMessageOn).getTime()
+        : new Date(a.createdOn).getTime();
+      const timeB = b.lastMessageOn
+        ? new Date(b.lastMessageOn).getTime()
+        : new Date(b.createdOn).getTime();
       return timeB - timeA;
     });
   }, [chats, roleCode, brands, influencers, users]);
@@ -477,10 +500,7 @@ export const ChatOrganism: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Filter out any soft-deleted messages for a clean chat feed
-  const activeMessages = useMemo(
-    () => messages.filter((m) => m.isActive !== false),
-    [messages],
-  );
+  const activeMessages = useMemo(() => messages.filter((m) => m.isActive !== false), [messages]);
 
   // The edit action has to disappear on its own once a bubble already on screen
   // ages out. The clock only runs while something is still editable, so an idle
@@ -573,15 +593,17 @@ export const ChatOrganism: React.FC = () => {
       }
     };
 
-    const handleMessagesRead = (data: { chatId: string; readBy: string; readOn: string | Date }) => {
+    const handleMessagesRead = (data: {
+      chatId: string;
+      readBy: string;
+      readOn: string | Date;
+    }) => {
       if (data.chatId === effectiveChatId) {
         queryClient.setQueryData<MessageResponse[]>(
           ['chats', effectiveChatId, 'messages'],
           (old = []) =>
             old.map((m) =>
-              m.senderId !== data.readBy && !m.readOn
-                ? { ...m, readOn: new Date(data.readOn) }
-                : m,
+              m.senderId !== data.readBy && !m.readOn ? { ...m, readOn: new Date(data.readOn) } : m,
             ),
         );
       }
@@ -661,6 +683,7 @@ export const ChatOrganism: React.FC = () => {
     } else {
       handleStartChat(queryParticipantId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParticipantId, queryType, chatsLoading, chats, brands, influencers, users]);
 
   // Keep the open thread in the URL
@@ -745,7 +768,9 @@ export const ChatOrganism: React.FC = () => {
       showSuccess('Conversation started.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.',
+      );
       setSearchParams({}, { replace: true });
     }
   };
@@ -758,7 +783,9 @@ export const ChatOrganism: React.FC = () => {
       showSuccess('Conversation started.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to start conversation.',
+      );
     }
   };
 
@@ -778,23 +805,11 @@ export const ChatOrganism: React.FC = () => {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !effectiveChatId) return;
+    const rawFiles = e.target.files;
+    if (!rawFiles || rawFiles.length === 0 || !effectiveChatId) return;
 
-    // Strict validation: < 5MB
-    const MAX_CHAT_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-
-    if (file.size === 0) {
-      showError('Selected file is empty.');
-      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
-      return;
-    }
-
-    if (file.size > MAX_CHAT_IMAGE_SIZE) {
-      showError('Image size exceeds 5MB limit. Please upload an image smaller than 5MB.');
-      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
-      return;
-    }
+    const files = Array.from(rawFiles);
+    const MAX_CHAT_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
     const allowed = [
       'image/jpeg',
@@ -804,30 +819,78 @@ export const ChatOrganism: React.FC = () => {
       'image/gif',
       'image/svg+xml',
     ];
-    if (!allowed.includes(file.type.toLowerCase())) {
-      showError('Unsupported file type. Allowed image formats are JPEG, PNG, WEBP, GIF, and SVG.');
+
+    const validFiles: File[] = [];
+    for (const file of files) {
+      if (file.size === 0) {
+        showError(`"${file.name}" is empty.`);
+        continue;
+      }
+      if (file.size > MAX_CHAT_IMAGE_SIZE) {
+        showError(`"${file.name}" exceeds the 10MB limit.`);
+        continue;
+      }
+      if (!allowed.includes(file.type.toLowerCase())) {
+        showError(`"${file.name}" has an unsupported format.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
       if (chatFileInputRef.current) chatFileInputRef.current.value = '';
       return;
     }
 
-    try {
-      setUploadingAttachment(true);
-      const res = await uploadChatAttachment(effectiveChatId, file);
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-      setAttachmentMeta({ name: file.name, size: `${sizeMb} MB` });
-      setAttachmentInput(res.url);
-      setShowAttachmentField(true);
-      showSuccess('Image uploaded and attached successfully.');
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      const msg =
-        errorObj?.response?.data?.message ||
-        errorObj?.message ||
-        'Failed to upload image.';
-      showError(msg);
-    } finally {
-      setUploadingAttachment(false);
-      if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+    if (validFiles.length === 1) {
+      const file = validFiles[0];
+      try {
+        setUploadingAttachment(true);
+        const res = await uploadChatAttachment(effectiveChatId, file);
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        setAttachmentMeta({ name: file.name, size: `${sizeMb} MB` });
+        setAttachmentInput(res.url);
+        setShowAttachmentField(true);
+        showSuccess('Image uploaded and attached successfully.');
+      } catch (err: unknown) {
+        const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+        const msg =
+          errorObj?.response?.data?.message || errorObj?.message || 'Failed to upload image.';
+        showError(msg);
+      } finally {
+        setUploadingAttachment(false);
+        if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+      }
+    } else {
+      // Multiple files uploaded at once
+      try {
+        setUploadingAttachment(true);
+        const trimmedBody = messageInput.trim();
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
+          const res = await uploadChatAttachment(effectiveChatId, file);
+          const body = trimmedBody
+            ? `${trimmedBody} (${i + 1}/${validFiles.length})`
+            : IMAGE_ATTACHMENT_PLACEHOLDER;
+          await sendMessageApi(effectiveChatId, {
+            body,
+            attachmentUrl: res.url,
+          });
+        }
+        setMessageInput('');
+        setAttachmentInput('');
+        setAttachmentMeta(null);
+        setShowAttachmentField(false);
+        showSuccess(`Uploaded and sent ${validFiles.length} images to chat.`);
+      } catch (err: unknown) {
+        const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+        const msg =
+          errorObj?.response?.data?.message || errorObj?.message || 'Failed to upload images.';
+        showError(msg);
+      } finally {
+        setUploadingAttachment(false);
+        if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+      }
     }
   };
 
@@ -859,7 +922,6 @@ export const ChatOrganism: React.FC = () => {
     setAttachmentMeta(null);
     setShowAttachmentField(false);
 
-
     try {
       await sendMessageMutation.mutateAsync(payload);
     } catch (err: unknown) {
@@ -869,7 +931,6 @@ export const ChatOrganism: React.FC = () => {
       );
     }
   };
-
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1148,7 +1209,9 @@ export const ChatOrganism: React.FC = () => {
                   rowGap: 1,
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexShrink: 1 }}>
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flexShrink: 1 }}
+                >
                   <Typography
                     variant="h3"
                     sx={{
@@ -1376,9 +1439,7 @@ export const ChatOrganism: React.FC = () => {
                       sx={{
                         p: 1.5,
                         borderRadius: `${theme.customRadii.inner}px`,
-                        backgroundColor: isSelected
-                          ? theme.palette.tokens.surface
-                          : 'transparent',
+                        backgroundColor: isSelected ? theme.palette.tokens.surface : 'transparent',
                         border: `1px solid ${isSelected ? theme.palette.tokens.accent : 'transparent'}`,
                         borderLeft: isSelected
                           ? `4px solid ${theme.palette.tokens.accent}`
@@ -1426,7 +1487,7 @@ export const ChatOrganism: React.FC = () => {
                             variant="body2"
                             noWrap
                             sx={{
-                              fontWeight: unreadCount > 0 ? 800 : (isSelected ? 700 : 600),
+                              fontWeight: unreadCount > 0 ? 800 : isSelected ? 700 : 600,
                               color: theme.palette.tokens.textPrimary,
                             }}
                           >
@@ -1435,7 +1496,10 @@ export const ChatOrganism: React.FC = () => {
                           <Typography
                             variant="caption"
                             sx={{
-                              color: unreadCount > 0 ? theme.palette.tokens.negative : theme.palette.tokens.textSecondary,
+                              color:
+                                unreadCount > 0
+                                  ? theme.palette.tokens.negative
+                                  : theme.palette.tokens.textSecondary,
                               fontSize: '11px',
                               fontWeight: unreadCount > 0 ? 700 : 500,
                               flexShrink: 0,
@@ -1446,8 +1510,24 @@ export const ChatOrganism: React.FC = () => {
                           </Typography>
                         </Box>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 0.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', minWidth: 0 }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1,
+                            mt: 0.5,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.75,
+                              flexWrap: 'wrap',
+                              minWidth: 0,
+                            }}
+                          >
                             <Box
                               sx={{
                                 fontSize: '10px',
@@ -1464,7 +1544,7 @@ export const ChatOrganism: React.FC = () => {
                             >
                               {roleCode === 'AGENCY'
                                 ? chat.type === ChatTypeCode.AGENCY_INFLUENCER
-                                   ? 'Creator'
+                                  ? 'Creator'
                                   : 'Brand'
                                 : 'Agency'}
                             </Box>
@@ -1600,7 +1680,9 @@ export const ChatOrganism: React.FC = () => {
                       <Typography
                         variant="caption"
                         sx={{
-                          color: partnerTyping ? theme.palette.tokens.accentText : theme.palette.tokens.textSecondary,
+                          color: partnerTyping
+                            ? theme.palette.tokens.accentText
+                            : theme.palette.tokens.textSecondary,
                           fontWeight: partnerTyping ? 700 : 500,
                           fontSize: '11px',
                           transition: 'all 0.15s ease',
@@ -1717,7 +1799,8 @@ export const ChatOrganism: React.FC = () => {
                         variant="body2"
                         sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 380 }}
                       >
-                        Messages sent here are encrypted and delivered directly to {getChatPartnerName(activeChat)}.
+                        Messages sent here are encrypted and delivered directly to{' '}
+                        {getChatPartnerName(activeChat)}.
                       </Typography>
                     </Box>
                   ) : (
@@ -1838,13 +1921,9 @@ export const ChatOrganism: React.FC = () => {
                                 border: isMine
                                   ? 'none'
                                   : `1px solid ${theme.palette.tokens.divider}`,
-                                color: isMine
-                                  ? '#FFFFFF'
-                                  : theme.palette.tokens.textPrimary,
+                                color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
                                 wordBreak: 'break-word',
-                                boxShadow: isMine
-                                  ? '0 2px 6px rgba(0, 0, 0, 0.08)'
-                                  : 'none',
+                                boxShadow: isMine ? '0 2px 6px rgba(0, 0, 0, 0.08)' : 'none',
                               }}
                             >
                               {/* Message text — omitted for attachment-only messages */}
@@ -1875,7 +1954,9 @@ export const ChatOrganism: React.FC = () => {
                                         backgroundColor: isMine
                                           ? 'rgba(255, 255, 255, 0.14)'
                                           : theme.palette.tokens.surface,
-                                        color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                                        color: isMine
+                                          ? '#FFFFFF'
+                                          : theme.palette.tokens.textPrimary,
                                         '& fieldset': {
                                           borderColor: isMine
                                             ? 'rgba(255, 255, 255, 0.35)'
@@ -1946,23 +2027,52 @@ export const ChatOrganism: React.FC = () => {
                                 </Box>
                               ) : (
                                 visibleMessageBody(msg.body) && (
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: '13.5px',
-                                      lineHeight: 1.5,
-                                      whiteSpace: 'pre-wrap',
-                                      color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
-                                    }}
-                                  >
-                                    {visibleMessageBody(msg.body)}
-                                  </Typography>
+                                  <>
+                                    {Boolean(
+                                      msg.body &&
+                                        (msg.body.includes('[Audience Reach Proof') ||
+                                          msg.body.includes('[Reach Proof:') ||
+                                          msg.body.includes('#AudienceProof')),
+                                    ) && (
+                                      <Box
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          mb: 0.75,
+                                          px: 1,
+                                          py: 0.25,
+                                          borderRadius: '6px',
+                                          backgroundColor: isMine
+                                            ? 'rgba(255, 255, 255, 0.2)'
+                                            : '#DBEAFE',
+                                          color: isMine ? '#FFFFFF' : '#1E40AF',
+                                          fontSize: '11px',
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        <span>📍</span>
+                                        <span>Audience Reach Proof</span>
+                                      </Box>
+                                    )}
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        fontSize: '13.5px',
+                                        lineHeight: 1.5,
+                                        whiteSpace: 'pre-wrap',
+                                        color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                                      }}
+                                    >
+                                      {visibleMessageBody(msg.body)}
+                                    </Typography>
+                                  </>
                                 )
                               )}
 
                               {/* Message attachment link or inline image if present */}
-                              {safeUrl(msg.attachmentUrl) && (
-                                isImageAttachmentUrl(msg.attachmentUrl) ? (
+                              {safeUrl(msg.attachmentUrl) &&
+                                (isImageAttachmentUrl(msg.attachmentUrl) ? (
                                   <Box
                                     component="a"
                                     href={safeUrl(msg.attachmentUrl) as string}
@@ -1974,11 +2084,15 @@ export const ChatOrganism: React.FC = () => {
                                       borderRadius: `${theme.customRadii.inner - 4}px`,
                                       overflow: 'hidden',
                                       border: `1px solid ${
-                                        isMine ? 'rgba(255, 255, 255, 0.2)' : theme.palette.tokens.divider
+                                        isMine
+                                          ? 'rgba(255, 255, 255, 0.2)'
+                                          : theme.palette.tokens.divider
                                       }`,
                                       maxHeight: 240,
                                       maxWidth: 320,
-                                      backgroundColor: isMine ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.02)',
+                                      backgroundColor: isMine
+                                        ? 'rgba(0, 0, 0, 0.1)'
+                                        : 'rgba(0, 0, 0, 0.02)',
                                     }}
                                   >
                                     <Box
@@ -2016,7 +2130,9 @@ export const ChatOrganism: React.FC = () => {
                                         ? 'rgba(255, 255, 255, 0.12)'
                                         : theme.palette.tokens.surface,
                                       border: `1px solid ${
-                                        isMine ? 'rgba(255, 255, 255, 0.2)' : theme.palette.tokens.divider
+                                        isMine
+                                          ? 'rgba(255, 255, 255, 0.2)'
+                                          : theme.palette.tokens.divider
                                       }`,
                                       color: isMine ? '#FFFFFF' : theme.palette.tokens.accentText,
                                       textDecoration: 'none',
@@ -2034,9 +2150,7 @@ export const ChatOrganism: React.FC = () => {
                                     <span>View Attachment</span>
                                     <OpenInNewRoundedIcon sx={{ fontSize: '12px', opacity: 0.8 }} />
                                   </Box>
-                                )
-                              )}
-
+                                ))}
 
                               {/* Message Footer: Timestamp & Read / Viewed receipt */}
                               <Box
@@ -2063,7 +2177,9 @@ export const ChatOrganism: React.FC = () => {
                                 </Typography>
 
                                 {isMine && (
-                                  <Box sx={{ display: 'inline-flex', alignItems: 'center', ml: 0.25 }}>
+                                  <Box
+                                    sx={{ display: 'inline-flex', alignItems: 'center', ml: 0.25 }}
+                                  >
                                     {msg.id.startsWith('temp-') ? (
                                       <Tooltip title="Sending...">
                                         <AccessTimeRoundedIcon
@@ -2074,9 +2190,7 @@ export const ChatOrganism: React.FC = () => {
                                         />
                                       </Tooltip>
                                     ) : msg.readOn ? (
-                                      <Tooltip
-                                        title={`Viewed • ${formatMessageTime(msg.readOn)}`}
-                                      >
+                                      <Tooltip title={`Viewed • ${formatMessageTime(msg.readOn)}`}>
                                         <DoneAllRoundedIcon
                                           sx={{
                                             fontSize: '14px',
@@ -2212,7 +2326,6 @@ export const ChatOrganism: React.FC = () => {
                     </Box>
                   )}
 
-
                   {/* Manual URL attachment input bar if toggled and no image uploaded */}
                   {showAttachmentField && !attachmentInput.trim() && (
                     <Box
@@ -2285,14 +2398,14 @@ export const ChatOrganism: React.FC = () => {
                       type="file"
                       ref={chatFileInputRef}
                       accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                      multiple
                       onChange={handleImageUpload}
                       style={{ display: 'none' }}
                     />
 
                     {/* Direct Image Upload Button */}
-                    <Tooltip title="Upload Image (< 5MB)">
+                    <Tooltip title="Upload Screenshots / Images (select multiple)">
                       <IconButton
-
                         size="small"
                         onClick={() => chatFileInputRef.current?.click()}
                         disabled={uploadingAttachment || sendMessageMutation.isPending}
@@ -2406,7 +2519,6 @@ export const ChatOrganism: React.FC = () => {
                     </IconButton>
                   </Box>
                 </Box>
-
               </>
             ) : (
               <Box

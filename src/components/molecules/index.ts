@@ -17,6 +17,7 @@ export * from './EditCampaignDialog';
 export * from './CreateInfluencerDialog';
 export * from './EditInfluencerDialog';
 export * from './SubmitRateDialog';
+export * from './SendProofScreenshotsDialog';
 export * from './OverviewDrawer';
 export * from './StartChatDialog';
 export * from './NotificationCenter';

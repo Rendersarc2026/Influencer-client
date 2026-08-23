@@ -9,10 +9,11 @@ import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { SubmitRateDialog } from '@molecules';
+import { SubmitRateDialog, SendProofScreenshotsDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignment, useSubmitInfluencerRate, useCreateOrFindChat } from '@api';
 import { SubmitRateRequest, RateStatusCode } from '@contracts';
@@ -31,6 +32,7 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
   const createChatMutation = useCreateOrFindChat();
 
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const [proofScreenshotsDialogOpen, setProofScreenshotsDialogOpen] = useState(false);
 
   const handleMessageAgency = async () => {
     try {
@@ -50,7 +52,9 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
       setRateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit quote.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to submit quote.',
+      );
     }
   };
 
@@ -63,9 +67,10 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
       title="Assignment Details"
       subtitle={
         assignment
-          ? (assignment.campaignName
-              ? `${assignment.campaignName}${assignment.brandName ? ` (${assignment.brandName})` : ''}`
-              : assignment.campaign?.name || `Campaign Assignment #${assignment.campaignId.slice(0, 8)}`)
+          ? assignment.campaignName
+            ? `${assignment.campaignName}${assignment.brandName ? ` (${assignment.brandName})` : ''}`
+            : assignment.campaign?.name ||
+              `Campaign Assignment #${assignment.campaignId.slice(0, 8)}`
           : 'Deliverables & Rates'
       }
       navItems={navConfig.INFLUENCER}
@@ -103,7 +108,9 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
             }}
           >
             <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
+              <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}
+              >
                 <Typography variant="h2">Campaign Deliverables Brief</Typography>
                 {assignment?.rateStatus && (
                   <StatusChip category="RATE_STATUS" code={assignment.rateStatus} />
@@ -184,7 +191,13 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               <Box sx={{ flex: 1 }}>
                 <Typography
                   variant="caption"
-                  sx={{ color: '#B45309', fontWeight: 700, display: 'block', mb: 0.5, letterSpacing: '0.5px' }}
+                  sx={{
+                    color: '#B45309',
+                    fontWeight: 700,
+                    display: 'block',
+                    mb: 0.5,
+                    letterSpacing: '0.5px',
+                  }}
                 >
                   AGENCY REVISION MESSAGE
                 </Typography>
@@ -202,7 +215,7 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               padding: '16px',
               backgroundColor: theme.palette.tokens.fieldBg,
               borderRadius: `${theme.customRadii.inner}px`,
-              mb: 3,
+              mb: 2,
             }}
           >
             <Typography
@@ -215,6 +228,55 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               {assignment?.deliverables ||
                 '1x Instagram Reel (60s) + 2x Story Frames with swipe-up link'}
             </Typography>
+          </Box>
+
+          {/* Target Audience Region & Screenshot Proof Banner */}
+          <Box
+            sx={{
+              padding: '16px',
+              backgroundColor: theme.palette.tokens.fieldBg,
+              borderRadius: `${theme.customRadii.inner}px`,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              mb: 3,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              justifyContent: 'space-between',
+              gap: 2,
+            }}
+          >
+            <Box sx={{ flex: 1 }}>
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, display: 'block', mb: 0.5 }}
+              >
+                TARGET AUDIENCE &amp; REGIONAL REACH PROOF
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary, mb: 0.5 }}
+              >
+                {assignment?.reachFromRegion
+                  ? `Recorded Reach: ${assignment.reachFromRegion}`
+                  : 'Audience verification pending'}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+              >
+                Please send your <strong>Insights &gt; Audience &gt; Locations</strong> screenshot
+                to the agency partner in chat to confirm your reach in the campaign region.
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PhotoCameraRoundedIcon fontSize="small" />}
+              onClick={() => setProofScreenshotsDialogOpen(true)}
+              sx={{ flexShrink: 0, textTransform: 'none' }}
+            >
+              Send Screenshot in Chat
+            </Button>
           </Box>
 
           {/* Submitted Commercial Rate View */}
@@ -264,15 +326,15 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
                   color: isApproved
                     ? theme.palette.tokens.positiveText
                     : isRevisionRequested
-                    ? '#D97706'
-                    : theme.palette.tokens.textPrimary,
+                      ? '#D97706'
+                      : theme.palette.tokens.textPrimary,
                 }}
               >
                 {isApproved
                   ? 'Approved & Locked'
                   : isRevisionRequested
-                  ? 'Revision Requested'
-                  : 'Pending Agency Review'}
+                    ? 'Revision Requested'
+                    : 'Pending Agency Review'}
               </Typography>
             </Box>
           </Box>
@@ -367,9 +429,16 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
                     Revision Requested by Agency
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#92400E', mt: 0.25, fontWeight: 500 }}>
-                    &ldquo;{assignment?.revisionComment || assignment?.lastComment || 'Agency requested adjustments to commercial quote.'}&rdquo;
+                    &ldquo;
+                    {assignment?.revisionComment ||
+                      assignment?.lastComment ||
+                      'Agency requested adjustments to commercial quote.'}
+                    &rdquo;
                   </Typography>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5, display: 'block' }}
+                  >
                     Agency is awaiting your revised commercial quote submission.
                   </Typography>
                 </Box>
@@ -426,6 +495,26 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
           loading={submitRateMutation.isPending}
           onSubmit={handleSubmitRate}
           onClose={() => setRateDialogOpen(false)}
+        />
+      )}
+
+      {/* Reach Proof Screenshots Dialog with Automated Tagging */}
+      {assignment && (
+        <SendProofScreenshotsDialog
+          open={proofScreenshotsDialogOpen}
+          onClose={() => setProofScreenshotsDialogOpen(false)}
+          campaignId={assignment.campaignId}
+          campaignName={
+            assignment.campaignName ||
+            assignment.campaign?.name ||
+            `Campaign #${assignment.campaignId.slice(0, 8)}`
+          }
+          brandName={assignment.brandName || undefined}
+          reachRegion={assignment.reachFromRegion}
+          deliverables={assignment.deliverables || undefined}
+          onSuccess={(chatId) => {
+            navigate(`/influencer/chats?chatId=${chatId}`);
+          }}
         />
       )}
     </DashboardLayout>

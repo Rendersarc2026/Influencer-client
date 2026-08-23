@@ -37,12 +37,14 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
 }) => {
   const theme = useTheme();
   const [rateInput, setRateInput] = useState<string>('');
+  const [reachInput, setReachInput] = useState<string>('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (open) {
       setRateInput(currentRate ? String(currentRate) : '');
+      setReachInput('');
       setNote('');
       setError('');
     }
@@ -57,9 +59,17 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
     }
 
     setError('');
+    const noteParts: string[] = [];
+    if (reachInput.trim()) {
+      noteParts.push(`Reach from region: ${reachInput.trim()}`);
+    }
+    if (note.trim()) {
+      noteParts.push(note.trim());
+    }
+
     const data: SubmitRateRequest = {
       influencerRate: rateNum,
-      note: note.trim() || undefined,
+      note: noteParts.length > 0 ? noteParts.join(' · ') : undefined,
     };
 
     await onSubmit(mapperId, data);
@@ -115,10 +125,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
                 >
                   AGENCY REVISION FEEDBACK
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: '#92400E', fontWeight: 500 }}
-                >
+                <Typography variant="body2" sx={{ color: '#92400E', fontWeight: 500 }}>
                   {revisionComment}
                 </Typography>
               </Box>
@@ -156,6 +163,35 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
               fullWidth
               disabled={loading}
             />
+
+            <TextField
+              label="Reach from Target Region (Optional)"
+              type="text"
+              value={reachInput}
+              onChange={(e) => setReachInput(e.target.value)}
+              placeholder="e.g. 75% or 45,000"
+              helperText="% or number of your audience based in the target region (from Insights > Audience > Locations)"
+              fullWidth
+              disabled={loading}
+            />
+
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                border: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+              >
+                📸 <strong>Audience Verification:</strong> Send your{' '}
+                <strong>Insights &gt; Audience &gt; Locations</strong> screenshot to the agency
+                partner in chat to confirm your reach.
+              </Typography>
+            </Box>
 
             <TextField
               label="Notes / Delivery Terms (Optional)"

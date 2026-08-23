@@ -156,17 +156,29 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       return;
     }
 
-    if (impressions.trim() && (impressionsParsed === null || impressionsParsed === undefined || impressionsParsed < 0)) {
+    if (
+      impressions.trim() &&
+      (impressionsParsed === null || impressionsParsed === undefined || impressionsParsed < 0)
+    ) {
       setError('Please enter a valid Impressions count (e.g. 20k, 100k, 1m)');
       return;
     }
 
-    if (totalViews.trim() && (totalViewsParsed === null || totalViewsParsed === undefined || totalViewsParsed < 0)) {
+    if (
+      totalViews.trim() &&
+      (totalViewsParsed === null || totalViewsParsed === undefined || totalViewsParsed < 0)
+    ) {
       setError('Please enter a valid Total Views count (e.g. 50k, 500k)');
       return;
     }
 
-    if (skipRate.trim() && (skipRateParsed === undefined || isNaN(skipRateParsed) || skipRateParsed < 0 || skipRateParsed > 100)) {
+    if (
+      skipRate.trim() &&
+      (skipRateParsed === undefined ||
+        isNaN(skipRateParsed) ||
+        skipRateParsed < 0 ||
+        skipRateParsed > 100)
+    ) {
       setError('Please enter a valid Skip Rate percentage between 0 and 100');
       return;
     }
@@ -255,12 +267,23 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         },
       }}
     >
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         <DialogTitle sx={{ pb: 0, pt: 1, px: 1, flexShrink: 0 }}>
           <SectionHeading
             title="Record Post-Evaluation Performance"
             subtitle={
-              influencerName ? `Deliverable Insights for: ${influencerName}` : 'Enter verified post insights from social media analytics'
+              influencerName
+                ? `Deliverable Insights for: ${influencerName}`
+                : 'Enter verified post insights from social media analytics'
             }
             mb={0}
           />
@@ -275,7 +298,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Post Eval - Reach (Unique)"
                 value={reach}
@@ -288,7 +313,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 helperText={
                   reach && parseShorthandNumber(reach) !== null
                     ? `${parseShorthandNumber(reach)?.toLocaleString('en-IN')} accounts`
-                    : 'Optional (e.g. 100k, 1m)'
+                    : 'Actual unique accounts reached - from post Insights screenshot'
                 }
                 fullWidth
                 disabled={loading}
@@ -306,14 +331,16 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 helperText={
                   totalViews && parseShorthandNumber(totalViews) !== null
                     ? `${parseShorthandNumber(totalViews)?.toLocaleString('en-IN')} views`
-                    : undefined
+                    : 'Actual views the post got - from post Insights screenshot'
                 }
                 fullWidth
                 disabled={loading}
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Post Eval - Impressions"
                 value={impressions}
@@ -337,7 +364,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Post Eval - Skip Rate %"
                 type="number"
@@ -404,7 +433,10 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                       POST #{idx + 1}
                     </Typography>
                     <Box sx={{ flex: 1 }} />
-                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary }}
+                    >
                       {readEngagements(post).toLocaleString('en-IN')} engagements
                     </Typography>
                     {posts.length > 1 && (
@@ -425,7 +457,6 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                   </Box>
 
                   <TextField
-                    label="Post URL *"
                     value={post.url}
                     onChange={(e) => handlePostChange(idx, 'url', e.target.value)}
                     placeholder="https://www.instagram.com/reel/..."
@@ -501,12 +532,16 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 <TotalTile label="Comments" value={totals.comments.toLocaleString('en-IN')} />
                 <TotalTile label="Shares" value={totals.shares.toLocaleString('en-IN')} />
                 <TotalTile label="Saves" value={totals.saves.toLocaleString('en-IN')} />
-                <TotalTile label="Post-Eval ER%" value={erPercent !== null ? `${erPercent}%` : '—'} />
+                <TotalTile
+                  label="Post-Eval ER%"
+                  value={erPercent !== null ? `${erPercent}%` : '—'}
+                />
               </Box>
 
               <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                💡 Engagements are the sum of likes, comments, shares and saves across every post. ER%
-                (Engagements / Reach) and CPV (Commercial / Total Views) are computed and stored server-side.
+                💡 Engagements are the sum of likes, comments, shares and saves across every post.
+                ER% (Engagements / Reach) and CPV (Commercial / Total Views) are computed and stored
+                server-side.
               </Typography>
             </Box>
 

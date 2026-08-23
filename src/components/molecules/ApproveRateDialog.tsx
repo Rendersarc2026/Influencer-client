@@ -25,6 +25,7 @@ export interface ApproveRateDialogProps {
   loading?: boolean;
   initialDeliverables?: string | null;
   initialPreEvalEr?: number | null;
+  initialReachFromRegion?: string | null;
   initialBrandFit?: string | null;
   initialCommittedViews?: number | null;
   onApprove: (
@@ -34,6 +35,7 @@ export interface ApproveRateDialogProps {
       influencerRate?: number;
       committedViews?: number;
       preEvalEr?: number;
+      reachFromRegion?: string;
       brandFit?: string;
       deliverables?: string;
     },
@@ -53,6 +55,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   loading = false,
   initialDeliverables,
   initialPreEvalEr,
+  initialReachFromRegion,
   initialBrandFit,
   initialCommittedViews,
   onApprove,
@@ -65,6 +68,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const [clientRateInput, setClientRateInput] = useState<string>('0');
   const [deliverablesInput, setDeliverablesInput] = useState<string>('');
   const [preEvalErInput, setPreEvalErInput] = useState<string>('');
+  const [reachFromRegionInput, setReachFromRegionInput] = useState<string>('');
   const [committedViewsInput, setCommittedViewsInput] = useState<string>('');
   const [brandFitInput, setBrandFitInput] = useState<string>('');
   const [rateError, setRateError] = useState('');
@@ -92,21 +96,22 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
         initialPreEvalEr !== null && initialPreEvalEr !== undefined
           ? String(initialPreEvalEr)
           : engagementData?.latest?.engagementRate !== undefined &&
-            engagementData?.latest?.engagementRate !== null
-          ? String(engagementData.latest.engagementRate)
-          : '';
+              engagementData?.latest?.engagementRate !== null
+            ? String(engagementData.latest.engagementRate)
+            : '';
       setPreEvalErInput(initialEr);
 
       const initialViews =
         initialCommittedViews !== null && initialCommittedViews !== undefined
           ? String(initialCommittedViews)
           : engagementData?.latest?.avgViews !== undefined &&
-            engagementData?.latest?.avgViews !== null &&
-            engagementData.latest.avgViews > 0
-          ? String(engagementData.latest.avgViews)
-          : '';
+              engagementData?.latest?.avgViews !== null &&
+              engagementData.latest.avgViews > 0
+            ? String(engagementData.latest.avgViews)
+            : '';
       setCommittedViewsInput(initialViews);
 
+      setReachFromRegionInput(initialReachFromRegion || '');
       setBrandFitInput(initialBrandFit || '');
       setRateError('');
       setMarginError('');
@@ -118,6 +123,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     hasPresetRate,
     initialDeliverables,
     initialPreEvalEr,
+    initialReachFromRegion,
     initialBrandFit,
     initialCommittedViews,
     engagementData,
@@ -134,7 +140,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const handleMarginChange = (val: string) => {
     setMarginInput(val);
     const m = parseFloat(val) || 0;
-    const r = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
+    const r = hasPresetRate ? influencerRate || 0 : parseFloat(rateInput) || 0;
     setClientRateInput(String(r + m));
     if (marginError) setMarginError('');
   };
@@ -142,15 +148,15 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const handleClientRateChange = (val: string) => {
     setClientRateInput(val);
     const cr = parseFloat(val) || 0;
-    const r = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
+    const r = hasPresetRate ? influencerRate || 0 : parseFloat(rateInput) || 0;
     const newMargin = Math.max(0, cr - r);
     setMarginInput(String(newMargin));
     if (marginError) setMarginError('');
   };
 
-  const effectiveRate = hasPresetRate ? (influencerRate || 0) : (parseFloat(rateInput) || 0);
+  const effectiveRate = hasPresetRate ? influencerRate || 0 : parseFloat(rateInput) || 0;
   const marginNum = parseFloat(marginInput) || 0;
-  const clientRateNum = parseFloat(clientRateInput) || (effectiveRate + marginNum);
+  const clientRateNum = parseFloat(clientRateInput) || effectiveRate + marginNum;
   const committedViewsNum = parseInt(committedViewsInput, 10) || 0;
   const cpv = committedViewsNum > 0 ? (clientRateNum / committedViewsNum).toFixed(2) : null;
 
@@ -177,6 +183,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
       influencerRate: !hasPresetRate ? effectiveRate : undefined,
       committedViews: committedViewsNum > 0 ? committedViewsNum : undefined,
       preEvalEr: preEvalErInput ? parseFloat(preEvalErInput) : undefined,
+      reachFromRegion: reachFromRegionInput.trim() || undefined,
       brandFit: brandFitInput.trim() || undefined,
       deliverables: deliverablesInput.trim() || undefined,
     });
@@ -232,7 +239,10 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 }}
               >
                 <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}
+                  >
                     Influencer Quoted Rate
                   </Typography>
                   <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
@@ -283,7 +293,15 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
             <Divider sx={{ my: 0.5 }} />
 
             {/* 4. Pre-Evaluation Metrics Section */}
-            <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: theme.palette.tokens.textSecondary }}>
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: theme.palette.tokens.textSecondary,
+              }}
+            >
               Pre-Evaluation Base Metrics
             </Typography>
 
@@ -297,7 +315,9 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               disabled={loading}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Committed Views (Optional)"
                 type="text"
@@ -319,6 +339,16 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 disabled={loading}
               />
             </Box>
+
+            <TextField
+              label="Reach from the region"
+              value={reachFromRegionInput}
+              onChange={(e) => setReachFromRegionInput(e.target.value)}
+              placeholder="e.g. 75% or 45,000"
+              helperText="% or number of their audience based in your target region - ask influencer for their Insights > Audience > Locations screenshot."
+              fullWidth
+              disabled={loading}
+            />
 
             <TextField
               label="Brand Fit (Qualitative Comments)"
@@ -367,7 +397,10 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                   Pre-Eval CPV (Cost / Views):
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: 700, color: theme.palette.primary.main }}
+                >
                   {cpv ? `₹${cpv}` : '—'}
                 </Typography>
               </Box>

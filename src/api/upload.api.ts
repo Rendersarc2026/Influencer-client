@@ -13,7 +13,7 @@ export interface UploadResult {
 export interface UploadAvatarResult {
   message: string;
   avatarUrl: string;
-  profile: any;
+  profile: Record<string, unknown>;
 }
 
 export async function uploadImage(file: File, folder: string = 'general'): Promise<UploadResult> {
@@ -33,15 +33,11 @@ export async function uploadAvatar(file: File): Promise<UploadAvatarResult> {
   const formData = new FormData();
   formData.append('avatar', file);
 
-  const response = await apiClient.post<UploadAvatarResult>(
-    '/users/profile/avatar',
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+  const response = await apiClient.post<UploadAvatarResult>('/users/profile/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
     },
-  );
+  });
   return response.data;
 }
 

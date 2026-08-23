@@ -404,14 +404,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const {
-    search,
-    setSearch,
-    page,
-    setPage,
-    rowsPerPage,
-    setRowsPerPage,
-  } = useViewFilters('agencyCampaignDetail');
+  const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
+    useViewFilters('agencyCampaignDetail');
   const debouncedSearch = useDebounce(search, 300);
 
   const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
@@ -454,9 +448,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   // The campaign row carries its brand's id and name, which is all this screen
   // shows. It used to fetch the agency's whole brand list to look them up.
-  const brand = campaign?.brandId
-    ? { id: campaign.brandId, name: campaign.brandName ?? '' }
-    : null;
+  const brand = campaign?.brandId ? { id: campaign.brandId, name: campaign.brandName ?? '' } : null;
 
   // 0. Handle Update Campaign Details & Status
   const handleEditCampaign = async (data: UpdateCampaignRequest) => {
@@ -612,9 +604,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to revert rate approval.',
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to revert rate approval.',
       );
     }
   };
@@ -648,8 +638,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       }
 
       // 3. Export structured multi-sheet Excel workbook
-      const brandName =
-        campaign.brandName || 'Brand Partner';
+      const brandName = campaign.brandName || 'Brand Partner';
 
       await exportCampaignPerformanceReport({
         campaign: {
@@ -675,18 +664,19 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   };
 
   const columns: Array<DataTableColumn<AgencyMapperResponse>> = [
-
     {
       id: 'influencer',
       header: 'Influencer',
       type: 'custom',
       minWidth: 200,
-      accessor: (row: AgencyMapperResponse) => row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`,
+      accessor: (row: AgencyMapperResponse) =>
+        row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`,
       subAccessor: (row: AgencyMapperResponse) => {
         const parts: string[] = [];
         if (row.deliverables) parts.push(row.deliverables);
         if (row.preEvalEr) parts.push(`${row.preEvalEr}% ER`);
         if (row.committedViews) parts.push(`${row.committedViews.toLocaleString()} views`);
+        if (row.reachFromRegion) parts.push(`${row.reachFromRegion} reach`);
         return parts.join(' · ');
       },
       render: (row: AgencyMapperResponse) => {
@@ -694,6 +684,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         if (row.deliverables) parts.push(row.deliverables);
         if (row.preEvalEr) parts.push(`${row.preEvalEr}% ER`);
         if (row.committedViews) parts.push(`${row.committedViews.toLocaleString()} views`);
+        if (row.reachFromRegion) parts.push(`${row.reachFromRegion} reach`);
         const sub = parts.length > 0 ? parts.join(' · ') : 'Deliverables pending';
         const brandRemark = row.revisionComment || row.lastComment;
 
@@ -753,7 +744,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                     maxWidth: 240,
                   }}
                 >
-                  <EditNoteRoundedIcon sx={{ fontSize: 13, color: theme.palette.warning.dark, flexShrink: 0 }} />
+                  <EditNoteRoundedIcon
+                    sx={{ fontSize: 13, color: theme.palette.warning.dark, flexShrink: 0 }}
+                  />
                   <Typography
                     variant="caption"
                     sx={{
@@ -820,7 +813,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 variant="body2"
                 color={theme.palette.tokens.accentText}
               />
-              <EditRoundedIcon sx={{ fontSize: 13, color: theme.palette.tokens.accentText, opacity: 0.7 }} />
+              <EditRoundedIcon
+                sx={{ fontSize: 13, color: theme.palette.tokens.accentText, opacity: 0.7 }}
+              />
             </Box>
           </Tooltip>
         ) : (
@@ -854,7 +849,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       type: 'custom',
       accessor: 'rateStatus',
       statusCategory: 'RATE_STATUS',
-      render: (row: AgencyMapperResponse) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
+      render: (row: AgencyMapperResponse) => (
+        <StatusChip category="RATE_STATUS" code={row.rateStatus} />
+      ),
     },
     {
       id: 'brandStatus',
@@ -862,7 +859,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       type: 'custom',
       accessor: 'brandStatus',
       statusCategory: 'BRAND_STATUS',
-      render: (row: AgencyMapperResponse) => <StatusChip category="BRAND_STATUS" code={row.brandStatus} />,
+      render: (row: AgencyMapperResponse) => (
+        <StatusChip category="BRAND_STATUS" code={row.brandStatus} />
+      ),
     },
     {
       id: 'actions',
@@ -960,7 +959,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           }}
         >
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}
+            >
               <Typography variant="h2">{campaign?.name}</Typography>
               {campaign?.status && <StatusChip category="CAMPAIGN_STATUS" code={campaign.status} />}
             </Box>
@@ -978,11 +979,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 <Tooltip title="Message Client Brand">
                   <IconButton
                     size="small"
-                    onClick={() =>
-                      navigate(
-                        `/agency/chats?participantId=${brand.id}&type=BRAND`,
-                      )
-                    }
+                    onClick={() => navigate(`/agency/chats?participantId=${brand.id}&type=BRAND`)}
                     sx={{
                       p: 0.5,
                       color: theme.palette.tokens.textSecondary,
@@ -1030,7 +1027,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <Select
                 value={campaign?.status ?? CampaignStatusCode.DRAFT}
-                onChange={(e) => handleUpdateCampaignStatus(Number(e.target.value) as CampaignStatus)}
+                onChange={(e) =>
+                  handleUpdateCampaignStatus(Number(e.target.value) as CampaignStatus)
+                }
                 disabled={updateCampaignMutation.isPending}
                 sx={{
                   height: 34,
@@ -1141,10 +1140,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           }
         />
 
-        <FilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-        />
+        <FilterBar searchValue={search} onSearchChange={setSearch} />
 
         <DataTable<AgencyMapperResponse>
           columns={columns}
@@ -1226,10 +1222,13 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                   title: 'Influencer Profile & Demographics',
                   fields: [
                     { label: 'Influencer Name', value: overviewDrawerMapper.influencerName },
-                    { label: 'Category / Niche', value: overviewDrawerMapper.category || 'General' },
+                    {
+                      label: 'Category / Niche',
+                      value: overviewDrawerMapper.category || 'General',
+                    },
                     {
                       label: 'Region / Location',
-                      value: overviewDrawerMapper.region || overviewDrawerMapper.reachFromRegion || 'India',
+                      value: overviewDrawerMapper.region || 'India',
                     },
                     {
                       label: 'Followers Count',
@@ -1257,7 +1256,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                     {
                       label: 'Pre-Eval Engagement Rate (ER)',
                       value:
-                        overviewDrawerMapper.preEvalEr !== null && overviewDrawerMapper.preEvalEr !== undefined
+                        overviewDrawerMapper.preEvalEr !== null &&
+                        overviewDrawerMapper.preEvalEr !== undefined
                           ? `${overviewDrawerMapper.preEvalEr}%`
                           : '—',
                     },
@@ -1269,12 +1269,14 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                     },
                     {
                       label: 'Pre-Eval Cost Per View (CPV)',
-                      value: overviewDrawerMapper.preEvalCpv ? `₹${overviewDrawerMapper.preEvalCpv}` : '—',
+                      value: overviewDrawerMapper.preEvalCpv
+                        ? `₹${overviewDrawerMapper.preEvalCpv}`
+                        : '—',
                       color: theme.palette.primary.main,
                     },
                     {
-                      label: 'Target Audience Region',
-                      value: overviewDrawerMapper.reachFromRegion || overviewDrawerMapper.region || 'India',
+                      label: 'Reach from the Region',
+                      value: overviewDrawerMapper.reachFromRegion || '—',
                     },
                   ],
                 },
@@ -1308,7 +1310,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                     },
                     {
                       label: 'Brand Fit & Qualitative Assessment',
-                      value: overviewDrawerMapper.brandFit || 'No qualitative assessment note provided',
+                      value:
+                        overviewDrawerMapper.brandFit || 'No qualitative assessment note provided',
                       fullWidth: true,
                     },
                   ],
@@ -1328,7 +1331,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                       },
                     ]
                   : []),
-                ...(overviewDrawerMapper.approvalEvents && overviewDrawerMapper.approvalEvents.length > 0
+                ...(overviewDrawerMapper.approvalEvents &&
+                overviewDrawerMapper.approvalEvents.length > 0
                   ? [
                       {
                         title: 'Workflow History & Comments',
@@ -1382,6 +1386,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           currency={approveDialogMapper.currency}
           initialDeliverables={approveDialogMapper.deliverables}
           initialPreEvalEr={approveDialogMapper.preEvalEr}
+          initialReachFromRegion={approveDialogMapper.reachFromRegion}
           initialBrandFit={approveDialogMapper.brandFit}
           initialCommittedViews={approveDialogMapper.committedViews}
           loading={approveRateMutation.isPending}

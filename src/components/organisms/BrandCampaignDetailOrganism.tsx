@@ -31,7 +31,13 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, CommentDialog, FilterBar, OverviewDrawer } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
-import { useBrandCampaign, useBrandCampaignInfluencers, useBrandDecision, useCreateOrFindChat, apiClient } from '@api';
+import {
+  useBrandCampaign,
+  useBrandCampaignInfluencers,
+  useBrandDecision,
+  useCreateOrFindChat,
+  apiClient,
+} from '@api';
 import {
   BrandMapperResponse,
   BrandDecisionRequest,
@@ -296,14 +302,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const {
-    search,
-    setSearch,
-    page,
-    setPage,
-    rowsPerPage,
-    setRowsPerPage,
-  } = useViewFilters('brandCampaignDetail');
+  const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
+    useViewFilters('brandCampaignDetail');
   const debouncedSearch = useDebounce(search, 300);
 
   const { data: campaign, isLoading: campaignLoading } = useBrandCampaign(campaignId);
@@ -397,7 +397,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       mapperId,
       action: 'REQUEST_CORRECTION',
       title: 'Send Remarks & Feedback to Agency',
-      subtitle: 'Specify required commercial targets, price adjustments, or deliverable changes for your agency',
+      subtitle:
+        'Specify required commercial targets, price adjustments, or deliverable changes for your agency',
       confirmText: 'Send Remarks to Agency',
       suggestions: CORRECTION_SUGGESTIONS,
     });
@@ -481,10 +482,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       header: 'Region',
       type: 'custom',
       minWidth: 110,
-      accessor: (row) => row.region || row.reachFromRegion || 'India',
+      accessor: (row) => row.region || 'India',
       render: (row) => (
         <Chip
-          label={row.region || row.reachFromRegion || 'India'}
+          label={row.region || 'India'}
           size="small"
           sx={{
             fontWeight: 600,
@@ -533,8 +534,14 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               {row.influencerName || `Influencer #${row.influencerId.slice(0, 8)}`}
             </Typography>
             {row.instagram && (
-              <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
-                @{row.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+              >
+                @
+                {row.instagram
+                  .replace(/^https?:\/\/(www\.)?instagram\.com\//, '')
+                  .replace(/\/$/, '')}
               </Typography>
             )}
           </Box>
@@ -589,7 +596,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       minWidth: 120,
       accessor: (row) => row.category || 'General',
       render: (row) => (
-        <Typography variant="body2" sx={{ fontWeight: 500, color: theme.palette.tokens.textPrimary }}>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 500, color: theme.palette.tokens.textPrimary }}
+        >
           {row.category || 'General'}
         </Typography>
       ),
@@ -722,7 +732,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           }}
         >
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}
+            >
               <Typography variant="h2">{campaign?.name}</Typography>
               {campaign?.status && <StatusChip category="CAMPAIGN_STATUS" code={campaign.status} />}
             </Box>
@@ -842,7 +854,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             <VisibilityRoundedIcon sx={{ color: theme.palette.tokens.textSecondary }} />
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+            >
               Total Committed Views
             </Typography>
             <Typography variant="h3" sx={{ fontWeight: 800 }}>
@@ -878,7 +893,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             <PercentRoundedIcon sx={{ color: theme.palette.tokens.textSecondary }} />
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+            >
               Avg Pre-Eval ER %
             </Typography>
             <Typography variant="h3" sx={{ fontWeight: 800 }}>
@@ -912,7 +930,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             <TrendingUpRoundedIcon sx={{ color: theme.palette.tokens.textSecondary }} />
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+            >
               Avg Pre-Eval CPV
             </Typography>
             <Typography variant="h3" sx={{ fontWeight: 800, color: theme.palette.primary.main }}>
@@ -946,7 +967,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             <MonetizationOnRoundedIcon sx={{ color: theme.palette.tokens.textSecondary }} />
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+            >
               Total Commercial Budget
             </Typography>
             <MoneyText
@@ -966,10 +990,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           subtitle="Creator profiles, deliverables, and commercial rates. Click on any row to view full pre-evaluation metrics and dossier."
         />
 
-        <FilterBar
-          searchValue={search}
-          onSearchChange={setSearch}
-        />
+        <FilterBar searchValue={search} onSearchChange={setSearch} />
 
         <DataTable<BrandMapperResponse>
           columns={columns}
@@ -1019,7 +1040,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                 {
                   label: 'Pre-Eval ER %',
                   value:
-                    selectedInfluencer.preEvalEr !== null && selectedInfluencer.preEvalEr !== undefined
+                    selectedInfluencer.preEvalEr !== null &&
+                    selectedInfluencer.preEvalEr !== undefined
                       ? `${selectedInfluencer.preEvalEr}%`
                       : '—',
                   tint: 'lavender',
@@ -1055,7 +1077,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                     { label: 'Category / Niche', value: selectedInfluencer.category || 'General' },
                     {
                       label: 'Region / Location',
-                      value: selectedInfluencer.region || selectedInfluencer.reachFromRegion || 'India',
+                      value: selectedInfluencer.region || 'India',
                     },
                     {
                       label: 'Followers Count',
@@ -1083,7 +1105,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                     {
                       label: 'Pre-Eval Engagement Rate (ER)',
                       value:
-                        selectedInfluencer.preEvalEr !== null && selectedInfluencer.preEvalEr !== undefined
+                        selectedInfluencer.preEvalEr !== null &&
+                        selectedInfluencer.preEvalEr !== undefined
                           ? `${selectedInfluencer.preEvalEr}%`
                           : '—',
                     },
@@ -1095,12 +1118,14 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                     },
                     {
                       label: 'Pre-Eval Cost Per View (CPV)',
-                      value: selectedInfluencer.preEvalCpv ? `₹${selectedInfluencer.preEvalCpv}` : '—',
+                      value: selectedInfluencer.preEvalCpv
+                        ? `₹${selectedInfluencer.preEvalCpv}`
+                        : '—',
                       color: theme.palette.primary.main,
                     },
                     {
-                      label: 'Target Audience Region',
-                      value: selectedInfluencer.reachFromRegion || selectedInfluencer.region || 'India',
+                      label: 'Reach from the Region',
+                      value: selectedInfluencer.reachFromRegion || '—',
                     },
                   ],
                 },
@@ -1121,7 +1146,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                     },
                     {
                       label: 'Brand Fit & Qualitative Assessment',
-                      value: selectedInfluencer.brandFit || 'No qualitative assessment note provided',
+                      value:
+                        selectedInfluencer.brandFit || 'No qualitative assessment note provided',
                       fullWidth: true,
                     },
                   ],
