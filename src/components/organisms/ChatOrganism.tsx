@@ -11,6 +11,7 @@ import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
+import Badge from '@mui/material/Badge';
 
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
@@ -540,6 +541,27 @@ export const ChatOrganism: React.FC = () => {
   }, [effectiveChatId]);
 
   // -------------------------------------------------------------
+  // Global Real-Time Sync (Updates Conversation List on any incoming message)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const socket = getSocket();
+    const handleGlobalUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
+    };
+
+    socket.on('chat_updated', handleGlobalUpdate);
+    socket.on('new_message', handleGlobalUpdate);
+    socket.on('messages_read', handleGlobalUpdate);
+
+    return () => {
+      socket.off('chat_updated', handleGlobalUpdate);
+      socket.off('new_message', handleGlobalUpdate);
+      socket.off('messages_read', handleGlobalUpdate);
+    };
+  }, [queryClient]);
+
+  // -------------------------------------------------------------
   // Real-Time Socket.io Thread Sync (Messages, Read Receipts, Typing)
   // -------------------------------------------------------------
   useEffect(() => {
@@ -578,6 +600,7 @@ export const ChatOrganism: React.FC = () => {
         }
       }
       queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
     };
 
     const handleMessageEdited = (msg: MessageResponse) => {
@@ -1455,6 +1478,16 @@ export const ChatOrganism: React.FC = () => {
                   const isSelected = chat.id === effectiveChatId;
                   const partnerName = getChatPartnerName(chat);
                   const unreadCount = chat.unreadCount || 0;
+                  const hasUnread = unreadCount > 0;
+                  const latestMsg =
+                    chat.messages && chat.messages.length > 0 ? chat.messages[0] : null;
+                  const previewSnippet = latestMsg
+                    ? latestMsg.body
+                      ? latestMsg.body
+                      : latestMsg.attachmentUrl
+                        ? '📎 Attachment'
+                        : '💬 Direct Thread'
+                    : '💬 Direct Thread';
 
                   return (
                     <Box
@@ -1463,40 +1496,67 @@ export const ChatOrganism: React.FC = () => {
                       sx={{
                         p: 1.5,
                         borderRadius: `${theme.customRadii.inner}px`,
-                        backgroundColor: isSelected ? theme.palette.tokens.surface : 'transparent',
-                        border: `1px solid ${isSelected ? theme.palette.tokens.accent : 'transparent'}`,
+                        backgroundColor: isSelected
+                          ? theme.palette.tokens.surface
+                          : hasUnread
+                            ? `${theme.palette.tokens.accentBg}60`
+                            : 'transparent',
+                        border: `1px solid ${isSelected ? theme.palette.tokens.accent : hasUnread ? theme.palette.tokens.divider : 'transparent'}`,
                         borderLeft: isSelected
                           ? `4px solid ${theme.palette.tokens.accent}`
-                          : '4px solid transparent',
+                          : hasUnread
+                            ? `4px solid ${theme.palette.tokens.negative}`
+                            : '4px solid transparent',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1.5,
                         transition: 'all 0.15s ease',
-                        boxShadow: isSelected ? '0 2px 8px rgba(0, 0, 0, 0.04)' : 'none',
+                        boxShadow: isSelected
+                          ? '0 2px 8px rgba(0, 0, 0, 0.04)'
+                          : hasUnread
+                            ? '0 2px 8px rgba(239, 68, 68, 0.08)'
+                            : 'none',
                         '&:hover': {
                           backgroundColor: theme.palette.tokens.surface,
                         },
                       }}
                     >
-                      <Avatar
-                        src={safeImageUrl(getChatPartnerAvatar(chat))}
+                      <Badge
+                        variant="dot"
+                        overlap="circular"
+                        invisible={!hasUnread}
                         sx={{
-                          width: 42,
-                          height: 42,
-                          bgcolor: isSelected
-                            ? theme.palette.tokens.rail
-                            : theme.palette.tokens.divider,
-                          color: isSelected
-                            ? theme.palette.tints.butter
-                            : theme.palette.tokens.textPrimary,
-                          fontWeight: 700,
-                          fontSize: '15px',
-                          flexShrink: 0,
+                          '& .MuiBadge-badge': {
+                            backgroundColor: theme.palette.tokens.negative,
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            boxShadow: `0 0 0 2px ${theme.palette.tokens.surface}`,
+                          },
                         }}
                       >
-                        {partnerName[0]?.toUpperCase() || 'C'}
-                      </Avatar>
+                        <Avatar
+                          src={safeImageUrl(getChatPartnerAvatar(chat))}
+                          sx={{
+                            width: 42,
+                            height: 42,
+                            bgcolor: isSelected
+                              ? theme.palette.tokens.rail
+                              : hasUnread
+                                ? theme.palette.tokens.rail
+                                : theme.palette.tokens.divider,
+                            color: isSelected || hasUnread
+                              ? theme.palette.tints.butter
+                              : theme.palette.tokens.textPrimary,
+                            fontWeight: 700,
+                            fontSize: '15px',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {partnerName[0]?.toUpperCase() || 'C'}
+                        </Avatar>
+                      </Badge>
 
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Box
@@ -1511,8 +1571,9 @@ export const ChatOrganism: React.FC = () => {
                             variant="body2"
                             noWrap
                             sx={{
-                              fontWeight: unreadCount > 0 ? 800 : isSelected ? 700 : 600,
+                              fontWeight: hasUnread ? 800 : isSelected ? 700 : 600,
                               color: theme.palette.tokens.textPrimary,
+                              fontSize: '13.5px',
                             }}
                           >
                             {partnerName}
@@ -1520,12 +1581,11 @@ export const ChatOrganism: React.FC = () => {
                           <Typography
                             variant="caption"
                             sx={{
-                              color:
-                                unreadCount > 0
-                                  ? theme.palette.tokens.negative
-                                  : theme.palette.tokens.textSecondary,
+                              color: hasUnread
+                                ? theme.palette.tokens.negative
+                                : theme.palette.tokens.textSecondary,
                               fontSize: '11px',
-                              fontWeight: unreadCount > 0 ? 700 : 500,
+                              fontWeight: hasUnread ? 700 : 500,
                               flexShrink: 0,
                               ml: 1,
                             }}
@@ -1540,7 +1600,7 @@ export const ChatOrganism: React.FC = () => {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             gap: 1,
-                            mt: 0.5,
+                            mt: 0.25,
                           }}
                         >
                           <Box
@@ -1548,7 +1608,7 @@ export const ChatOrganism: React.FC = () => {
                               display: 'flex',
                               alignItems: 'center',
                               gap: 0.75,
-                              flexWrap: 'wrap',
+                              flex: 1,
                               minWidth: 0,
                             }}
                           >
@@ -1556,7 +1616,7 @@ export const ChatOrganism: React.FC = () => {
                               sx={{
                                 fontSize: '10px',
                                 fontWeight: 700,
-                                px: 0.75,
+                                px: 0.65,
                                 py: 0.15,
                                 borderRadius: '4px',
                                 backgroundColor: theme.palette.tokens.accentBg,
@@ -1577,15 +1637,20 @@ export const ChatOrganism: React.FC = () => {
                               variant="caption"
                               noWrap
                               sx={{
-                                fontSize: '10px',
-                                color: theme.palette.tokens.textSecondary,
+                                fontSize: '11.5px',
+                                color: hasUnread
+                                  ? theme.palette.tokens.textPrimary
+                                  : theme.palette.tokens.textSecondary,
+                                fontWeight: hasUnread ? 600 : 400,
+                                flex: 1,
+                                minWidth: 0,
                               }}
                             >
-                              💬 Direct Thread
+                              {previewSnippet}
                             </Typography>
                           </Box>
 
-                          {unreadCount > 0 && (
+                          {hasUnread && (
                             <Box
                               sx={{
                                 minWidth: 20,

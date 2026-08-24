@@ -94,6 +94,7 @@ export function useCreateOrFindChat() {
         return [newChat, ...old];
       });
       queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
     },
   });
 }
@@ -173,9 +174,9 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
       }
     },
     onSettled: () => {
-      // `exact` keeps this off the ['chats', id, 'messages'] children - refetching
-      // the thread here is what made the optimistic bubble flicker out.
+      // Refresh both full chats list and infinite chats list without touching active messages cache
       queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
     },
   });
 }
@@ -206,6 +207,7 @@ export function useEditMessage(chatId: string | undefined) {
         return old.map((m) => (m.id === messageId ? edited : m));
       });
       queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
     },
   });
 }
@@ -225,9 +227,9 @@ export function useMarkChatAsRead() {
       await apiClient.post(`/chats/${chatId}/read`);
     },
     onSuccess: () => {
-      // Only the conversation list needs refreshing - read receipts reach the
-      // thread through the `messages_read` socket event.
+      // Refresh both full chats list and infinite chats list
       queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
     },
   });
 }

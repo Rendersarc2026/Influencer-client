@@ -109,10 +109,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       lastMessage?: MessageResponse;
       senderId?: string;
     }) => {
-      // Refresh the conversation list only. `exact` keeps this off the
-      // ['chats', id, 'messages'] children, which React Query would otherwise
-      // match by prefix and refetch.
+      // Refresh the conversation list only.
       queryClient.invalidateQueries({ queryKey: ['chats'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'infinite'] });
 
       if (data?.chatId && data.lastMessage) {
         // Write the message straight into the thread cache so an already-open
