@@ -124,3 +124,13 @@ export const AssignERResponseSchema = z.object({
 });
 export type AssignERResponse = z.infer<typeof AssignERResponseSchema>;
 
+export const CalculateInfluencerERRequestSchema = z
+  .object({
+    forceRefresh: z.boolean().optional().default(true),
+    commercialFee: z.number().finite().nonnegative().max(9_999_999_999).nullable().optional(),
+    campaignMapperId: z.string().uuid().nullable().optional(),
+  })
+  .optional()
+  .default({});
+export type CalculateInfluencerERRequest = z.infer<typeof CalculateInfluencerERRequestSchema>;
+

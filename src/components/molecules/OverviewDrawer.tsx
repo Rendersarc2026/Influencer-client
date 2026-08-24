@@ -462,13 +462,12 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
             borderTop: `1px solid ${theme.palette.tokens.divider}`,
             backgroundColor: theme.palette.tokens.surface,
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
             gap: 1.5,
             position: 'sticky',
             bottom: 0,
             zIndex: 10,
-            // Two side-by-side buttons leave narrow thumb targets on a phone.
-            '& > .MuiButton-root': { flex: { xs: '1 1 0', sm: '0 0 auto' }, minWidth: 0 },
           }}
         >
           {actions.map((act, aIdx) => (
@@ -476,14 +475,22 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               key={aIdx}
               variant={act.variant || (aIdx === 0 ? 'contained' : 'outlined')}
               color={act.color || 'primary'}
-              fullWidth={actions.length <= 2}
               startIcon={act.icon}
               disabled={act.disabled}
               onClick={act.onClick}
               sx={{
-                flex: 1,
-                fontSize: '14px',
+                flex: {
+                  xs: '1 1 100%',
+                  sm: actions.length <= 2 ? '1 1 0' : '1 1 calc(50% - 6px)',
+                },
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                fontSize: '13.5px',
+                fontWeight: 600,
                 height: 42,
+                px: 2,
+                textOverflow: 'ellipsis',
+                overflow: 'hidden',
               }}
             >
               {act.label}

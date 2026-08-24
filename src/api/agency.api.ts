@@ -27,6 +27,7 @@ import {
   PaginatedResult,
   AssignERToInfluencerRequest,
   AssignERResponse,
+  CalculateInfluencerERRequest,
   InfluencerEngagementResponse,
   AgencyDashboardSummary,
   InfluencerFilterOptions,
@@ -679,4 +680,40 @@ export function useInfluencerEngagement(influencerId?: string) {
     enabled: Boolean(influencerId),
   });
 }
+
+/**
+ * Refetches live Instagram metrics & follower count using Meta Graph API,
+ * updates the Influencer entity (followers/profile), and records the new calculation.
+ */
+export function useCalculateInfluencerER() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      influencerId,
+      data,
+    }: {
+      influencerId: string;
+      data?: CalculateInfluencerERRequest;
+    }) => {
+      const response = await apiClient.post<AssignERResponse>(
+        `/agency/influencers/${influencerId}/calculate-er`,
+        data ?? { forceRefresh: true },
+      );
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
+      queryClient.invalidateQueries({
+        queryKey: ['agency', 'influencers', variables.influencerId, 'engagement'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['agency', 'mappers'] });
+      if (data.engagement?.influencerId) {
+        queryClient.invalidateQueries({
+          queryKey: ['agency', 'influencers', data.engagement.influencerId, 'engagement'],
+        });
+      }
+    },
+  });
+}
+
 

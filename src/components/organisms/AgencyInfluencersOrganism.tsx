@@ -10,6 +10,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
+import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -30,6 +31,7 @@ import {
   useCategories,
   useLocations,
   useInfluencerEngagement,
+  useCalculateInfluencerER,
 } from '@api';
 import {
   InfluencerResponse,
@@ -88,6 +90,8 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const [priceRangeFilter, setPriceRangeFilter] = useState<string>('');
   const createInfluencerMutation = useCreateInfluencer();
   const updateInfluencerMutation = useUpdateInfluencer();
+  const calculateERMutation = useCalculateInfluencerER();
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const {
     search,
@@ -252,6 +256,44 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     }
   };
 
+  const handleRefetchInstagramDetails = async (influencer: InfluencerResponse) => {
+    try {
+      setSyncingId(influencer.id);
+      const result = await calculateERMutation.mutateAsync({
+        influencerId: influencer.id,
+        data: { forceRefresh: true },
+      });
+      const followersText = result.influencer?.followers
+        ? formatFollowersDisplay(result.influencer.followers)
+        : influencer.followers
+          ? formatFollowersDisplay(influencer.followers)
+          : 'Updated';
+      showSuccess(
+        `Synced ${influencer.name} from Meta Instagram API! Followers: ${followersText}, Baseline ER: ${result.engagement.engagementRate.toFixed(2)}%`,
+      );
+      if (selectedInfluencer && selectedInfluencer.id === influencer.id && result.influencer) {
+        setSelectedInfluencer((prev) =>
+          prev
+            ? {
+                ...prev,
+                followers: result.influencer?.followers ?? prev.followers,
+                instagram: result.influencer?.instagram ?? prev.instagram,
+              }
+            : null,
+        );
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg =
+        errorObj?.response?.data?.message ||
+        errorObj?.message ||
+        'Failed to refetch Instagram details from Meta API.';
+      showError(msg);
+    } finally {
+      setSyncingId(null);
+    }
+  };
+
   const columns: Array<DataTableColumn<InfluencerResponse>> = [
     {
       id: 'name',
@@ -327,6 +369,34 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+          <Tooltip title="Refetch / Sync Live Instagram Details">
+            <span>
+              <IconButton
+                size="small"
+                disabled={syncingId === row.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleRefetchInstagramDetails(row);
+                }}
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  '&:hover': { color: theme.palette.primary.main },
+                }}
+              >
+                <SyncRoundedIcon
+                  fontSize="small"
+                  sx={
+                    syncingId === row.id
+                      ? {
+                          animation: 'spin 1s linear infinite',
+                          '@keyframes spin': { '100%': { transform: 'rotate(360deg)' } },
+                        }
+                      : undefined
+                  }
+                />
+              </IconButton>
+            </span>
+          </Tooltip>
           <Tooltip title="Calculate & Assign ER">
             <IconButton
               size="small"
@@ -774,6 +844,17 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           selectedInfluencer
             ? [
                 {
+                  label:
+                    syncingId === selectedInfluencer.id
+                      ? 'Syncing Instagram...'
+                      : 'Sync Instagram Data',
+                  variant: 'contained',
+                  disabled: syncingId === selectedInfluencer.id,
+                  onClick: () => {
+                    void handleRefetchInstagramDetails(selectedInfluencer);
+                  },
+                },
+                {
                   label: 'Calculate / Update ER',
                   variant: 'outlined',
                   onClick: () => {
@@ -793,24 +874,13 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                 },
                 {
                   label: 'Message Influencer',
-                  variant: 'contained',
+                  variant: 'outlined',
                   onClick: () => {
                     const id = selectedInfluencer.id;
                     setSelectedInfluencer(null);
                     navigate(`/agency/chats?participantId=${id}&type=INFLUENCER`);
                   },
                 },
-                ...(selectedInfluencer.email
-                  ? [
-                      {
-                        label: 'Copy Email',
-                        onClick: () => {
-                          navigator.clipboard.writeText(selectedInfluencer.email!);
-                          showSuccess('Email copied to clipboard');
-                        },
-                      },
-                    ]
-                  : []),
               ]
             : []
         }
