@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   ChatResponse,
@@ -19,6 +19,40 @@ export function useChats(options?: UseChatsOptions) {
     queryFn: async () => {
       const response = await apiClient.get<ChatResponse[]>('/chats');
       return response.data;
+    },
+    enabled: options?.enabled ?? true,
+    staleTime: 30000,
+  });
+}
+
+export interface UseInfiniteChatsOptions {
+  limit?: number;
+  search?: string;
+  enabled?: boolean;
+}
+
+export function useInfiniteChats(options?: UseInfiniteChatsOptions) {
+  const limit = options?.limit ?? 20;
+  const search = options?.search;
+
+  return useInfiniteQuery<ChatResponse[], Error>({
+    queryKey: ['chats', 'infinite', search || ''],
+    queryFn: async ({ pageParam = 1 }) => {
+      const params = new URLSearchParams();
+      params.set('page', String(pageParam));
+      params.set('limit', String(limit));
+      if (search && search.trim()) {
+        params.set('search', search.trim());
+      }
+      const response = await apiClient.get<ChatResponse[]>(`/chats?${params.toString()}`);
+      return response.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || lastPage.length < limit) {
+        return undefined; // No more pages to load
+      }
+      return allPages.length + 1;
     },
     enabled: options?.enabled ?? true,
     staleTime: 30000,

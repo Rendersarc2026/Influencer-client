@@ -6,11 +6,17 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -42,6 +48,200 @@ import {
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
 import { getInfluencerTier, getTierInfo, formatFollowersDisplay, ExcelColumnConfig } from '@utils';
+
+interface InfluencerRowActionsProps {
+  row: InfluencerResponse;
+  syncing: boolean;
+  onRefetchInstagram: (row: InfluencerResponse) => void;
+  onCalculateER: (row: InfluencerResponse) => void;
+  onEdit: (row: InfluencerResponse) => void;
+  onMessage: (row: InfluencerResponse) => void;
+}
+
+const InfluencerRowActions: React.FC<InfluencerRowActionsProps> = ({
+  row,
+  syncing,
+  onRefetchInstagram,
+  onCalculateER,
+  onEdit,
+  onMessage,
+}) => {
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <Tooltip title="Actions">
+        <IconButton
+          size="small"
+          onClick={handleOpen}
+          sx={{
+            border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
+            backgroundColor: open ? theme.palette.tokens.fieldBg : theme.palette.tokens.surface,
+            borderRadius: `${theme.customRadii.inner}px`,
+            p: 0.75,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: theme.palette.tokens.fieldBg,
+              borderColor: theme.palette.primary.main,
+            },
+          }}
+        >
+          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+        </IconButton>
+      </Tooltip>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              minWidth: 230,
+              padding: '6px',
+              mt: 0.75,
+              boxShadow:
+                '0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06)',
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onRefetchInstagram(row);
+          }}
+          disabled={syncing}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.purpleText, minWidth: 'auto' }}>
+            <SyncRoundedIcon
+              fontSize="small"
+              sx={
+                syncing
+                  ? {
+                      animation: 'spin 1s linear infinite',
+                      '@keyframes spin': { '100%': { transform: 'rotate(360deg)' } },
+                    }
+                  : undefined
+              }
+            />
+          </ListItemIcon>
+          <ListItemText
+            primary="Sync Live Instagram Data"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onCalculateER(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+            <CalculateRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Calculate & Assign ER"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onMessage(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <ChatBubbleOutlineRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Message Influencer"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        <Divider sx={{ my: 0.5 }} />
+
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onEdit(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <EditOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Edit Influencer Details"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+      </Menu>
+    </Box>
+  );
+};
 
 /** Indicative range, e.g. "20,000 - 25,000". Blank when a creator has not quoted one. */
 function formatCommercials(row: InfluencerResponse): string {
@@ -368,81 +568,14 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-          <Tooltip title="Refetch / Sync Live Instagram Details">
-            <span>
-              <IconButton
-                size="small"
-                disabled={syncingId === row.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleRefetchInstagramDetails(row);
-                }}
-                sx={{
-                  color: theme.palette.tokens.textSecondary,
-                  '&:hover': { color: theme.palette.primary.main },
-                }}
-              >
-                <SyncRoundedIcon
-                  fontSize="small"
-                  sx={
-                    syncingId === row.id
-                      ? {
-                          animation: 'spin 1s linear infinite',
-                          '@keyframes spin': { '100%': { transform: 'rotate(360deg)' } },
-                        }
-                      : undefined
-                  }
-                />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Calculate & Assign ER">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/agency/er-calculator?influencerId=${row.id}`);
-              }}
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                '&:hover': { color: theme.palette.primary.main },
-              }}
-            >
-              <CalculateRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Edit Influencer">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditInfluencer(row);
-              }}
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                '&:hover': { color: theme.palette.primary.main },
-              }}
-            >
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Message Influencer">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/agency/chats?participantId=${row.id}&type=INFLUENCER`);
-              }}
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                '&:hover': { color: theme.palette.primary.main },
-              }}
-            >
-              <ChatBubbleOutlineRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
+        <InfluencerRowActions
+          row={row}
+          syncing={syncingId === row.id}
+          onRefetchInstagram={handleRefetchInstagramDetails}
+          onCalculateER={(r) => navigate(`/agency/er-calculator?influencerId=${r.id}`)}
+          onEdit={handleEditInfluencer}
+          onMessage={(r) => navigate(`/agency/chats?participantId=${r.id}&type=INFLUENCER`)}
+        />
       ),
     },
   ];

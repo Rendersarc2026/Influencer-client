@@ -12,7 +12,6 @@ import TablePagination from '@mui/material/TablePagination';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
-import useMediaQuery from '@mui/material/useMediaQuery';
 import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
@@ -47,18 +46,11 @@ export interface DataTableColumn<T> {
   align?: 'left' | 'center' | 'right';
   width?: string | number;
   minWidth?: string | number;
-  // Field accessors
   accessor?: keyof T | ((row: T) => unknown);
   subAccessor?: keyof T | ((row: T) => unknown);
   iconAccessor?: keyof T | ((row: T) => ReactNode | string);
-  /**
-   * Required by `type: 'status'`: the accessor yields a status code, and the code
-   * is only meaningful next to the category it was numbered within.
-   */
   statusCategory?: StatusCategory;
-  // Custom render
   render?: (row: T, index: number) => ReactNode;
-  // Star click handler
   onStarClick?: (row: T, e: React.MouseEvent) => void;
   isStarred?: (row: T) => boolean;
 }
@@ -83,45 +75,14 @@ export interface DataTableProps<T> {
   onPageChange?: (newPage: number) => void;
   onRowsPerPageChange?: (newRowsPerPage: number) => void;
   minHeight?: number | string;
-  /**
-   * When true the table Card stretches to fill its flex parent (the page
-   * content column) and the body rows scroll internally.  The header and
-   * pagination bar stay pinned.
-   */
   fillHeight?: boolean;
-  /**
-   * When true (and not loading) shows a backlit overlay with a progress bar
-   * over the table — used while React Query is refetching in the background
-   * (search / filter / page / rowsPerPage changes).
-   */
   isFetching?: boolean;
-  /**
-   * When true, displays an "Export Excel" action button. Defaults to true.
-   */
   exportable?: boolean;
-  /**
-   * Filename for the downloaded Excel file. Defaults to title or 'table_data'.
-   */
   exportFilename?: string;
-  /**
-   * Worksheet name. Defaults to title or 'Data'.
-   */
   exportSheetName?: string;
-  /**
-   * Custom export handler. If not provided, exports current rows to .xlsx using exportTableToExcel.
-   */
   onExport?: (rows: T[], columns: DataTableColumn<T>[]) => void | Promise<void>;
-  /**
-   * Async handler to fetch all data without pagination for Excel export.
-   */
   onExportAll?: () => Promise<T[]>;
-  /**
-   * When true (default), prepends a row number / serial number column (1, 2, 3, ...) to the table.
-   */
   showRowNumbers?: boolean;
-  /**
-   * Custom header label for the serial number column. Defaults to '#'.
-   */
   rowNumberHeader?: string;
 }
 
@@ -153,20 +114,20 @@ export function DataTable<T extends Record<string, unknown>>({
   columns,
   rows,
   loading = false,
-  emptyState,
+  page: controlledPage,
+  rowsPerPage: controlledRowsPerPage,
+  totalRows,
+  rowsPerPageOptions = [5, 10, 25, 50],
+  onPageChange,
   onRowClick,
-  keyField = 'id',
+  keyField = 'id' as keyof T,
+  className,
   title,
   subtitle,
   headerAction,
-  className,
+  emptyState,
   pagination = true,
-  rowsPerPageOptions = [5, 10, 20, 30],
-  initialRowsPerPage = 10,
-  page: controlledPage,
-  totalRows,
-  rowsPerPage: controlledRowsPerPage,
-  onPageChange,
+  rowsPerPage: initialRowsPerPage = 10,
   onRowsPerPageChange,
   minHeight = 420,
   fillHeight = true,
@@ -181,10 +142,6 @@ export function DataTable<T extends Record<string, unknown>>({
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [isExporting, setIsExporting] = useState(false);
-  // Below `sm` the table is replaced by stacked cards — a phone cannot show
-  // five columns without a horizontal scroll, and a horizontally scrolling
-  // table inside a vertically scrolling page is the worst of both.
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [internalPage, setInternalPage] = useState(0);
   const [internalRowsPerPage, setInternalRowsPerPage] = useState(initialRowsPerPage);
 
@@ -214,33 +171,6 @@ export function DataTable<T extends Record<string, unknown>>({
     };
     return [indexCol, ...columns];
   }, [columns, showRowNumbers, hasExplicitRowNumber, rowNumberHeader]);
-
-  const { primaryColumn, starColumn, actionsColumn, indexColumn, detailColumns } = useMemo(() => {
-    const idx = effectiveColumns.find(
-      (c) =>
-        c.type === 'index' ||
-        c.id === 'srNo' ||
-        c.id === 'index' ||
-        c.id === 'sNo' ||
-        c.id === '#' ||
-        c.id === 'rowNumber',
-    );
-    const primary =
-      effectiveColumns.find((c) => c.type === 'entity') ??
-      effectiveColumns.find((c) => c.type !== 'actions' && c.type !== 'star' && c !== idx);
-    const star = effectiveColumns.find((c) => c.type === 'star');
-    const actions = effectiveColumns.find((c) => c.type === 'actions');
-    return {
-      indexColumn: idx,
-      primaryColumn: primary,
-      starColumn: star,
-      actionsColumn: actions,
-      detailColumns: effectiveColumns.filter(
-        (c) => c !== primary && c !== star && c !== actions && c !== idx,
-      ),
-    };
-  }, [effectiveColumns]);
-
 
   const isControlled = totalRows !== undefined;
   const page = isControlled && controlledPage !== undefined ? controlledPage : internalPage;
@@ -591,155 +521,6 @@ export function DataTable<T extends Record<string, unknown>>({
   // row. Columns keep declaring themselves once — nothing here is per-page.
   // Built only on the layout that renders it. This tree is one element per
   // row per column; constructing it on desktop just to drop it on the floor
-  // doubled the element allocation of every render on the widest tables.
-  const mobileCards = !isMobile ? null : (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1.5,
-        width: '100%',
-      }}
-    >
-      {displayedRows.map((row, index) => {
-        const globalIndex = pagination ? page * rowsPerPage + index : index;
-        return (
-          <Box
-            key={getRowKey(row, globalIndex)}
-            onClick={() => onRowClick && onRowClick(row)}
-            sx={{
-              border: `1px solid ${theme.palette.tokens.divider}`,
-              borderRadius: `${theme.customRadii.inner}px`,
-              backgroundColor: theme.palette.tokens.surface,
-              padding: '14px',
-              cursor: onRowClick ? 'pointer' : 'default',
-              transition: 'background-color 0.15s ease',
-              '&:active': onRowClick
-                ? { backgroundColor: theme.palette.tokens.tableHover }
-                : {},
-            }}
-          >
-            {/* Card heading — entity cell plus the star, if the table has one */}
-            {(primaryColumn || starColumn || indexColumn) && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 1,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
-                  {indexColumn && (
-                    <Box
-                      sx={{
-                        flexShrink: 0,
-                        minWidth: 24,
-                        height: 24,
-                        px: 0.75,
-                        borderRadius: `${theme.customRadii.inner}px`,
-                        backgroundColor: theme.palette.tokens.fieldBg,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '11px',
-                          color: theme.palette.tokens.textSecondary,
-                        }}
-                      >
-                        #{globalIndex + 1}
-                      </Typography>
-                    </Box>
-                  )}
-                  {primaryColumn && (
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      {renderCellContent(row, primaryColumn, globalIndex)}
-                    </Box>
-                  )}
-                </Box>
-                {starColumn && (
-                  <Box sx={{ flexShrink: 0, mt: '-4px', mr: '-4px' }}>
-                    {renderCellContent(row, starColumn, globalIndex)}
-                  </Box>
-                )}
-              </Box>
-            )}
-
-            {/* Remaining columns as label / value pairs */}
-            {detailColumns.length > 0 && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 1,
-                  mt: primaryColumn || starColumn ? 1.5 : 0,
-                  pt: primaryColumn || starColumn ? 1.5 : 0,
-                  borderTop:
-                    primaryColumn || starColumn
-                      ? `1px solid ${theme.palette.tokens.divider}`
-                      : 'none',
-                }}
-              >
-                {detailColumns.map((col) => (
-                  <Box
-                    key={col.id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 1.5,
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: theme.palette.tokens.textSecondary,
-                        fontWeight: 600,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {col.header}
-                    </Typography>
-                    <Box
-                      sx={{
-                        minWidth: 0,
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {renderCellContent(row, col, globalIndex)}
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            )}
-
-            {/* Row actions pinned to the foot of the card */}
-            {actionsColumn && (
-              <Box
-                sx={{
-                  mt: 1.5,
-                  pt: 1.5,
-                  borderTop: `1px solid ${theme.palette.tokens.divider}`,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                {renderCellContent(row, actionsColumn, globalIndex)}
-              </Box>
-            )}
-          </Box>
-        );
-      })}
-    </Box>
-  );
-
   // ─── fillHeight layout ───────────────────────────────────────────────────
   // Card becomes a flex column that fills its parent. The TableContainer
   // sits between the (optional) header row and the (optional) pagination bar
@@ -812,96 +593,80 @@ export function DataTable<T extends Record<string, unknown>>({
         >
           <BusyOverlay busy={busy} />
 
-          {/* Scrollable table body — grows to fill remaining card height.
-              When empty it shrinks to just the column headers so the empty
-              state below can claim the rest of the space. */}
-          {isMobile ? (
-            <Box
-              sx={{
-                flex: isEmpty ? '0 0 auto' : 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                scrollbarWidth: 'none',
-                '&::-webkit-scrollbar': { display: 'none' },
-              }}
-            >
-              {mobileCards}
-            </Box>
-          ) : (
-            <TableContainer
-              sx={{
-                flex: isEmpty ? '0 0 auto' : 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'auto',
-                // Custom scrollbar styling
-                '&::-webkit-scrollbar': { width: 6, height: 6 },
-                '&::-webkit-scrollbar-track': { background: 'transparent' },
-                '&::-webkit-scrollbar-thumb': {
-                  background: theme.palette.tokens.divider,
-                  borderRadius: 3,
-                },
-                '&::-webkit-scrollbar-thumb:hover': {
-                  background: theme.palette.tokens.textSecondary,
-                },
-              }}
-            >
-              <Table stickyHeader sx={{ minWidth: 'max-content', width: '100%' }}>
-                <TableHead>
-                  <TableRow>
-                    {effectiveColumns.map((col) => (
-                      <TableCell
-                        key={col.id}
-                        align={col.align || 'left'}
-                        sx={{
-                          width: col.width,
-                          minWidth: col.minWidth || col.width,
-                          whiteSpace: 'nowrap',
-                          // stickyHeader uses position:sticky — keep bg consistent
-                          backgroundColor: theme.palette.tokens.surface,
-                        }}
-                      >
-                        {col.header}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {isEmpty
-                    ? null
-                    : displayedRows.map((row, index) => {
-                        const globalIndex = pagination ? page * rowsPerPage + index : index;
-                        return (
-                          <TableRow
-                            key={getRowKey(row, globalIndex)}
-                            onClick={() => onRowClick && onRowClick(row)}
-                            sx={{
-                              cursor: onRowClick ? 'pointer' : 'default',
-                              transition: 'background-color 0.15s ease',
-                              '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
-                            }}
-                          >
-                            {effectiveColumns.map((col) => (
-                              <TableCell
-                                key={col.id}
-                                align={col.align || 'left'}
-                                sx={{
-                                  width: col.width,
-                                  minWidth: col.minWidth || col.width,
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {renderCellContent(row, col, globalIndex)}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        );
-                      })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+          <TableContainer
+            sx={{
+              flex: isEmpty ? '0 0 auto' : 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              maxWidth: '100%',
+              // Custom scrollbar styling
+              '&::-webkit-scrollbar': { width: 6, height: 6 },
+              '&::-webkit-scrollbar-track': { background: 'transparent' },
+              '&::-webkit-scrollbar-thumb': {
+                background: theme.palette.tokens.divider,
+                borderRadius: 3,
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: theme.palette.tokens.textSecondary,
+              },
+            }}
+          >
+            <Table stickyHeader sx={{ minWidth: 'max-content', width: '100%' }}>
+              <TableHead>
+                <TableRow>
+                  {effectiveColumns.map((col) => (
+                    <TableCell
+                      key={col.id}
+                      align={col.align || 'left'}
+                      sx={{
+                        width: col.width,
+                        minWidth: col.minWidth || col.width,
+                        whiteSpace: 'nowrap',
+                        // stickyHeader uses position:sticky — keep bg consistent
+                        backgroundColor: theme.palette.tokens.surface,
+                      }}
+                    >
+                      {col.header}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isEmpty
+                  ? null
+                  : displayedRows.map((row, index) => {
+                      const globalIndex = pagination ? page * rowsPerPage + index : index;
+                      return (
+                        <TableRow
+                          key={getRowKey(row, globalIndex)}
+                          onClick={() => onRowClick && onRowClick(row)}
+                          sx={{
+                            cursor: onRowClick ? 'pointer' : 'default',
+                            transition: 'background-color 0.15s ease',
+                            '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
+                          }}
+                        >
+                          {effectiveColumns.map((col) => (
+                            <TableCell
+                              key={col.id}
+                              align={col.align || 'left'}
+                              sx={{
+                                width: col.width,
+                                minWidth: col.minWidth || col.width,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {renderCellContent(row, col, globalIndex)}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      );
+                    })}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
           {isEmpty && emptyBlock}
         </Box>
@@ -937,7 +702,7 @@ export function DataTable<T extends Record<string, unknown>>({
     );
   }
 
-  // ─── default (fixed minHeight) layout — unchanged behaviour ─────────────
+  // ─── default (fixed minHeight) layout ─────────────────────────────────────
   return (
     <Card
       className={className}
@@ -1000,81 +765,79 @@ export function DataTable<T extends Record<string, unknown>>({
       >
         <BusyOverlay busy={busy} />
 
-        {isMobile ? (
-          <Box sx={{ flex: isEmpty ? '0 0 auto' : 1 }}>{mobileCards}</Box>
-        ) : (
-          <TableContainer
-            sx={{
-              flex: isEmpty ? '0 0 auto' : 1,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              overflowX: 'auto',
-              // Custom scrollbar styling
-              '&::-webkit-scrollbar': { width: 6, height: 6 },
-              '&::-webkit-scrollbar-track': { background: 'transparent' },
-              '&::-webkit-scrollbar-thumb': {
-                background: theme.palette.tokens.divider,
-                borderRadius: 3,
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: theme.palette.tokens.textSecondary,
-              },
-            }}
-          >
-            <Table sx={{ minWidth: 'max-content', width: '100%' }}>
-              <TableHead>
-                <TableRow>
-                  {effectiveColumns.map((col) => (
-                    <TableCell
-                      key={col.id}
-                      align={col.align || 'left'}
-                      sx={{
-                        width: col.width,
-                        minWidth: col.minWidth || col.width,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {col.header}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {isEmpty
-                  ? null
-                  : displayedRows.map((row, index) => {
-                      const globalIndex = pagination ? page * rowsPerPage + index : index;
-                      return (
-                        <TableRow
-                          key={getRowKey(row, globalIndex)}
-                          onClick={() => onRowClick && onRowClick(row)}
-                          sx={{
-                            cursor: onRowClick ? 'pointer' : 'default',
-                            transition: 'background-color 0.15s ease',
-                            '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
-                          }}
-                        >
-                          {effectiveColumns.map((col) => (
-                            <TableCell
-                              key={col.id}
-                              align={col.align || 'left'}
-                              sx={{
-                                width: col.width,
-                                minWidth: col.minWidth || col.width,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {renderCellContent(row, col, globalIndex)}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      );
-                    })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+        <TableContainer
+          sx={{
+            flex: isEmpty ? '0 0 auto' : 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%',
+            // Custom scrollbar styling
+            '&::-webkit-scrollbar': { width: 6, height: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: theme.palette.tokens.divider,
+              borderRadius: 3,
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: theme.palette.tokens.textSecondary,
+            },
+          }}
+        >
+          <Table sx={{ minWidth: 'max-content', width: '100%' }}>
+            <TableHead>
+              <TableRow>
+                {effectiveColumns.map((col) => (
+                  <TableCell
+                    key={col.id}
+                    align={col.align || 'left'}
+                    sx={{
+                      width: col.width,
+                      minWidth: col.minWidth || col.width,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {col.header}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isEmpty
+                ? null
+                : displayedRows.map((row, index) => {
+                    const globalIndex = pagination ? page * rowsPerPage + index : index;
+                    return (
+                      <TableRow
+                        key={getRowKey(row, globalIndex)}
+                        onClick={() => onRowClick && onRowClick(row)}
+                        sx={{
+                          cursor: onRowClick ? 'pointer' : 'default',
+                          transition: 'background-color 0.15s ease',
+                          '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
+                        }}
+                      >
+                        {effectiveColumns.map((col) => (
+                          <TableCell
+                            key={col.id}
+                            align={col.align || 'left'}
+                            sx={{
+                              width: col.width,
+                              minWidth: col.minWidth || col.width,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {renderCellContent(row, col, globalIndex)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         {isEmpty && emptyBlock}
       </Box>

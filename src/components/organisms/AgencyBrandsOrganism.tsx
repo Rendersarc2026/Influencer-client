@@ -4,9 +4,16 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
+import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawer } from '@molecules';
@@ -14,6 +21,127 @@ import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
 import { safeUrl, safeImageUrl, ExcelColumnConfig } from '@utils';
+
+interface BrandRowActionsProps {
+  row: BrandResponse;
+  onEdit: (row: BrandResponse) => void;
+  onMessage: (row: BrandResponse) => void;
+}
+
+const BrandRowActions: React.FC<BrandRowActionsProps> = ({ row, onEdit, onMessage }) => {
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <Tooltip title="Actions">
+        <IconButton
+          size="small"
+          onClick={handleOpen}
+          sx={{
+            border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
+            backgroundColor: open ? theme.palette.tokens.fieldBg : theme.palette.tokens.surface,
+            borderRadius: `${theme.customRadii.inner}px`,
+            p: 0.75,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: theme.palette.tokens.fieldBg,
+              borderColor: theme.palette.primary.main,
+            },
+          }}
+        >
+          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+        </IconButton>
+      </Tooltip>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              minWidth: 200,
+              padding: '6px',
+              mt: 0.75,
+              boxShadow:
+                '0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06)',
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onMessage(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <ChatBubbleOutlineRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Message Brand"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        <Divider sx={{ my: 0.5 }} />
+
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onEdit(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <EditRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Edit Brand Details"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+      </Menu>
+    </Box>
+  );
+};
 
 /**
  * The agency's client brands.
@@ -105,34 +233,11 @@ export const AgencyBrandsOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
-          <Tooltip title="Message Brand">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/agency/chats?participantId=${row.id}&type=BRAND`);
-              }}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': { color: 'primary.main' },
-              }}
-            >
-              <ChatBubbleOutlineRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Edit Brand">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenEdit(row);
-              }}
-            >
-              <EditRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
+        <BrandRowActions
+          row={row}
+          onEdit={handleOpenEdit}
+          onMessage={(r) => navigate(`/agency/chats?participantId=${r.id}&type=BRAND`)}
+        />
       ),
     },
   ];

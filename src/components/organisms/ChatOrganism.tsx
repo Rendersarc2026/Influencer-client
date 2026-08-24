@@ -33,7 +33,7 @@ import { navConfig } from '@routes/navConfig';
 import { StartChatDialog } from '@molecules';
 import { EmptyState } from '@atoms';
 import {
-  useChats,
+  useInfiniteChats,
   useChatMessages,
   useSendMessage,
   useEditMessage,
@@ -60,7 +60,7 @@ import {
   BrandResponse,
   UserResponse,
 } from '@contracts';
-import { useAuth, useToast, useNotifications } from '@hooks';
+import { useAuth, useToast, useNotifications, useDebounce } from '@hooks';
 import { safeUrl, safeImageUrl } from '@utils';
 
 const isImageAttachmentUrl = (url?: string | null): boolean => {
@@ -334,8 +334,22 @@ export const ChatOrganism: React.FC = () => {
   const queryParticipantId = searchParams.get('participantId');
   const queryType = (searchParams.get('type') as 'INFLUENCER' | 'BRAND') || undefined;
 
+  const [searchFilter, setSearchFilter] = useState('');
+  const debouncedSearchFilter = useDebounce(searchFilter, 300);
+
   const isAgency = roleCode === 'AGENCY';
-  const { data: chats = [], isLoading: chatsLoading } = useChats();
+  const {
+    data: infiniteChatsData,
+    isLoading: chatsLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteChats({ limit: 20, search: debouncedSearchFilter });
+
+  const chats: ChatResponse[] = useMemo(() => {
+    return infiniteChatsData?.pages.flatMap((page) => page) || [];
+  }, [infiniteChatsData]);
+
   const needsAccountFallback = useMemo(() => isAgency, [isAgency]);
 
   const { data: influencersData } = useAgencyInfluencers(isAgency ? { limit: 100 } : undefined, {
@@ -356,7 +370,6 @@ export const ChatOrganism: React.FC = () => {
   const users: UserResponse[] = useMemo(() => usersData?.items || [], [usersData]);
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(queryChatId || null);
-  const [searchFilter, setSearchFilter] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [attachmentInput, setAttachmentInput] = useState('');
   const [attachmentMeta, setAttachmentMeta] = useState<{ name: string; size: string } | null>(null);
@@ -1368,6 +1381,16 @@ export const ChatOrganism: React.FC = () => {
 
             {/* Conversation Items List */}
             <Box
+              onScroll={(e) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                if (
+                  scrollHeight - scrollTop - clientHeight < 150 &&
+                  hasNextPage &&
+                  !isFetchingNextPage
+                ) {
+                  void fetchNextPage();
+                }
+              }}
               sx={{
                 flex: 1,
                 overflowY: 'auto',
@@ -1590,8 +1613,13 @@ export const ChatOrganism: React.FC = () => {
                   );
                 })
               )}
+                {isFetchingNextPage && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+                    <CircularProgress size={20} />
+                  </Box>
+                )}
+              </Box>
             </Box>
-          </Box>
         )}
 
         {/* RIGHT PANE: Message Thread */}

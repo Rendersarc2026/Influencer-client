@@ -10,7 +10,11 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
+import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -18,6 +22,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -33,6 +38,135 @@ import {
 import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
 import { capitalizeWords, ExcelColumnConfig } from '@utils';
+
+interface CategoryRowActionsProps {
+  row: CategoryResponse;
+  onEdit: (row: CategoryResponse) => void;
+  onDeactivate: (row: CategoryResponse) => void;
+}
+
+const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({ row, onEdit, onDeactivate }) => {
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <Tooltip title="Actions">
+        <IconButton
+          size="small"
+          onClick={handleOpen}
+          sx={{
+            border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
+            backgroundColor: open ? theme.palette.tokens.fieldBg : theme.palette.tokens.surface,
+            borderRadius: `${theme.customRadii.inner}px`,
+            p: 0.75,
+            transition: 'all 0.15s ease',
+            '&:hover': {
+              backgroundColor: theme.palette.tokens.fieldBg,
+              borderColor: theme.palette.primary.main,
+            },
+          }}
+        >
+          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+        </IconButton>
+      </Tooltip>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              minWidth: 200,
+              padding: '6px',
+              mt: 0.75,
+              boxShadow:
+                '0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06)',
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onEdit(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <EditRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Edit Category"
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        {row.isActive && (
+          <>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem
+              onClick={() => {
+                handleClose();
+                onDeactivate(row);
+              }}
+              sx={{
+                fontSize: '13px',
+                fontWeight: 500,
+                py: 0.85,
+                px: 1.25,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                color: theme.palette.tokens.negative,
+                '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+              }}
+            >
+              <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+                <BlockRoundedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Deactivate Category"
+                primaryTypographyProps={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: theme.palette.tokens.negative,
+                }}
+              />
+            </MenuItem>
+          </>
+        )}
+      </Menu>
+    </Box>
+  );
+};
 
 export const AgencyCategoriesOrganism: React.FC = () => {
   const navigate = useNavigate();
