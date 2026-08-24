@@ -386,24 +386,11 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       type: 'actions',
       align: 'right',
       render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-          <Tooltip title="Edit Category">
-            <IconButton size="small" onClick={() => handleOpenEdit(row)}>
-              <EditRoundedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {row.isActive && (
-            <Tooltip title="Deactivate Category">
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => setDeactivateCategoryId(row.id)}
-              >
-                <BlockRoundedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
+        <CategoryRowActions
+          row={row}
+          onEdit={handleOpenEdit}
+          onDeactivate={(r) => setDeactivateCategoryId(r.id)}
+        />
       ),
     },
   ];
