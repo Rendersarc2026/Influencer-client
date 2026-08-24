@@ -55,3 +55,48 @@ export function getStatusLabel(
   }
   return code === null || code === undefined ? '—' : `Unknown (${code})`;
 }
+
+export type DeliverableStatus =
+  | 'Briefed'
+  | 'Content Shared'
+  | 'Content Approved'
+  | 'Live'
+  | 'Completed';
+
+/**
+ * Calculates where the deliverable stands in the campaign lifecycle:
+ * Briefed / Content Shared / Content Approved / Live / Completed
+ */
+export function getDeliverableStatus(row: {
+  rateStatus?: number | null;
+  brandStatus?: number | null;
+  hasMetrics?: boolean;
+  hasLiveLink?: boolean;
+  campaignStatus?: number | string | null;
+}): DeliverableStatus {
+  if (
+    row.campaignStatus === CampaignStatusCode.COMPLETED ||
+    row.campaignStatus === 'COMPLETED' ||
+    row.hasMetrics
+  ) {
+    return 'Completed';
+  }
+  if (row.hasLiveLink) {
+    return 'Live';
+  }
+  if (
+    row.brandStatus === BrandStatusCode.APPROVED &&
+    row.rateStatus === RateStatusCode.AGENCY_APPROVED
+  ) {
+    return 'Content Approved';
+  }
+  if (
+    row.brandStatus === BrandStatusCode.PENDING_REVIEW ||
+    row.rateStatus === RateStatusCode.SUBMITTED ||
+    row.rateStatus === RateStatusCode.REVISION_REQUESTED
+  ) {
+    return 'Content Shared';
+  }
+  return 'Briefed';
+}
+

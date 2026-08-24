@@ -1,4 +1,4 @@
-import { StatusCategory, getStatusLabel } from './status-label';
+import { StatusCategory, getStatusLabel, getDeliverableStatus } from './status-label';
 
 export interface ExcelColumnConfig<T = Record<string, unknown>> {
   id: string;
@@ -63,6 +63,20 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
     subValue = col.subAccessor(row);
   } else if (col.subAccessor) {
     subValue = row[col.subAccessor];
+  }
+
+  if (
+    col.id === 'deliverableStatus' ||
+    (col.id === 'status' && !col.statusCategory && typeof value !== 'number')
+  ) {
+    if (typeof value === 'string' && value.length > 0) return value;
+    return getDeliverableStatus(row as {
+      rateStatus?: number | null;
+      brandStatus?: number | null;
+      hasMetrics?: boolean;
+      hasLiveLink?: boolean;
+      campaignStatus?: number | string | null;
+    });
   }
 
   if (col.type === 'status' || col.id.toLowerCase().endsWith('status')) {
@@ -335,6 +349,18 @@ export async function exportCampaignPerformanceReport(
       ]);
     }
 
+    const deliverableStatus = getDeliverableStatus({
+      rateStatus: mapper.rateStatus,
+      brandStatus: mapper.brandStatus,
+      hasMetrics: Boolean(
+        latestMetric && (latestMetric.reach > 0 || (latestMetric.totalViews ?? 0) > 0),
+      ),
+      hasLiveLink: Boolean(
+        latestMetric?.liveLink || (latestMetric?.posts && latestMetric.posts.length > 0),
+      ),
+      campaignStatus: campaign.status,
+    });
+
     return [
       index + 1,
       mapper.influencerName || '—',
@@ -342,6 +368,7 @@ export async function exportCampaignPerformanceReport(
       mapper.category || 'General',
       mapper.followers ?? '—',
       mapper.deliverables || 'Pending',
+      deliverableStatus,
       infRate > 0 ? infRate : '—',
       margin > 0 ? margin : '—',
       clientRate > 0 ? clientRate : '—',
@@ -421,6 +448,7 @@ export async function exportCampaignPerformanceReport(
     'Category',
     'Followers',
     'Deliverables',
+    'Status',
     'Influencer Commercial (₹)',
     'Agency Margin (₹)',
     'Client Rate (₹)',
@@ -456,6 +484,7 @@ export async function exportCampaignPerformanceReport(
     { wch: 18 }, // Category
     { wch: 14 }, // Followers
     { wch: 26 }, // Deliverables
+    { wch: 18 }, // Status
     { wch: 24 }, // Inf Rate
     { wch: 18 }, // Margin
     { wch: 18 }, // Client Rate
@@ -479,8 +508,6 @@ export async function exportCampaignPerformanceReport(
   ];
 
   // Sheet 3: the per-post breakdown the influencer totals were summed from.
-  // Omitted entirely when nothing was recorded per post, rather than shipping an
-  // empty sheet that reads as "these posts performed at zero".
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Campaign Summary');
   XLSX.utils.book_append_sheet(wb, wsInfluencers, 'Influencer Performance');
@@ -520,3 +547,201 @@ export async function exportCampaignPerformanceReport(
 
   XLSX.writeFile(wb, filename);
 }
+
+export interface MonthlyDeliverableExportRow {
+  campaignId: string;
+  campaignName: string; // Which brand/campaign this row belongs to (multi-campaign combination)
+  brandName?: string | null;
+  influencerName?: string | null;
+  instagram?: string | null;
+  youtube?: string | null;
+  category?: string | null;
+  followers?: number | null;
+  deliverables?: string | null;
+  status: string; // Where the deliverable stands (Briefed / Content Shared / Content Approved / Live / Completed / ...)
+  reachFromRegion?: string | null;
+  clientRate?: number | null;
+  agencyMargin?: number | null;
+  influencerRate?: number | null;
+  rateStatus?: number | null;
+  brandStatus?: number | null;
+  reach?: number | null;
+  engagements?: number | null;
+  erPercent?: number | null;
+  views?: number | null;
+  cpv?: number | null;
+  liveLink?: string | null;
+  recordedDate?: string | Date | null;
+}
+
+export interface ExportMonthlyDeliverablesOptions {
+  monthLabel?: string;
+  brandLabel?: string;
+  rows: MonthlyDeliverableExportRow[];
+}
+
+/**
+ * Generates and downloads the comprehensive Monthly Deliverables & Performance Report in Excel.
+ * Combines deliverables across multiple brands/campaigns with explicit "Campaign Name" and "Status" tracking.
+ */
+export async function exportMonthlyDeliverablesReport({
+  monthLabel,
+  brandLabel,
+  rows,
+}: ExportMonthlyDeliverablesOptions): Promise<void> {
+  const XLSX = await import('xlsx');
+
+  let totalClientSpend = 0;
+  let totalMargin = 0;
+  let totalPayout = 0;
+  let totalReach = 0;
+  let totalEngagements = 0;
+  let totalViews = 0;
+
+  const campaignCountMap = new Set<string>();
+
+  const dataRows = rows.map((row, index) => {
+    const clientRate = row.clientRate ?? 0;
+    const margin = row.agencyMargin ?? 0;
+    const infRate = row.influencerRate ?? 0;
+    const reach = row.reach ?? 0;
+    const engagements = row.engagements ?? 0;
+    const views = row.views ?? 0;
+
+    totalClientSpend += clientRate;
+    totalMargin += margin;
+    totalPayout += infRate;
+    totalReach += reach;
+    totalEngagements += engagements;
+    totalViews += views;
+
+    if (row.campaignName) {
+      campaignCountMap.add(row.campaignName);
+    }
+
+    const handle = row.instagram
+      ? `@${row.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}`
+      : row.youtube || '—';
+
+    const recordedDate = row.recordedDate
+      ? new Date(row.recordedDate).toLocaleDateString('en-IN')
+      : '—';
+
+    return [
+      index + 1,
+      row.campaignName || '—', // Explicit "Campaign Name" column for combined monthly multi-campaign report
+      row.brandName || '—',
+      row.influencerName || '—',
+      handle,
+      row.category || 'General',
+      row.followers ?? '—',
+      row.deliverables || 'Pending',
+      row.status || 'Briefed', // "Where the deliverable stands (Briefed / Content Shared / Content Approved / Live / Completed / ...)"
+      row.reachFromRegion || '—',
+      clientRate > 0 ? clientRate : '—',
+      margin > 0 ? margin : '—',
+      infRate > 0 ? infRate : '—',
+      reach > 0 ? reach : '—',
+      engagements > 0 ? engagements : '—',
+      row.erPercent !== undefined && row.erPercent !== null && row.erPercent > 0
+        ? `${row.erPercent}%`
+        : '—',
+      views > 0 ? views : '—',
+      row.cpv !== undefined && row.cpv !== null ? `₹${row.cpv}` : '—',
+      row.liveLink || '—',
+      recordedDate,
+    ];
+  });
+
+  const overallEr =
+    totalReach > 0 ? Number(((totalEngagements / totalReach) * 100).toFixed(2)) : 0;
+  const overallMarginPercent =
+    totalClientSpend > 0 ? Number(((totalMargin / totalClientSpend) * 100).toFixed(1)) : 0;
+
+  // 1. Monthly Executive Summary Sheet
+  const summaryAoa = [
+    ['MONTHLY CAMPAIGN DELIVERABLES & PERFORMANCE REPORT'],
+    [],
+    ['Report Period', monthLabel || new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })],
+    ['Brand Filter', brandLabel || 'All Brands'],
+    ['Total Campaigns Covered', campaignCountMap.size],
+    ['Total Assigned Deliverables', rows.length],
+    ['Report Generated Date', new Date().toLocaleDateString('en-IN')],
+    [],
+    ['FINANCIAL CONSOLIDATION', ''],
+    ['Total Client Billings (₹)', totalClientSpend],
+    ['Total Agency Margin (₹)', totalMargin],
+    ['Total Influencer Payout (₹)', totalPayout],
+    ['Overall Agency Margin %', `${overallMarginPercent}%`],
+    [],
+    ['AUDIENCE REACH & PERFORMANCE AGGREGATES', ''],
+    ['Total Recorded Deliverable Reach', totalReach],
+    ['Total Engagements', totalEngagements],
+    ['Average Engagement Rate (ER %)', `${overallEr}%`],
+    ['Total Video Views', totalViews],
+  ];
+
+  // 2. Deliverables Tracker Sheet
+  const trackerHeaders = [
+    'Sr No',
+    'Campaign Name', // Column 2: Explicitly labeled Campaign Name
+    'Client Brand',
+    'Influencer Name',
+    'Social Handle',
+    'Category',
+    'Followers',
+    'Deliverables',
+    'Status', // Status: Briefed / Content Shared / Content Approved / Live / Completed
+    'Target Region Reach',
+    'Client Rate (₹)',
+    'Agency Margin (₹)',
+    'Influencer Commercial (₹)',
+    'Post-Eval Reach',
+    'Post-Eval Engagements',
+    'ER %',
+    'Total Views',
+    'Post-Eval CPV',
+    'Live Deliverable URLs',
+    'Recorded Date',
+  ];
+
+  const trackerAoa = [trackerHeaders, ...dataRows];
+
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+  wsSummary['!cols'] = [{ wch: 34 }, { wch: 36 }];
+
+  const wsTracker = XLSX.utils.aoa_to_sheet(trackerAoa);
+  wsTracker['!cols'] = [
+    { wch: 8 }, // Sr No
+    { wch: 28 }, // Campaign Name
+    { wch: 22 }, // Client Brand
+    { wch: 22 }, // Influencer Name
+    { wch: 20 }, // Social Handle
+    { wch: 18 }, // Category
+    { wch: 14 }, // Followers
+    { wch: 26 }, // Deliverables
+    { wch: 20 }, // Status (Briefed / Content Shared / Content Approved / Live / Completed)
+    { wch: 20 }, // Target Region Reach
+    { wch: 18 }, // Client Rate
+    { wch: 18 }, // Agency Margin
+    { wch: 24 }, // Influencer Commercial
+    { wch: 18 }, // Reach
+    { wch: 20 }, // Engagements
+    { wch: 14 }, // ER %
+    { wch: 16 }, // Views
+    { wch: 16 }, // CPV
+    { wch: 35 }, // URLs
+    { wch: 16 }, // Recorded Date
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Summary');
+  XLSX.utils.book_append_sheet(wb, wsTracker, 'Deliverables Tracker');
+
+  const dateStamp = new Date().toISOString().split('T')[0];
+  const cleanBrand = brandLabel ? brandLabel.toLowerCase().replace(/[^a-z0-9_-]/g, '_') : 'all_brands';
+  const filename = `monthly_deliverables_report_${cleanBrand}_${dateStamp}.xlsx`;
+
+  XLSX.writeFile(wb, filename);
+}
+

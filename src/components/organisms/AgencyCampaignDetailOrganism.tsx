@@ -11,6 +11,7 @@ import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import Chip from '@mui/material/Chip';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Divider from '@mui/material/Divider';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
@@ -71,7 +72,13 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl, safeExternalUrl, humanizeCode, exportCampaignPerformanceReport } from '@utils';
+import {
+  safeUrl,
+  safeExternalUrl,
+  humanizeCode,
+  exportCampaignPerformanceReport,
+  getDeliverableStatus,
+} from '@utils';
 
 interface RowActionsProps {
   row: AgencyMapperResponse;
@@ -842,6 +849,52 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             —
           </Typography>
         ),
+    },
+    {
+      id: 'deliverableStatus',
+      header: 'Status',
+      type: 'custom',
+      minWidth: 150,
+      accessor: (row: AgencyMapperResponse) =>
+        getDeliverableStatus({
+          rateStatus: row.rateStatus,
+          brandStatus: row.brandStatus,
+          campaignStatus: campaign?.status,
+        }),
+      render: (row: AgencyMapperResponse) => {
+        const status = getDeliverableStatus({
+          rateStatus: row.rateStatus,
+          brandStatus: row.brandStatus,
+          campaignStatus: campaign?.status,
+        });
+        const toneMap: Record<
+          string,
+          { bg: string; color: string; border: string }
+        > = {
+          Completed: { bg: '#ECFDF5', color: '#065F46', border: '#A7F3D0' },
+          Live: { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' },
+          'Content Approved': { bg: '#F0FDF4', color: '#166534', border: '#BBF7D0' },
+          'Content Shared': { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
+          Briefed: { bg: '#F3F4F6', color: '#374151', border: '#E5E7EB' },
+        };
+        const tone = toneMap[status] || toneMap.Briefed;
+
+        return (
+          <Tooltip title={`Deliverable Status: ${status}`}>
+            <Chip
+              size="small"
+              label={status}
+              sx={{
+                fontWeight: 700,
+                fontSize: '11.5px',
+                backgroundColor: tone.bg,
+                color: tone.color,
+                border: `1px solid ${tone.border}`,
+              }}
+            />
+          </Tooltip>
+        );
+      },
     },
     {
       id: 'rateStatus',

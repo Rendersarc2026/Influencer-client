@@ -1,19 +1,29 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Grid from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
+import SummarizeRoundedIcon from '@mui/icons-material/SummarizeRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, ChartCard, DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
-import { useCampaignRollups } from '@api';
-import { useAuth, useViewFilters, useTableExport } from '@hooks';
-import { formatCurrency, ExcelColumnConfig } from '@utils';
+import { useCampaignRollups, apiClient } from '@api';
+import { useAuth, useViewFilters, useTableExport, useToast } from '@hooks';
+import {
+  formatCurrency,
+  ExcelColumnConfig,
+  exportMonthlyDeliverablesReport,
+  MonthlyDeliverableExportRow,
+  getDeliverableStatus,
+} from '@utils';
+import { AgencyMapperResponse, PaginatedResult } from '@contracts';
 
 interface CampaignMetricRow extends Record<string, unknown> {
   id: string;
@@ -35,6 +45,7 @@ export const AgencyReportsOrganism: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   // One row per campaign, aggregated in Postgres. This screen used to fetch
   // every campaign, then a full report for each of them - mapper rows included
@@ -190,6 +201,96 @@ export const AgencyReportsOrganism: React.FC = () => {
     rows: filteredRows,
   });
 
+  const [isExportingMonthly, setIsExportingMonthly] = useState(false);
+
+  const handleExportMonthlyReport = async () => {
+    if (isExportingMonthly || filteredRows.length === 0) return;
+    try {
+      setIsExportingMonthly(true);
+
+      // 1. Fetch campaign influencers for all visible/filtered campaigns in parallel
+      const campaignPromises = filteredRows.map(async (row) => {
+        try {
+          const res = await apiClient.get<PaginatedResult<AgencyMapperResponse>>(
+            `/agency/campaigns/${row.id}/influencers`,
+            { params: { limit: 100 } },
+          );
+          return {
+            campaignId: row.id,
+            campaignName: row.campaignName,
+            brandName: row.brandName,
+            mappers: res.data.items || [],
+          };
+        } catch {
+          return {
+            campaignId: row.id,
+            campaignName: row.campaignName,
+            brandName: row.brandName,
+            mappers: [],
+          };
+        }
+      });
+
+      const campaignResults = await Promise.all(campaignPromises);
+
+      // 2. Flatten into MonthlyDeliverableExportRow[]
+      const monthlyRows: MonthlyDeliverableExportRow[] = [];
+
+      for (const camp of campaignResults) {
+        for (const m of camp.mappers) {
+          const status = getDeliverableStatus({
+            rateStatus: m.rateStatus,
+            brandStatus: m.brandStatus,
+          });
+
+          monthlyRows.push({
+            campaignId: camp.campaignId,
+            campaignName: camp.campaignName, // Explicit "Campaign Name" column for combined monthly report
+            brandName: camp.brandName,
+            influencerName: m.influencerName,
+            instagram: m.instagram,
+            youtube: m.youtube,
+            category: m.category,
+            followers: m.followers,
+            deliverables: m.deliverables,
+            status, // Where the deliverable stands (Briefed / Content Shared / Content Approved / Live / Completed / ...)
+            reachFromRegion: m.reachFromRegion,
+            clientRate: m.clientRate,
+            agencyMargin: m.margin,
+            influencerRate: m.influencerRate,
+            rateStatus: m.rateStatus,
+            brandStatus: m.brandStatus,
+            reach: m.committedViews ?? 0,
+            engagements: 0,
+            erPercent: m.preEvalEr,
+            views: m.committedViews,
+            cpv: null,
+            liveLink: null,
+            recordedDate: m.createdOn,
+          });
+        }
+      }
+
+      const activeBrandLabel = brandOptions.find((b) => b.value === selectedBrand)?.label;
+
+      await exportMonthlyDeliverablesReport({
+        monthLabel: new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+        brandLabel:
+          activeBrandLabel && activeBrandLabel !== 'All Brands' ? activeBrandLabel : 'All Brands',
+        rows: monthlyRows,
+      });
+
+      showSuccess(
+        `Monthly Deliverables Report exported with ${monthlyRows.length} deliverables across ${campaignResults.length} campaigns.`,
+      );
+    } catch (err) {
+      console.error('Failed to export monthly report:', err);
+      showError('Failed to generate monthly deliverables report.');
+    } finally {
+      setIsExportingMonthly(false);
+    }
+  };
+
   return (
     <DashboardLayout
       title="Reports & Analytics"
@@ -203,6 +304,23 @@ export const AgencyReportsOrganism: React.FC = () => {
       }}
       onNavigate={(path) => navigate(path)}
       onLogout={logout}
+      rightAction={
+        <Button
+          variant="contained"
+          startIcon={
+            isExportingMonthly ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              <SummarizeRoundedIcon fontSize="small" />
+            )
+          }
+          onClick={handleExportMonthlyReport}
+          disabled={isExportingMonthly || filteredRows.length === 0}
+          sx={{ fontWeight: 700, textTransform: 'none' }}
+        >
+          {isExportingMonthly ? 'Generating Monthly Report...' : 'Download Monthly Report'}
+        </Button>
+      }
     >
       {/* 1. Summary MetricCards */}
       <Grid container spacing={2.5} alignItems="stretch">
