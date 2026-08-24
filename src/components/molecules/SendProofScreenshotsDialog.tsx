@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -45,6 +45,31 @@ export interface SendProofScreenshotsDialogProps {
   onSuccess?: (chatId: string) => void;
 }
 
+async function ensureCompatibleImageFile(file: File): Promise<File> {
+  if (file.type.toLowerCase() === 'image/webp') {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(bitmap, 0, 0);
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/jpeg', 0.95),
+        );
+        if (blob) {
+          const newName = file.name.replace(/\.webp$/i, '') + '.jpg';
+          return new File([blob], newName, { type: 'image/jpeg' });
+        }
+      }
+    } catch {
+      return file;
+    }
+  }
+  return file;
+}
+
 export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProps> = ({
   open,
   onClose,
@@ -62,6 +87,9 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const previewsRef = useRef<string[]>([]);
+  previewsRef.current = previews;
+
   const [note, setNote] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,20 +97,15 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [error, setError] = useState('');
 
-  // Clean up object URLs when dialog closes or unmounts
-  const cleanupPreviews = useCallback((urlsToClean: string[]) => {
-    urlsToClean.forEach((url) => {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        // Ignore
-      }
-    });
-  }, []);
-
   useEffect(() => {
     if (!open) {
-      cleanupPreviews(previews);
+      previewsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore
+        }
+      });
       setFiles([]);
       setPreviews([]);
       setNote('');
@@ -92,7 +115,19 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
       setProgressPercent(0);
       setError('');
     }
-  }, [open, cleanupPreviews]);
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      previewsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore
+        }
+      });
+    };
+  }, []);
 
   // Derived automatic tags
   const normalizedRegion = (reachRegion || '').trim();
@@ -215,31 +250,6 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
 
       const totalFiles = files.length;
 
-async function ensureCompatibleImageFile(file: File): Promise<File> {
-  if (file.type.toLowerCase() === 'image/webp') {
-    try {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(bitmap, 0, 0);
-        const blob = await new Promise<Blob | null>((resolve) =>
-          canvas.toBlob(resolve, 'image/jpeg', 0.95),
-        );
-        if (blob) {
-          const newName = file.name.replace(/\.webp$/i, '') + '.jpg';
-          return new File([blob], newName, { type: 'image/jpeg' });
-        }
-      }
-    } catch {
-      return file;
-    }
-  }
-  return file;
-}
-
       // 2. Upload screenshots and send each as a tagged message
       for (let i = 0; i < totalFiles; i++) {
         let file = files[i];
@@ -282,7 +292,13 @@ async function ensureCompatibleImageFile(file: File): Promise<File> {
       );
 
       // Clean up and close
-      cleanupPreviews(previews);
+      previews.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          // Ignore
+        }
+      });
       setFiles([]);
       setPreviews([]);
       setIsSubmitting(false);
@@ -433,31 +449,31 @@ async function ensureCompatibleImageFile(file: File): Promise<File> {
         <Box
           sx={{
             padding: '12px 14px',
-            backgroundColor: '#EFF6FF',
+            backgroundColor: theme.palette.tokens.accentBg,
             borderRadius: `${theme.customRadii.inner - 4}px`,
-            border: '1px solid #BFDBFE',
+            border: `1px solid ${theme.palette.tokens.divider}`,
             display: 'flex',
             flexDirection: 'column',
             gap: 1,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <LocalOfferRoundedIcon fontSize="small" sx={{ color: '#2563EB', fontSize: 18 }} />
-            <Typography variant="caption" sx={{ color: '#1E40AF', fontWeight: 700 }}>
+            <LocalOfferRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.accent, fontSize: 18 }} />
+            <Typography variant="caption" sx={{ color: theme.palette.tokens.accentText, fontWeight: 700 }}>
               AUTOMATIC TAG ADDED TO CHAT
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
             <Chip
               size="small"
-              icon={<VerifiedRoundedIcon sx={{ fontSize: '14px !important', color: '#1D4ED8 !important' }} />}
+              icon={<VerifiedRoundedIcon sx={{ fontSize: '14px !important', color: `${theme.palette.tokens.accentText} !important` }} />}
               label={tagLabel}
               sx={{
                 fontWeight: 700,
                 fontSize: '12px',
-                backgroundColor: '#DBEAFE',
-                color: '#1E3A8A',
-                border: '1px solid #93C5FD',
+                backgroundColor: theme.palette.tokens.surface,
+                color: theme.palette.tokens.accentText,
+                border: `1px solid ${theme.palette.tokens.divider}`,
               }}
             />
             {autoTags.map((tag) => (
@@ -468,14 +484,14 @@ async function ensureCompatibleImageFile(file: File): Promise<File> {
                 sx={{
                   fontWeight: 600,
                   fontSize: '11.5px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#2563EB',
-                  border: '1px solid #BFDBFE',
+                  backgroundColor: theme.palette.tokens.surface,
+                  color: theme.palette.tokens.accent,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
                 }}
               />
             ))}
           </Box>
-          <Typography variant="caption" sx={{ color: '#1E40AF', fontSize: '11px', lineHeight: 1.4 }}>
+          <Typography variant="caption" sx={{ color: theme.palette.tokens.accentText, fontSize: '11px', lineHeight: 1.4 }}>
             This tag is automatically added to each screenshot message in the chat so the agency partner can immediately verify your proof.
           </Typography>
         </Box>
@@ -529,7 +545,7 @@ async function ensureCompatibleImageFile(file: File): Promise<File> {
               transition: 'all 0.2s ease',
               '&:hover': {
                 borderColor: isSubmitting ? theme.palette.tokens.divider : theme.palette.tokens.accent,
-                backgroundColor: isSubmitting ? theme.palette.tokens.fieldBg : '#F9FBFE',
+                backgroundColor: isSubmitting ? theme.palette.tokens.fieldBg : theme.palette.tokens.tableHover,
               },
             }}
           >
@@ -634,7 +650,7 @@ async function ensureCompatibleImageFile(file: File): Promise<File> {
                         color: theme.palette.tokens.negativeText,
                         p: 0.35,
                         '&:hover': {
-                          backgroundColor: '#FEE2E2',
+                          backgroundColor: theme.palette.tokens.negativeBg,
                         },
                       }}
                     >

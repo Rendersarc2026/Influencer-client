@@ -18,6 +18,34 @@ export interface ExportToExcelOptions<T = Record<string, unknown>> {
 }
 
 /**
+ * Neutralises Spreadsheet Formula Injection (CSV / Excel Injection / CWE-1236).
+ *
+ * If a string begins with `=`, `+`, `-`, `@`, `\t`, or `\r`, spreadsheet applications
+ * (Excel, LibreOffice Calc, Google Sheets) may interpret it as a formula.
+ * Prepending a single quote `'` forces spreadsheet engines to treat the content as
+ * literal text rather than executing formulas or external commands.
+ */
+export function sanitizeExcelCell<V>(cell: V): V {
+  if (typeof cell !== 'string') return cell;
+  const trimmed = cell.trimStart();
+  if (/^[=+\-@\t\r]/.test(trimmed)) {
+    // Leave plain numeric values untouched
+    if (/^[+-]?\d+(\.\d+)?$/.test(trimmed)) {
+      return cell;
+    }
+    return `'${cell}` as unknown as V;
+  }
+  return cell;
+}
+
+/**
+ * Sanitises an entire Array of Arrays (AoA) for SheetJS workbook creation.
+ */
+export function sanitizeAoa<T>(aoa: T[][]): T[][] {
+  return aoa.map((row) => row.map((cell) => sanitizeExcelCell(cell) as T));
+}
+
+/**
  * Extracts a clean display/export value from a row based on column configuration.
  */
 export function formatCellValueForExport<T extends Record<string, unknown>>(
@@ -139,10 +167,10 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
   }
 
   if (typeof value === 'object') {
-    return JSON.stringify(value);
+    return sanitizeExcelCell(JSON.stringify(value));
   }
 
-  return value as string | number | boolean;
+  return sanitizeExcelCell(value as string | number | boolean);
 }
 
 /**
@@ -175,7 +203,7 @@ export async function exportTableToExcel<T extends Record<string, unknown>>({
   );
 
   const aoa = [headers, ...dataRows];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const ws = XLSX.utils.aoa_to_sheet(sanitizeAoa(aoa));
 
   // Auto-fit column widths based on maximum content length
   const colWidths = exportableColumns.map((col, colIdx) => {
@@ -473,10 +501,10 @@ export async function exportCampaignPerformanceReport(
 
   const influencerAoa = [influencerHeaders, ...influencerRows];
 
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+  const wsSummary = XLSX.utils.aoa_to_sheet(sanitizeAoa(summaryAoa));
   wsSummary['!cols'] = [{ wch: 32 }, { wch: 36 }];
 
-  const wsInfluencers = XLSX.utils.aoa_to_sheet(influencerAoa);
+  const wsInfluencers = XLSX.utils.aoa_to_sheet(sanitizeAoa(influencerAoa));
   wsInfluencers['!cols'] = [
     { wch: 8 }, // Sr No
     { wch: 22 }, // Influencer Name
@@ -513,20 +541,22 @@ export async function exportCampaignPerformanceReport(
   XLSX.utils.book_append_sheet(wb, wsInfluencers, 'Influencer Performance');
 
   if (postRows.length > 0) {
-    const wsPosts = XLSX.utils.aoa_to_sheet([
-      [
-        'Influencer Name',
-        'Post #',
-        'Post URL',
-        'Likes',
-        'Comments',
-        'Shares',
-        'Saves',
-        'Engagements',
-        'Recorded Date',
-      ],
-      ...postRows,
-    ]);
+    const wsPosts = XLSX.utils.aoa_to_sheet(
+      sanitizeAoa([
+        [
+          'Influencer Name',
+          'Post #',
+          'Post URL',
+          'Likes',
+          'Comments',
+          'Shares',
+          'Saves',
+          'Engagements',
+          'Recorded Date',
+        ],
+        ...postRows,
+      ]),
+    );
     wsPosts['!cols'] = [
       { wch: 22 }, // Influencer Name
       { wch: 8 }, // Post #
@@ -707,10 +737,10 @@ export async function exportMonthlyDeliverablesReport({
 
   const trackerAoa = [trackerHeaders, ...dataRows];
 
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+  const wsSummary = XLSX.utils.aoa_to_sheet(sanitizeAoa(summaryAoa));
   wsSummary['!cols'] = [{ wch: 34 }, { wch: 36 }];
 
-  const wsTracker = XLSX.utils.aoa_to_sheet(trackerAoa);
+  const wsTracker = XLSX.utils.aoa_to_sheet(sanitizeAoa(trackerAoa));
   wsTracker['!cols'] = [
     { wch: 8 }, // Sr No
     { wch: 28 }, // Campaign Name

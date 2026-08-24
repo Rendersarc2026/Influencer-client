@@ -21,14 +21,16 @@ const SAFE_SCHEMES = ['http:', 'https:', 'mailto:'];
 export function safeUrl(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
 
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return undefined;
+  // Strip ASCII and Latin-1 control characters (e.g. null bytes, backspaces)
+  // eslint-disable-next-line no-control-regex
+  const sanitized = value.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+  if (sanitized.length === 0) return undefined;
 
   let parsed: URL;
   try {
     // Relative URLs are resolved against the current origin, which keeps
     // same-origin paths like "/files/brief.pdf" working.
-    parsed = new URL(trimmed, window.location.origin);
+    parsed = new URL(sanitized, window.location.origin);
   } catch {
     return undefined;
   }
@@ -69,14 +71,15 @@ export function safeImageUrl(value: string | null | undefined): string | undefin
 export function safeExternalUrl(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
 
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return undefined;
+  // eslint-disable-next-line no-control-regex
+  const sanitized = value.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+  if (sanitized.length === 0) return undefined;
 
   // An explicit scheme (including javascript:) or an origin-relative path is
   // safeUrl's business — do not prefix either.
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) || trimmed.startsWith('/')) {
-    return safeUrl(trimmed);
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(sanitized) || sanitized.startsWith('/')) {
+    return safeUrl(sanitized);
   }
 
-  return safeUrl(`https://${trimmed}`);
+  return safeUrl(`https://${sanitized}`);
 }

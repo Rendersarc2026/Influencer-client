@@ -37,7 +37,16 @@ export default defineConfig({
             if (id.includes('recharts')) {
               return 'vendor-charts';
             }
-            if (id.includes('@tanstack') || id.includes('axios') || id.includes('@reduxjs') || id.includes('react-redux')) {
+            if (id.includes('@mui/icons-material')) {
+              return 'vendor-icons';
+            }
+            if (
+              id.includes('@tanstack') ||
+              id.includes('axios') ||
+              id.includes('@reduxjs') ||
+              id.includes('react-redux') ||
+              id.includes('socket.io-client')
+            ) {
               return 'vendor-data';
             }
             if (id.includes('zod')) {

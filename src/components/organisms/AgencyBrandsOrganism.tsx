@@ -20,7 +20,7 @@ import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawe
 import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
-import { safeUrl, safeImageUrl, ExcelColumnConfig } from '@utils';
+import { safeExternalUrl, safeImageUrl, ExcelColumnConfig } from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandResponse;
@@ -363,13 +363,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
                       label: 'Website',
                       value: selectedBrand.website || '—',
                       isLink: Boolean(selectedBrand.website),
-                      href: safeUrl(
-                        selectedBrand.website?.startsWith('http')
-                          ? selectedBrand.website
-                          : selectedBrand.website
-                          ? `https://${selectedBrand.website}`
-                          : undefined,
-                      ),
+                      href: safeExternalUrl(selectedBrand.website),
                     },
                     ...(selectedBrand.bio
                       ? [{ label: 'Bio & Overview', value: selectedBrand.bio, fullWidth: true }]

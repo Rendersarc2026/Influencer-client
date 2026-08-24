@@ -16,22 +16,28 @@ import {
  * The creator home tiles, aggregated in Postgres. The page used to fetch every
  * assignment it had ever been given to count three of them and sum a fourth.
  */
-export function useInfluencerDashboardSummary() {
-  return useQuery<InfluencerDashboardSummary>({
-    queryKey: ['influencer', 'dashboard', 'summary'],
+export function influencerDashboardSummaryQueryOptions() {
+  return {
+    queryKey: ['influencer', 'dashboard', 'summary'] as const,
     queryFn: async () => {
       const response = await apiClient.get<InfluencerDashboardSummary>(
         '/influencer/dashboard/summary',
       );
       return response.data;
     },
+  };
+}
+
+export function useInfluencerDashboardSummary() {
+  return useQuery<InfluencerDashboardSummary>({
+    ...influencerDashboardSummaryQueryOptions(),
     staleTime: 1000 * 60,
   });
 }
 
-export function useInfluencerCampaigns(params?: CampaignListQuery) {
-  return useQuery<PaginatedResult<CampaignResponse>>({
-    queryKey: ['influencer', 'campaigns', params],
+export function influencerCampaignsQueryOptions(params?: CampaignListQuery) {
+  return {
+    queryKey: ['influencer', 'campaigns', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<CampaignResponse>>(
         '/influencer/campaigns',
@@ -39,13 +45,19 @@ export function useInfluencerCampaigns(params?: CampaignListQuery) {
       );
       return response.data;
     },
+  };
+}
+
+export function useInfluencerCampaigns(params?: CampaignListQuery) {
+  return useQuery<PaginatedResult<CampaignResponse>>({
+    ...influencerCampaignsQueryOptions(params),
     placeholderData: keepPreviousData,
   });
 }
 
-export function useInfluencerAssignments(params?: CampaignMapperListQuery) {
-  return useQuery<PaginatedResult<InfluencerMapperResponse>>({
-    queryKey: ['influencer', 'assignments', params],
+export function influencerAssignmentsQueryOptions(params?: CampaignMapperListQuery) {
+  return {
+    queryKey: ['influencer', 'assignments', params] as const,
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<InfluencerMapperResponse>>(
         '/influencer/assignments',
@@ -53,6 +65,12 @@ export function useInfluencerAssignments(params?: CampaignMapperListQuery) {
       );
       return response.data;
     },
+  };
+}
+
+export function useInfluencerAssignments(params?: CampaignMapperListQuery) {
+  return useQuery<PaginatedResult<InfluencerMapperResponse>>({
+    ...influencerAssignmentsQueryOptions(params),
     // Keep the current page on screen while the next one loads — the table
     // shows its backlit refetch state instead of collapsing to a skeleton.
     placeholderData: keepPreviousData,

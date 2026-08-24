@@ -45,7 +45,7 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeUrl, safeExternalUrl } from '@utils';
+import { safeExternalUrl } from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandMapperResponse;
@@ -748,11 +748,11 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
             </Button>
 
-            {safeUrl(campaign?.briefUrl) && (
+            {safeExternalUrl(campaign?.briefUrl) && (
               <Button
                 variant="outlined"
                 size="small"
-                href={safeUrl(campaign?.briefUrl) as string}
+                href={safeExternalUrl(campaign?.briefUrl) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 endIcon={<LaunchRoundedIcon fontSize="small" />}

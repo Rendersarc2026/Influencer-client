@@ -1,18 +1,34 @@
 export * from './safe-url';
 
+const defaultDateTimeFormat = new Intl.DateTimeFormat('en-IN', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-IN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(date));
+  if (!date) return '—';
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return isNaN(d.getTime()) ? String(date) : defaultDateTimeFormat.format(d);
+  } catch {
+    return String(date);
+  }
 }
 
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
 export function formatCurrency(amount: number, currency = 'INR'): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  if (amount === null || amount === undefined || isNaN(amount)) return '—';
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter.format(amount);
 }
 
 /**

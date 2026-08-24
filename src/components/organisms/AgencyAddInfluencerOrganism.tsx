@@ -35,7 +35,7 @@ import {
   useInfluencerEngagement,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeImageUrl, getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
+import { safeImageUrl, safeExternalUrl, getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
 import {
   AgencyMapperResponse,
   CreateInfluencerRequest,
@@ -839,17 +839,19 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                       label: 'Instagram Profile URL',
                       value: detailCreator.instagram || '—',
                       isLink: Boolean(detailCreator.instagram),
-                      href: detailCreator.instagram
-                        ? detailCreator.instagram.startsWith('http')
-                          ? detailCreator.instagram
-                          : `https://instagram.com/${detailCreator.instagram.replace(/^@/, '')}`
-                        : undefined,
+                      href: safeExternalUrl(
+                        detailCreator.instagram
+                          ? detailCreator.instagram.startsWith('http')
+                            ? detailCreator.instagram
+                            : `https://instagram.com/${detailCreator.instagram.replace(/^@/, '')}`
+                          : undefined,
+                      ),
                     },
                     {
                       label: 'YouTube Channel URL',
                       value: detailCreator.youtube || '—',
                       isLink: Boolean(detailCreator.youtube),
-                      href: detailCreator.youtube || undefined,
+                      href: safeExternalUrl(detailCreator.youtube),
                     },
                   ],
                 },

@@ -12,7 +12,7 @@ export interface DeltaBadgeProps {
   size?: 'small' | 'medium';
 }
 
-export const DeltaBadge: React.FC<DeltaBadgeProps> = ({
+export const DeltaBadge: React.FC<DeltaBadgeProps> = React.memo(({
   delta,
   label,
   inverted = false,
@@ -90,4 +90,6 @@ export const DeltaBadge: React.FC<DeltaBadgeProps> = ({
       )}
     </Box>
   );
-};
+});
+
+DeltaBadge.displayName = 'DeltaBadge';

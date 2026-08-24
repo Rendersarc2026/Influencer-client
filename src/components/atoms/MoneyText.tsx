@@ -12,7 +12,37 @@ export interface MoneyTextProps {
   className?: string;
 }
 
-export const MoneyText: React.FC<MoneyTextProps> = ({
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+function getCurrencyFormatter(currency: string): Intl.NumberFormat {
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter;
+}
+
+function formatMoneyValue(val: number, currency: string, compact: boolean): string {
+  if (compact) {
+    if (val >= 10000000) {
+      return `₹${(val / 10000000).toFixed(2)}Cr`;
+    }
+    if (val >= 100000) {
+      return `₹${(val / 100000).toFixed(1)}L`;
+    }
+    if (val >= 1000) {
+      return `₹${(val / 1000).toFixed(1)}K`;
+    }
+  }
+  return getCurrencyFormatter(currency).format(val);
+}
+
+export const MoneyText: React.FC<MoneyTextProps> = React.memo(({
   amount,
   currency = 'INR',
   compact = false,
@@ -49,26 +79,6 @@ export const MoneyText: React.FC<MoneyTextProps> = ({
     );
   }
 
-  const formatMoney = (val: number): string => {
-    if (compact) {
-      if (val >= 10000000) {
-        return `₹${(val / 10000000).toFixed(2)}Cr`;
-      }
-      if (val >= 100000) {
-        return `₹${(val / 100000).toFixed(1)}L`;
-      }
-      if (val >= 1000) {
-        return `₹${(val / 1000).toFixed(1)}K`;
-      }
-    }
-
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
   return (
     <Typography
       variant={variant}
@@ -78,7 +88,9 @@ export const MoneyText: React.FC<MoneyTextProps> = ({
         fontWeight,
       }}
     >
-      {formatMoney(numVal)}
+      {formatMoneyValue(numVal, currency, compact)}
     </Typography>
   );
-};
+});
+
+MoneyText.displayName = 'MoneyText';

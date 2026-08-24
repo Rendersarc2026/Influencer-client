@@ -139,12 +139,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         const isCurrentChatPage =
           currentPath.includes('/chats') && currentSearch.includes(`chatId=${data.chatId}`);
 
+        const encodedChatId = encodeURIComponent(data.chatId);
         const chatPath =
           roleCode === 'BRAND'
-            ? `/brand/chats?chatId=${data.chatId}`
+            ? `/brand/chats?chatId=${encodedChatId}`
             : roleCode === 'INFLUENCER'
-              ? `/influencer/chats?chatId=${data.chatId}`
-              : `/agency/chats?chatId=${data.chatId}`;
+              ? `/influencer/chats?chatId=${encodedChatId}`
+              : `/agency/chats?chatId=${encodedChatId}`;
 
         addNotification(
           {

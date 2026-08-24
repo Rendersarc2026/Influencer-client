@@ -78,7 +78,6 @@ import {
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
 import {
-  safeUrl,
   safeExternalUrl,
   humanizeCode,
   exportCampaignPerformanceReport,
@@ -1190,11 +1189,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               </Select>
             </FormControl>
 
-            {safeUrl(campaign?.briefUrl) && (
+            {safeExternalUrl(campaign?.briefUrl) && (
               <Button
                 variant="outlined"
                 size="small"
-                href={safeUrl(campaign?.briefUrl) as string}
+                href={safeExternalUrl(campaign?.briefUrl) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 endIcon={<LaunchRoundedIcon fontSize="small" />}

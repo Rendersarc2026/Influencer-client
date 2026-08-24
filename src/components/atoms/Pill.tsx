@@ -11,7 +11,7 @@ export interface PillProps {
   icon?: ReactNode;
 }
 
-export const Pill: React.FC<PillProps> = ({ label, selected = false, onClick, count, icon }) => {
+export const Pill: React.FC<PillProps> = React.memo(({ label, selected = false, onClick, count, icon }) => {
   const theme = useTheme();
 
   return (
@@ -68,4 +68,6 @@ export const Pill: React.FC<PillProps> = ({ label, selected = false, onClick, co
       )}
     </Box>
   );
-};
+});
+
+Pill.displayName = 'Pill';

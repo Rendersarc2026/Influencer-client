@@ -87,7 +87,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const handleNotificationClick = (item: AppNotification) => {
     markAsRead(item.id);
-    if (item.link) {
+    if (item.link && item.link.startsWith('/') && !item.link.startsWith('//')) {
       navigate(item.link);
       onClose();
     }

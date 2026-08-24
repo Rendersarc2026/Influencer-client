@@ -5,6 +5,10 @@ import {
   brandDashboardSummaryQueryOptions,
   brandProfileQueryOptions,
 } from './brand.api';
+import {
+  influencerDashboardSummaryQueryOptions,
+  influencerAssignmentsQueryOptions,
+} from './influencer.api';
 
 /**
  * Boot-time data prefetch.
@@ -41,5 +45,11 @@ export function prefetchForRoute(pathname: string): void {
     void queryClient.prefetchQuery(brandCampaignsQueryOptions(FIRST_PAGE));
     void queryClient.prefetchQuery(brandDashboardSummaryQueryOptions());
     void queryClient.prefetchQuery(brandProfileQueryOptions());
+    return;
+  }
+
+  if (pathname.startsWith('/influencer')) {
+    void queryClient.prefetchQuery(influencerDashboardSummaryQueryOptions());
+    void queryClient.prefetchQuery(influencerAssignmentsQueryOptions(FIRST_PAGE));
   }
 }

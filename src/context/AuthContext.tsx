@@ -93,57 +93,72 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     },
   });
 
-  const requestOtp = async (email: string): Promise<RequestOtpResponse> => {
-    return requestOtpMutation.mutateAsync({ email });
-  };
+  const requestOtp = React.useCallback(
+    async (email: string): Promise<RequestOtpResponse> => {
+      return requestOtpMutation.mutateAsync({ email });
+    },
+    [requestOtpMutation],
+  );
 
-  const verifyOtp = async (email: string, code: string): Promise<CurrentUserResponse> => {
-    const verifyRes = await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', { email, code });
-    if (verifyRes.data?.token) {
-      try {
-        localStorage.setItem('auth_token', verifyRes.data.token);
-      } catch {
-        // Ignore storage errors
+  const verifyOtp = React.useCallback(
+    async (email: string, code: string): Promise<CurrentUserResponse> => {
+      const verifyRes = await apiClient.post<VerifyOtpResponse>('/auth/otp/verify', {
+        email,
+        code,
+      });
+      if (verifyRes.data?.token) {
+        try {
+          localStorage.setItem('auth_token', verifyRes.data.token);
+        } catch {
+          // Ignore storage errors
+        }
       }
-    }
-    const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
-    if (meRes.data?.roleCode) {
-      try {
-        localStorage.setItem('app_role_code', meRes.data.roleCode);
-        localStorage.setItem('app_session_active', 'true');
-      } catch (_err) {
-        // Ignore localStorage errors
+      const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
+      if (meRes.data?.roleCode) {
+        try {
+          localStorage.setItem('app_role_code', meRes.data.roleCode);
+          localStorage.setItem('app_session_active', 'true');
+        } catch (_err) {
+          // Ignore localStorage errors
+        }
       }
-    }
-    queryClient.setQueryData(['auth', 'me'], meRes.data);
-    return meRes.data;
-  };
+      queryClient.setQueryData(['auth', 'me'], meRes.data);
+      return meRes.data;
+    },
+    [queryClient],
+  );
 
-  const logout = async (): Promise<void> => {
+  const logout = React.useCallback(async (): Promise<void> => {
     await logoutMutation.mutateAsync();
-  };
+  }, [logoutMutation]);
 
-  const acceptTerms = async (): Promise<CurrentUserResponse> => {
+  const acceptTerms = React.useCallback(async (): Promise<CurrentUserResponse> => {
     await apiClient.post('/terms/accept');
     const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
     queryClient.setQueryData(['auth', 'me'], meRes.data);
     return meRes.data;
-  };
+  }, [queryClient]);
 
-  const completeProfile = async (data: UpdateProfileRequest): Promise<CurrentUserResponse> => {
-    await apiClient.put('/users/profile', data);
-    const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
-    queryClient.setQueryData(['auth', 'me'], meRes.data);
-    return meRes.data;
-  };
+  const completeProfile = React.useCallback(
+    async (data: UpdateProfileRequest): Promise<CurrentUserResponse> => {
+      await apiClient.put('/users/profile', data);
+      const meRes = await apiClient.get<CurrentUserResponse>('/auth/me');
+      queryClient.setQueryData(['auth', 'me'], meRes.data);
+      return meRes.data;
+    },
+    [queryClient],
+  );
 
-  const refetchUser = async (): Promise<CurrentUserResponse | null> => {
+  const refetchUser = React.useCallback(async (): Promise<CurrentUserResponse | null> => {
     const res = await refetch();
     return res.data ?? null;
-  };
+  }, [refetch]);
 
   const user = authData?.user ?? null;
-  const cachedRole = typeof window !== 'undefined' ? (localStorage.getItem('app_role_code') as RoleCode | null) : null;
+  const cachedRole =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('app_role_code') as RoleCode | null)
+      : null;
   const roleCode = (authData?.roleCode as RoleCode) ?? cachedRole ?? null;
 
   React.useEffect(() => {
@@ -161,23 +176,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const termsAccepted = authData?.termsAccepted ?? false;
   const isAuthenticated = Boolean(user && roleCode);
 
+  const contextValue = React.useMemo(
+    () => ({
+      user,
+      roleCode,
+      profileComplete,
+      termsAccepted,
+      isLoading,
+      isAuthenticated,
+      requestOtp,
+      verifyOtp,
+      logout,
+      acceptTerms,
+      completeProfile,
+      refetchUser,
+    }),
+    [
+      user,
+      roleCode,
+      profileComplete,
+      termsAccepted,
+      isLoading,
+      isAuthenticated,
+      requestOtp,
+      verifyOtp,
+      logout,
+      acceptTerms,
+      completeProfile,
+      refetchUser,
+    ],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        roleCode,
-        profileComplete,
-        termsAccepted,
-        isLoading,
-        isAuthenticated,
-        requestOtp,
-        verifyOtp,
-        logout,
-        acceptTerms,
-        completeProfile,
-        refetchUser,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

@@ -11,7 +11,7 @@ export interface StatValueProps {
   align?: 'left' | 'center' | 'right';
 }
 
-export const StatValue: React.FC<StatValueProps> = ({
+export const StatValue: React.FC<StatValueProps> = React.memo(({
   value,
   label,
   valueColor,
@@ -55,4 +55,6 @@ export const StatValue: React.FC<StatValueProps> = ({
       </Typography>
     </Box>
   );
-};
+});
+
+StatValue.displayName = 'StatValue';

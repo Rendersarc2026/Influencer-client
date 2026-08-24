@@ -47,7 +47,7 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
-import { getInfluencerTier, getTierInfo, formatFollowersDisplay, ExcelColumnConfig } from '@utils';
+import { getInfluencerTier, getTierInfo, formatFollowersDisplay, ExcelColumnConfig, safeExternalUrl } from '@utils';
 
 interface InfluencerRowActionsProps {
   row: InfluencerResponse;
@@ -255,7 +255,8 @@ function formatCommercials(row: InfluencerResponse): string {
 /** An instagram value may be stored as a handle or a full URL. */
 function instagramHref(value: string | null): string | undefined {
   if (!value) return undefined;
-  return value.startsWith('http') ? value : `https://instagram.com/${value.replace(/^@/, '')}`;
+  const url = value.startsWith('http') ? value : `https://instagram.com/${value.replace(/^@/, '')}`;
+  return safeExternalUrl(url);
 }
 
 function formatDisplaySocial(urlOrHandle: string | null | undefined): string {
@@ -948,7 +949,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                       label: 'YouTube Channel URL',
                       value: selectedInfluencer.youtube || '—',
                       isLink: Boolean(selectedInfluencer.youtube),
-                      href: selectedInfluencer.youtube || undefined,
+                      href: safeExternalUrl(selectedInfluencer.youtube),
                     },
                   ],
                 },
