@@ -184,49 +184,49 @@ export const InfluencerHomeOrganism: React.FC = () => {
       onLogout={logout}
     >
       {/* 1. Four Metric Cards */}
-      <Grid container spacing={2.5} alignItems="stretch">
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }} alignItems="stretch">
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Active Campaigns"
             value={summary?.totalAssignments ?? 0}
             loading={isSummaryLoading}
             icon={<CampaignRoundedIcon fontSize="small" />}
-            subtitle="Invited & assigned briefs"
+            subtitle="Invited & active briefs"
             onClick={() => navigate('/influencer/campaigns')}
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Awaiting My Rate"
+            title="Pending Rates"
             value={summary?.pendingRates ?? 0}
             loading={isSummaryLoading}
             icon={<EditNoteRoundedIcon fontSize="small" />}
-            deltaLabel="quotes needed"
+            subtitle="Quotes requested"
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Approved Deals"
             value={summary?.approvedRates ?? 0}
             loading={isSummaryLoading}
             icon={<CheckCircleRoundedIcon fontSize="small" />}
-            deltaLabel="agreed"
+            subtitle="Confirmed bookings"
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Total Earned"
             value={formatCurrency(summary?.totalEarnings ?? 0)}
             loading={isSummaryLoading}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
-            subtitle="From approved collaborations"
+            subtitle="From collaborations"
           />
         </Grid>
       </Grid>

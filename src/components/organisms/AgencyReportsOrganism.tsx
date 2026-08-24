@@ -323,41 +323,41 @@ export const AgencyReportsOrganism: React.FC = () => {
       }
     >
       {/* 1. Summary MetricCards */}
-      <Grid container spacing={2.5} alignItems="stretch">
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }} alignItems="stretch">
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Total Client Billings"
+            title="Total Billings"
             value={formatCurrency(totals.totalClientRate)}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
-            subtitle={`${reportRows.length} campaigns reported`}
+            subtitle={`${reportRows.length} campaigns`}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Total Realized Margin"
+            title="Realized Margin"
             value={formatCurrency(totals.totalMargin)}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
-            subtitle={`Margin rate ${totals.marginRate.toFixed(1)}%`}
+            subtitle={`Rate ${totals.marginRate.toFixed(1)}%`}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Total Deliverable Reach"
+            title="Total Reach"
             value={compactNumber(totals.totalReach)}
             icon={<VisibilityRoundedIcon fontSize="small" />}
-            subtitle="Recorded deliverable metrics"
+            subtitle="Recorded metrics"
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Average Engagement Rate"
+            title="Avg ER"
             value={`${totals.averageEr.toFixed(2)}%`}
             icon={<TrendingUpRoundedIcon fontSize="small" />}
-            subtitle="Mean of reported campaigns"
+            subtitle="Mean of campaigns"
           />
         </Grid>
       </Grid>

@@ -335,8 +335,8 @@ export const StyleGuideOrganism: React.FC = () => {
             title="Molecules: MetricCard (All 4 Pastel Tints)"
             subtitle="Composed of TintCard + IconSquare + StatValue + DeltaBadge"
           />
-          <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <MetricCard
                 tint="lavender"
                 title="Active Campaigns"
@@ -347,7 +347,7 @@ export const StyleGuideOrganism: React.FC = () => {
                 onKebabClick={() => {}}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <MetricCard
                 tint="mint"
                 title="Approved Payouts"
@@ -358,7 +358,7 @@ export const StyleGuideOrganism: React.FC = () => {
                 onKebabClick={() => {}}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <MetricCard
                 tint="butter"
                 title="Pending Approvals"
@@ -369,7 +369,7 @@ export const StyleGuideOrganism: React.FC = () => {
                 onKebabClick={() => {}}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <MetricCard
                 tint="sky"
                 title="Avg. Engagement"

@@ -24,24 +24,38 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
       <Card
         className={className}
         sx={{
-          padding: { xs: '16px', sm: '20px' },
+          padding: { xs: '12px', sm: '16px', md: `${theme.customSpacing.cardPadding}px` },
           borderRadius: `${theme.customRadii.card}px`,
           border: `1px solid ${theme.palette.tokens.divider}`,
           backgroundColor: theme.palette.tokens.surface,
-          height: height || 150,
+          height: height || '100%',
+          minHeight: { xs: 115, sm: 130 },
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          boxSizing: 'border-box',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Skeleton animation="wave" variant="text" width="40%" height={20} />
-          <Skeleton animation="wave" variant="circular" width={34} height={34} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Skeleton animation="wave" variant="text" width="55%" height={18} />
+          <Skeleton
+            animation="wave"
+            variant="rounded"
+            width={32}
+            height={32}
+            sx={{ borderRadius: `${theme.customRadii.inner}px`, flexShrink: 0 }}
+          />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <Skeleton animation="wave" variant="text" width="60%" height={36} />
-          <Skeleton animation="wave" variant="text" width="30%" height={16} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, my: 0.5 }}>
+          <Skeleton
+            animation="wave"
+            variant="rounded"
+            width="50%"
+            height={28}
+            sx={{ borderRadius: '6px' }}
+          />
         </Box>
+        <Skeleton animation="wave" variant="text" width="65%" height={14} />
       </Card>
     );
   }
@@ -158,16 +172,17 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
       <Card
         className={className}
         sx={{
-          padding: `${theme.customSpacing.cardPadding}px`,
+          padding: { xs: '14px 12px', sm: '18px 16px', md: `${theme.customSpacing.cardPadding}px` },
           borderRadius: `${theme.customRadii.card}px`,
           border: `1px solid ${theme.palette.tokens.divider}`,
           backgroundColor: theme.palette.tokens.surface,
           minHeight: height || 420,
           display: 'flex',
           flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
           <Skeleton animation="wave" variant="text" width={180} height={28} />
           <Skeleton
             animation="wave"
@@ -177,32 +192,51 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
             sx={{ borderRadius: `${theme.customRadii.inner}px` }}
           />
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flex: 1 }}>
-          {Array.from({ length: rows }).map((_, index) => (
-            <Box
-              key={index}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                height: 52,
-                borderBottom: `1px solid ${theme.palette.tokens.divider}`,
-              }}
-            >
-              <Skeleton animation="wave" variant="text" width={24} height={18} />
-              <Skeleton animation="wave" variant="circular" width={32} height={32} />
-              <Skeleton animation="wave" variant="text" width="25%" height={20} />
-              <Skeleton animation="wave" variant="text" width="20%" height={20} />
-              <Skeleton animation="wave" variant="text" width="15%" height={20} />
-              <Skeleton
-                animation="wave"
-                variant="rounded"
-                width={80}
-                height={24}
-                sx={{ borderRadius: `${theme.customRadii.pill}px`, ml: 'auto' }}
-              />
-            </Box>
-          ))}
+        <Box
+          sx={{
+            flex: 1,
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            maxWidth: '100%',
+            '&::-webkit-scrollbar': { width: 6, height: 6 },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': {
+              background: theme.palette.tokens.divider,
+              borderRadius: 3,
+            },
+          }}
+        >
+          <Box sx={{ minWidth: 600, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {Array.from({ length: rows }).map((_, index) => (
+              <Box
+                key={index}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  height: 52,
+                  borderBottom: `1px solid ${theme.palette.tokens.divider}`,
+                  py: 1,
+                }}
+              >
+                <Skeleton animation="wave" variant="text" width={24} height={18} sx={{ flexShrink: 0 }} />
+                <Skeleton animation="wave" variant="circular" width={34} height={34} sx={{ flexShrink: 0 }} />
+                <Box sx={{ width: '25%', flexShrink: 0 }}>
+                  <Skeleton animation="wave" variant="text" width="90%" height={18} />
+                  <Skeleton animation="wave" variant="text" width="60%" height={12} />
+                </Box>
+                <Skeleton animation="wave" variant="text" width="20%" height={18} sx={{ flexShrink: 0 }} />
+                <Skeleton animation="wave" variant="text" width="15%" height={18} sx={{ flexShrink: 0 }} />
+                <Skeleton
+                  animation="wave"
+                  variant="rounded"
+                  width={75}
+                  height={24}
+                  sx={{ borderRadius: `${theme.customRadii.pill}px`, ml: 'auto', flexShrink: 0 }}
+                />
+              </Box>
+            ))}
+          </Box>
         </Box>
       </Card>
     );

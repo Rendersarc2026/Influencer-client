@@ -32,8 +32,14 @@ export const StatValue: React.FC<StatValueProps> = ({
         variant="h1"
         sx={{
           color: valueColor || theme.palette.tokens.textPrimary,
-          lineHeight: 1.1,
-          mb: '4px',
+          lineHeight: 1.15,
+          fontSize: { xs: '20px', sm: '24px', md: '28px' },
+          fontWeight: 700,
+          mb: '2px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '100%',
         }}
       >
         {value}

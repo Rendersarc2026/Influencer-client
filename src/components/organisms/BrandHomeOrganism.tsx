@@ -100,8 +100,8 @@ export const BrandHomeOrganism: React.FC = () => {
       onLogout={logout}
     >
       {/* 1. Four Metric Cards */}
-      <Grid container spacing={2.5} alignItems="stretch">
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }} alignItems="stretch">
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Active Campaigns"
@@ -113,22 +113,22 @@ export const BrandHomeOrganism: React.FC = () => {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Awaiting My Approval"
+            title="Pending Review"
             value={summary?.pendingApprovals ?? 0}
             loading={summaryLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
-            deltaLabel="influencers pending review"
+            subtitle="Influencers to approve"
             onClick={() => navigate('/brand/campaigns')}
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Approved Influencers"
+            title="Approved Creators"
             value={summary?.approvedInfluencers ?? 0}
             loading={summaryLoading}
             icon={<CheckCircleOutlineRoundedIcon fontSize="small" />}
@@ -137,10 +137,10 @@ export const BrandHomeOrganism: React.FC = () => {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
-            title="Completed Campaigns"
+            title="Completed"
             value={summary?.completedCampaigns ?? 0}
             loading={summaryLoading}
             icon={<HistoryRoundedIcon fontSize="small" />}

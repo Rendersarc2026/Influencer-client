@@ -38,7 +38,13 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <TintCard tint={tint} onKebabClick={onKebabClick} onClick={onClick} className={className}>
       <Box
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          mb: { xs: 1, sm: 1.5 },
+          gap: 0.5,
+        }}
       >
         <Typography
           variant="caption"
@@ -47,25 +53,32 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             color: theme.palette.tokens.textPrimary,
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
+            fontSize: { xs: '11px', sm: '11.5px', md: '12px' },
+            lineHeight: 1.25,
+            minHeight: { xs: 28, sm: 'auto' },
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
           }}
         >
           {title}
         </Typography>
         <IconSquare
           icon={icon}
-          size={36}
-          bg="rgba(255, 255, 255, 0.7)"
+          size={32}
+          bg="rgba(255, 255, 255, 0.75)"
           color={theme.palette.tokens.textPrimary}
         />
       </Box>
 
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', my: 0.5 }}>
+      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', my: { xs: 0.25, sm: 0.5 } }}>
         {loading ? (
           <Skeleton
             animation="wave"
             variant="rounded"
-            width={90}
-            height={36}
+            width={75}
+            height={30}
             sx={{ borderRadius: `${theme.customRadii.inner / 2}px` }}
           />
         ) : (
@@ -78,16 +91,29 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          mt: 1,
+          mt: 0.5,
           minHeight: 18,
+          overflow: 'hidden',
         }}
       >
         {loading ? (
-          <Skeleton animation="wave" variant="text" width={110} height={18} />
+          <Skeleton animation="wave" variant="text" width={85} height={15} />
         ) : delta !== undefined ? (
           <DeltaBadge delta={delta} label={deltaLabel} />
         ) : subtitle ? (
-          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: theme.palette.tokens.textSecondary,
+              fontSize: { xs: '10.5px', sm: '11.5px' },
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'block',
+              maxWidth: '100%',
+            }}
+          >
             {subtitle}
           </Typography>
         ) : null}

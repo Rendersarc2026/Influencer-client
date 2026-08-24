@@ -102,8 +102,8 @@ export const AgencyHomeOrganism: React.FC = () => {
       onLogout={logout}
     >
       {/* 1. Four Metric Cards */}
-      <Grid container spacing={2.5} alignItems="stretch">
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }} alignItems="stretch">
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Active Campaigns"
@@ -115,38 +115,38 @@ export const AgencyHomeOrganism: React.FC = () => {
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Pending Rates"
             value={summary?.pendingRateApprovals ?? 0}
             loading={summaryLoading}
             icon={<HourglassEmptyRoundedIcon fontSize="small" />}
-            subtitle="Submitted, awaiting your approval"
+            subtitle="Submitted, awaiting approval"
             onClick={() => navigate('/agency/campaigns')}
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Awaiting Brand"
             value={summary?.awaitingBrandReview ?? 0}
             loading={summaryLoading}
             icon={<VisibilityRoundedIcon fontSize="small" />}
-            subtitle="Rates submitted to brand"
+            subtitle="Rates with brand"
             onClick={() => navigate('/agency/campaigns')}
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
             title="Total Margin"
             value={formatCurrency(summary?.totalMargin ?? 0)}
             loading={summaryLoading}
             icon={<CurrencyRupeeRoundedIcon fontSize="small" />}
-            subtitle="Approved rates across campaigns"
+            subtitle="Approved campaign rates"
             onClick={() => navigate('/agency/campaigns')}
           />
         </Grid>

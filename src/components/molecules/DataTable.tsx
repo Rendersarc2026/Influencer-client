@@ -12,6 +12,7 @@ import TablePagination from '@mui/material/TablePagination';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Skeleton from '@mui/material/Skeleton';
 import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
@@ -23,7 +24,6 @@ import {
   StatusChip,
   StatusCategory,
   EmptyState,
-  LoadingBlock,
   BusyOverlay,
 } from '@atoms';
 import { safeImageUrl, exportTableToExcel, ExcelColumnConfig } from '@utils';
@@ -405,17 +405,6 @@ export function DataTable<T extends Record<string, unknown>>({
     }
   };
 
-  if (loading) {
-    return (
-      <LoadingBlock
-        variant="table"
-        rows={5}
-        height={fillHeight ? '100%' : minHeight}
-        className={className}
-      />
-    );
-  }
-
   const handleExport = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if ((rows.length === 0 && !onExportAll) || isExporting) return;
@@ -486,11 +475,192 @@ export function DataTable<T extends Record<string, unknown>>({
     ) : null;
 
   const hasHeader = Boolean(title || subtitle || headerAction || exportButton);
-  // `loading` already swapped the whole table for a skeleton above, so the
-  // backlight only ever applies to a refetch over data that is still on screen.
   const busy = isFetching && !loading;
   const minTableContainerHeight = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
   const isEmpty = rows.length === 0;
+
+  if (loading) {
+    const skeletonRows = Array.from({ length: 6 });
+    return (
+      <Card
+        className={className}
+        sx={{
+          padding: { xs: '14px 12px', sm: '18px 16px', md: `${theme.customSpacing.cardPadding}px` },
+          flex: fillHeight ? 1 : undefined,
+          minHeight: minTableContainerHeight,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {hasHeader && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: title || subtitle ? 'space-between' : 'flex-end',
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: { xs: 1.5, sm: 2 },
+              mb: 2,
+              flexShrink: 0,
+            }}
+          >
+            {(title || subtitle) && (
+              <Box>
+                {title ? (
+                  <Typography variant="h2">{title}</Typography>
+                ) : (
+                  <Skeleton animation="wave" variant="text" width={160} height={28} />
+                )}
+                {subtitle && (
+                  <Typography
+                    variant="body2"
+                    sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
+                  >
+                    {subtitle}
+                  </Typography>
+                )}
+              </Box>
+            )}
+            {headerAction && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
+                {headerAction}
+              </Box>
+            )}
+          </Box>
+        )}
+
+        <Box
+          sx={{
+            position: 'relative',
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <TableContainer
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              maxWidth: '100%',
+              '&::-webkit-scrollbar': { width: 6, height: 6 },
+              '&::-webkit-scrollbar-track': { background: 'transparent' },
+              '&::-webkit-scrollbar-thumb': {
+                background: theme.palette.tokens.divider,
+                borderRadius: 3,
+              },
+            }}
+          >
+            <Table stickyHeader sx={{ minWidth: 'max-content', width: '100%' }}>
+              <TableHead>
+                <TableRow>
+                  {effectiveColumns.map((col) => (
+                    <TableCell
+                      key={col.id}
+                      align={col.align || 'left'}
+                      sx={{
+                        width: col.width,
+                        minWidth: col.minWidth || col.width,
+                        whiteSpace: 'nowrap',
+                        backgroundColor: theme.palette.tokens.surface,
+                      }}
+                    >
+                      {col.header}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {skeletonRows.map((_, rowIndex) => (
+                  <TableRow key={rowIndex}>
+                    {effectiveColumns.map((col) => (
+                      <TableCell
+                        key={col.id}
+                        align={col.align || 'left'}
+                        sx={{
+                          width: col.width,
+                          minWidth: col.minWidth || col.width,
+                          whiteSpace: 'nowrap',
+                          py: 1.75,
+                        }}
+                      >
+                        {col.type === 'index' ? (
+                          <Skeleton animation="wave" variant="text" width={20} height={16} sx={{ mx: 'auto' }} />
+                        ) : col.type === 'entity' ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Skeleton
+                              animation="wave"
+                              variant="rounded"
+                              width={36}
+                              height={36}
+                              sx={{ borderRadius: `${theme.customRadii.inner}px`, flexShrink: 0 }}
+                            />
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                              <Skeleton animation="wave" variant="text" width={110} height={18} />
+                              <Skeleton animation="wave" variant="text" width={75} height={13} sx={{ mt: 0.5 }} />
+                            </Box>
+                          </Box>
+                        ) : col.type === 'actions' ? (
+                          <Skeleton
+                            animation="wave"
+                            variant="rounded"
+                            width={32}
+                            height={32}
+                            sx={{ borderRadius: `${theme.customRadii.inner}px`, ml: 'auto' }}
+                          />
+                        ) : col.type === 'status' ? (
+                          <Skeleton
+                            animation="wave"
+                            variant="rounded"
+                            width={64}
+                            height={22}
+                            sx={{ borderRadius: `${theme.customRadii.pill}px` }}
+                          />
+                        ) : (
+                          <Skeleton
+                            animation="wave"
+                            variant="text"
+                            width={typeof col.width === 'number' ? Math.min(col.width * 0.7, 120) : 90}
+                            height={18}
+                          />
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+
+        {pagination && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: { xs: 'center', sm: 'flex-end' },
+              p: { xs: 1.5, sm: 2 },
+              borderTop: `1px solid ${theme.palette.tokens.divider}`,
+              gap: 2,
+            }}
+          >
+            <Skeleton animation="wave" variant="text" width={120} height={20} />
+            <Skeleton
+              animation="wave"
+              variant="rounded"
+              width={80}
+              height={28}
+              sx={{ borderRadius: `${theme.customRadii.inner}px` }}
+            />
+          </Box>
+        )}
+      </Card>
+    );
+  }
 
   // With no rows the empty state is rendered as a sibling of the table rather
   // than inside a tbody cell, so it can be centred in whatever height is left
