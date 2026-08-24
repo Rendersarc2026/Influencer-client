@@ -265,8 +265,9 @@ const getChatDeduplicationKey = (
   influencers: InfluencerResponse[] = [],
   users: UserResponse[] = [],
 ): string => {
-  if (chat.campaignId) {
-    return `campaign:${chat.campaignId}`;
+  // If the viewing user is an INFLUENCER or BRAND, their thread is with the Agency
+  if (roleCode === 'INFLUENCER' || roleCode === 'BRAND') {
+    return 'agency:direct_thread';
   }
 
   if (chat.type === ChatTypeCode.AGENCY_BRAND) {

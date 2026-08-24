@@ -14,6 +14,11 @@ import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Divider from '@mui/material/Divider';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Avatar from '@mui/material/Avatar';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RateReviewRoundedIcon from '@mui/icons-material/RateReviewRounded';
@@ -82,6 +87,7 @@ import {
 
 interface RowActionsProps {
   row: AgencyMapperResponse;
+  campaignStatus?: CampaignStatus;
   onSetPriceApprove: (row: AgencyMapperResponse) => void;
   onApproveRate: (row: AgencyMapperResponse) => void;
   onRevise: (row: AgencyMapperResponse) => void;
@@ -96,6 +102,7 @@ interface RowActionsProps {
 
 const RowActions: React.FC<RowActionsProps> = ({
   row,
+  campaignStatus,
   onSetPriceApprove,
   onApproveRate,
   onRevise,
@@ -120,55 +127,12 @@ const RowActions: React.FC<RowActionsProps> = ({
     setAnchorEl(null);
   };
 
+  const isCampaignCompleted = campaignStatus === CampaignStatusCode.COMPLETED;
+
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-      {/* 1. Primary Action */}
-      {row.rateStatus === RateStatusCode.PENDING_SUBMISSION && (
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<CheckCircleRoundedIcon fontSize="small" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSetPriceApprove(row);
-          }}
-        >
-          Set Price & Approve
-        </Button>
-      )}
-
-      {row.rateStatus === RateStatusCode.SUBMITTED && (
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<CheckCircleRoundedIcon fontSize="small" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            onApproveRate(row);
-          }}
-        >
-          Approve Rate
-        </Button>
-      )}
-
-      {row.rateStatus === RateStatusCode.AGENCY_APPROVED && !row.budgetVisible && (
-        <Tooltip title="Send approved client rate for brand approval">
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<SendRoundedIcon fontSize="small" />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSendToBrand(row.id);
-            }}
-          >
-            Send to Brand
-          </Button>
-        </Tooltip>
-      )}
-
-      {/* 2. More Menu Button */}
-      <Tooltip title="More options">
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      {/* 1. More Menu Button */}
+      <Tooltip title="Actions">
         <IconButton
           size="small"
           onClick={handleOpen}
@@ -188,7 +152,7 @@ const RowActions: React.FC<RowActionsProps> = ({
         </IconButton>
       </Tooltip>
 
-      {/* 3. Actions Dropdown Menu */}
+      {/* 2. Actions Dropdown Menu */}
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -201,7 +165,7 @@ const RowActions: React.FC<RowActionsProps> = ({
             sx: {
               borderRadius: `${theme.customRadii.card}px`,
               border: `1px solid ${theme.palette.tokens.divider}`,
-              minWidth: 220,
+              minWidth: 230,
               padding: '6px',
               mt: 0.75,
               boxShadow:
@@ -210,38 +174,96 @@ const RowActions: React.FC<RowActionsProps> = ({
           },
         }}
       >
-        {/* Edit Margin */}
-        <MenuItem
-          onClick={() => {
-            handleClose();
-            onEditMargin(row);
-          }}
-          sx={{
-            fontSize: '13px',
-            fontWeight: 500,
-            py: 0.85,
-            px: 1.25,
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-          }}
-        >
-          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
-            <EditRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          {row.rateStatus === RateStatusCode.AGENCY_APPROVED
-            ? 'Edit Agency Margin'
-            : 'Set Margin & Price'}
-        </MenuItem>
+        {/* --- SECTION 1: Commercial & Workflow Progression --- */}
 
-        {/* Revert Approval */}
+        {/* Set Price & Approve (Pending submission or revision requested) */}
+        {(row.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
+          row.rateStatus === RateStatusCode.REVISION_REQUESTED) && (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onSetPriceApprove(row);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.primary.main,
+              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Set Price & Approve
+          </MenuItem>
+        )}
+
+        {/* Approve Rate (Submitted quote) */}
+        {row.rateStatus === RateStatusCode.SUBMITTED && (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onApproveRate(row);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.positiveText,
+              '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Approve Rate
+          </MenuItem>
+        )}
+
+        {/* Send to Brand (Approved, not yet sent) */}
+        {row.rateStatus === RateStatusCode.AGENCY_APPROVED && !row.budgetVisible && (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onSendToBrand(row.id);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.primary.main,
+              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+              <SendRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Send to Brand
+          </MenuItem>
+        )}
+
+        {/* Edit Agency Margin */}
         {row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
           <MenuItem
             onClick={() => {
               handleClose();
-              onRevertApproval(row);
+              onEditMargin(row);
             }}
             sx={{
               fontSize: '13px',
@@ -252,14 +274,13 @@ const RowActions: React.FC<RowActionsProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: 1.25,
-              color: theme.palette.warning.main,
-              '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
+              '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
             }}
           >
-            <ListItemIcon sx={{ color: theme.palette.warning.main, minWidth: 'auto' }}>
-              <UndoRoundedIcon fontSize="small" />
+            <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+              <EditRoundedIcon fontSize="small" />
             </ListItemIcon>
-            Revert Rate Approval
+            Edit Agency Margin
           </MenuItem>
         )}
 
@@ -290,7 +311,38 @@ const RowActions: React.FC<RowActionsProps> = ({
           </MenuItem>
         )}
 
-        {/* Edit Pre-Evaluation Details */}
+        {/* Revert Rate Approval */}
+        {row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onRevertApproval(row);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.warning.main,
+              '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.warning.main, minWidth: 'auto' }}>
+              <UndoRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Revert Rate Approval
+          </MenuItem>
+        )}
+
+        <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* --- SECTION 2: Details & Deliverables Management --- */}
+
+        {/* Pre-Evaluation Details */}
         <MenuItem
           onClick={() => {
             handleClose();
@@ -314,7 +366,7 @@ const RowActions: React.FC<RowActionsProps> = ({
           Pre-Evaluation Details
         </MenuItem>
 
-        {/* Record Deliverable Metrics */}
+        {/* Record Post-Evaluation Performance */}
         <MenuItem
           onClick={() => {
             handleClose();
@@ -322,20 +374,33 @@ const RowActions: React.FC<RowActionsProps> = ({
           }}
           sx={{
             fontSize: '13px',
-            fontWeight: 500,
+            fontWeight: isCampaignCompleted ? 600 : 500,
             py: 0.85,
             px: 1.25,
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
             gap: 1.25,
-            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+            ...(isCampaignCompleted
+              ? {
+                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                  color: theme.palette.primary.main,
+                }
+              : {}),
+            '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.12)' },
           }}
         >
-          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+          <ListItemIcon
+            sx={{
+              color: isCampaignCompleted
+                ? theme.palette.primary.main
+                : theme.palette.tokens.textSecondary,
+              minWidth: 'auto',
+            }}
+          >
             <InsightsRoundedIcon fontSize="small" />
           </ListItemIcon>
-          Record Deliverable Metrics
+          Record Post-Evaluation Performance
         </MenuItem>
 
         {/* Message Influencer */}
@@ -363,6 +428,8 @@ const RowActions: React.FC<RowActionsProps> = ({
         </MenuItem>
 
         <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* --- SECTION 3: Destructive Actions --- */}
 
         {/* Remove from Campaign */}
         <MenuItem
@@ -450,6 +517,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const [revertDialogMapper, setRevertDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [preEvalDialogMapper, setPreEvalDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [metricsDialogMapper, setMetricsDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  const [selectInfluencerForMetricsOpen, setSelectInfluencerForMetricsOpen] = useState(false);
   const [deleteDialogMapper, setDeleteDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [editCampaignOpen, setEditCampaignOpen] = useState(false);
 
@@ -924,6 +992,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       render: (row: AgencyMapperResponse) => (
         <RowActions
           row={row}
+          campaignStatus={campaign?.status}
           onSetPriceApprove={(r) => setApproveDialogMapper(r)}
           onApproveRate={(r) => setApproveDialogMapper(r)}
           onRevise={(r) => setRevisionDialogMapper(r)}
@@ -955,9 +1024,21 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   };
 
   const isDraft = (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.DRAFT;
+  const isCompleted =
+    (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.COMPLETED;
   const canEditCampaign =
     (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.DRAFT ||
     campaign?.status === CampaignStatusCode.ACTIVE;
+
+  const handleOpenRecordMetrics = () => {
+    if (mappers.length === 1) {
+      setMetricsDialogMapper(mappers[0]);
+    } else if (mappers.length > 1) {
+      setSelectInfluencerForMetricsOpen(true);
+    } else {
+      showError('No assigned influencers in this campaign to record metrics for.');
+    }
+  };
 
   return (
     <DashboardLayout
@@ -983,6 +1064,17 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             onClick={() => navigate(`/agency/campaigns/${campaignId}/add`)}
           >
             Add Influencers
+          </Button>
+        ) : isCompleted ? (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<InsightsRoundedIcon fontSize="small" />}
+            onClick={handleOpenRecordMetrics}
+            disabled={campaignLoading || mappers.length === 0}
+            sx={{ fontWeight: 700 }}
+          >
+            Record Post-Evaluation Performance
           </Button>
         ) : undefined
       }
@@ -1403,9 +1495,25 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         actions={
           overviewDrawerMapper
             ? [
+                ...(isCompleted || overviewDrawerMapper.brandStatus === BrandStatusCode.APPROVED
+                  ? [
+                      {
+                        label: 'Record Post-Evaluation Performance',
+                        variant: 'contained' as const,
+                        onClick: () => {
+                          const row = overviewDrawerMapper;
+                          setOverviewDrawerMapper(null);
+                          setMetricsDialogMapper(row);
+                        },
+                      },
+                    ]
+                  : []),
                 {
                   label: 'Edit Margin & Commercials',
-                  variant: 'contained',
+                  variant:
+                    isCompleted || overviewDrawerMapper.brandStatus === BrandStatusCode.APPROVED
+                      ? ('outlined' as const)
+                      : ('contained' as const),
                   onClick: () => {
                     const row = overviewDrawerMapper;
                     setOverviewDrawerMapper(null);
@@ -1414,7 +1522,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 },
                 {
                   label: 'Message Influencer',
-                  variant: 'outlined',
+                  variant: 'outlined' as const,
                   onClick: () => {
                     const id = overviewDrawerMapper.influencerId;
                     setOverviewDrawerMapper(null);
@@ -1425,6 +1533,93 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             : []
         }
       />
+
+      {/* Select Influencer for Post-Evaluation Performance Modal */}
+      <Dialog
+        open={selectInfluencerForMetricsOpen}
+        onClose={() => setSelectInfluencerForMetricsOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Select Influencer
+          </Typography>
+          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+            Choose an assigned influencer to record post-evaluation performance metrics
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {mappers.map((m) => (
+              <Box
+                key={m.id}
+                onClick={() => {
+                  setSelectInfluencerForMetricsOpen(false);
+                  setMetricsDialogMapper(m);
+                }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  p: 1.5,
+                  borderRadius: `${theme.customRadii.inner}px`,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                  '&:hover': {
+                    backgroundColor: theme.palette.tokens.fieldBg,
+                    borderColor: theme.palette.primary.main,
+                  },
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    bgcolor: theme.palette.primary.main,
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {m.influencerName?.charAt(0).toUpperCase()}
+                </Avatar>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {m.influencerName}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: theme.palette.tokens.textSecondary,
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {m.deliverables || 'Deliverables assigned'}
+                  </Typography>
+                </Box>
+                <InsightsRoundedIcon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button variant="outlined" onClick={() => setSelectInfluencerForMetricsOpen(false)}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Approve / Edit Rate Dialog */}
       {approveDialogMapper && (

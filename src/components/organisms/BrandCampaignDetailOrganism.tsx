@@ -82,32 +82,9 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
   const isRejected = row.brandStatus === BrandStatusCode.REJECTED;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
-      {/* 1. Primary Action Button */}
-      {!isApproved && (
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<CheckCircleRoundedIcon fontSize="small" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            onApprove(row.id);
-          }}
-          disabled={loading}
-          sx={{
-            py: 0.5,
-            px: 1.5,
-            fontSize: '0.8125rem',
-            fontWeight: 700,
-            textTransform: 'none',
-          }}
-        >
-          {isRejected ? 'Re-Approve' : 'Approve'}
-        </Button>
-      )}
-
-      {/* 2. Three-dot More Menu Button */}
-      <Tooltip title="More options">
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      {/* 1. Three-dot More Menu Button */}
+      <Tooltip title="Actions">
         <IconButton
           size="small"
           onClick={handleOpen}
@@ -127,7 +104,7 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
         </IconButton>
       </Tooltip>
 
-      {/* 3. Actions Dropdown Menu */}
+      {/* 2. Actions Dropdown Menu */}
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -149,29 +126,63 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
           },
         }}
       >
-        {/* View Full Dossier */}
-        <MenuItem
-          onClick={(e) => {
-            handleClose(e);
-            onViewDossier(row);
-          }}
-          sx={{
-            fontSize: '13px',
-            fontWeight: 500,
-            py: 0.85,
-            px: 1.25,
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-          }}
-        >
-          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
-            <InfoOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          View Full Pre-Evaluation
-        </MenuItem>
+        {/* --- SECTION 1: Decision Actions --- */}
+
+        {/* Approve Proposal */}
+        {!isApproved && !isRejected && (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onApprove(row.id);
+            }}
+            disabled={loading}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.positiveText,
+              '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Approve Influencer
+          </MenuItem>
+        )}
+
+        {/* Re-Approve Proposal (when rejected) */}
+        {isRejected && (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onApprove(row.id);
+            }}
+            disabled={loading}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.primary.main,
+              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Re-Approve Influencer
+          </MenuItem>
+        )}
 
         {/* Send Remarks & Feedback */}
         <MenuItem
@@ -200,42 +211,14 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
             : 'Send Remarks & Feedback'}
         </MenuItem>
 
-        {/* Approve Proposal */}
-        {!isApproved && (
-          <MenuItem
-            onClick={(e) => {
-              handleClose(e);
-              onApprove(row.id);
-            }}
-            sx={{
-              fontSize: '13px',
-              fontWeight: 500,
-              py: 0.85,
-              px: 1.25,
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              color: theme.palette.tokens.positiveText,
-              '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
-              <CheckCircleRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            Approve Influencer
-          </MenuItem>
-        )}
-
-        <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
-
         {/* Reject Proposal */}
-        {!isRejected ? (
+        {!isRejected && (
           <MenuItem
             onClick={(e) => {
               handleClose(e);
               onReject(row.id);
             }}
+            disabled={loading}
             sx={{
               fontSize: '13px',
               fontWeight: 500,
@@ -257,31 +240,35 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
             </ListItemIcon>
             Reject Proposal
           </MenuItem>
-        ) : (
-          <MenuItem
-            onClick={(e) => {
-              handleClose(e);
-              onApprove(row.id);
-            }}
-            sx={{
-              fontSize: '13px',
-              fontWeight: 500,
-              py: 0.85,
-              px: 1.25,
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              color: theme.palette.primary.main,
-              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
-              <CheckCircleRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            Re-Approve Proposal
-          </MenuItem>
         )}
+
+        <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* --- SECTION 2: Evaluation & Details --- */}
+
+        {/* View Full Dossier */}
+        <MenuItem
+          onClick={(e) => {
+            handleClose(e);
+            onViewDossier(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <InfoOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          View Full Pre-Evaluation
+        </MenuItem>
       </Menu>
     </Box>
   );
