@@ -77,6 +77,9 @@ const ChatPage = lazy(() => import('../pages/ChatPage').then((m) => ({ default: 
 const ProfilePage = lazy(() =>
   import('../pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
+const NotFoundPage = lazy(() =>
+  import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
+);
 
 /**
  * Route chunks worth warming, grouped by role.
@@ -88,6 +91,7 @@ const ProfilePage = lazy(() =>
 const sharedLoaders: Array<() => Promise<unknown>> = [
   () => import('../pages/ChatPage'),
   () => import('../pages/ProfilePage'),
+  () => import('../pages/NotFoundPage'),
 ];
 
 const roleLoaders: Record<string, Array<() => Promise<unknown>>> = {
@@ -387,10 +391,10 @@ const router = createBrowserRouter([
     ),
   },
 
-  // Wildcard Fallback
+  // Wildcard 404 Fallback
   {
     path: '*',
-    element: <RootRedirect />,
+    element: withBoundary(NotFoundPage, 'auth'),
   },
     ],
   },
