@@ -128,6 +128,12 @@ const RowActions: React.FC<RowActionsProps> = ({
 
   const isCampaignCompleted = campaignStatus === CampaignStatusCode.COMPLETED;
   const isBrandApproved = row.brandStatus === BrandStatusCode.APPROVED;
+  const hasCommercialActions =
+    !isBrandApproved &&
+    (row.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
+      row.rateStatus === RateStatusCode.REVISION_REQUESTED ||
+      row.rateStatus === RateStatusCode.SUBMITTED ||
+      row.rateStatus === RateStatusCode.AGENCY_APPROVED);
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -340,33 +346,35 @@ const RowActions: React.FC<RowActionsProps> = ({
           </MenuItem>
         )}
 
-        <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+        {hasCommercialActions && <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />}
 
         {/* --- SECTION 2: Details & Deliverables Management --- */}
 
         {/* Pre-Evaluation Details */}
-        <MenuItem
-          onClick={() => {
-            handleClose();
-            onEditPreEval(row);
-          }}
-          sx={{
-            fontSize: '13px',
-            fontWeight: 500,
-            py: 0.85,
-            px: 1.25,
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-          }}
-        >
-          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
-            <TuneRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          Pre-Evaluation Details
-        </MenuItem>
+        {!isCampaignCompleted && (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onEditPreEval(row);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+              <TuneRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Pre-Evaluation Details
+          </MenuItem>
+        )}
 
         {/* Record Post-Evaluation Performance */}
         <MenuItem
@@ -429,37 +437,40 @@ const RowActions: React.FC<RowActionsProps> = ({
           Message Influencer
         </MenuItem>
 
-        <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
-
         {/* --- SECTION 3: Destructive Actions --- */}
 
         {/* Remove from Campaign */}
-        <MenuItem
-          onClick={() => {
-            handleClose();
-            onDelete(row);
-          }}
-          sx={{
-            fontSize: '13px',
-            fontWeight: 500,
-            py: 0.85,
-            px: 1.25,
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            color: theme.palette.tokens.negative,
-            '&:hover': {
-              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-              color: theme.palette.tokens.negative,
-            },
-          }}
-        >
-          <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
-            <DeleteOutlineRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          Remove from Campaign
-        </MenuItem>
+        {!isCampaignCompleted && (
+          <>
+            <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+            <MenuItem
+              onClick={() => {
+                handleClose();
+                onDelete(row);
+              }}
+              sx={{
+                fontSize: '13px',
+                fontWeight: 500,
+                py: 0.85,
+                px: 1.25,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                color: theme.palette.tokens.negative,
+                '&:hover': {
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  color: theme.palette.tokens.negative,
+                },
+              }}
+            >
+              <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+                <DeleteOutlineRoundedIcon fontSize="small" />
+              </ListItemIcon>
+              Remove from Campaign
+            </MenuItem>
+          </>
+        )}
       </Menu>
     </Box>
   );
