@@ -82,8 +82,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const [rateError, setRateError] = useState('');
   const [marginError, setMarginError] = useState('');
 
-  const hasPresetRate =
-    influencerRate !== null && influencerRate !== undefined && influencerRate > 0;
+  const initializedMapperIdRef = React.useRef<string | null>(null);
 
   const handleAutoFetchFromMeta = async () => {
     if (!influencerId) return;
@@ -113,50 +112,66 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     }
   };
 
+  // Initialize form fields only when dialog opens for a mapperId
   useEffect(() => {
     if (open) {
-      const marginVal =
-        initialMargin !== null && initialMargin !== undefined ? Number(initialMargin) : 0;
-      if (hasPresetRate) {
-        setRateInput(String(influencerRate));
+      if (initializedMapperIdRef.current !== mapperId) {
+        initializedMapperIdRef.current = mapperId;
+        const marginVal =
+          initialMargin !== null && initialMargin !== undefined ? Number(initialMargin) : 0;
+        const infRateVal =
+          influencerRate !== null && influencerRate !== undefined && influencerRate > 0
+            ? Number(influencerRate)
+            : 0;
+
+        setRateInput(infRateVal > 0 ? String(infRateVal) : '');
         setMarginInput(String(marginVal));
-        setClientRateInput(String(influencerRate + marginVal));
+        setClientRateInput(infRateVal > 0 || marginVal > 0 ? String(infRateVal + marginVal) : '');
+        setDeliverablesInput(initialDeliverables || '');
+
+        const initialEr =
+          initialPreEvalEr !== null && initialPreEvalEr !== undefined
+            ? String(initialPreEvalEr)
+            : engagementData?.latest?.engagementRate !== undefined &&
+                engagementData?.latest?.engagementRate !== null
+              ? String(engagementData.latest.engagementRate)
+              : '';
+        setPreEvalErInput(initialEr);
+
+        const initialViews =
+          initialCommittedViews !== null && initialCommittedViews !== undefined
+            ? String(initialCommittedViews)
+            : engagementData?.latest?.avgViews !== undefined &&
+                engagementData?.latest?.avgViews !== null &&
+                engagementData.latest.avgViews > 0
+              ? String(engagementData.latest.avgViews)
+              : '';
+        setCommittedViewsInput(initialViews);
+
+        setReachFromRegionInput(initialReachFromRegion || '');
+        setBrandFitInput(initialBrandFit || '');
+        setMetaSyncStatus(null);
+        setRateError('');
+        setMarginError('');
       } else {
-        setRateInput('');
-        setMarginInput(String(marginVal));
-        setClientRateInput(String(marginVal));
+        // If engagementData loaded later and fields are still empty, populate them
+        if (engagementData?.latest) {
+          if (!preEvalErInput && engagementData.latest.engagementRate !== undefined && engagementData.latest.engagementRate !== null) {
+            setPreEvalErInput(String(engagementData.latest.engagementRate));
+          }
+          if (!committedViewsInput && engagementData.latest.avgViews !== undefined && engagementData.latest.avgViews !== null && engagementData.latest.avgViews > 0) {
+            setCommittedViewsInput(String(engagementData.latest.avgViews));
+          }
+        }
       }
-      setDeliverablesInput(initialDeliverables || '');
-
-      const initialEr =
-        initialPreEvalEr !== null && initialPreEvalEr !== undefined
-          ? String(initialPreEvalEr)
-          : engagementData?.latest?.engagementRate !== undefined &&
-              engagementData?.latest?.engagementRate !== null
-            ? String(engagementData.latest.engagementRate)
-            : '';
-      setPreEvalErInput(initialEr);
-
-      const initialViews =
-        initialCommittedViews !== null && initialCommittedViews !== undefined
-          ? String(initialCommittedViews)
-          : engagementData?.latest?.avgViews !== undefined &&
-              engagementData?.latest?.avgViews !== null &&
-              engagementData.latest.avgViews > 0
-            ? String(engagementData.latest.avgViews)
-            : '';
-      setCommittedViewsInput(initialViews);
-
-      setReachFromRegionInput(initialReachFromRegion || '');
-      setBrandFitInput(initialBrandFit || '');
-      setRateError('');
-      setMarginError('');
+    } else {
+      initializedMapperIdRef.current = null;
     }
   }, [
     open,
+    mapperId,
     influencerRate,
     initialMargin,
-    hasPresetRate,
     initialDeliverables,
     initialPreEvalEr,
     initialReachFromRegion,
@@ -166,31 +181,35 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   ]);
 
   const handleRateChange = (val: string) => {
-    setRateInput(val);
-    const r = parseFloat(val) || 0;
+    // Only allow positive numbers/decimals
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    setRateInput(cleaned);
+    const r = parseFloat(cleaned) || 0;
     const m = parseFloat(marginInput) || 0;
-    setClientRateInput(String(r + m));
+    setClientRateInput(cleaned === '' && marginInput === '' ? '' : String(r + m));
     if (rateError) setRateError('');
   };
 
   const handleMarginChange = (val: string) => {
-    setMarginInput(val);
-    const m = parseFloat(val) || 0;
-    const r = hasPresetRate ? influencerRate || 0 : parseFloat(rateInput) || 0;
-    setClientRateInput(String(r + m));
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    setMarginInput(cleaned);
+    const m = parseFloat(cleaned) || 0;
+    const r = parseFloat(rateInput) || 0;
+    setClientRateInput(cleaned === '' && rateInput === '' ? '' : String(r + m));
     if (marginError) setMarginError('');
   };
 
   const handleClientRateChange = (val: string) => {
-    setClientRateInput(val);
-    const cr = parseFloat(val) || 0;
-    const r = hasPresetRate ? influencerRate || 0 : parseFloat(rateInput) || 0;
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    setClientRateInput(cleaned);
+    const cr = parseFloat(cleaned) || 0;
+    const r = parseFloat(rateInput) || 0;
     const newMargin = Math.max(0, cr - r);
-    setMarginInput(String(newMargin));
+    setMarginInput(cleaned === '' ? '' : String(newMargin));
     if (marginError) setMarginError('');
   };
 
-  const effectiveRate = hasPresetRate ? influencerRate || 0 : parseFloat(rateInput) || 0;
+  const effectiveRate = parseFloat(rateInput) || 0;
   const marginNum = parseFloat(marginInput) || 0;
   const clientRateNum = parseFloat(clientRateInput) || effectiveRate + marginNum;
   const committedViewsNum = parseInt(committedViewsInput, 10) || 0;
@@ -200,12 +219,12 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     e.preventDefault();
     let hasErr = false;
 
-    if (!hasPresetRate && (!effectiveRate || effectiveRate <= 0)) {
+    if (!effectiveRate || effectiveRate <= 0) {
       setRateError('Please enter a valid positive influencer rate');
       hasErr = true;
     }
 
-    if (marginNum < 0) {
+    if (marginNum < 0 || isNaN(marginNum)) {
       setMarginError('Margin cannot be negative');
       hasErr = true;
     }
@@ -216,7 +235,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     setMarginError('');
     await onApprove(mapperId, {
       margin: marginNum,
-      influencerRate: !hasPresetRate ? effectiveRate : undefined,
+      influencerRate: effectiveRate,
       committedViews: committedViewsNum > 0 ? committedViewsNum : undefined,
       preEvalEr: preEvalErInput ? parseFloat(preEvalErInput) : undefined,
       reachFromRegion: reachFromRegionInput.trim() || undefined,
@@ -262,44 +281,23 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1.5 }}>
-            {/* 1. Influencer Rate Section */}
-            {hasPresetRate ? (
-              <Box
-                sx={{
-                  padding: '14px 16px',
-                  backgroundColor: theme.palette.tokens.fieldBg,
-                  borderRadius: `${theme.customRadii.inner}px`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Box>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}
-                  >
-                    Influencer Quoted Rate
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Amount paid to influencer
-                  </Typography>
-                </Box>
-                <MoneyText amount={influencerRate || 0} currency={currency} variant="h3" />
-              </Box>
-            ) : (
-              <TextField
-                label="1. Influencer Rate (₹) *"
-                type="text"
-                value={rateInput}
-                onChange={(e) => handleRateChange(e.target.value)}
-                placeholder="e.g. 80000"
-                error={Boolean(rateError)}
-                helperText={rateError || 'Amount paid to the influencer for this deliverable'}
-                fullWidth
-                disabled={loading}
-              />
-            )}
+            {/* 1. Influencer Rate Section (Editable) */}
+            <TextField
+              label="1. Influencer Rate (₹) *"
+              type="text"
+              value={rateInput}
+              onChange={(e) => handleRateChange(e.target.value)}
+              placeholder="e.g. 80000"
+              error={Boolean(rateError)}
+              helperText={
+                rateError ||
+                (influencerRate !== null && influencerRate !== undefined && influencerRate > 0
+                  ? `Quoted: ₹${influencerRate.toLocaleString()} · You can edit before approving`
+                  : 'Amount paid to the influencer for this deliverable')
+              }
+              fullWidth
+              disabled={loading}
+            />
 
             {/* 2. Agency Margin Input */}
             <TextField
