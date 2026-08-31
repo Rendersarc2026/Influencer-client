@@ -6,13 +6,14 @@ import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
+import Autocomplete from '@mui/material/Autocomplete';
+import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { CreateCampaignRequest, BrandResponse } from '@contracts';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, safeImageUrl } from '@utils';
 
 export interface CreateCampaignDialogProps {
   open: boolean;
@@ -133,28 +134,72 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            <TextField
-              select
-              label="Select Brand *"
-              value={brandId}
-              onChange={(e) => setBrandId(e.target.value)}
-              fullWidth
+            <Autocomplete<BrandResponse>
+              options={brands}
+              value={brands.find((b) => b.id === brandId) || null}
+              onChange={(_, val) => setBrandId(val ? val.id : '')}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, val) => option.id === val.id}
+              filterOptions={(options, state) => {
+                const query = state.inputValue.trim().toLowerCase();
+                if (!query) return options;
+                return options.filter(
+                  (b) =>
+                    b.name.toLowerCase().includes(query) ||
+                    (b.contactPerson && b.contactPerson.toLowerCase().includes(query)) ||
+                    (b.industry && b.industry.toLowerCase().includes(query)),
+                );
+              }}
               disabled={loading || Boolean(defaultBrandId) || brands.length === 0}
-              // The picker now lists only this agency's own brands, so an
-              // agency with none yet would otherwise face an empty dropdown
-              // with nothing explaining why.
-              helperText={
-                brands.length === 0
-                  ? 'No client brands yet — add one from the Brands page first'
-                  : undefined
-              }
-            >
-              {brands.map((b) => (
-                <MenuItem key={b.id} value={b.id}>
-                  {b.name}
-                </MenuItem>
-              ))}
-            </TextField>
+              renderOption={(props, option) => (
+                <Box
+                  component="li"
+                  {...props}
+                  key={option.id}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
+                >
+                  <Avatar
+                    src={safeImageUrl(option.logoUrl)}
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      backgroundColor: theme.palette.tokens.fieldBg,
+                      color: theme.palette.tokens.textPrimary,
+                      fontSize: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {option.name[0]?.toUpperCase()}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {option.name}
+                    </Typography>
+                    {(option.contactPerson || option.industry) && (
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+                      >
+                        {[option.contactPerson, option.industry].filter(Boolean).join(' • ')}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Brand *"
+                  placeholder={brands.length === 0 ? undefined : 'Search brand by name or contact...'}
+                  helperText={
+                    brands.length === 0
+                      ? 'No client brands yet — add one from the Brands page first'
+                      : undefined
+                  }
+                  fullWidth
+                />
+              )}
+            />
 
             <TextField
               label="Campaign Name *"

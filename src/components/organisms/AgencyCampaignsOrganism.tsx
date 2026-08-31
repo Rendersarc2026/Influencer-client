@@ -48,7 +48,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
   // This agency's own brands, which is every brand it can reach. The
   // create-campaign picker is fed from the same list, and many campaigns may
   // run under one brand.
-  const { data: brandsData } = useAgencyBrands();
+  const { data: brandsData } = useAgencyBrands({ limit: 100 });
 
   const campaigns = campaignsData?.items || [];
   const totalCampaigns = campaignsData?.total ?? campaigns.length;

@@ -141,6 +141,13 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     [autoCommercialFeeNum, autoCommittedViews],
   );
 
+  const sortedPosts = useMemo(() => {
+    if (!autoResult?.posts) return [];
+    return [...autoResult.posts].sort(
+      (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
+    );
+  }, [autoResult?.posts]);
+
   const handleCopyAutoSummary = () => {
     if (!autoResult) return;
     const handleLabel = formatInstagramHandle(
@@ -867,7 +874,22 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           #
                         </TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Post</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>
+                          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                            Date
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{
+                                color: theme.palette.tokens.accentText,
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              (Latest first ↓)
+                            </Typography>
+                          </Box>
+                        </TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>
                           Likes
@@ -884,8 +906,23 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {autoResult.posts.map((post, index) => {
+                      {sortedPosts.map((post, index) => {
                         const isReel = post.mediaKind === 'REEL' || post.mediaKind === 'VIDEO';
+                        const postDate = new Date(post.takenAt);
+                        const formattedDate = !isNaN(postDate.getTime())
+                          ? postDate.toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : post.takenAt;
+                        const formattedTime = !isNaN(postDate.getTime())
+                          ? postDate.toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '';
+
                         return (
                           <TableRow key={post.shortcode ?? index} hover>
                             <TableCell
@@ -949,7 +986,21 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                             </TableCell>
 
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                              {new Date(post.takenAt).toLocaleDateString()}
+                              <Tooltip title={formattedTime ? `${formattedDate}, ${formattedTime}` : formattedDate} arrow>
+                                <Box component="span" sx={{ cursor: 'default' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                    {formattedDate}
+                                  </Typography>
+                                  {formattedTime && (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ display: 'block', color: theme.palette.tokens.textSecondary }}
+                                    >
+                                      {formattedTime}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Tooltip>
                             </TableCell>
 
                             <TableCell>
