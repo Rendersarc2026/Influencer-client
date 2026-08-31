@@ -95,6 +95,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
       header: 'Status',
       type: 'status',
       accessor: 'status',
+      statusCategory: 'CAMPAIGN_STATUS',
     },
     {
       id: 'timeline',

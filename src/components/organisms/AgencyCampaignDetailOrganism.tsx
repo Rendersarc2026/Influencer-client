@@ -127,6 +127,7 @@ const RowActions: React.FC<RowActionsProps> = ({
   };
 
   const isCampaignCompleted = campaignStatus === CampaignStatusCode.COMPLETED;
+  const isBrandApproved = row.brandStatus === BrandStatusCode.APPROVED;
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -176,8 +177,9 @@ const RowActions: React.FC<RowActionsProps> = ({
         {/* --- SECTION 1: Commercial & Workflow Progression --- */}
 
         {/* Set Price & Approve (Pending submission or revision requested) */}
-        {(row.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
-          row.rateStatus === RateStatusCode.REVISION_REQUESTED) && (
+        {!isBrandApproved &&
+          (row.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
+            row.rateStatus === RateStatusCode.REVISION_REQUESTED) && (
           <MenuItem
             onClick={() => {
               handleClose();
@@ -204,7 +206,7 @@ const RowActions: React.FC<RowActionsProps> = ({
         )}
 
         {/* Approve Rate (Submitted quote) */}
-        {row.rateStatus === RateStatusCode.SUBMITTED && (
+        {!isBrandApproved && row.rateStatus === RateStatusCode.SUBMITTED && (
           <MenuItem
             onClick={() => {
               handleClose();
@@ -231,7 +233,7 @@ const RowActions: React.FC<RowActionsProps> = ({
         )}
 
         {/* Send to Brand (Approved, not yet sent) */}
-        {row.rateStatus === RateStatusCode.AGENCY_APPROVED && !row.budgetVisible && (
+        {!isBrandApproved && row.rateStatus === RateStatusCode.AGENCY_APPROVED && !row.budgetVisible && (
           <MenuItem
             onClick={() => {
               handleClose();
@@ -258,7 +260,7 @@ const RowActions: React.FC<RowActionsProps> = ({
         )}
 
         {/* Edit Agency Margin */}
-        {row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
+        {!isBrandApproved && row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
           <MenuItem
             onClick={() => {
               handleClose();
@@ -284,8 +286,9 @@ const RowActions: React.FC<RowActionsProps> = ({
         )}
 
         {/* Request Rate Revision */}
-        {(row.rateStatus === RateStatusCode.SUBMITTED ||
-          row.rateStatus === RateStatusCode.AGENCY_APPROVED) && (
+        {!isBrandApproved &&
+          (row.rateStatus === RateStatusCode.SUBMITTED ||
+            row.rateStatus === RateStatusCode.AGENCY_APPROVED) && (
           <MenuItem
             onClick={() => {
               handleClose();
@@ -311,7 +314,7 @@ const RowActions: React.FC<RowActionsProps> = ({
         )}
 
         {/* Revert Rate Approval */}
-        {row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
+        {!isBrandApproved && row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
           <MenuItem
             onClick={() => {
               handleClose();
@@ -860,8 +863,28 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       header: 'Agency Margin',
       type: 'custom',
       accessor: 'margin',
-      render: (row: AgencyMapperResponse) =>
-        row.margin !== null ? (
+      render: (row: AgencyMapperResponse) => {
+        if (row.margin === null) {
+          return (
+            <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+              —
+            </Typography>
+          );
+        }
+
+        const isBrandApproved = row.brandStatus === BrandStatusCode.APPROVED;
+        if (isBrandApproved) {
+          return (
+            <MoneyText
+              amount={row.margin}
+              currency={row.currency}
+              variant="body2"
+              color={theme.palette.tokens.accentText}
+            />
+          );
+        }
+
+        return (
           <Tooltip title="Click to edit agency margin">
             <Box
               component="span"
@@ -892,11 +915,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               />
             </Box>
           </Tooltip>
-        ) : (
-          <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-            —
-          </Typography>
-        ),
+        );
+      },
     },
     {
       id: 'clientRate',
@@ -1507,18 +1527,19 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                       },
                     ]
                   : []),
-                {
-                  label: 'Edit Margin & Commercials',
-                  variant:
-                    isCompleted || overviewDrawerMapper.brandStatus === BrandStatusCode.APPROVED
-                      ? ('outlined' as const)
-                      : ('contained' as const),
-                  onClick: () => {
-                    const row = overviewDrawerMapper;
-                    setOverviewDrawerMapper(null);
-                    setApproveDialogMapper(row);
-                  },
-                },
+                ...(overviewDrawerMapper.brandStatus !== BrandStatusCode.APPROVED
+                  ? [
+                      {
+                        label: 'Edit Margin & Commercials',
+                        variant: isCompleted ? ('outlined' as const) : ('contained' as const),
+                        onClick: () => {
+                          const row = overviewDrawerMapper;
+                          setOverviewDrawerMapper(null);
+                          setApproveDialogMapper(row);
+                        },
+                      },
+                    ]
+                  : []),
                 {
                   label: 'Message Influencer',
                   variant: 'outlined' as const,

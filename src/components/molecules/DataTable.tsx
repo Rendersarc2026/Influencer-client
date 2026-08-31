@@ -347,15 +347,62 @@ export function DataTable<T extends Record<string, unknown>>({
           <Typography variant="body2">{displayValue}</Typography>
         );
 
-      case 'status':
-        return column.statusCategory ? (
-          <StatusChip
-            category={column.statusCategory}
-            code={typeof value === 'number' ? value : null}
-          />
-        ) : (
-          <Typography variant="body2">{displayValue}</Typography>
+      case 'status': {
+        const category =
+          column.statusCategory ||
+          (column.id === 'rateStatus'
+            ? 'RATE_STATUS'
+            : column.id === 'brandStatus'
+            ? 'BRAND_STATUS'
+            : column.id === 'paymentStatus'
+            ? 'PAYMENT_STATUS'
+            : column.id === 'campaignStatus' || column.id === 'status'
+            ? 'CAMPAIGN_STATUS'
+            : undefined);
+
+        if (category && typeof value === 'number') {
+          return <StatusChip category={category} code={value} />;
+        }
+
+        const isPositive =
+          displayValue.toUpperCase() === 'ACTIVE' ||
+          displayValue.toUpperCase() === 'APPROVED';
+        const isWarning =
+          displayValue.toUpperCase().includes('PENDING') ||
+          displayValue.toUpperCase().includes('REVISION');
+        const isNegative =
+          displayValue.toUpperCase() === 'BLOCKED' ||
+          displayValue.toUpperCase() === 'CANCELLED' ||
+          displayValue.toUpperCase() === 'REJECTED' ||
+          displayValue.toUpperCase() === 'ARCHIVED';
+
+        const palette = isPositive
+          ? { bg: theme.palette.tokens.positiveBg, color: theme.palette.tokens.positiveText }
+          : isWarning
+          ? { bg: theme.palette.tokens.warningBg, color: theme.palette.tokens.warningText }
+          : isNegative
+          ? { bg: theme.palette.tokens.negativeBg, color: theme.palette.tokens.negativeText }
+          : { bg: theme.palette.tokens.fieldBg, color: theme.palette.tokens.textSecondary };
+
+        return (
+          <Box
+            component="span"
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: `${theme.customRadii.pill}px`,
+              backgroundColor: palette.bg,
+              color: palette.color,
+              fontWeight: 600,
+              fontSize: theme.typography.caption.fontSize,
+            }}
+          >
+            {displayValue}
+          </Box>
         );
+      }
 
       case 'star': {
         const starred = column.isStarred ? column.isStarred(row) : Boolean(value);

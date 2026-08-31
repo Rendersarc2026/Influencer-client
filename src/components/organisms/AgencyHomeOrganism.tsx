@@ -57,6 +57,7 @@ export const AgencyHomeOrganism: React.FC = () => {
       header: 'Status',
       type: 'status',
       accessor: 'status',
+      statusCategory: 'CAMPAIGN_STATUS',
     },
     {
       id: 'dates',

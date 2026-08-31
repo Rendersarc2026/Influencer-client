@@ -55,6 +55,7 @@ export const BrandHomeOrganism: React.FC = () => {
       header: 'Campaign Status',
       type: 'status',
       accessor: 'status',
+      statusCategory: 'CAMPAIGN_STATUS',
     },
     {
       id: 'timeline',

@@ -560,11 +560,13 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || isNaN(marginNum) || marginNum < 0 || effectiveRate <= 0}
+            disabled={loading || autoFetching || isNaN(marginNum) || marginNum < 0 || effectiveRate <= 0}
             sx={{ minWidth: 160 }}
           >
             {loading ? (
               <CircularProgress size={20} color="inherit" />
+            ) : autoFetching ? (
+              'Fetching Meta Data...'
             ) : isAlreadyApproved ? (
               'Save Margin & Update Rate'
             ) : (

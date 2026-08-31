@@ -525,8 +525,19 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Pre-Eval'}
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || autoFetching}
+            sx={{ minWidth: 140 }}
+          >
+            {loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : autoFetching ? (
+              'Fetching Meta Data...'
+            ) : (
+              'Save Pre-Eval'
+            )}
           </Button>
         </DialogActions>
       </form>
