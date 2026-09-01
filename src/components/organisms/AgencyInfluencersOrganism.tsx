@@ -344,8 +344,10 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   // All active influencer categories defined in the database (~16 categories)
   const { data: dbCategories = [] } = useCategories(CategoryTypeCode.INFLUENCER);
 
-  // All active locations defined in the database
-  const { data: dbLocations = [] } = useLocations();
+  // Locations for the filter control, archived ones included: a creator
+  // recorded against a location that was later archived still has to be
+  // findable. The forms that write new rows use the default, offerable list.
+  const { data: dbLocations = [] } = useLocations(undefined, { includeArchived: true });
 
   const selectedCategories = useMemo(() => {
     if (!categoryFilter || categoryFilter === 'ALL') return [];

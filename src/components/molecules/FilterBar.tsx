@@ -29,6 +29,16 @@ export interface FilterSelectOption {
   label: string;
 }
 
+/** One additional single-select, for views that filter on more than one axis. */
+export interface FilterSelectConfig {
+  id: string;
+  label: string;
+  options: Array<FilterSelectOption>;
+  value?: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+}
+
 export interface FilterBarProps {
   pills?: Array<FilterPillItem>;
   activePillId?: string;
@@ -41,6 +51,8 @@ export interface FilterBarProps {
   selectedOption?: string;
   onSelectChange?: (val: string) => void;
   selectLabel?: string;
+  /** Extra single-selects rendered beside the built-in ones, in order. */
+  extraSelects?: Array<FilterSelectConfig>;
   multiSelectOptions?: Array<FilterSelectOption>;
   selectedMultiOptions?: string[];
   onMultiSelectChange?: (values: string[]) => void;
@@ -75,6 +87,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   selectedOption,
   onSelectChange,
   selectLabel,
+  extraSelects = [],
   multiSelectOptions = [],
   selectedMultiOptions = [],
   onMultiSelectChange,
@@ -112,12 +125,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     (multiSelectOptions && multiSelectOptions.length > 0) ||
     (secondMultiSelectOptions && secondMultiSelectOptions.length > 0) ||
     (priceRangeOptions && priceRangeOptions.length > 0) ||
-    (selectOptions && selectOptions.length > 0);
+    (selectOptions && selectOptions.length > 0) ||
+    extraSelects.length > 0;
 
   const activeDropdownCount =
     (selectedMultiOptions ? selectedMultiOptions.length : 0) +
     (selectedSecondMultiOptions ? selectedSecondMultiOptions.length : 0) +
     (selectedPriceRange ? 1 : 0) +
+    extraSelects.filter((sel) => Boolean(sel.value)).length +
     (selectedOption && selectOptions.length > 0 && selectedOption !== selectOptions[0]?.value ? 1 : 0);
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(activeDropdownCount > 0);
@@ -129,6 +144,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       : Boolean(searchValue) ||
         Boolean(selectedOption) ||
         Boolean(selectedPriceRange) ||
+        extraSelects.some((sel) => Boolean(sel.value)) ||
         (selectedMultiOptions && selectedMultiOptions.length > 0) ||
         (selectedSecondMultiOptions && selectedSecondMultiOptions.length > 0) ||
         (activePillIds && activePillIds.length > 0 && !activePillIds.includes('ALL')) ||
@@ -273,6 +289,32 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         ))}
       </TextField>
     ) : null;
+
+  const renderExtraSelects = (fullWidth = false) =>
+    extraSelects.map((sel) => (
+      <TextField
+        key={sel.id}
+        select
+        size="small"
+        fullWidth={fullWidth}
+        value={sel.value || ''}
+        onChange={(e) => sel.onChange(e.target.value)}
+        label={sel.label}
+        disabled={sel.disabled}
+        sx={{
+          minWidth: fullWidth ? '100%' : 180,
+          flexGrow: fullWidth ? 1 : 0,
+          backgroundColor: fullWidth ? theme.palette.tokens.surface : undefined,
+          borderRadius: `${theme.customRadii.inner}px`,
+        }}
+      >
+        {sel.options.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </TextField>
+    ));
 
   const renderSingleSelect = (fullWidth = false) =>
     selectOptions.length > 0 && onSelectChange ? (
@@ -499,6 +541,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             {renderSecondMultiSelect(false)}
             {renderPriceRange(false)}
             {renderSingleSelect(false)}
+            {renderExtraSelects(false)}
 
             {showClearButton && onClearFilters && (
               <Button
@@ -592,6 +635,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {renderSecondMultiSelect(true)}
           {renderPriceRange(true)}
           {renderSingleSelect(true)}
+          {renderExtraSelects(true)}
 
           {showClearButton && onClearFilters && (
             <Button

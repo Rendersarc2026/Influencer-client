@@ -18,7 +18,13 @@ import {
  * are the agency's alone; the server rejects them from anyone else.
  */
 
-/** The managed list: paged, filterable, and able to include retired rows. */
+/**
+ * The managed list: paged, filterable, and able to include retired rows.
+ *
+ * Opted out of the client's 10-minute default staleness, like the location list:
+ * this is the screen the taxonomy is edited from, and each filter combination is
+ * its own cache key, so a repeated search must not redisplay a pre-edit page.
+ */
 export function useCategoryList(params?: CategoryListQuery) {
   return useQuery<PaginatedResult<CategoryResponse>>({
     queryKey: ['categories', 'list', params],
@@ -29,10 +35,17 @@ export function useCategoryList(params?: CategoryListQuery) {
       return response.data;
     },
     placeholderData: keepPreviousData,
+    staleTime: 0,
   });
 }
 
-/** Active categories for a dropdown. Cached briefly — it barely changes. */
+/**
+ * Active categories for a dropdown. Cached briefly — it barely changes.
+ *
+ * The offerable set is asked for explicitly: the agency maintains this list and
+ * the server lets it read archived rows, so without this an agency user would be
+ * offered categories that were archived out of use.
+ */
 export function useCategories(type?: CategoryType, search?: string) {
   return useQuery<CategoryResponse[]>({
     queryKey: ['categories', 'options', type ?? 'all', search ?? ''],
@@ -41,6 +54,8 @@ export function useCategories(type?: CategoryType, search?: string) {
         params: {
           type,
           search: search?.trim() || undefined,
+          isActive: true,
+          isArchived: false,
         },
       });
       return response.data.items;
@@ -78,7 +93,24 @@ export function useUpdateCategory() {
   });
 }
 
-export function useDeactivateCategory() {
+/** Retire a category from the dropdowns, or bring it back. Not a delete. */
+export function useSetCategoryArchived() {
+  const queryClient = useQueryClient();
+  return useMutation<CategoryResponse, Error, { id: string; archived: boolean }>({
+    mutationFn: async ({ id, archived }) => {
+      const response = await apiClient.patch<CategoryResponse>(`/categories/${id}`, {
+        isArchived: archived,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' });
+    },
+  });
+}
+
+/** The soft delete. To retire a category from the dropdowns, archive it instead. */
+export function useDeleteCategory() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {

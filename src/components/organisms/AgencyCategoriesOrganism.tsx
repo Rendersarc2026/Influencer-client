@@ -19,7 +19,9 @@ import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
+import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded';
+import UnarchiveRoundedIcon from '@mui/icons-material/UnarchiveRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
@@ -32,7 +34,8 @@ import {
   useCategoryList,
   useCreateCategory,
   useUpdateCategory,
-  useDeactivateCategory,
+  useSetCategoryArchived,
+  useDeleteCategory,
   apiClient,
 } from '@api';
 import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
@@ -42,10 +45,16 @@ import { capitalizeWords, ExcelColumnConfig } from '@utils';
 interface CategoryRowActionsProps {
   row: CategoryResponse;
   onEdit: (row: CategoryResponse) => void;
-  onDeactivate: (row: CategoryResponse) => void;
+  onSetArchived: (row: CategoryResponse, archived: boolean) => void;
+  onDelete: (row: CategoryResponse) => void;
 }
 
-const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({ row, onEdit, onDeactivate }) => {
+const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({
+  row,
+  onEdit,
+  onSetArchived,
+  onDelete,
+}) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -128,41 +137,71 @@ const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({ row, onEdit, on
           />
         </MenuItem>
 
-        {row.isActive && (
-          <>
-            <Divider sx={{ my: 0.5 }} />
-            <MenuItem
-              onClick={() => {
-                handleClose();
-                onDeactivate(row);
-              }}
-              sx={{
-                fontSize: '13px',
-                fontWeight: 500,
-                py: 0.85,
-                px: 1.25,
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.25,
-                color: theme.palette.tokens.negative,
-                '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
-              }}
-            >
-              <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
-                <BlockRoundedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText
-                primary="Deactivate Category"
-                primaryTypographyProps={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: theme.palette.tokens.negative,
-                }}
-              />
-            </MenuItem>
-          </>
-        )}
+        {/* Archiving retires a category from the dropdowns; deleting removes it.
+            They are separate columns, so they are separate actions here too —
+            and an archived row can always come back. */}
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onSetArchived(row, !row.isArchived);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            {row.isArchived ? (
+              <UnarchiveRoundedIcon fontSize="small" />
+            ) : (
+              <ArchiveRoundedIcon fontSize="small" />
+            )}
+          </ListItemIcon>
+          <ListItemText
+            primary={row.isArchived ? 'Restore Category' : 'Archive Category'}
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        <Divider sx={{ my: 0.5 }} />
+
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onDelete(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            color: theme.palette.tokens.negative,
+            '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+            <DeleteOutlineRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Delete Category"
+            primaryTypographyProps={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: theme.palette.tokens.negative,
+            }}
+          />
+        </MenuItem>
       </Menu>
     </Box>
   );
@@ -190,7 +229,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
 
   const activeStatus =
-    statusFilter === 'ACTIVE' ? true : statusFilter === 'ARCHIVED' ? false : undefined;
+    statusFilter === 'ACTIVE' ? 'ACTIVE' : statusFilter === 'ARCHIVED' ? 'ARCHIVED' : 'ALL';
 
   const {
     data: categoriesData,
@@ -199,15 +238,22 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   } = useCategoryList({
     type: activeTab,
     search: debouncedSearch.trim() || undefined,
-    isActive: activeStatus,
+    // Selects on the archive flag; the soft delete is not a view the screen offers.
+    status: activeStatus,
     page: page + 1,
     limit: rowsPerPage,
   });
 
   // Query counts for tabs
-  const { data: brandCountData } = useCategoryList({ type: CategoryTypeCode.BRAND, page: 1, limit: 1 });
+  const { data: brandCountData } = useCategoryList({
+    type: CategoryTypeCode.BRAND,
+    status: 'ACTIVE',
+    page: 1,
+    limit: 1,
+  });
   const { data: influencerCountData } = useCategoryList({
     type: CategoryTypeCode.INFLUENCER,
+    status: 'ACTIVE',
     page: 1,
     limit: 1,
   });
@@ -220,7 +266,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
 
   const createCategoryMutation = useCreateCategory();
   const updateCategoryMutation = useUpdateCategory();
-  const deactivateCategoryMutation = useDeactivateCategory();
+  const setArchivedMutation = useSetCategoryArchived();
+  const deleteCategoryMutation = useDeleteCategory();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<CategoryResponse | null>(null);
@@ -230,7 +277,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
-  const [deactivateCategoryId, setDeactivateCategoryId] = useState<string | null>(null);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
 
   const statusPillOptions = [
     { id: 'ALL', label: 'All Statuses' },
@@ -307,21 +354,35 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     }
   };
 
-  const handleConfirmDeactivate = async () => {
-    if (!deactivateCategoryId) return;
+  const handleSetArchived = async (row: CategoryResponse, archived: boolean) => {
     try {
-      await deactivateCategoryMutation.mutateAsync(deactivateCategoryId);
-      showSuccess('Category deactivated successfully.');
-      setDeactivateCategoryId(null);
+      await setArchivedMutation.mutateAsync({ id: row.id, archived });
+      showSuccess(archived ? 'Category archived.' : 'Category restored.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate category.',
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          `Failed to ${archived ? 'archive' : 'restore'} category.`,
       );
     }
   };
 
-  const categoryToDeactivate = categories.find((c) => c.id === deactivateCategoryId);
+  const handleConfirmDelete = async () => {
+    if (!deleteCategoryId) return;
+    try {
+      await deleteCategoryMutation.mutateAsync(deleteCategoryId);
+      showSuccess('Category deleted.');
+      setDeleteCategoryId(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to delete category.',
+      );
+    }
+  };
+
+  const categoryToDelete = categories.find((c) => c.id === deleteCategoryId);
 
   const columns: Array<DataTableColumn<CategoryResponse>> = [
     {
@@ -372,7 +433,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       id: 'status',
       header: 'Status',
       type: 'status',
-      accessor: (row) => (row.isActive ? 'ACTIVE' : 'ARCHIVED'),
+      accessor: (row) => (row.isArchived ? 'ARCHIVED' : 'ACTIVE'),
     },
     {
       id: 'createdOn',
@@ -389,7 +450,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         <CategoryRowActions
           row={row}
           onEdit={handleOpenEdit}
-          onDeactivate={(r) => setDeactivateCategoryId(r.id)}
+          onSetArchived={(r, archived) => void handleSetArchived(r, archived)}
+          onDelete={(r) => setDeleteCategoryId(r.id)}
         />
       ),
     },
@@ -400,7 +462,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       params: {
         type: activeTab,
         search: debouncedSearch.trim() || undefined,
-        isActive: activeStatus,
+        status: activeStatus,
       },
     });
     return res.data.items || [];
@@ -705,14 +767,14 @@ export const AgencyCategoriesOrganism: React.FC = () => {
 
       {/* Confirm Deactivate Dialog */}
       <ConfirmDialog
-        open={Boolean(deactivateCategoryId)}
-        title="Deactivate Category?"
-        body={`Are you sure you want to deactivate "${categoryToDeactivate?.name || 'this category'}"? It will no longer appear in active dropdown selections.`}
-        confirmText="Deactivate Category"
+        open={Boolean(deleteCategoryId)}
+        title="Delete Category?"
+        body={`Delete "${categoryToDelete?.name || 'this category'}"? This removes it from the platform. To retire it from the dropdowns while keeping the brands and creators classified under it readable, archive it instead.`}
+        confirmText="Delete Category"
         variant="destructive"
-        loading={deactivateCategoryMutation.isPending}
-        onConfirm={handleConfirmDeactivate}
-        onCancel={() => setDeactivateCategoryId(null)}
+        loading={deleteCategoryMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteCategoryId(null)}
       />
 
       {/* Overview Drawer */}
@@ -725,7 +787,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
             ? 'Brand Industry Category'
             : 'Influencer Niche Category'
         }
-        badge={selectedCategory?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        badge={selectedCategory?.isArchived ? 'ARCHIVED' : 'ACTIVE'}
         sections={[
           {
             title: 'Category Information',
@@ -744,7 +806,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               },
               {
                 label: 'Status',
-                value: selectedCategory?.isActive ? 'Active (In Use)' : 'Archived / Deactivated',
+                value: selectedCategory?.isArchived
+                  ? 'Archived (not offered in dropdowns)'
+                  : 'Active (In Use)',
                 isStatus: true,
               },
               {

@@ -15,10 +15,13 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
+import Autocomplete from '@mui/material/Autocomplete';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
+import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded';
+import UnarchiveRoundedIcon from '@mui/icons-material/UnarchiveRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -29,25 +32,38 @@ import {
   useLocationList,
   useCreateLocation,
   useUpdateLocation,
-  useDeactivateLocation,
+  useSetLocationArchived,
+  useDeleteLocation,
   apiClient,
 } from '@api';
-import { LocationResponse, PaginatedResult } from '@contracts';
+import {
+  LocationResponse,
+  PaginatedResult,
+  COUNTRIES,
+  DEFAULT_COUNTRY,
+  ALL_SUBDIVISIONS,
+  subdivisionsOf,
+  isSubdivisionOf,
+} from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
 import { capitalizeWords, ExcelColumnConfig } from '@utils';
 
 /** The server accepts tier 1–5; anything outside that range is rejected. */
 const TIER_OPTIONS = [1, 2, 3, 4, 5];
 
-const DEFAULT_COUNTRY = 'India';
-
 interface LocationRowActionsProps {
   row: LocationResponse;
   onEdit: (row: LocationResponse) => void;
-  onDeactivate: (row: LocationResponse) => void;
+  onSetArchived: (row: LocationResponse, archived: boolean) => void;
+  onDelete: (row: LocationResponse) => void;
 }
 
-const LocationRowActions: React.FC<LocationRowActionsProps> = ({ row, onEdit, onDeactivate }) => {
+const LocationRowActions: React.FC<LocationRowActionsProps> = ({
+  row,
+  onEdit,
+  onSetArchived,
+  onDelete,
+}) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -130,41 +146,70 @@ const LocationRowActions: React.FC<LocationRowActionsProps> = ({ row, onEdit, on
           />
         </MenuItem>
 
-        {row.isActive && (
-          <>
-            <Divider sx={{ my: 0.5 }} />
-            <MenuItem
-              onClick={() => {
-                handleClose();
-                onDeactivate(row);
-              }}
-              sx={{
-                fontSize: '13px',
-                fontWeight: 500,
-                py: 0.85,
-                px: 1.25,
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.25,
-                color: theme.palette.tokens.negative,
-                '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
-              }}
-            >
-              <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
-                <BlockRoundedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText
-                primary="Deactivate Location"
-                primaryTypographyProps={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: theme.palette.tokens.negative,
-                }}
-              />
-            </MenuItem>
-          </>
-        )}
+        {/* Archiving retires a location from the dropdowns; deleting removes it.
+            They are separate columns, so they are separate actions here too. */}
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onSetArchived(row, !row.isArchived);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            '&:hover': { backgroundColor: theme.palette.tokens.fieldBg },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            {row.isArchived ? (
+              <UnarchiveRoundedIcon fontSize="small" />
+            ) : (
+              <ArchiveRoundedIcon fontSize="small" />
+            )}
+          </ListItemIcon>
+          <ListItemText
+            primary={row.isArchived ? 'Restore Location' : 'Archive Location'}
+            primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
+          />
+        </MenuItem>
+
+        <Divider sx={{ my: 0.5 }} />
+
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            onDelete(row);
+          }}
+          sx={{
+            fontSize: '13px',
+            fontWeight: 500,
+            py: 0.85,
+            px: 1.25,
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            color: theme.palette.tokens.negative,
+            '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+          }}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+            <DeleteOutlineRoundedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="Delete Location"
+            primaryTypographyProps={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: theme.palette.tokens.negative,
+            }}
+          />
+        </MenuItem>
       </Menu>
     </Box>
   );
@@ -191,18 +236,33 @@ export const AgencyLocationsOrganism: React.FC = () => {
   } = useViewFilters('agencyLocations');
   const debouncedSearch = useDebounce(search, 300);
 
+  // Country and state are the point of the constrained list, so they are
+  // filters here as well; they live in local state rather than the persisted
+  // view filters, which only carry one select.
+  const [countryFilter, setCountryFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
+
   const activeStatus =
-    statusFilter === 'ACTIVE' ? true : statusFilter === 'ARCHIVED' ? false : undefined;
+    statusFilter === 'ACTIVE' ? 'ACTIVE' : statusFilter === 'ARCHIVED' ? 'ARCHIVED' : 'ALL';
   const activeTier = tierFilter ? Number(tierFilter) : undefined;
+
+  const listParams = {
+    search: debouncedSearch.trim() || undefined,
+    tier: activeTier,
+    country: countryFilter || undefined,
+    state: stateFilter || undefined,
+    // Selects on the archive flag. The soft delete is not a view the screen
+    // offers: a deleted location is gone, not filed away.
+    status: activeStatus,
+    isActive: true,
+  } as const;
 
   const {
     data: locationsData,
     isLoading: locationsLoading,
     isFetching: locationsFetching,
   } = useLocationList({
-    search: debouncedSearch.trim() || undefined,
-    tier: activeTier,
-    isActive: activeStatus,
+    ...listParams,
     page: page + 1,
     limit: rowsPerPage,
   });
@@ -212,7 +272,8 @@ export const AgencyLocationsOrganism: React.FC = () => {
 
   const createLocationMutation = useCreateLocation();
   const updateLocationMutation = useUpdateLocation();
-  const deactivateLocationMutation = useDeactivateLocation();
+  const setArchivedMutation = useSetLocationArchived();
+  const deleteLocationMutation = useDeleteLocation();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<LocationResponse | null>(null);
@@ -223,7 +284,9 @@ export const AgencyLocationsOrganism: React.FC = () => {
   const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [tier, setTier] = useState('');
   const [nameError, setNameError] = useState('');
-  const [deactivateLocationId, setDeactivateLocationId] = useState<string | null>(null);
+  const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
+
+  const stateOptions = subdivisionsOf(country || DEFAULT_COUNTRY);
 
   const statusPillOptions = [
     { id: 'ALL', label: 'All Statuses' },
@@ -236,6 +299,21 @@ export const AgencyLocationsOrganism: React.FC = () => {
     ...TIER_OPTIONS.map((t) => ({ value: String(t), label: `Tier ${t}` })),
   ];
 
+  const countryFilterOptions = [
+    { value: '', label: 'All Countries' },
+    ...COUNTRIES.map((c) => ({ value: c, label: c })),
+  ];
+
+  // The state list narrows to the chosen country. With no country picked it
+  // offers every subdivision rather than nothing — a disabled control reads as
+  // broken when the obvious move is to filter by state alone.
+  const stateFilterOptions = [
+    { value: '', label: 'All States' },
+    ...(countryFilter ? subdivisionsOf(countryFilter) : ALL_SUBDIVISIONS)
+      .map((st) => ({ value: st, label: st }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ];
+
   const handleOpenCreate = () => {
     setLocationToEdit(null);
     setName('');
@@ -244,6 +322,14 @@ export const AgencyLocationsOrganism: React.FC = () => {
     setTier('');
     setNameError('');
     setDialogOpen(true);
+  };
+
+  /** Changing the country invalidates a state that does not belong to it. */
+  const handleCountryChange = (nextCountry: string) => {
+    setCountry(nextCountry);
+    if (state && !isSubdivisionOf(nextCountry, state)) {
+      setState('');
+    }
   };
 
   const handleOpenEdit = (loc: LocationResponse) => {
@@ -272,8 +358,13 @@ export const AgencyLocationsOrganism: React.FC = () => {
     }
 
     const trimmedState = state.trim();
-    const trimmedCountry = country.trim();
+    const trimmedCountry = country.trim() || DEFAULT_COUNTRY;
     const parsedTier = tier ? Number(tier) : undefined;
+
+    if (trimmedState && !isSubdivisionOf(trimmedCountry, trimmedState)) {
+      showError(`"${trimmedState}" is not a state or region of ${trimmedCountry}.`);
+      return;
+    }
 
     try {
       if (locationToEdit) {
@@ -308,21 +399,35 @@ export const AgencyLocationsOrganism: React.FC = () => {
     }
   };
 
-  const handleConfirmDeactivate = async () => {
-    if (!deactivateLocationId) return;
+  const handleSetArchived = async (row: LocationResponse, archived: boolean) => {
     try {
-      await deactivateLocationMutation.mutateAsync(deactivateLocationId);
-      showSuccess('Location deactivated successfully.');
-      setDeactivateLocationId(null);
+      await setArchivedMutation.mutateAsync({ id: row.id, archived });
+      showSuccess(archived ? 'Location archived.' : 'Location restored.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
-        errorObj?.response?.data?.message || errorObj?.message || 'Failed to deactivate location.',
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          `Failed to ${archived ? 'archive' : 'restore'} location.`,
       );
     }
   };
 
-  const locationToDeactivate = locations.find((l) => l.id === deactivateLocationId);
+  const handleConfirmDelete = async () => {
+    if (!deleteLocationId) return;
+    try {
+      await deleteLocationMutation.mutateAsync(deleteLocationId);
+      showSuccess('Location deleted.');
+      setDeleteLocationId(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to delete location.',
+      );
+    }
+  };
+
+  const locationToDelete = locations.find((l) => l.id === deleteLocationId);
 
   // Editing a location that already carries a tier cannot drop back to "no
   // tier": the update contract has no way to express clearing it.
@@ -372,7 +477,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
       id: 'status',
       header: 'Status',
       type: 'status',
-      accessor: (row) => (row.isActive ? 'ACTIVE' : 'ARCHIVED'),
+      accessor: (row) => (row.isArchived ? 'ARCHIVED' : 'ACTIVE'),
     },
     {
       id: 'createdOn',
@@ -389,7 +494,8 @@ export const AgencyLocationsOrganism: React.FC = () => {
         <LocationRowActions
           row={row}
           onEdit={handleOpenEdit}
-          onDeactivate={(r) => setDeactivateLocationId(r.id)}
+          onSetArchived={(r, archived) => void handleSetArchived(r, archived)}
+          onDelete={(r) => setDeleteLocationId(r.id)}
         />
       ),
     },
@@ -397,11 +503,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
 
   const handleExportAll = async (): Promise<LocationResponse[]> => {
     const res = await apiClient.get<PaginatedResult<LocationResponse>>('/locations', {
-      params: {
-        search: debouncedSearch.trim() || undefined,
-        tier: activeTier,
-        isActive: activeStatus,
-      },
+      params: listParams,
     });
     return res.data.items || [];
   };
@@ -455,6 +557,29 @@ export const AgencyLocationsOrganism: React.FC = () => {
           selectedOption={tierFilter}
           onSelectChange={setTierFilter}
           selectLabel="Tier"
+          extraSelects={[
+            {
+              id: 'country',
+              label: 'Country',
+              options: countryFilterOptions,
+              value: countryFilter,
+              onChange: (val) => {
+                setCountryFilter(val);
+                setStateFilter('');
+                setPage(0);
+              },
+            },
+            {
+              id: 'state',
+              label: 'State / Region',
+              options: stateFilterOptions,
+              value: stateFilter,
+              onChange: (val) => {
+                setStateFilter(val);
+                setPage(0);
+              },
+            },
+          ]}
           onExport={exportExcel}
           isExporting={isExporting}
           exportDisabled={totalLocations === 0}
@@ -530,22 +655,37 @@ export const AgencyLocationsOrganism: React.FC = () => {
                 autoFocus
               />
 
-              <TextField
-                label="State / Region"
-                value={state}
-                onChange={(e) => setState(capitalizeWords(e.target.value))}
-                placeholder="e.g. Karnataka"
+              {/* Both are picked from the shared geography list rather than typed.
+                  These two columns are filtered on, and free text turned one
+                  place into several values — "Kerala", "KERALA", "kerala". */}
+              <Autocomplete
+                options={[...COUNTRIES]}
+                value={country || DEFAULT_COUNTRY}
+                onChange={(_, newValue) => handleCountryChange(newValue || DEFAULT_COUNTRY)}
+                disableClearable
                 fullWidth
-                helperText="Optional state or region this location belongs to"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Country *"
+                    helperText="The state list follows the country you pick"
+                  />
+                )}
               />
 
-              <TextField
-                label="Country"
-                value={country}
-                onChange={(e) => setCountry(capitalizeWords(e.target.value))}
-                placeholder={DEFAULT_COUNTRY}
+              <Autocomplete
+                options={[...stateOptions]}
+                value={state || null}
+                onChange={(_, newValue) => setState(newValue || '')}
                 fullWidth
-                helperText={`Defaults to ${DEFAULT_COUNTRY} when left blank`}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="State / Region"
+                    placeholder="Search states"
+                    helperText={`Optional. ${stateOptions.length} available in ${country || DEFAULT_COUNTRY}`}
+                  />
+                )}
               />
 
               <TextField
@@ -603,14 +743,14 @@ export const AgencyLocationsOrganism: React.FC = () => {
 
       {/* Confirm Deactivate Dialog */}
       <ConfirmDialog
-        open={Boolean(deactivateLocationId)}
-        title="Deactivate Location?"
-        body={`Are you sure you want to deactivate "${locationToDeactivate?.name || 'this location'}"? It will no longer appear in active dropdown selections.`}
-        confirmText="Deactivate Location"
+        open={Boolean(deleteLocationId)}
+        title="Delete Location?"
+        body={`Delete "${locationToDelete?.name || 'this location'}"? This removes it from the platform. To retire it from the dropdowns while keeping the records that reference it readable, archive it instead.`}
+        confirmText="Delete Location"
         variant="destructive"
-        loading={deactivateLocationMutation.isPending}
-        onConfirm={handleConfirmDeactivate}
-        onCancel={() => setDeactivateLocationId(null)}
+        loading={deleteLocationMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteLocationId(null)}
       />
 
       {/* Overview Drawer */}
@@ -619,7 +759,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
         onClose={() => setSelectedLocation(null)}
         title={selectedLocation?.name || 'Location Details'}
         subtitle={selectedLocation?.state || selectedLocation?.country || 'Location'}
-        badge={selectedLocation?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        badge={selectedLocation?.isArchived ? 'ARCHIVED' : 'ACTIVE'}
         sections={[
           {
             title: 'Location Information',
@@ -633,7 +773,9 @@ export const AgencyLocationsOrganism: React.FC = () => {
               },
               {
                 label: 'Status',
-                value: selectedLocation?.isActive ? 'Active (In Use)' : 'Archived / Deactivated',
+                value: selectedLocation?.isArchived
+                  ? 'Archived (not offered in dropdowns)'
+                  : 'Active (In Use)',
                 isStatus: true,
               },
               {

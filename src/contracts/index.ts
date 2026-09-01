@@ -18,6 +18,7 @@ export * from './chat.contract';
 export * from './terms.contract';
 export * from './category.contract';
 export * from './navigation.contract';
+export * from './geography';
 export * from './location.contract';
 export * from './er-calculator.contract';
 export * from './upload.contract';

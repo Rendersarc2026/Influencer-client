@@ -18,7 +18,14 @@ import {
  * agency's alone; the server rejects them from anyone else.
  */
 
-/** The managed list: paged, filterable, and able to include retired rows. */
+/**
+ * The managed list: paged, filterable, and able to include retired rows.
+ *
+ * Opted out of the client's 10-minute default staleness. This is the screen the
+ * list is edited from, and every filter combination is its own cache key — so a
+ * repeated search would otherwise redisplay a page built before the last edit
+ * without ever asking the server.
+ */
 export function useLocationList(params?: LocationListQuery) {
   return useQuery<PaginatedResult<LocationResponse>>({
     queryKey: ['locations', 'list', params],
@@ -29,23 +36,60 @@ export function useLocationList(params?: LocationListQuery) {
       return response.data;
     },
     placeholderData: keepPreviousData,
+    staleTime: 0,
   });
 }
 
-/** Active locations for a dropdown. Cached briefly — it barely changes. */
-export function useLocations(search?: string) {
+export interface LocationOptionsOptions {
+  /**
+   * Filter controls pass this. A creator recorded against a location that was
+   * later archived still has to be findable, so the filter keeps offering it —
+   * while the forms that write new rows do not, which is what archiving is for.
+   */
+  includeArchived?: boolean;
+}
+
+/**
+ * Locations for a dropdown. Cached briefly — the list barely changes.
+ *
+ * The agency is allowed to read deleted and archived rows (it maintains the
+ * list), so this asks for the offerable set explicitly rather than relying on
+ * the server's per-role default — otherwise an agency user picks from a list
+ * carrying rows nobody should be able to choose.
+ */
+export function useLocations(search?: string, options?: LocationOptionsOptions) {
+  const includeArchived = options?.includeArchived ?? false;
+
   return useQuery<LocationResponse[]>({
-    queryKey: ['locations', 'options', search ?? ''],
+    queryKey: ['locations', 'options', search ?? '', includeArchived],
     queryFn: async () => {
       const response = await apiClient.get<PaginatedResult<LocationResponse>>('/locations', {
         params: {
           search: search?.trim() || undefined,
+          isActive: true,
+          ...(includeArchived ? {} : { isArchived: false }),
           limit: 100,
         },
       });
       return response.data.items;
     },
     staleTime: 60 * 1000,
+  });
+}
+
+/** Retire a location from the dropdowns, or bring it back. Not a delete. */
+export function useSetLocationArchived() {
+  const queryClient = useQueryClient();
+  return useMutation<LocationResponse, Error, { id: string; archived: boolean }>({
+    mutationFn: async ({ id, archived }) => {
+      const response = await apiClient.patch<LocationResponse>(`/locations/${id}`, {
+        isArchived: archived,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'], refetchType: 'all' });
+    },
   });
 }
 
@@ -78,7 +122,8 @@ export function useUpdateLocation() {
   });
 }
 
-export function useDeactivateLocation() {
+/** The soft delete. To retire a location from the dropdowns, archive it instead. */
+export function useDeleteLocation() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {

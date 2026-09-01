@@ -7,7 +7,10 @@ export const CategoryResponseSchema = z.object({
   type: CategoryTypeEnum,
   name: z.string(),
   description: z.string().nullable(),
+  /** Soft delete. `false` means the row is gone, not merely retired. */
   isActive: z.boolean(),
+  /** Retired from the dropdowns while staying readable on existing rows. */
+  isArchived: z.boolean(),
   createdOn: z.string().or(z.date()),
   updatedOn: z.string().or(z.date()),
 });
@@ -26,6 +29,7 @@ export const UpdateCategorySchema = z.object({
   name: safeText(100).optional(),
   description: safeMultilineText(500, 0).optional(),
   isActive: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
 });
 
 export type UpdateCategoryRequest = z.infer<typeof UpdateCategorySchema>;
@@ -36,10 +40,15 @@ export const CategoryListQuerySchema = z
     search: safeText(100, 0).optional(),
     q: safeText(100, 0).optional(),
     isActive: boolQuery.optional(),
+    isArchived: boolQuery.optional(),
+    /**
+     * ACTIVE / ARCHIVED select on the archive flag, not on the soft delete —
+     * a deleted category is not something the screen offers to look at.
+     */
     status: z
       .union([
-        z.enum(['ACTIVE', 'INACTIVE', 'ALL']),
-        z.enum(['active', 'inactive', 'all']).transform((v) => v.toUpperCase() as 'ACTIVE' | 'INACTIVE' | 'ALL'),
+        z.enum(['ACTIVE', 'ARCHIVED', 'ALL']),
+        z.enum(['active', 'archived', 'all']).transform((v) => v.toUpperCase() as 'ACTIVE' | 'ARCHIVED' | 'ALL'),
       ])
       .optional(),
     page: page,
@@ -50,14 +59,14 @@ export const CategoryListQuerySchema = z
     ...data,
     search: data.search || data.q,
     limit: data.limit || data.pageSize,
-    isActive:
+    isArchived:
       data.status === 'ALL'
         ? undefined
         : data.status === 'ACTIVE'
-          ? true
-          : data.status === 'INACTIVE'
-            ? false
-            : data.isActive,
+          ? false
+          : data.status === 'ARCHIVED'
+            ? true
+            : data.isArchived,
   }));
 
 export type CategoryListQuery = z.input<typeof CategoryListQuerySchema>;
