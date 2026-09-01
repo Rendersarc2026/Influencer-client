@@ -9,7 +9,6 @@ import Paper from '@mui/material/Paper';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
-import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Table from '@mui/material/Table';
@@ -40,8 +39,7 @@ import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
-import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded';
-import { useTheme, alpha } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { useAuth, useToast } from '@hooks';
@@ -51,8 +49,6 @@ import {
   safeImageUrl,
   calculateMedian,
   calculateEngagementRate,
-  detectLikelyTrialPosts,
-  describeTrialFlag,
   calculatePreEvalCpv,
   parseNumberInput,
   validateNumericInput,
@@ -151,29 +147,12 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     [autoCommercialFee],
   );
 
-  /**
-   * Everything the server sent back, newest first, each paired with its key and
-   * its resolved trial flag.
-   *
-   * The server's own flag wins where there is one. Running the same test here
-   * as a fallback is what lets the warning appear against an API older than the
-   * `trialReason` field, which otherwise reports every post as unremarkable.
-   */
+  /** Everything the server sent back, newest first, each paired with its key. */
   const candidatePosts = useMemo(() => {
     if (!autoResult?.posts) return [];
-    const sorted = [...autoResult.posts].sort(
-      (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
-    );
-    const localFlags = detectLikelyTrialPosts(sorted);
-    return sorted.map((post, index) => {
-      const trialReason = post.trialReason ?? localFlags[index] ?? null;
-      return {
-        post,
-        key: postKeyOf(post, index),
-        trialReason,
-        trialNote: trialReason ? (post.trialNote ?? describeTrialFlag(trialReason)) : null,
-      };
-    });
+    return [...autoResult.posts]
+      .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())
+      .map((post, index) => ({ post, key: postKeyOf(post, index) }));
   }, [autoResult?.posts]);
 
   const sampleSize = autoResult?.sampleSize ?? 10;
@@ -224,25 +203,6 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     };
   }, [activePosts, autoResult?.followersCount]);
 
-  /** Flagged posts still counting toward the rate — what the banner is about. */
-  const flaggedActive = useMemo(
-    () => activeEntries.filter((entry) => entry.trialReason !== null),
-    [activeEntries],
-  );
-
-  /**
-   * Flagged posts anywhere in the pool, including standby. Removing all of them
-   * is what the banner's button does — a flagged standby post would otherwise
-   * just be promoted into the sample by the removal above it.
-   */
-  const flaggedTotal = useMemo(
-    () =>
-      candidatePosts.filter(
-        (entry) => entry.trialReason !== null && !excludedPostKeys.includes(entry.key),
-      ).length,
-    [candidatePosts, excludedPostKeys],
-  );
-
   /**
    * The rows the table actually renders.
    *
@@ -274,13 +234,6 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     setExcludedPostKeys((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
-  };
-
-  const excludeAllFlagged = () => {
-    const flaggedKeys = candidatePosts
-      .filter((entry) => entry.trialReason !== null)
-      .map((entry) => entry.key);
-    setExcludedPostKeys((prev) => [...new Set([...prev, ...flaggedKeys])]);
   };
 
   const autoReelViews = useMemo(
@@ -1035,34 +988,29 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     the median of the analyzed reel views.
                   </Typography>
 
-                  {flaggedActive.length > 0 && (
-                    <Alert
-                      severity="warning"
-                      icon={<ScienceRoundedIcon fontSize="inherit" />}
-                      sx={{ mt: 2, borderRadius: `${theme.customRadii.inner}px` }}
-                      action={
-                        <Button
-                          color="inherit"
-                          size="small"
-                          onClick={excludeAllFlagged}
-                          sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
-                        >
-                          Remove all {flaggedTotal}
-                        </Button>
-                      }
+                  {/* Trial reels cannot be identified from the API — Instagram
+                      reports them as ordinary reels and hides the Reels tab
+                      behind a login — so the check is the agency's own eyes.
+                      Comparing against that tab is one click away. */}
+                  {safeUrl(`https://www.instagram.com/${autoResult.instagramHandle}/reels/`) && (
+                    <Link
+                      href={safeUrl(
+                        `https://www.instagram.com/${autoResult.instagramHandle}/reels/`,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="body2"
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mt: 1,
+                        fontWeight: 600,
+                      }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        {flaggedActive.length === 1
-                          ? '1 post looks like a trial reel'
-                          : `${flaggedActive.length} posts look like trial reels`}
-                      </Typography>
-                      <Typography variant="caption" sx={{ display: 'block', mt: 0.25 }}>
-                        Instagram trial reels go out to non-followers only, so they never appear on
-                        the creator&apos;s profile — but Meta&apos;s API still returns them, and
-                        their cold-audience numbers pull the rate down. Check the flagged rows
-                        against the profile and remove any that are not really there.
-                      </Typography>
-                    </Alert>
+                      Open @{autoResult.instagramHandle}&apos;s Reels tab to check for trial posts
+                      <OpenInNewRoundedIcon sx={{ fontSize: 14 }} />
+                    </Link>
                   )}
 
                   {excludedCount > 0 && (
@@ -1143,7 +1091,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {visiblePosts.map(({ post, key, trialReason, trialNote, position }) => {
+                      {visiblePosts.map(({ post, key, position }) => {
                         const isReel = post.mediaKind === 'REEL' || post.mediaKind === 'VIDEO';
                         const isExcluded = excludedPostKeys.includes(key);
                         const isActive = activeKeys.has(key);
@@ -1168,14 +1116,9 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                             hover
                             sx={{
                               opacity: isActive ? 1 : 0.5,
-                              // A flagged row is tinted whole rather than
-                              // carrying a banner, so the table still scans as a
-                              // table and the warning reads at a glance.
                               backgroundColor: isExcluded
                                 ? theme.palette.tokens.fieldBg
-                                : trialReason
-                                  ? alpha(theme.palette.warning.main, 0.16)
-                                  : 'transparent',
+                                : 'transparent',
                               '& td': isExcluded ? { textDecoration: 'line-through' } : undefined,
                             }}
                           >
@@ -1234,51 +1177,6 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                       View post
                                       <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
                                     </Link>
-                                  )}
-
-                                  {trialReason && (
-                                    <Tooltip
-                                      title={
-                                        <>
-                                          <Typography
-                                            variant="caption"
-                                            sx={{ display: 'block', fontWeight: 700 }}
-                                          >
-                                            This is likely a trial post
-                                          </Typography>
-                                          <Typography
-                                            variant="caption"
-                                            sx={{ display: 'block', mt: 0.5 }}
-                                          >
-                                            {trialNote}
-                                          </Typography>
-                                          <Typography
-                                            variant="caption"
-                                            sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}
-                                          >
-                                            Remove it with the button at the end of this row and the
-                                            next post moves up in its place.
-                                          </Typography>
-                                        </>
-                                      }
-                                      arrow
-                                    >
-                                      <IconButton
-                                        size="small"
-                                        aria-label={
-                                          position
-                                            ? `Why post ${position} looks like a trial post`
-                                            : 'Why this post looks like a trial post'
-                                        }
-                                        sx={{
-                                          ml: 0.5,
-                                          p: 0.25,
-                                          color: theme.palette.warning.dark,
-                                        }}
-                                      >
-                                        <InfoOutlinedIcon sx={{ fontSize: 16 }} />
-                                      </IconButton>
-                                    </Tooltip>
                                   )}
 
                                   {isExcluded && (

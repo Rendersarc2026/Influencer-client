@@ -12,14 +12,6 @@ export const CalculateERRequestSchema = z.object({
 });
 export type CalculateERRequest = z.infer<typeof CalculateERRequestSchema>;
 
-/**
- * Why a post looks like an Instagram "trial reel" — published to non-followers
- * only, so it never appears on the creator's grid but is still returned by the
- * Graph API. See detectLikelyTrialPosts on the server for the exact tests.
- */
-export const TrialFlagReasonSchema = z.enum(['NO_LIKES_DESPITE_REACH', 'COLD_AUDIENCE_OUTLIER']);
-export type TrialFlagReason = z.infer<typeof TrialFlagReasonSchema>;
-
 export const AnalyzedPostSchema = z.object({
   shortcode: z.string().nullable(),
   permalink: z.string().nullable(),
@@ -38,10 +30,6 @@ export const AnalyzedPostSchema = z.object({
    * and pull the next one up without another Instagram call.
    */
   analyzed: z.boolean(),
-  /** Null when nothing about the post is suspicious. Never auto-excluded. */
-  trialReason: TrialFlagReasonSchema.nullable(),
-  /** Plain-English rendering of trialReason, for the warning shown in the UI. */
-  trialNote: z.string().nullable(),
 });
 export type AnalyzedPost = z.infer<typeof AnalyzedPostSchema>;
 
@@ -157,4 +145,3 @@ export const CalculateInfluencerERRequestSchema = z
   .optional()
   .default({});
 export type CalculateInfluencerERRequest = z.infer<typeof CalculateInfluencerERRequestSchema>;
-
