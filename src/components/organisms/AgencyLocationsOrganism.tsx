@@ -53,6 +53,8 @@ const TIER_OPTIONS = [1, 2, 3, 4, 5];
 
 interface LocationRowActionsProps {
   row: LocationResponse;
+  /** This row's archive/restore is in flight. */
+  busy?: boolean;
   onEdit: (row: LocationResponse) => void;
   onSetArchived: (row: LocationResponse, archived: boolean) => void;
   onDelete: (row: LocationResponse) => void;
@@ -60,6 +62,7 @@ interface LocationRowActionsProps {
 
 const LocationRowActions: React.FC<LocationRowActionsProps> = ({
   row,
+  busy = false,
   onEdit,
   onSetArchived,
   onDelete,
@@ -79,7 +82,10 @@ const LocationRowActions: React.FC<LocationRowActionsProps> = ({
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-      <Tooltip title="Actions">
+      {/* The menu closes the moment an action is picked, so the trigger has to
+          carry the progress — archiving is a round trip to a remote database
+          and the row is otherwise unchanged until it lands. */}
+      <Tooltip title={busy ? 'Working…' : 'Actions'}>
         <IconButton
           size="small"
           onClick={handleOpen}
@@ -95,7 +101,14 @@ const LocationRowActions: React.FC<LocationRowActionsProps> = ({
             },
           }}
         >
-          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+          {busy ? (
+            <CircularProgress size={18} sx={{ color: theme.palette.primary.main }} />
+          ) : (
+            <MoreVertRoundedIcon
+              fontSize="small"
+              sx={{ color: theme.palette.tokens.textPrimary }}
+            />
+          )}
         </IconButton>
       </Tooltip>
 
@@ -285,6 +298,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
   const [tier, setTier] = useState('');
   const [nameError, setNameError] = useState('');
   const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const stateOptions = subdivisionsOf(country || DEFAULT_COUNTRY);
 
@@ -400,6 +414,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
   };
 
   const handleSetArchived = async (row: LocationResponse, archived: boolean) => {
+    setArchivingId(row.id);
     try {
       await setArchivedMutation.mutateAsync({ id: row.id, archived });
       showSuccess(archived ? 'Location archived.' : 'Location restored.');
@@ -410,6 +425,8 @@ export const AgencyLocationsOrganism: React.FC = () => {
           errorObj?.message ||
           `Failed to ${archived ? 'archive' : 'restore'} location.`,
       );
+    } finally {
+      setArchivingId(null);
     }
   };
 
@@ -493,6 +510,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
       render: (row) => (
         <LocationRowActions
           row={row}
+          busy={archivingId === row.id}
           onEdit={handleOpenEdit}
           onSetArchived={(r, archived) => void handleSetArchived(r, archived)}
           onDelete={(r) => setDeleteLocationId(r.id)}

@@ -44,6 +44,8 @@ import { capitalizeWords, ExcelColumnConfig } from '@utils';
 
 interface CategoryRowActionsProps {
   row: CategoryResponse;
+  /** This row's archive/restore is in flight. */
+  busy?: boolean;
   onEdit: (row: CategoryResponse) => void;
   onSetArchived: (row: CategoryResponse, archived: boolean) => void;
   onDelete: (row: CategoryResponse) => void;
@@ -51,6 +53,7 @@ interface CategoryRowActionsProps {
 
 const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({
   row,
+  busy = false,
   onEdit,
   onSetArchived,
   onDelete,
@@ -70,7 +73,10 @@ const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-      <Tooltip title="Actions">
+      {/* The menu closes the moment an action is picked, so the trigger has to
+          carry the progress — archiving is a round trip to a remote database
+          and the row is otherwise unchanged until it lands. */}
+      <Tooltip title={busy ? 'Working…' : 'Actions'}>
         <IconButton
           size="small"
           onClick={handleOpen}
@@ -86,7 +92,14 @@ const CategoryRowActions: React.FC<CategoryRowActionsProps> = ({
             },
           }}
         >
-          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+          {busy ? (
+            <CircularProgress size={18} sx={{ color: theme.palette.primary.main }} />
+          ) : (
+            <MoreVertRoundedIcon
+              fontSize="small"
+              sx={{ color: theme.palette.tokens.textPrimary }}
+            />
+          )}
         </IconButton>
       </Tooltip>
 
@@ -278,6 +291,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
   const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const statusPillOptions = [
     { id: 'ALL', label: 'All Statuses' },
@@ -355,6 +369,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   };
 
   const handleSetArchived = async (row: CategoryResponse, archived: boolean) => {
+    setArchivingId(row.id);
     try {
       await setArchivedMutation.mutateAsync({ id: row.id, archived });
       showSuccess(archived ? 'Category archived.' : 'Category restored.');
@@ -365,6 +380,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           errorObj?.message ||
           `Failed to ${archived ? 'archive' : 'restore'} category.`,
       );
+    } finally {
+      setArchivingId(null);
     }
   };
 
@@ -449,6 +466,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       render: (row) => (
         <CategoryRowActions
           row={row}
+          busy={archivingId === row.id}
           onEdit={handleOpenEdit}
           onSetArchived={(r, archived) => void handleSetArchived(r, archived)}
           onDelete={(r) => setDeleteCategoryId(r.id)}
