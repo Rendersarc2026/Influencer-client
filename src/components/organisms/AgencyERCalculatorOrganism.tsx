@@ -9,6 +9,8 @@ import Paper from '@mui/material/Paper';
 import InputAdornment from '@mui/material/InputAdornment';
 import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
 import Link from '@mui/material/Link';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -36,7 +38,10 @@ import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { useTheme } from '@mui/material/styles';
+import RemoveCircleOutlineRoundedIcon from '@mui/icons-material/RemoveCircleOutlineRounded';
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
+import ScienceRoundedIcon from '@mui/icons-material/ScienceRounded';
+import { useTheme, alpha } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { useAuth, useToast } from '@hooks';
@@ -45,15 +50,29 @@ import {
   safeUrl,
   safeImageUrl,
   calculateMedian,
+  calculateEngagementRate,
+  detectLikelyTrialPosts,
+  describeTrialFlag,
   calculatePreEvalCpv,
   parseNumberInput,
   validateNumericInput,
   cleanInstagramHandle,
   formatInstagramHandle,
 } from '@utils';
-import type { CalculateERResponse } from '@contracts';
+import type { AnalyzedPost, CalculateERResponse } from '@contracts';
 
 type ERResult = CalculateERResponse;
+
+/**
+ * Stable identity for a post row.
+ *
+ * Exclusions are held by key rather than by index, so striking a post out —
+ * which re-slices the sample and pulls a standby post up — never shifts the
+ * exclusion onto a different post.
+ */
+function postKeyOf(post: AnalyzedPost, index: number): string {
+  return post.shortcode ?? post.permalink ?? `${post.takenAt}#${index}`;
+}
 
 export const AgencyERCalculatorOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -93,6 +112,15 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   const [autoResult, setAutoResult] = useState<ERResult | null>(null);
   /** Server error code from the last failed lookup, e.g. NOT_PROFESSIONAL_ACCOUNT. */
   const [autoErrorCode, setAutoErrorCode] = useState<string | null>(null);
+  /**
+   * Posts the agency has struck out of the sample by hand, by post key.
+   *
+   * The usual reason is an Instagram trial reel: published to non-followers
+   * only, so it never appears on the creator's grid, but Meta's API returns it
+   * anyway and it drags the rate down with reach the creator's own audience
+   * never saw. Nothing is excluded automatically — the server only flags.
+   */
+  const [excludedPostKeys, setExcludedPostKeys] = useState<string[]>([]);
 
   // When initialInfluencerId arrives from URL query param
   useEffect(() => {
@@ -123,13 +151,146 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     [autoCommercialFee],
   );
 
-  const autoReelViews = useMemo(() => {
+  /**
+   * Everything the server sent back, newest first, each paired with its key and
+   * its resolved trial flag.
+   *
+   * The server's own flag wins where there is one. Running the same test here
+   * as a fallback is what lets the warning appear against an API older than the
+   * `trialReason` field, which otherwise reports every post as unremarkable.
+   */
+  const candidatePosts = useMemo(() => {
     if (!autoResult?.posts) return [];
-    return autoResult.posts
-      .filter((p) => p.mediaKind === 'REEL' || p.mediaKind === 'VIDEO')
-      .map((p) => p.views)
-      .filter((v): v is number => v !== null && v > 0);
-  }, [autoResult]);
+    const sorted = [...autoResult.posts].sort(
+      (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
+    );
+    const localFlags = detectLikelyTrialPosts(sorted);
+    return sorted.map((post, index) => {
+      const trialReason = post.trialReason ?? localFlags[index] ?? null;
+      return {
+        post,
+        key: postKeyOf(post, index),
+        trialReason,
+        trialNote: trialReason ? (post.trialNote ?? describeTrialFlag(trialReason)) : null,
+      };
+    });
+  }, [autoResult?.posts]);
+
+  const sampleSize = autoResult?.sampleSize ?? 10;
+
+  /**
+   * The posts currently feeding every figure on the page: the newest
+   * `sampleSize` candidates that have not been struck out. Excluding one
+   * therefore promotes the next standby post into the sample rather than
+   * shrinking it — the sample stays ten posts wide as long as the pool lasts.
+   */
+  const activeKeys = useMemo(() => {
+    const excluded = new Set(excludedPostKeys);
+    return new Set(
+      candidatePosts
+        .filter((entry) => !excluded.has(entry.key))
+        .slice(0, sampleSize)
+        .map((entry) => entry.key),
+    );
+  }, [candidatePosts, excludedPostKeys, sampleSize]);
+
+  const activeEntries = useMemo(
+    () => candidatePosts.filter((entry) => activeKeys.has(entry.key)),
+    [candidatePosts, activeKeys],
+  );
+
+  const activePosts = useMemo(() => activeEntries.map((entry) => entry.post), [activeEntries]);
+
+  /**
+   * The headline numbers, recomputed in the browser from the active sample.
+   *
+   * The server's own figures cover its default ten, so once a post is struck
+   * out they no longer describe what is on screen. Same formula either way.
+   */
+  const liveMetrics = useMemo(() => {
+    const followers = autoResult?.followersCount ?? 0;
+    const count = activePosts.length;
+    const totalLikes = activePosts.reduce((sum, post) => sum + post.likes, 0);
+    const totalComments = activePosts.reduce((sum, post) => sum + post.comments, 0);
+    return {
+      count,
+      totalLikes,
+      totalComments,
+      avgLikes: count > 0 ? Math.round(totalLikes / count) : 0,
+      avgComments: count > 0 ? Math.round(totalComments / count) : 0,
+      engagementRate: Number(
+        calculateEngagementRate(totalLikes, totalComments, count, followers).toFixed(2),
+      ),
+    };
+  }, [activePosts, autoResult?.followersCount]);
+
+  /** Flagged posts still counting toward the rate — what the banner is about. */
+  const flaggedActive = useMemo(
+    () => activeEntries.filter((entry) => entry.trialReason !== null),
+    [activeEntries],
+  );
+
+  /**
+   * Flagged posts anywhere in the pool, including standby. Removing all of them
+   * is what the banner's button does — a flagged standby post would otherwise
+   * just be promoted into the sample by the removal above it.
+   */
+  const flaggedTotal = useMemo(
+    () =>
+      candidatePosts.filter(
+        (entry) => entry.trialReason !== null && !excludedPostKeys.includes(entry.key),
+      ).length,
+    [candidatePosts, excludedPostKeys],
+  );
+
+  /**
+   * The rows the table actually renders.
+   *
+   * Standby posts stay out of sight — they are backfill, not part of the
+   * reading, and listing all 30 buried the ten that matter. A struck-out post
+   * keeps its row so it can be put back; without it, removal would only be
+   * undoable by refetching.
+   */
+  const visiblePosts = useMemo(() => {
+    // `position` numbers the counted posts 1..N without gaps. A removed row
+    // still shows, so it can be put back, but it does not consume a number —
+    // otherwise removing the third post leaves the list running to eleven.
+    let position = 0;
+    return candidatePosts
+      .filter((entry) => activeKeys.has(entry.key) || excludedPostKeys.includes(entry.key))
+      .map((entry) => {
+        const isActive = activeKeys.has(entry.key);
+        if (isActive) position += 1;
+        return { ...entry, position: isActive ? position : null };
+      });
+  }, [candidatePosts, activeKeys, excludedPostKeys]);
+
+  const excludedCount = useMemo(
+    () => candidatePosts.filter((entry) => excludedPostKeys.includes(entry.key)).length,
+    [candidatePosts, excludedPostKeys],
+  );
+
+  const togglePostExcluded = (key: string) => {
+    setExcludedPostKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  };
+
+  const excludeAllFlagged = () => {
+    const flaggedKeys = candidatePosts
+      .filter((entry) => entry.trialReason !== null)
+      .map((entry) => entry.key);
+    setExcludedPostKeys((prev) => [...new Set([...prev, ...flaggedKeys])]);
+  };
+
+  const autoReelViews = useMemo(
+    () =>
+      activePosts
+        .filter((p) => p.mediaKind === 'REEL' || p.mediaKind === 'VIDEO')
+        .map((p) => p.views)
+        .filter((v): v is number => v !== null && v > 0),
+    [activePosts],
+  );
 
   const autoCommittedViews = useMemo(() => {
     if (autoReelViews.length > 0) {
@@ -143,13 +304,6 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
     [autoCommercialFeeNum, autoCommittedViews],
   );
 
-  const sortedPosts = useMemo(() => {
-    if (!autoResult?.posts) return [];
-    return [...autoResult.posts].sort(
-      (a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime(),
-    );
-  }, [autoResult?.posts]);
-
   const handleCopyAutoSummary = () => {
     if (!autoResult) return;
     const handleLabel = formatInstagramHandle(
@@ -157,23 +311,27 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
       'Influencer',
     );
 
-    const postsCount = autoResult.posts?.length || autoResult.postsCount || 10;
-    const totalLikes = autoResult.avgLikes ? autoResult.avgLikes * postsCount : 0;
-    const totalComments = autoResult.avgComments ? autoResult.avgComments * postsCount : 0;
+    const postsCount = liveMetrics.count;
+    const totalLikes = liveMetrics.totalLikes;
+    const totalComments = liveMetrics.totalComments;
+    const excludedNote =
+      excludedCount > 0
+        ? `\n• Posts excluded by hand: ${excludedCount} (suspected trial reels)`
+        : '';
 
     const reportText = `📊 Influencer Evaluation Report: ${handleLabel}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Followers: ${autoResult.followersCount ? autoResult.followersCount.toLocaleString() : 'Not specified'}
-• Analyzed Posts: ${postsCount}
-• Total Likes: ${totalLikes.toLocaleString()} (Avg: ${autoResult.avgLikes?.toLocaleString() ?? 0}/post)
-• Total Comments: ${totalComments.toLocaleString()} (Avg: ${autoResult.avgComments?.toLocaleString() ?? 0}/post)
-• Engagement Rate (ER%): ${autoResult.engagementRate.toFixed(2)}%
+• Analyzed Posts: ${postsCount}${excludedNote}
+• Total Likes: ${totalLikes.toLocaleString()} (Avg: ${liveMetrics.avgLikes.toLocaleString()}/post)
+• Total Comments: ${totalComments.toLocaleString()} (Avg: ${liveMetrics.avgComments.toLocaleString()}/post)
+• Engagement Rate (ER%): ${liveMetrics.engagementRate.toFixed(2)}%
 • Pre-Eval Committed Views: ${autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : 'Not specified'}
 • Reel Commercial Fee: ${autoCommercialFeeNum > 0 ? `₹${autoCommercialFeeNum.toLocaleString()}` : 'Not specified'}
 • Pre-Eval CPV: ${autoCpv !== null ? `₹${autoCpv.toFixed(2)} / view` : 'Not specified'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Formula: ER% = [(Likes + Comments) ÷ Posts] ÷ Followers × 100
-Formula: Committed Views = Median of Latest 10 Reel Views
+Formula: Committed Views = Median of Analyzed Reel Views
 Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
 
     navigator.clipboard.writeText(reportText);
@@ -191,6 +349,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
     setAutoLoading(true);
     setAutoResult(null);
     setAutoErrorCode(null);
+    setExcludedPostKeys([]);
 
     try {
       const res = await apiClient.post<ERResult>('/er-calculator', {
@@ -240,7 +399,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       return;
     }
 
-    const erValue = autoResult?.engagementRate || 0;
+    const erValue = liveMetrics.engagementRate;
     if (erValue <= 0) {
       showError('Please fetch a profile to calculate ER% before assigning.');
       return;
@@ -258,12 +417,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         followersCount: followers,
         commercialFee: commFee,
         avgViews: committedViews,
-        avgLikes: autoResult?.avgLikes ?? undefined,
-        avgComments: autoResult?.avgComments ?? undefined,
-        postsCount: autoResult?.postsCount ?? undefined,
+        avgLikes: liveMetrics.avgLikes,
+        avgComments: liveMetrics.avgComments,
+        postsCount: liveMetrics.count,
         instagramHandle: handle || undefined,
         source: autoResult?.source || 'META_GRAPH_BUSINESS_DISCOVERY',
-        rawResponse: { autoResult },
+        // Record what was actually counted, not just what Instagram returned,
+        // so an assigned rate can be traced back to the exact sample.
+        rawResponse: { autoResult, excludedPostKeys, analyzedPosts: activePosts },
       });
 
       if (targetInfluencerId !== selectedInfluencerId) {
@@ -648,15 +809,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         openAssignDialog();
                       }
                     }}
-                    disabled={
-                      (autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending
-                    }
+                    disabled={liveMetrics.engagementRate <= 0 || assignERMutation.isPending}
                     sx={{ height: 40, fontWeight: 700 }}
                   >
                     {assignERMutation.isPending
                       ? 'Assigning...'
                       : selectedInfluencer
-                        ? `Assign ER% (${autoResult?.engagementRate || 0}%)`
+                        ? `Assign ER% (${liveMetrics.engagementRate.toFixed(2)}%)`
                         : 'Assign to Influencer'}
                   </Button>
                 </Box>
@@ -761,10 +920,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       my: 1,
                     }}
                   >
-                    {autoResult.engagementRate.toFixed(2)}%
+                    {liveMetrics.engagementRate.toFixed(2)}%
                   </Typography>
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    [(Likes + Comments) ÷ {autoResult.posts.length} Posts] ÷ Followers × 100
+                    [(Likes + Comments) ÷ {liveMetrics.count} Posts] ÷ Followers × 100
                   </Typography>
                   {autoResult.likesHidden && (
                     <Typography
@@ -813,7 +972,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       : '—'}
                   </Typography>
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Median of latest {autoReelViews.length} reel views
+                    Median of {autoReelViews.length} analyzed reel views
                   </Typography>
                 </Paper>
               </Grid>
@@ -868,12 +1027,77 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               >
                 <Box sx={{ p: 3, pb: 2 }}>
                   <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    Analyzed Posts ({autoResult.posts.length})
+                    Analyzed Posts ({liveMetrics.count})
                   </Typography>
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-                    Latest {autoResult.posts.length} posts retrieved by publish date from official Meta API. Committed
-                    views is calculated from the median of reel views.
+                    The newest {sampleSize} posts by publish date, out of {candidatePosts.length}{' '}
+                    fetched. Remove one and the next post moves up in its place. Committed views is
+                    the median of the analyzed reel views.
                   </Typography>
+
+                  {flaggedActive.length > 0 && (
+                    <Alert
+                      severity="warning"
+                      icon={<ScienceRoundedIcon fontSize="inherit" />}
+                      sx={{ mt: 2, borderRadius: `${theme.customRadii.inner}px` }}
+                      action={
+                        <Button
+                          color="inherit"
+                          size="small"
+                          onClick={excludeAllFlagged}
+                          sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                        >
+                          Remove all {flaggedTotal}
+                        </Button>
+                      }
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {flaggedActive.length === 1
+                          ? '1 post looks like a trial reel'
+                          : `${flaggedActive.length} posts look like trial reels`}
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 0.25 }}>
+                        Instagram trial reels go out to non-followers only, so they never appear on
+                        the creator&apos;s profile — but Meta&apos;s API still returns them, and
+                        their cold-audience numbers pull the rate down. Check the flagged rows
+                        against the profile and remove any that are not really there.
+                      </Typography>
+                    </Alert>
+                  )}
+
+                  {excludedCount > 0 && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block',
+                        mt: 1.5,
+                        fontWeight: 600,
+                        color: theme.palette.tokens.textSecondary,
+                      }}
+                    >
+                      {excludedCount} post{excludedCount === 1 ? '' : 's'} removed by hand and
+                      replaced from the standby pool — every figure above is recalculated without
+                      them.
+                    </Typography>
+                  )}
+
+                  {/* Removals outrun the pool once the standby posts are used
+                      up. Saying so beats letting the sample quietly shrink. */}
+                  {liveMetrics.count < sampleSize && candidatePosts.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block',
+                        mt: 1,
+                        fontWeight: 700,
+                        color: theme.palette.warning.dark,
+                      }}
+                    >
+                      No standby posts left to pull in — the rate is now based on{' '}
+                      {liveMetrics.count} post{liveMetrics.count === 1 ? '' : 's'}, not {sampleSize}.
+                      Use Refresh Live to fetch more.
+                    </Typography>
+                  )}
                 </Box>
 
                 <TableContainer sx={{ overflowX: 'auto' }}>
@@ -913,11 +1137,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         <TableCell align="right" sx={{ fontWeight: 700 }}>
                           ER %
                         </TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700, width: 64 }}>
+                          Action
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {sortedPosts.map((post, index) => {
+                      {visiblePosts.map(({ post, key, trialReason, trialNote, position }) => {
                         const isReel = post.mediaKind === 'REEL' || post.mediaKind === 'VIDEO';
+                        const isExcluded = excludedPostKeys.includes(key);
+                        const isActive = activeKeys.has(key);
                         const postDate = new Date(post.takenAt);
                         const formattedDate = !isNaN(postDate.getTime())
                           ? postDate.toLocaleDateString('en-IN', {
@@ -934,12 +1163,27 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           : '';
 
                         return (
-                          <TableRow key={post.shortcode ?? index} hover>
+                          <TableRow
+                            key={key}
+                            hover
+                            sx={{
+                              opacity: isActive ? 1 : 0.5,
+                              // A flagged row is tinted whole rather than
+                              // carrying a banner, so the table still scans as a
+                              // table and the warning reads at a glance.
+                              backgroundColor: isExcluded
+                                ? theme.palette.tokens.fieldBg
+                                : trialReason
+                                  ? alpha(theme.palette.warning.main, 0.16)
+                                  : 'transparent',
+                              '& td': isExcluded ? { textDecoration: 'line-through' } : undefined,
+                            }}
+                          >
                             <TableCell
                               align="center"
                               sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary }}
                             >
-                              {index + 1}
+                              {position ?? '—'}
                             </TableCell>
                             <TableCell sx={{ maxWidth: 320 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -991,6 +1235,62 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                       <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
                                     </Link>
                                   )}
+
+                                  {trialReason && (
+                                    <Tooltip
+                                      title={
+                                        <>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{ display: 'block', fontWeight: 700 }}
+                                          >
+                                            This is likely a trial post
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{ display: 'block', mt: 0.5 }}
+                                          >
+                                            {trialNote}
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}
+                                          >
+                                            Remove it with the button at the end of this row and the
+                                            next post moves up in its place.
+                                          </Typography>
+                                        </>
+                                      }
+                                      arrow
+                                    >
+                                      <IconButton
+                                        size="small"
+                                        aria-label={
+                                          position
+                                            ? `Why post ${position} looks like a trial post`
+                                            : 'Why this post looks like a trial post'
+                                        }
+                                        sx={{
+                                          ml: 0.5,
+                                          p: 0.25,
+                                          color: theme.palette.warning.dark,
+                                        }}
+                                      >
+                                        <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+
+                                  {isExcluded && (
+                                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.75 }}>
+                                      <Chip
+                                        label="Removed"
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ height: 22, fontSize: '0.7rem' }}
+                                      />
+                                    </Box>
+                                  )}
                                 </Box>
                               </Box>
                             </TableCell>
@@ -1039,6 +1339,38 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               sx={{ fontWeight: 600, color: theme.palette.tokens.accentText }}
                             >
                               {post.engagementRate.toFixed(2)}%
+                            </TableCell>
+
+                            <TableCell align="center">
+                              <Tooltip
+                                title={
+                                  isExcluded
+                                    ? 'Put this post back in the pool'
+                                    : 'Remove this post — the next one moves up in its place'
+                                }
+                                arrow
+                              >
+                                <IconButton
+                                  size="small"
+                                  onClick={() => togglePostExcluded(key)}
+                                  aria-label={
+                                    isExcluded
+                                      ? 'Put this removed post back in the pool'
+                                      : `Remove post ${position}`
+                                  }
+                                  sx={{
+                                    color: isExcluded
+                                      ? theme.palette.tokens.accentText
+                                      : theme.palette.tokens.textSecondary,
+                                  }}
+                                >
+                                  {isExcluded ? (
+                                    <UndoRoundedIcon fontSize="small" />
+                                  ) : (
+                                    <RemoveCircleOutlineRoundedIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </Tooltip>
                             </TableCell>
                           </TableRow>
                         );
@@ -1109,10 +1441,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 {`📊 Influencer Evaluation Report: ${formatInstagramHandle(autoHandle || autoResult.instagramHandle, 'Influencer')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Followers: ${autoResult.followersCount ? autoResult.followersCount.toLocaleString() : 'Not specified'}
-• Analyzed Posts / Reels: ${autoResult.posts.length}
-• Total Likes: ${(autoResult.avgLikes ? autoResult.avgLikes * autoResult.posts.length : 0).toLocaleString()} (Avg: ${autoResult.avgLikes?.toLocaleString() ?? 0}/post)
-• Total Comments: ${(autoResult.avgComments ? autoResult.avgComments * autoResult.posts.length : 0).toLocaleString()} (Avg: ${autoResult.avgComments?.toLocaleString() ?? 0}/post)
-• Engagement Rate (ER%): ${autoResult.engagementRate.toFixed(2)}%
+• Analyzed Posts / Reels: ${liveMetrics.count}${excludedCount > 0 ? ` (${excludedCount} excluded by hand)` : ''}
+• Total Likes: ${liveMetrics.totalLikes.toLocaleString()} (Avg: ${liveMetrics.avgLikes.toLocaleString()}/post)
+• Total Comments: ${liveMetrics.totalComments.toLocaleString()} (Avg: ${liveMetrics.avgComments.toLocaleString()}/post)
+• Engagement Rate (ER%): ${liveMetrics.engagementRate.toFixed(2)}%
 • Pre-Eval Committed Views: ${autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : 'Not specified'}
 • Reel Commercial Fee: ${autoCommercialFeeNum > 0 ? `₹${autoCommercialFeeNum.toLocaleString()}` : 'Not specified'}
 • Pre-Eval CPV: ${autoCpv !== null ? `₹${autoCpv.toFixed(2)} / view` : 'Not specified'}`}
@@ -1182,7 +1514,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                           ? `${selectedInfluencer.followers.toLocaleString()} followers`
                           : 'Followers pending'}
                         {' • '}Ready to assign calculated ER of{' '}
-                        {autoResult.engagementRate.toFixed(2)}%
+                        {liveMetrics.engagementRate.toFixed(2)}%
                       </Typography>
                     </Box>
                   </Box>
@@ -1212,9 +1544,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         )
                       }
                       onClick={() => void handleAssignToInfluencer()}
-                      disabled={
-                        (autoResult?.engagementRate || 0) <= 0 || assignERMutation.isPending
-                      }
+                      disabled={liveMetrics.engagementRate <= 0 || assignERMutation.isPending}
                       sx={{ fontWeight: 700 }}
                     >
                       {assignERMutation.isPending
@@ -1251,7 +1581,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         sx={{ color: theme.palette.tokens.textSecondary }}
                       >
                         Assign this calculated Engagement Rate (
-                        {autoResult.engagementRate.toFixed(2)}%) to an influencer in your roster.
+                        {liveMetrics.engagementRate.toFixed(2)}%) to an influencer in your roster.
                       </Typography>
                     </Box>
                   </Box>
@@ -1260,7 +1590,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     size="small"
                     startIcon={<PeopleAltRoundedIcon />}
                     onClick={openAssignDialog}
-                    disabled={(autoResult?.engagementRate || 0) <= 0}
+                    disabled={liveMetrics.engagementRate <= 0}
                     sx={{ fontWeight: 700 }}
                   >
                     Select Influencer & Assign ER
@@ -1347,7 +1677,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 >
                   Calculated Metrics (Official Meta API)
                 </Typography>
-                {getErTierBadge(autoResult?.engagementRate || 0)}
+                {getErTierBadge(liveMetrics.engagementRate)}
               </Box>
 
               <Grid container spacing={1.5}>
@@ -1362,7 +1692,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     variant="subtitle1"
                     sx={{ fontWeight: 800, color: theme.palette.tokens.accentText }}
                   >
-                    {autoResult?.engagementRate?.toFixed(2) || '0.00'}%
+                    {liveMetrics.engagementRate.toFixed(2)}%
                   </Typography>
                 </Grid>
 
@@ -1532,7 +1862,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
             onClick={() => void handleAssignToInfluencer(assignDialogTargetId)}
             disabled={
               !assignDialogTargetId ||
-              (autoResult?.engagementRate || 0) <= 0 ||
+              liveMetrics.engagementRate <= 0 ||
               assignERMutation.isPending
             }
             startIcon={

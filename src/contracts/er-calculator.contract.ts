@@ -12,6 +12,14 @@ export const CalculateERRequestSchema = z.object({
 });
 export type CalculateERRequest = z.infer<typeof CalculateERRequestSchema>;
 
+/**
+ * Why a post looks like an Instagram "trial reel" — published to non-followers
+ * only, so it never appears on the creator's grid but is still returned by the
+ * Graph API. See detectLikelyTrialPosts on the server for the exact tests.
+ */
+export const TrialFlagReasonSchema = z.enum(['NO_LIKES_DESPITE_REACH', 'COLD_AUDIENCE_OUTLIER']);
+export type TrialFlagReason = z.infer<typeof TrialFlagReasonSchema>;
+
 export const AnalyzedPostSchema = z.object({
   shortcode: z.string().nullable(),
   permalink: z.string().nullable(),
@@ -24,6 +32,16 @@ export const AnalyzedPostSchema = z.object({
   views: z.number().nullable(),
   /** This single post's (likes + comments) / followers * 100. */
   engagementRate: z.number(),
+  /**
+   * True for the posts the returned averages were computed from. The rest of
+   * the array are standby candidates, returned so the UI can strike a post out
+   * and pull the next one up without another Instagram call.
+   */
+  analyzed: z.boolean(),
+  /** Null when nothing about the post is suspicious. Never auto-excluded. */
+  trialReason: TrialFlagReasonSchema.nullable(),
+  /** Plain-English rendering of trialReason, for the warning shown in the UI. */
+  trialNote: z.string().nullable(),
 });
 export type AnalyzedPost = z.infer<typeof AnalyzedPostSchema>;
 
@@ -54,8 +72,14 @@ export const CalculateERResponseSchema = z.object({
   source: z.string(),
   fetchedAt: z.string(),
   profile: ERProfileSchema.nullable(),
-  /** The exact posts the averages were computed from, newest first. */
+  /**
+   * The candidate pool, newest first. The first `sampleSize` entries with
+   * `analyzed: true` are what the averages above were computed from; the
+   * remainder are backups for posts the agency strikes out by hand.
+   */
   posts: z.array(AnalyzedPostSchema),
+  /** How many posts the engagement rate is meant to be based on. */
+  sampleSize: z.number(),
 });
 export type CalculateERResponse = z.infer<typeof CalculateERResponseSchema>;
 
