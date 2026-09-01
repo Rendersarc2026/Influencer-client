@@ -67,7 +67,9 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   const initialInfluencerId = searchParams.get('influencerId') || '';
 
   // Agency Roster Query
-  const { data: influencersData } = useAgencyInfluencers({ limit: 100 });
+  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers({
+    limit: 100,
+  });
   const influencersList = useMemo(() => influencersData?.items || [], [influencersData]);
 
   // Selected Influencer from Roster
@@ -360,6 +362,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
             <Grid size={{ xs: 12, md: 4 }}>
               <Autocomplete
                 options={influencersList}
+                loading={influencersLoading}
+                loadingText="Loading roster…"
                 getOptionLabel={(option) =>
                   option.instagram ? `${option.name} (@${option.instagram})` : option.name
                 }
@@ -427,6 +431,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                               />
                             </InputAdornment>
                             {params.InputProps.startAdornment}
+                          </>
+                        ),
+                        endAdornment: (
+                          <>
+                            {influencersLoading && <CircularProgress size={16} sx={{ mr: 1 }} />}
+                            {params.InputProps.endAdornment}
                           </>
                         ),
                       },

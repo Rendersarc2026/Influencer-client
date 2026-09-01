@@ -17,6 +17,7 @@ import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
+import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useTheme } from '@mui/material/styles';
@@ -44,6 +45,10 @@ const getNavIcon = (iconName: string): ReactNode => {
       return <StorefrontRoundedIcon fontSize="small" />;
     case 'Category':
       return <CategoryRoundedIcon fontSize="small" />;
+    // The nav table is the source of truth and has carried both spellings.
+    case 'Place':
+    case 'LocationOn':
+      return <PlaceRoundedIcon fontSize="small" />;
     case 'Campaign':
       return <CampaignRoundedIcon fontSize="small" />;
     case 'People':

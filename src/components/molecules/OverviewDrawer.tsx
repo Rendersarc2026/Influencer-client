@@ -6,6 +6,7 @@ import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
@@ -57,6 +58,8 @@ export interface OverviewAction {
   variant?: 'contained' | 'outlined' | 'text';
   color?: 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
   disabled?: boolean;
+  /** Swaps the icon for a spinner and blocks re-entry while the work is in flight. */
+  loading?: boolean;
 }
 
 export interface OverviewDrawerProps {
@@ -475,8 +478,10 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               key={aIdx}
               variant={act.variant || (aIdx === 0 ? 'contained' : 'outlined')}
               color={act.color || 'primary'}
-              startIcon={act.icon}
-              disabled={act.disabled}
+              startIcon={
+                act.loading ? <CircularProgress size={16} color="inherit" /> : act.icon
+              }
+              disabled={act.disabled || act.loading}
               onClick={act.onClick}
               sx={{
                 flex: {

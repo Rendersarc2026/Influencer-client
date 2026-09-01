@@ -12,6 +12,7 @@ export interface ViewFilterState {
 export type PredefinedFilterViewKey =
   | 'agencyUsers'
   | 'agencyCategories'
+  | 'agencyLocations'
   | 'agencyCampaigns'
   | 'agencyBrands'
   | 'agencyReports'
@@ -41,6 +42,7 @@ export interface FiltersState {
 const initialViews: Record<PredefinedFilterViewKey, ViewFilterState> = {
   agencyUsers: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyCategories: { ...DEFAULT_VIEW_FILTER_STATE },
+  agencyLocations: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyCampaigns: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyBrands: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyReports: { ...DEFAULT_VIEW_FILTER_STATE },

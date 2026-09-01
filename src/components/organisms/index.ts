@@ -2,6 +2,7 @@ export * from './SidebarRail';
 export * from './TopBar';
 export * from './StyleGuideOrganism';
 export * from './AgencyCategoriesOrganism';
+export * from './AgencyLocationsOrganism';
 export * from './AgencyUsersOrganism';
 export * from './AgencyHomeOrganism';
 export * from './AgencyBrandsOrganism';

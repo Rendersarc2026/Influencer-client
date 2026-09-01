@@ -11,6 +11,7 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
+import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
@@ -81,7 +82,10 @@ const InfluencerRowActions: React.FC<InfluencerRowActionsProps> = ({
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-      <Tooltip title="Actions">
+      {/* The menu closes the moment an action is picked, so the spinner it
+          carries is never actually seen. The trigger itself has to report the
+          work — a sync is a Meta round trip and takes a few seconds. */}
+      <Tooltip title={syncing ? 'Syncing Instagram data…' : 'Actions'}>
         <IconButton
           size="small"
           onClick={handleOpen}
@@ -97,7 +101,14 @@ const InfluencerRowActions: React.FC<InfluencerRowActionsProps> = ({
             },
           }}
         >
-          <MoreVertRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.textPrimary }} />
+          {syncing ? (
+            <CircularProgress size={18} sx={{ color: theme.palette.tokens.purpleText }} />
+          ) : (
+            <MoreVertRoundedIcon
+              fontSize="small"
+              sx={{ color: theme.palette.tokens.textPrimary }}
+            />
+          )}
         </IconButton>
       </Tooltip>
 
@@ -983,7 +994,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                       ? 'Syncing Instagram...'
                       : 'Sync Instagram Data',
                   variant: 'contained',
-                  disabled: syncingId === selectedInfluencer.id,
+                  loading: syncingId === selectedInfluencer.id,
                   onClick: () => {
                     void handleRefetchInstagramDetails(selectedInfluencer);
                   },

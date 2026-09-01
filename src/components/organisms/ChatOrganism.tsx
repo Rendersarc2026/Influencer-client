@@ -342,6 +342,7 @@ export const ChatOrganism: React.FC = () => {
   const {
     data: infiniteChatsData,
     isLoading: chatsLoading,
+    isFetching: chatsFetching,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -482,6 +483,22 @@ export const ChatOrganism: React.FC = () => {
   }, [chats, uniqueChats, selectedChatId, roleCode, brands, influencers, users]);
 
   const effectiveChatId = activeChat?.id || selectedChatId || undefined;
+
+  // Arriving from a "Message Brand" / "Message Influencer" link means the thread
+  // does not exist on screen yet: the chat list, the account fallback lookups and
+  // then create-or-find each cost their own round trip, which is several seconds
+  // against the remote database. Without this the pane sits on "Select a
+  // conversation" the whole time, so the click reads as though it did nothing.
+  //
+  // Each branch is tied to a request that is actually in flight, so a thread that
+  // never turns up (a stale chatId, a search filter that hides it) falls through
+  // to the empty state instead of spinning forever. The middle one covers the gap
+  // after create-or-find returns, while the chat list is refetching around it.
+  const isOpeningConversation =
+    !activeChat &&
+    (Boolean(queryParticipantId) ||
+      (Boolean(selectedChatId) && chatsFetching) ||
+      (Boolean(queryChatId) && chatsLoading));
 
   const handleCloseConversation = () => {
     setSelectedChatId(null);
@@ -1211,7 +1228,7 @@ export const ChatOrganism: React.FC = () => {
         }}
       >
         {/* LEFT PANE: Conversations List */}
-        {(!isMobile || !selectedChatId) && (
+        {(!isMobile || (!selectedChatId && !isOpeningConversation)) && (
           <Box
             sx={{
               width: isMobile ? '100%' : 340,
@@ -1688,7 +1705,7 @@ export const ChatOrganism: React.FC = () => {
         )}
 
         {/* RIGHT PANE: Message Thread */}
-        {(!isMobile || selectedChatId) && (
+        {(!isMobile || selectedChatId || isOpeningConversation) && (
           <Box
             sx={{
               flex: 1,
@@ -1699,7 +1716,27 @@ export const ChatOrganism: React.FC = () => {
               minWidth: 0,
             }}
           >
-            {activeChat ? (
+            {isOpeningConversation ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  height: '100%',
+                  p: 3,
+                }}
+              >
+                <CircularProgress size={32} />
+                <Typography
+                  variant="body2"
+                  sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+                >
+                  Opening conversation…
+                </Typography>
+              </Box>
+            ) : activeChat ? (
               <>
                 {/* Thread Header */}
                 <Box
