@@ -9,13 +9,8 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText } from '@atoms';
-import { useInfluencerEngagement, useCalculateInfluencerER } from '@api';
 
 export interface ApproveRateDialogProps {
   open: boolean;
@@ -50,7 +45,6 @@ export interface ApproveRateDialogProps {
 export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   open,
   mapperId,
-  influencerId,
   influencerName,
   influencerRate,
   initialMargin,
@@ -66,8 +60,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
-  const { data: engagementData } = useInfluencerEngagement(influencerId);
-  const calculateERMutation = useCalculateInfluencerER();
 
   const [rateInput, setRateInput] = useState<string>('');
   const [marginInput, setMarginInput] = useState<string>('0');
@@ -77,40 +69,10 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   const [reachFromRegionInput, setReachFromRegionInput] = useState<string>('');
   const [committedViewsInput, setCommittedViewsInput] = useState<string>('');
   const [brandFitInput, setBrandFitInput] = useState<string>('');
-  const [metaSyncStatus, setMetaSyncStatus] = useState<string | null>(null);
-  const [autoFetching, setAutoFetching] = useState(false);
   const [rateError, setRateError] = useState('');
   const [marginError, setMarginError] = useState('');
 
   const initializedMapperIdRef = React.useRef<string | null>(null);
-
-  const handleAutoFetchFromMeta = async () => {
-    if (!influencerId) return;
-    try {
-      setAutoFetching(true);
-      const res = await calculateERMutation.mutateAsync({
-        influencerId,
-        data: { forceRefresh: true },
-      });
-      if (res?.engagement) {
-        const { engagementRate, avgViews, postsCount } = res.engagement;
-        const handle = res.influencer?.instagram || '';
-        if (engagementRate !== undefined && engagementRate !== null) {
-          setPreEvalErInput(engagementRate.toFixed(2));
-        }
-        if (avgViews !== undefined && avgViews !== null && avgViews > 0) {
-          setCommittedViewsInput(String(avgViews));
-        }
-        setMetaSyncStatus(
-          `Auto-fetched${handle ? ` from @${handle}` : ''}: ${engagementRate.toFixed(2)}% ER · ${avgViews ? avgViews.toLocaleString() : 0} avg views (${postsCount || 0} posts analyzed)`,
-        );
-      }
-    } catch {
-      // ignore
-    } finally {
-      setAutoFetching(false);
-    }
-  };
 
   // Initialize form fields only when dialog opens for a mapperId
   useEffect(() => {
@@ -132,37 +94,19 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
         const initialEr =
           initialPreEvalEr !== null && initialPreEvalEr !== undefined
             ? String(initialPreEvalEr)
-            : engagementData?.latest?.engagementRate !== undefined &&
-                engagementData?.latest?.engagementRate !== null
-              ? String(engagementData.latest.engagementRate)
-              : '';
+            : '';
         setPreEvalErInput(initialEr);
 
         const initialViews =
           initialCommittedViews !== null && initialCommittedViews !== undefined
             ? String(initialCommittedViews)
-            : engagementData?.latest?.avgViews !== undefined &&
-                engagementData?.latest?.avgViews !== null &&
-                engagementData.latest.avgViews > 0
-              ? String(engagementData.latest.avgViews)
-              : '';
+            : '';
         setCommittedViewsInput(initialViews);
 
         setReachFromRegionInput(initialReachFromRegion || '');
         setBrandFitInput(initialBrandFit || '');
-        setMetaSyncStatus(null);
         setRateError('');
         setMarginError('');
-      } else {
-        // If engagementData loaded later and fields are still empty, populate them
-        if (engagementData?.latest) {
-          if (!preEvalErInput && engagementData.latest.engagementRate !== undefined && engagementData.latest.engagementRate !== null) {
-            setPreEvalErInput(String(engagementData.latest.engagementRate));
-          }
-          if (!committedViewsInput && engagementData.latest.avgViews !== undefined && engagementData.latest.avgViews !== null && engagementData.latest.avgViews > 0) {
-            setCommittedViewsInput(String(engagementData.latest.avgViews));
-          }
-        }
       }
     } else {
       initializedMapperIdRef.current = null;
@@ -177,7 +121,6 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
     initialReachFromRegion,
     initialBrandFit,
     initialCommittedViews,
-    engagementData,
   ]);
 
   const handleRateChange = (val: string) => {
@@ -327,61 +270,17 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
             <Divider sx={{ my: 0.5 }} />
 
             {/* 4. Pre-Evaluation Metrics Section */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: theme.palette.tokens.textSecondary,
-                }}
-              >
-                Pre-Evaluation Base Metrics
-              </Typography>
-              {influencerId && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={handleAutoFetchFromMeta}
-                  disabled={autoFetching || loading}
-                  startIcon={
-                    autoFetching ? (
-                      <CircularProgress size={12} color="inherit" />
-                    ) : (
-                      <AutoAwesomeRoundedIcon fontSize="small" />
-                    )
-                  }
-                  sx={{
-                    height: 24,
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: theme.palette.tokens.purpleText,
-                    borderColor: theme.palette.tokens.purpleText,
-                  }}
-                >
-                  {autoFetching ? 'Fetching...' : '⚡ Auto-Fetch Meta API'}
-                </Button>
-              )}
-            </Box>
-
-            {metaSyncStatus && (
-              <Box
-                sx={{
-                  p: 1,
-                  borderRadius: `${theme.customRadii.inner}px`,
-                  backgroundColor: theme.palette.tokens.purpleBg,
-                  border: `1px solid ${theme.palette.tokens.divider}`,
-                }}
-              >
-                <Typography
-                  variant="caption"
-                  sx={{ fontWeight: 600, color: theme.palette.tokens.purpleText, display: 'block' }}
-                >
-                  {metaSyncStatus}
-                </Typography>
-              </Box>
-            )}
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: theme.palette.tokens.textSecondary,
+              }}
+            >
+              Pre-Evaluation Base Metrics
+            </Typography>
 
             <TextField
               label="Deliverables"
@@ -402,30 +301,9 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 value={committedViewsInput}
                 onChange={(e) => setCommittedViewsInput(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 50000"
-                helperText="Auto-computed or estimated view guarantee"
+                helperText="Estimated view guarantee"
                 fullWidth
-                disabled={loading || autoFetching}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title="Auto-fetch live average views from Meta API">
-                        <span>
-                          <IconButton
-                            size="small"
-                            onClick={handleAutoFetchFromMeta}
-                            disabled={autoFetching || loading}
-                            edge="end"
-                          >
-                            <AutoAwesomeRoundedIcon
-                              fontSize="small"
-                              sx={{ color: theme.palette.tokens.purpleText }}
-                            />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                }}
+                disabled={loading}
               />
               <TextField
                 label="Pre-Eval ER %"
@@ -433,30 +311,9 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 value={preEvalErInput}
                 onChange={(e) => setPreEvalErInput(e.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder="e.g. 4.5"
-                helperText="Auto-computed live ER% from Meta API"
+                helperText="Expected engagement rate percentage"
                 fullWidth
-                disabled={loading || autoFetching}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title="Auto-fetch live ER% from Meta API">
-                        <span>
-                          <IconButton
-                            size="small"
-                            onClick={handleAutoFetchFromMeta}
-                            disabled={autoFetching || loading}
-                            edge="end"
-                          >
-                            <AutoAwesomeRoundedIcon
-                              fontSize="small"
-                              sx={{ color: theme.palette.tokens.purpleText }}
-                            />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                }}
+                disabled={loading}
               />
             </Box>
 
@@ -558,13 +415,11 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || autoFetching || isNaN(marginNum) || marginNum < 0 || effectiveRate <= 0}
+            disabled={loading || isNaN(marginNum) || marginNum < 0 || effectiveRate <= 0}
             sx={{ minWidth: 160 }}
           >
             {loading ? (
               <CircularProgress size={20} color="inherit" />
-            ) : autoFetching ? (
-              'Fetching Meta Data...'
             ) : isAlreadyApproved ? (
               'Save Margin & Update Rate'
             ) : (

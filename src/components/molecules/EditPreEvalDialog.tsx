@@ -10,15 +10,9 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText, SectionHeading } from '@atoms';
 import { AgencyMapperResponse, UpdatePreEvalRequest } from '@contracts';
-import { useInfluencerEngagement, useCalculateInfluencerER } from '@api';
 
 export interface EditPreEvalDialogProps {
   open: boolean;
@@ -36,16 +30,12 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   onClose,
 }) => {
   const theme = useTheme();
-  const { data: engagementData } = useInfluencerEngagement(mapper?.influencerId);
-  const calculateERMutation = useCalculateInfluencerER();
 
   const [deliverables, setDeliverables] = useState('');
   const [preEvalEr, setPreEvalEr] = useState('');
   const [committedViews, setCommittedViews] = useState('');
   const [reachFromRegion, setReachFromRegion] = useState('');
   const [brandFit, setBrandFit] = useState('');
-  const [metaSyncStatus, setMetaSyncStatus] = useState<string | null>(null);
-  const [autoFetching, setAutoFetching] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -55,62 +45,20 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
       const initialEr =
         mapper.preEvalEr !== undefined && mapper.preEvalEr !== null
           ? String(mapper.preEvalEr)
-          : engagementData?.latest?.engagementRate !== undefined &&
-              engagementData?.latest?.engagementRate !== null
-            ? String(engagementData.latest.engagementRate)
-            : '';
+          : '';
       setPreEvalEr(initialEr);
 
       const initialViews =
         mapper.committedViews !== undefined && mapper.committedViews !== null
           ? String(mapper.committedViews)
-          : engagementData?.latest?.avgViews !== undefined &&
-              engagementData?.latest?.avgViews !== null &&
-              engagementData.latest.avgViews > 0
-            ? String(engagementData.latest.avgViews)
-            : '';
+          : '';
       setCommittedViews(initialViews);
 
       setReachFromRegion(mapper.reachFromRegion || '');
       setBrandFit(mapper.brandFit || '');
-      setMetaSyncStatus(null);
       setError('');
     }
-  }, [open, mapper, engagementData]);
-
-  const handleAutoFetchFromMeta = async () => {
-    if (!mapper?.influencerId) return;
-    try {
-      setAutoFetching(true);
-      setError('');
-      const res = await calculateERMutation.mutateAsync({
-        influencerId: mapper.influencerId,
-        data: { forceRefresh: true },
-      });
-      if (res?.engagement) {
-        const { engagementRate, avgViews, postsCount } = res.engagement;
-        const handle = res.influencer?.instagram || mapper.instagram || '';
-        if (engagementRate !== undefined && engagementRate !== null) {
-          setPreEvalEr(engagementRate.toFixed(2));
-        }
-        if (avgViews !== undefined && avgViews !== null && avgViews > 0) {
-          setCommittedViews(String(avgViews));
-        }
-        setMetaSyncStatus(
-          `Auto-fetched${handle ? ` from @${handle}` : ''}: ${engagementRate.toFixed(2)}% ER · ${avgViews ? avgViews.toLocaleString() : 0} avg views (${postsCount || 0} posts analyzed)`,
-        );
-      }
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(
-        errorObj?.response?.data?.message ||
-          errorObj?.message ||
-          'Failed to auto-fetch Instagram metrics from Meta Graph API.',
-      );
-    } finally {
-      setAutoFetching(false);
-    }
-  };
+  }, [open, mapper]);
 
   const committedViewsNum = parseInt(committedViews, 10) || 0;
   const preEvalErNum = parseFloat(preEvalEr) || 0;
@@ -189,88 +137,6 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            {/* Meta API Live Auto-Fetch Banner */}
-            <Box
-              sx={{
-                p: 1.75,
-                borderRadius: `${theme.customRadii.inner}px`,
-                backgroundColor: theme.palette.tokens.purpleBg,
-                border: `1px solid ${theme.palette.tokens.divider}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 1.5,
-                flexWrap: 'wrap',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, flex: 1 }}>
-                <Box
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(147, 51, 234, 0.12)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: theme.palette.tokens.purpleText,
-                    flexShrink: 0,
-                  }}
-                >
-                  <AutoAwesomeRoundedIcon fontSize="small" />
-                </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 750,
-                      color: theme.palette.tokens.purpleText,
-                      display: 'block',
-                    }}
-                  >
-                    Official Meta Graph API Auto-Fetch
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: theme.palette.tokens.textSecondary,
-                      display: 'block',
-                    }}
-                  >
-                    {metaSyncStatus ||
-                      (engagementData?.latest
-                        ? `Stored Baseline: ${engagementData.latest.engagementRate.toFixed(2)}% ER · ${engagementData.latest.avgViews?.toLocaleString() || 0} avg views`
-                        : 'Query live Instagram metrics directly from Meta Graph API')}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Button
-                size="small"
-                variant="contained"
-                onClick={handleAutoFetchFromMeta}
-                disabled={autoFetching || loading}
-                startIcon={
-                  autoFetching ? (
-                    <CircularProgress size={14} color="inherit" />
-                  ) : (
-                    <SyncRoundedIcon fontSize="small" />
-                  )
-                }
-                sx={{
-                  height: 30,
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  backgroundColor: theme.palette.tokens.purpleText,
-                  '&:hover': {
-                    backgroundColor: '#7e22ce',
-                  },
-                }}
-              >
-                {autoFetching ? 'Fetching Meta API...' : 'Auto-Fetch Live Data'}
-              </Button>
-            </Box>
-
             <TextField
               label="Deliverables & Formats"
               value={deliverables}
@@ -290,30 +156,9 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 value={committedViews}
                 onChange={(e) => setCommittedViews(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 50000"
-                helperText="Auto-computed or estimated view guarantee"
+                helperText="Estimated view guarantee"
                 fullWidth
-                disabled={loading || autoFetching}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title="Auto-fetch live average views from Meta API">
-                        <span>
-                          <IconButton
-                            size="small"
-                            onClick={handleAutoFetchFromMeta}
-                            disabled={autoFetching || loading}
-                            edge="end"
-                          >
-                            <AutoAwesomeRoundedIcon
-                              fontSize="small"
-                              sx={{ color: theme.palette.tokens.purpleText }}
-                            />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                }}
+                disabled={loading}
               />
               <TextField
                 label="Pre-Eval ER %"
@@ -321,30 +166,9 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 value={preEvalEr}
                 onChange={(e) => setPreEvalEr(e.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder="e.g. 4.5"
-                helperText="Auto-computed live ER% from Meta API"
+                helperText="Expected engagement rate percentage"
                 fullWidth
-                disabled={loading || autoFetching}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title="Auto-fetch live ER% from Meta API">
-                        <span>
-                          <IconButton
-                            size="small"
-                            onClick={handleAutoFetchFromMeta}
-                            disabled={autoFetching || loading}
-                            edge="end"
-                          >
-                            <AutoAwesomeRoundedIcon
-                              fontSize="small"
-                              sx={{ color: theme.palette.tokens.purpleText }}
-                            />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                }}
+                disabled={loading}
               />
             </Box>
 
@@ -528,13 +352,11 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || autoFetching}
+            disabled={loading}
             sx={{ minWidth: 140 }}
           >
             {loading ? (
               <CircularProgress size={20} color="inherit" />
-            ) : autoFetching ? (
-              'Fetching Meta Data...'
             ) : (
               'Save Pre-Eval'
             )}
