@@ -26,6 +26,7 @@ import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded';
 import PercentRoundedIcon from '@mui/icons-material/PercentRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -42,10 +43,12 @@ import {
   BrandMapperResponse,
   BrandDecisionRequest,
   BrandStatusCode,
+  CampaignStatusCode,
+  MetricResponse,
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeExternalUrl } from '@utils';
+import { safeExternalUrl, exportBrandCampaignPerformanceReport } from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandMapperResponse;
@@ -667,6 +670,60 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
     },
   ];
 
+  // Post-evaluation report, offered once the campaign is Completed.
+  const isCompleted = Number(campaign?.status) === CampaignStatusCode.COMPLETED;
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+
+  const handleDownloadPerformanceReport = async () => {
+    if (!campaign || isDownloadingReport) return;
+    try {
+      setIsDownloadingReport(true);
+
+      // Both reads at once: the roster and every recorded post-evaluation of
+      // this campaign. The metrics arrive from one campaign-scoped endpoint
+      // rather than one request per creator, so the report costs two round
+      // trips regardless of how many creators the campaign has.
+      const [mappersRes, metricsRes] = await Promise.all([
+        apiClient.get<PaginatedResult<BrandMapperResponse>>(
+          `/brand/campaigns/${campaignId}/influencers`,
+        ),
+        apiClient.get<MetricResponse[]>(`/brand/campaigns/${campaignId}/metrics`),
+      ]);
+
+      const allMappers = mappersRes.data.items || [];
+
+      const metricsByMapperId: Record<string, MetricResponse[]> = {};
+      for (const metric of metricsRes.data || []) {
+        (metricsByMapperId[metric.mapperId] ||= []).push(metric);
+      }
+
+      await exportBrandCampaignPerformanceReport({
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          description: campaign.description,
+          brandName: campaign.brandName,
+          status: campaign.status,
+          startDate: campaign.startDate,
+          endDate: campaign.endDate,
+        },
+        mappers: allMappers,
+        metricsByMapperId,
+      });
+
+      showSuccess('Campaign performance report downloaded.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to generate performance report.',
+      );
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
   const handleExportAll = async (): Promise<BrandMapperResponse[]> => {
     if (!campaignId) return [];
     const res = await apiClient.get<PaginatedResult<BrandMapperResponse>>(
@@ -975,6 +1032,32 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         <SectionHeading
           title="Influencer Deliverables & Commercial Proposals"
           subtitle="Creator profiles, deliverables, and commercial rates. Click on any row to view full pre-evaluation metrics and dossier."
+          action={
+            isCompleted ? (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  isDownloadingReport ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <AssessmentRoundedIcon fontSize="small" />
+                  )
+                }
+                onClick={handleDownloadPerformanceReport}
+                // `totalMappers` counts the current search, while the report
+                // always covers the whole roster — so an empty search result
+                // must not read as an empty campaign.
+                disabled={
+                  isDownloadingReport ||
+                  campaignLoading ||
+                  (!debouncedSearch.trim() && totalMappers === 0)
+                }
+              >
+                {isDownloadingReport ? 'Generating...' : 'Download Report'}
+              </Button>
+            ) : undefined
+          }
         />
 
         <FilterBar searchValue={search} onSearchChange={setSearch} />

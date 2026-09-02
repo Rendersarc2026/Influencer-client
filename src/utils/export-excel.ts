@@ -578,6 +578,370 @@ export async function exportCampaignPerformanceReport(
   XLSX.writeFile(wb, filename);
 }
 
+export interface BrandCampaignReportExportInput {
+  campaign: {
+    id: string;
+    name: string;
+    description?: string | null;
+    brandName?: string | null;
+    status?: number | string;
+    startDate?: string | Date | null;
+    endDate?: string | Date | null;
+  };
+  mappers: Array<{
+    id: string;
+    influencerName?: string;
+    instagram?: string | null;
+    youtube?: string | null;
+    region?: string | null;
+    category?: string | null;
+    followers?: number | null;
+    deliverables?: string | null;
+    reachFromRegion?: string | null;
+    committedViews?: number | null;
+    preEvalEr?: number | null;
+    preEvalCpv?: number | null;
+    brandFit?: string | null;
+    clientRate?: number | null;
+    brandStatus?: number;
+  }>;
+  metricsByMapperId?: Record<
+    string,
+    Array<{
+      reach: number;
+      impressions?: number | null;
+      engagements: number;
+      erPercent: number;
+      totalViews?: number | null;
+      likes?: number | null;
+      comments?: number | null;
+      shares?: number | null;
+      saves?: number | null;
+      watchTime?: string | null;
+      skipRate?: number | null;
+      liveLink?: string | null;
+      postEvalCpv?: number | null;
+      posts?: Array<{
+        position: number;
+        postUrl: string;
+        likes?: number | null;
+        comments?: number | null;
+        shares?: number | null;
+        saves?: number | null;
+      }>;
+      recordedFor: string | Date;
+    }>
+  >;
+}
+
+/**
+ * The brand's copy of the campaign performance report.
+ *
+ * Deliberately a separate builder from `exportCampaignPerformanceReport` rather
+ * than a flag on it: the agency report is built around influencer commercials
+ * and agency margin, and the brand must never see either. A shared builder with
+ * a `role` switch is one wrong condition away from writing a margin column into
+ * a workbook the brand downloads, so the two never share a row shape.
+ */
+export async function exportBrandCampaignPerformanceReport(
+  input: BrandCampaignReportExportInput,
+): Promise<void> {
+  const XLSX = await import('xlsx');
+  const { campaign, mappers, metricsByMapperId = {} } = input;
+
+  let totalCommercials = 0;
+  let totalCommittedViews = 0;
+  let preEvalErSum = 0;
+  let preEvalErCount = 0;
+  let totalReach = 0;
+  let totalEngagements = 0;
+  let totalViews = 0;
+  let totalImpressions = 0;
+  let totalLikes = 0;
+  let totalComments = 0;
+  let totalShares = 0;
+  let totalSaves = 0;
+
+  // Every recorded post across every creator, for the post-level sheet.
+  const postRows: Array<Array<string | number>> = [];
+
+  const influencerRows = mappers.map((mapper, index) => {
+    const clientRate = mapper.clientRate ?? 0;
+    const committedViews = mapper.committedViews ?? 0;
+
+    totalCommercials += clientRate;
+    totalCommittedViews += committedViews;
+    if (mapper.preEvalEr) {
+      preEvalErSum += mapper.preEvalEr;
+      preEvalErCount += 1;
+    }
+
+    const metricsList = metricsByMapperId[mapper.id] || [];
+    // Rows arrive newest first, so the head is the current post-evaluation.
+    const latestMetric = metricsList.length > 0 ? metricsList[0] : null;
+
+    const mapperReach = latestMetric ? latestMetric.reach : 0;
+    const mapperEngagements = latestMetric ? latestMetric.engagements : 0;
+    const mapperViews = latestMetric?.totalViews ?? 0;
+    const mapperImpressions = latestMetric?.impressions ?? 0;
+    const mapperLikes = latestMetric?.likes ?? 0;
+    const mapperComments = latestMetric?.comments ?? 0;
+    const mapperShares = latestMetric?.shares ?? 0;
+    const mapperSaves = latestMetric?.saves ?? 0;
+    const mapperEr =
+      latestMetric?.erPercent ??
+      (mapperReach > 0 ? Number(((mapperEngagements / mapperReach) * 100).toFixed(2)) : 0);
+    const mapperCpv =
+      latestMetric?.postEvalCpv ??
+      (clientRate > 0 && mapperViews > 0 ? Number((clientRate / mapperViews).toFixed(2)) : null);
+
+    totalReach += mapperReach;
+    totalEngagements += mapperEngagements;
+    totalViews += mapperViews;
+    totalImpressions += mapperImpressions;
+    totalLikes += mapperLikes;
+    totalComments += mapperComments;
+    totalShares += mapperShares;
+    totalSaves += mapperSaves;
+
+    const brandStatusLabel =
+      mapper.brandStatus !== undefined ? getStatusLabel('BRAND_STATUS', mapper.brandStatus) : '—';
+
+    const handle = mapper.instagram
+      ? `@${mapper.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}`
+      : mapper.youtube || '—';
+
+    const recordedDate = latestMetric
+      ? new Date(latestMetric.recordedFor).toLocaleDateString('en-IN')
+      : '—';
+
+    for (const post of latestMetric?.posts ?? []) {
+      const postEngagements =
+        (post.likes ?? 0) + (post.comments ?? 0) + (post.shares ?? 0) + (post.saves ?? 0);
+      postRows.push([
+        mapper.influencerName || '—',
+        post.position,
+        post.postUrl,
+        post.likes ?? '—',
+        post.comments ?? '—',
+        post.shares ?? '—',
+        post.saves ?? '—',
+        postEngagements,
+        recordedDate,
+      ]);
+    }
+
+    const deliverableStatus = getDeliverableStatus({
+      brandStatus: mapper.brandStatus,
+      hasMetrics: Boolean(
+        latestMetric && (latestMetric.reach > 0 || (latestMetric.totalViews ?? 0) > 0),
+      ),
+      hasLiveLink: Boolean(
+        latestMetric?.liveLink || (latestMetric?.posts && latestMetric.posts.length > 0),
+      ),
+      campaignStatus: campaign.status,
+    });
+
+    return [
+      index + 1,
+      mapper.influencerName || '—',
+      handle,
+      mapper.region || 'India',
+      mapper.category || 'General',
+      mapper.followers ?? '—',
+      mapper.deliverables || 'Pending',
+      deliverableStatus,
+      brandStatusLabel,
+      mapper.reachFromRegion || '—',
+      committedViews > 0 ? committedViews : '—',
+      mapper.preEvalEr ? `${mapper.preEvalEr}%` : '—',
+      mapper.preEvalCpv ?? '—',
+      clientRate > 0 ? clientRate : '—',
+      mapperReach > 0 ? mapperReach : '—',
+      mapperEngagements > 0 ? mapperEngagements : '—',
+      mapperEr > 0 ? `${mapperEr}%` : '—',
+      mapperViews > 0 ? mapperViews : '—',
+      mapperCpv !== null ? mapperCpv : '—',
+      mapperLikes > 0 ? mapperLikes : '—',
+      mapperComments > 0 ? mapperComments : '—',
+      mapperShares > 0 ? mapperShares : '—',
+      mapperSaves > 0 ? mapperSaves : '—',
+      latestMetric?.posts?.length || '—',
+      mapperImpressions > 0 ? mapperImpressions : '—',
+      latestMetric?.watchTime || '—',
+      latestMetric?.skipRate !== undefined && latestMetric?.skipRate !== null
+        ? `${latestMetric.skipRate}%`
+        : '—',
+      latestMetric?.liveLink || '—',
+      recordedDate,
+    ];
+  });
+
+  const overallErPercent =
+    totalReach > 0 ? Number(((totalEngagements / totalReach) * 100).toFixed(2)) : 0;
+  const overallCpv =
+    totalCommercials > 0 && totalViews > 0
+      ? Number((totalCommercials / totalViews).toFixed(2))
+      : null;
+  const avgPreEvalEr = preEvalErCount > 0 ? Number((preEvalErSum / preEvalErCount).toFixed(2)) : 0;
+  const avgPreEvalCpv =
+    totalCommercials > 0 && totalCommittedViews > 0
+      ? Number((totalCommercials / totalCommittedViews).toFixed(2))
+      : null;
+  const viewsDelivery =
+    totalCommittedViews > 0 ? Number(((totalViews / totalCommittedViews) * 100).toFixed(1)) : null;
+
+  // Sheet 1: what the brand signed off on, next to what was delivered.
+  const summaryAoa = [
+    ['CAMPAIGN PERFORMANCE & POST-EVALUATION REPORT'],
+    [],
+    ['Campaign Name', campaign.name],
+    ['Brand', campaign.brandName || '—'],
+    [
+      'Campaign Status',
+      campaign.status ? getStatusLabel('CAMPAIGN_STATUS', Number(campaign.status)) : '—',
+    ],
+    [
+      'Campaign Timeline',
+      `${campaign.startDate ? new Date(campaign.startDate).toLocaleDateString('en-IN') : 'TBD'} — ${campaign.endDate ? new Date(campaign.endDate).toLocaleDateString('en-IN') : 'TBD'}`,
+    ],
+    ['Report Generated Date', new Date().toLocaleDateString('en-IN')],
+    [],
+    ['COMMITTED AT PRE-EVALUATION', ''],
+    ['Total Creators', mappers.length],
+    ['Total Committed Views', totalCommittedViews > 0 ? totalCommittedViews : '—'],
+    ['Average Pre-Eval ER %', avgPreEvalEr > 0 ? `${avgPreEvalEr}%` : '—'],
+    ['Average Pre-Eval CPV', avgPreEvalCpv !== null ? `₹${avgPreEvalCpv}` : '—'],
+    ['Total Commercial Budget (₹)', totalCommercials],
+    [],
+    ['DELIVERED AT POST-EVALUATION', ''],
+    ['Total Reach (Unique)', totalReach > 0 ? totalReach : '—'],
+    ['Total Engagements', totalEngagements > 0 ? totalEngagements : '—'],
+    ['Overall Campaign ER %', totalReach > 0 ? `${overallErPercent}%` : '—'],
+    ['Total Views Delivered', totalViews > 0 ? totalViews : '—'],
+    ['Views vs Committed %', viewsDelivery !== null ? `${viewsDelivery}%` : '—'],
+    ['Average Cost Per View (CPV)', overallCpv !== null ? `₹${overallCpv}` : '—'],
+    ['Total Impressions', totalImpressions > 0 ? totalImpressions : '—'],
+    ['Total Likes', totalLikes > 0 ? totalLikes : '—'],
+    ['Total Comments', totalComments > 0 ? totalComments : '—'],
+    ['Total Shares', totalShares > 0 ? totalShares : '—'],
+    ['Total Saves', totalSaves > 0 ? totalSaves : '—'],
+    ['Total Published Posts', postRows.length > 0 ? postRows.length : '—'],
+  ];
+
+  // Sheet 2: one row per creator. No influencer commercial, no agency margin —
+  // the brand's API never returns either, and neither belongs in its report.
+  const influencerHeaders = [
+    'Sr No',
+    'Creator Name',
+    'Social Handle',
+    'Region',
+    'Category',
+    'Followers',
+    'Deliverables',
+    'Deliverable Status',
+    'Approval Status',
+    'Target Region Reach',
+    'Committed Views',
+    'Pre-Eval ER %',
+    'Pre-Eval CPV (₹)',
+    'Final Commercials (₹)',
+    'Post-Eval Reach (Unique)',
+    'Post-Eval Engagements',
+    'Post-Eval ER %',
+    'Total Views',
+    'Post-Eval CPV (₹)',
+    'Likes',
+    'Comments',
+    'Shares',
+    'Saves',
+    'Published Posts',
+    'Impressions',
+    'Watch Time',
+    'Skip Rate %',
+    'Live Deliverable URLs',
+    'Recorded Date',
+  ];
+
+  const wsSummary = XLSX.utils.aoa_to_sheet(sanitizeAoa(summaryAoa));
+  wsSummary['!cols'] = [{ wch: 32 }, { wch: 36 }];
+
+  const wsInfluencers = XLSX.utils.aoa_to_sheet(
+    sanitizeAoa([influencerHeaders, ...influencerRows]),
+  );
+  wsInfluencers['!cols'] = [
+    { wch: 8 }, // Sr No
+    { wch: 22 }, // Creator Name
+    { wch: 20 }, // Social Handle
+    { wch: 14 }, // Region
+    { wch: 18 }, // Category
+    { wch: 14 }, // Followers
+    { wch: 26 }, // Deliverables
+    { wch: 18 }, // Deliverable Status
+    { wch: 18 }, // Approval Status
+    { wch: 20 }, // Target Region Reach
+    { wch: 18 }, // Committed Views
+    { wch: 16 }, // Pre-Eval ER %
+    { wch: 18 }, // Pre-Eval CPV
+    { wch: 22 }, // Final Commercials
+    { wch: 24 }, // Reach
+    { wch: 22 }, // Engagements
+    { wch: 16 }, // ER %
+    { wch: 16 }, // Views
+    { wch: 18 }, // CPV
+    { wch: 14 }, // Likes
+    { wch: 14 }, // Comments
+    { wch: 14 }, // Shares
+    { wch: 14 }, // Saves
+    { wch: 16 }, // Published Posts
+    { wch: 16 }, // Impressions
+    { wch: 14 }, // Watch Time
+    { wch: 14 }, // Skip Rate
+    { wch: 35 }, // URLs
+    { wch: 16 }, // Recorded Date
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Campaign Summary');
+  XLSX.utils.book_append_sheet(wb, wsInfluencers, 'Creator Performance');
+
+  // Sheet 3: the per-post breakdown the creator totals were summed from.
+  if (postRows.length > 0) {
+    const wsPosts = XLSX.utils.aoa_to_sheet(
+      sanitizeAoa([
+        [
+          'Creator Name',
+          'Post #',
+          'Post URL',
+          'Likes',
+          'Comments',
+          'Shares',
+          'Saves',
+          'Engagements',
+          'Recorded Date',
+        ],
+        ...postRows,
+      ]),
+    );
+    wsPosts['!cols'] = [
+      { wch: 22 }, // Creator Name
+      { wch: 8 }, // Post #
+      { wch: 45 }, // Post URL
+      { wch: 14 }, // Likes
+      { wch: 14 }, // Comments
+      { wch: 14 }, // Shares
+      { wch: 14 }, // Saves
+      { wch: 16 }, // Engagements
+      { wch: 16 }, // Recorded Date
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPosts, 'Post-Level Performance');
+  }
+
+  const cleanName = campaign.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  const dateStamp = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${cleanName}_campaign_report_${dateStamp}.xlsx`);
+}
+
 export interface MonthlyDeliverableExportRow {
   campaignId: string;
   campaignName: string; // Which brand/campaign this row belongs to (multi-campaign combination)
