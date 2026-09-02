@@ -1130,25 +1130,62 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                             </TableCell>
                             <TableCell sx={{ maxWidth: 320 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Avatar
-                                  variant="rounded"
-                                  src={safeImageUrl(post.thumbnailUrl)}
-                                  imgProps={{ referrerPolicy: 'no-referrer' }}
-                                  sx={{
-                                    width: 44,
-                                    height: 44,
-                                    bgcolor: theme.palette.tokens.fieldBg,
-                                    color: isReel
-                                      ? theme.palette.tokens.purpleText
-                                      : theme.palette.tokens.accentText,
+                                <Tooltip
+                                  arrow
+                                  placement="right"
+                                  disableHoverListener={!safeImageUrl(post.thumbnailUrl)}
+                                  enterDelay={150}
+                                  title={
+                                    <Box
+                                      component="img"
+                                      src={safeImageUrl(post.thumbnailUrl)}
+                                      referrerPolicy="no-referrer"
+                                      alt={post.caption || 'Post preview'}
+                                      sx={{
+                                        display: 'block',
+                                        width: 280,
+                                        maxWidth: '60vw',
+                                        borderRadius: 1.5,
+                                      }}
+                                    />
+                                  }
+                                  slotProps={{
+                                    tooltip: {
+                                      sx: {
+                                        p: 0.75,
+                                        maxWidth: 'none',
+                                        bgcolor: theme.palette.tokens.surface,
+                                        border: `1px solid ${theme.palette.tokens.divider}`,
+                                        boxShadow: theme.shadows[6],
+                                      },
+                                    },
+                                    arrow: { sx: { color: theme.palette.tokens.surface } },
                                   }}
                                 >
-                                  {isReel ? (
-                                    <MovieCreationRoundedIcon />
-                                  ) : (
-                                    <CollectionsRoundedIcon />
-                                  )}
-                                </Avatar>
+                                  <Avatar
+                                    variant="rounded"
+                                    src={safeImageUrl(post.thumbnailUrl)}
+                                    imgProps={{ referrerPolicy: 'no-referrer' }}
+                                    sx={{
+                                      width: 72,
+                                      height: 72,
+                                      flexShrink: 0,
+                                      cursor: safeImageUrl(post.thumbnailUrl)
+                                        ? 'zoom-in'
+                                        : 'default',
+                                      bgcolor: theme.palette.tokens.fieldBg,
+                                      color: isReel
+                                        ? theme.palette.tokens.purpleText
+                                        : theme.palette.tokens.accentText,
+                                    }}
+                                  >
+                                    {isReel ? (
+                                      <MovieCreationRoundedIcon />
+                                    ) : (
+                                      <CollectionsRoundedIcon />
+                                    )}
+                                  </Avatar>
+                                </Tooltip>
                                 <Box sx={{ minWidth: 0 }}>
                                   <Typography
                                     variant="body2"
