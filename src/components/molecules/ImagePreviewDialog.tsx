@@ -20,8 +20,6 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
   onClose,
   imageUrl,
   title,
-  subtitle,
-  actions,
 }) => {
   const theme = useTheme();
   const safeSrc = safeImageUrl(imageUrl);
