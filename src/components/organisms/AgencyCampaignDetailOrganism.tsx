@@ -33,6 +33,7 @@ import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -76,12 +77,13 @@ import {
   ApprovalActionName,
   PaginatedResult,
 } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { useAuth, useDebounce, useTableExport, useToast, useViewFilters } from '@hooks';
 import {
   safeExternalUrl,
   humanizeCode,
   exportCampaignPerformanceReport,
   getDeliverableStatus,
+  ExcelColumnConfig,
 } from '@utils';
 
 interface RowActionsProps {
@@ -186,30 +188,30 @@ const RowActions: React.FC<RowActionsProps> = ({
         {!isBrandApproved &&
           (row.rateStatus === RateStatusCode.PENDING_SUBMISSION ||
             row.rateStatus === RateStatusCode.REVISION_REQUESTED) && (
-          <MenuItem
-            onClick={() => {
-              handleClose();
-              onSetPriceApprove(row);
-            }}
-            sx={{
-              fontSize: '13px',
-              fontWeight: 600,
-              py: 0.85,
-              px: 1.25,
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              color: theme.palette.primary.main,
-              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
-              <CheckCircleRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            Set Price & Approve
-          </MenuItem>
-        )}
+            <MenuItem
+              onClick={() => {
+                handleClose();
+                onSetPriceApprove(row);
+              }}
+              sx={{
+                fontSize: '13px',
+                fontWeight: 600,
+                py: 0.85,
+                px: 1.25,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                color: theme.palette.primary.main,
+                '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+              }}
+            >
+              <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+                <CheckCircleRoundedIcon fontSize="small" />
+              </ListItemIcon>
+              Set Price & Approve
+            </MenuItem>
+          )}
 
         {/* Approve Rate (Submitted quote) */}
         {!isBrandApproved && row.rateStatus === RateStatusCode.SUBMITTED && (
@@ -239,31 +241,33 @@ const RowActions: React.FC<RowActionsProps> = ({
         )}
 
         {/* Send to Brand (Approved, not yet sent) */}
-        {!isBrandApproved && row.rateStatus === RateStatusCode.AGENCY_APPROVED && !row.budgetVisible && (
-          <MenuItem
-            onClick={() => {
-              handleClose();
-              onSendToBrand(row.id);
-            }}
-            sx={{
-              fontSize: '13px',
-              fontWeight: 600,
-              py: 0.85,
-              px: 1.25,
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              color: theme.palette.primary.main,
-              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
-              <SendRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            Send to Brand
-          </MenuItem>
-        )}
+        {!isBrandApproved &&
+          row.rateStatus === RateStatusCode.AGENCY_APPROVED &&
+          !row.budgetVisible && (
+            <MenuItem
+              onClick={() => {
+                handleClose();
+                onSendToBrand(row.id);
+              }}
+              sx={{
+                fontSize: '13px',
+                fontWeight: 600,
+                py: 0.85,
+                px: 1.25,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                color: theme.palette.primary.main,
+                '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+              }}
+            >
+              <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+                <SendRoundedIcon fontSize="small" />
+              </ListItemIcon>
+              Send to Brand
+            </MenuItem>
+          )}
 
         {/* Edit Agency Margin */}
         {!isBrandApproved && row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
@@ -295,29 +299,29 @@ const RowActions: React.FC<RowActionsProps> = ({
         {!isBrandApproved &&
           (row.rateStatus === RateStatusCode.SUBMITTED ||
             row.rateStatus === RateStatusCode.AGENCY_APPROVED) && (
-          <MenuItem
-            onClick={() => {
-              handleClose();
-              onRevise(row);
-            }}
-            sx={{
-              fontSize: '13px',
-              fontWeight: 500,
-              py: 0.85,
-              px: 1.25,
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
-              <RateReviewRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            Request Rate Revision
-          </MenuItem>
-        )}
+            <MenuItem
+              onClick={() => {
+                handleClose();
+                onRevise(row);
+              }}
+              sx={{
+                fontSize: '13px',
+                fontWeight: 500,
+                py: 0.85,
+                px: 1.25,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+              }}
+            >
+              <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+                <RateReviewRoundedIcon fontSize="small" />
+              </ListItemIcon>
+              Request Rate Revision
+            </MenuItem>
+          )}
 
         {/* Revert Rate Approval */}
         {!isBrandApproved && row.rateStatus === RateStatusCode.AGENCY_APPROVED && (
@@ -965,10 +969,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           brandStatus: row.brandStatus,
           campaignStatus: campaign?.status,
         });
-        const toneMap: Record<
-          string,
-          { bg: string; color: string; border: string }
-        > = {
+        const toneMap: Record<string, { bg: string; color: string; border: string }> = {
           Completed: { bg: '#ECFDF5', color: '#065F46', border: '#A7F3D0' },
           Live: { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' },
           'Content Approved': { bg: '#F0FDF4', color: '#166534', border: '#BBF7D0' },
@@ -1052,6 +1053,19 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     );
     return res.data.items || [];
   };
+
+  // Two distinct downloads on this page. This one is the table in front of you:
+  // the roster with its rates, margins and statuses. The header's Performance
+  // Report is the multi-sheet post-evaluation workbook — both buttons used to
+  // produce that one, so the table itself could not be exported at all.
+  const { exportExcel: exportRoster, isExporting: isExportingRoster } =
+    useTableExport<AgencyMapperResponse>({
+      filename: `${campaign?.name || 'campaign'}_influencers`,
+      sheetName: 'Influencers',
+      columns: columns as Array<ExcelColumnConfig<AgencyMapperResponse>>,
+      rows: mappers,
+      onExportAll: handleExportAll,
+    });
 
   const isDraft = (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.DRAFT;
   const isCompleted =
@@ -1290,16 +1304,18 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 variant="outlined"
                 size="small"
                 startIcon={
-                  isDownloadingReport ? (
+                  isExportingRoster ? (
                     <CircularProgress size={16} color="inherit" />
                   ) : (
-                    <AssessmentRoundedIcon fontSize="small" />
+                    <FileDownloadRoundedIcon fontSize="small" />
                   )
                 }
-                onClick={handleDownloadPerformanceReport}
-                disabled={isDownloadingReport || campaignLoading || mappers.length === 0}
+                onClick={() => {
+                  void exportRoster();
+                }}
+                disabled={isExportingRoster || campaignLoading || mappers.length === 0}
               >
-                {isDownloadingReport ? 'Generating...' : 'Download Report'}
+                {isExportingRoster ? 'Exporting...' : 'Export Excel'}
               </Button>
               {isDraft && (
                 <Button
@@ -1331,9 +1347,6 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           onRowClick={(row) => setOverviewDrawerMapper(row)}
           loading={mappersLoading || campaignLoading}
           isFetching={mappersFetching}
-          exportFilename={`${campaign?.name || 'campaign'}_influencers`}
-          exportSheetName="Influencers"
-          onExportAll={handleExportAll}
         />
       </Box>
 
