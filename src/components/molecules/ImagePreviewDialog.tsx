@@ -57,6 +57,7 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
       }}
     >
       <Box
+        onClick={(e) => e.stopPropagation()}
         sx={{
           position: 'relative',
           display: 'inline-flex',

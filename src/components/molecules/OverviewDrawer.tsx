@@ -175,6 +175,9 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                     e.preventDefault();
                     setImagePreviewOpen(true);
                   }}
+                  onMouseDown={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                  }}
                   aria-label={`View ${title} profile picture`}
                   sx={{
                     p: 0,

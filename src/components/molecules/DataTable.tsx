@@ -304,6 +304,9 @@ export function DataTable<T extends Record<string, unknown>>({
                     e.preventDefault();
                     setPreviewImage({ url: validImageUrl, title: displayValue });
                   }}
+                  onMouseDown={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                  }}
                   aria-label={`View ${displayValue} image`}
                   sx={{
                     p: 0,
