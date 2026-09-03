@@ -25,3 +25,4 @@ export * from './ImagePreviewDialog';
 export * from './StartChatDialog';
 export * from './NotificationCenter';
 export * from './ErrorBoundary';
+export * from './InfiniteAutocomplete';

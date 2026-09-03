@@ -38,7 +38,7 @@ import {
   useCategories,
   useLocations,
   useInfluencerEngagement,
-  useCalculateInfluencerER,
+  useSyncInstagramProfile,
 } from '@api';
 import {
   InfluencerResponse,
@@ -48,7 +48,13 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
-import { getInfluencerTier, getTierInfo, formatFollowersDisplay, ExcelColumnConfig, safeExternalUrl } from '@utils';
+import {
+  getInfluencerTier,
+  getTierInfo,
+  formatFollowersDisplay,
+  ExcelColumnConfig,
+  safeExternalUrl,
+} from '@utils';
 
 interface InfluencerRowActionsProps {
   row: InfluencerResponse;
@@ -302,7 +308,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const [priceRangeFilter, setPriceRangeFilter] = useState<string>('');
   const createInfluencerMutation = useCreateInfluencer();
   const updateInfluencerMutation = useUpdateInfluencer();
-  const calculateERMutation = useCalculateInfluencerER();
+  const syncInstagramMutation = useSyncInstagramProfile();
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const {
@@ -351,12 +357,18 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   const selectedCategories = useMemo(() => {
     if (!categoryFilter || categoryFilter === 'ALL') return [];
-    return categoryFilter.split(',').map((s) => s.trim()).filter(Boolean);
+    return categoryFilter
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [categoryFilter]);
 
   const selectedLocations = useMemo(() => {
     if (!locationFilter || locationFilter === 'ALL') return [];
-    return locationFilter.split(',').map((s) => s.trim()).filter(Boolean);
+    return locationFilter
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [locationFilter]);
 
   // The creators this agency represents
@@ -418,9 +430,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
 
   const hasActiveFilters = Boolean(
     selectedCategories.length > 0 ||
-      selectedLocations.length > 0 ||
-      search.trim() ||
-      priceRangeFilter,
+    selectedLocations.length > 0 ||
+    search.trim() ||
+    priceRangeFilter,
   );
 
   // Narrowing the results while on a later page would otherwise land on a page
@@ -445,7 +457,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.',
+      );
     }
   };
 
@@ -466,32 +480,35 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to update influencer.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to update influencer.',
+      );
     }
   };
 
+  /**
+   * Refreshes the profile only. The engagement rate is left exactly as it was:
+   * syncing followers used to recalculate ER as a side effect, which moved the
+   * pre-eval figure campaigns were quoted against. Use Calculate / Update ER
+   * to change that number.
+   */
   const handleRefetchInstagramDetails = async (influencer: InfluencerResponse) => {
     try {
       setSyncingId(influencer.id);
-      const result = await calculateERMutation.mutateAsync({
-        influencerId: influencer.id,
-        data: { forceRefresh: true },
-      });
-      const followersText = result.influencer?.followers
+      const result = await syncInstagramMutation.mutateAsync(influencer.id);
+      const followersText = result.influencer.followers
         ? formatFollowersDisplay(result.influencer.followers)
         : influencer.followers
           ? formatFollowersDisplay(influencer.followers)
           : 'Updated';
-      showSuccess(
-        `Synced ${influencer.name} from Meta Instagram API! Followers: ${followersText}, Baseline ER: ${result.engagement.engagementRate.toFixed(2)}%`,
-      );
-      if (selectedInfluencer && selectedInfluencer.id === influencer.id && result.influencer) {
+      showSuccess(`Synced ${influencer.name} from Meta Instagram API! Followers: ${followersText}`);
+      if (selectedInfluencer && selectedInfluencer.id === influencer.id) {
         setSelectedInfluencer((prev) =>
           prev
             ? {
                 ...prev,
-                followers: result.influencer?.followers ?? prev.followers,
-                instagram: result.influencer?.instagram ?? prev.instagram,
+                followers: result.influencer.followers ?? prev.followers,
+                instagram: result.influencer.instagram ?? prev.instagram,
               }
             : null,
         );
@@ -634,8 +651,12 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Add</Box>
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Add Influencer</Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            Add
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            Add Influencer
+          </Box>
         </Button>
       }
     >
@@ -923,9 +944,14 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                       label: 'Influencing Regions',
                       value:
                         (selectedInfluencer.regions && selectedInfluencer.regions.length > 0) ||
-                        (selectedInfluencer.influencingRegions && selectedInfluencer.influencingRegions.length > 0) ? (
+                        (selectedInfluencer.influencingRegions &&
+                          selectedInfluencer.influencingRegions.length > 0) ? (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                            {(selectedInfluencer.regions || selectedInfluencer.influencingRegions || []).map((r) => (
+                            {(
+                              selectedInfluencer.regions ||
+                              selectedInfluencer.influencingRegions ||
+                              []
+                            ).map((r) => (
                               <Chip key={r} label={r} size="small" />
                             ))}
                           </Box>
@@ -992,23 +1018,23 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           selectedInfluencer
             ? [
                 {
-                  label:
-                    syncingId === selectedInfluencer.id
-                      ? 'Syncing Instagram...'
-                      : 'Sync Instagram Data',
-                  variant: 'contained',
-                  loading: syncingId === selectedInfluencer.id,
-                  onClick: () => {
-                    void handleRefetchInstagramDetails(selectedInfluencer);
-                  },
-                },
-                {
                   label: 'Calculate / Update ER',
-                  variant: 'outlined',
+                  variant: 'contained',
                   onClick: () => {
                     const infId = selectedInfluencer.id;
                     setSelectedInfluencer(null);
                     navigate(`/agency/er-calculator?influencerId=${infId}`);
+                  },
+                },
+                {
+                  label:
+                    syncingId === selectedInfluencer.id
+                      ? 'Syncing Instagram...'
+                      : 'Sync Instagram Data',
+                  variant: 'outlined',
+                  loading: syncingId === selectedInfluencer.id,
+                  onClick: () => {
+                    void handleRefetchInstagramDetails(selectedInfluencer);
                   },
                 },
                 {

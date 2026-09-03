@@ -145,3 +145,34 @@ export const CalculateInfluencerERRequestSchema = z
   .optional()
   .default({});
 export type CalculateInfluencerERRequest = z.infer<typeof CalculateInfluencerERRequestSchema>;
+
+/**
+ * A profile-only Instagram sync: follower count and handle refreshed, no
+ * engagement rate measured or stored.
+ *
+ * Sync used to run the full ER calculation, which meant refreshing followers
+ * also rewrote the pre-eval ER quoted on the creator's campaign assignments.
+ * The two are separate actions now — ER is only ever recalculated on purpose.
+ */
+export const SyncInstagramProfileResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  influencer: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    followers: z.number().nullable().optional(),
+    instagram: z.string().nullable().optional(),
+  }),
+  profile: z.object({
+    handle: z.string(),
+    fullName: z.string().nullable(),
+    profilePicUrl: z.string().nullable(),
+    biography: z.string().nullable(),
+    isVerified: z.boolean(),
+    isPrivate: z.boolean(),
+    followersCount: z.number().nullable(),
+    followingCount: z.number().nullable(),
+    totalPosts: z.number().nullable(),
+  }),
+});
+export type SyncInstagramProfileResponse = z.infer<typeof SyncInstagramProfileResponseSchema>;

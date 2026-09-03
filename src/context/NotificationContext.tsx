@@ -40,9 +40,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [notifications, storageKey, isAuthenticated]);
 
-  // Track unread count
+  // Track unread count.
+  //
+  // Messages only, matching what the notification panel lists. Counting stage
+  // and approval events too left the bell showing a number the panel had
+  // nothing to show for.
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
+    () => notifications.filter((n) => !n.read && n.type === 'MESSAGE').length,
     [notifications],
   );
 
@@ -80,9 +84,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   );
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   }, []);
 
   const markAllAsRead = useCallback(() => {
@@ -118,14 +120,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         // thread updates without waiting on a refetch, then mark the thread
         // stale without refetching it - the gap fill happens if and when the
         // user actually opens that thread.
-        queryClient.setQueryData<MessageResponse[]>(
-          ['chats', data.chatId, 'messages'],
-          (old) => {
-            if (!old) return old;
-            if (old.some((m) => m.id === data.lastMessage!.id)) return old;
-            return [...old, data.lastMessage!];
-          },
-        );
+        queryClient.setQueryData<MessageResponse[]>(['chats', data.chatId, 'messages'], (old) => {
+          if (!old) return old;
+          if (old.some((m) => m.id === data.lastMessage!.id)) return old;
+          return [...old, data.lastMessage!];
+        });
         queryClient.invalidateQueries({
           queryKey: ['chats', data.chatId, 'messages'],
           refetchType: 'none',

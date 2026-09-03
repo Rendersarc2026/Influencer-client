@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -11,6 +11,7 @@ import ListItemText from '@mui/material/ListItemText';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
+import Typography from '@mui/material/Typography';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
@@ -137,6 +138,43 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(activeDropdownCount > 0);
 
+  // Incremental rendering for large option sets (loads 30 at a time while scrolling down)
+  const BATCH_SIZE = 30;
+  const [visibleMultiCount, setVisibleMultiCount] = useState(BATCH_SIZE);
+  const [visibleSecondMultiCount, setVisibleSecondMultiCount] = useState(BATCH_SIZE);
+  const [visibleSingleCount, setVisibleSingleCount] = useState(BATCH_SIZE);
+
+  const visibleMultiOptions = useMemo(() => {
+    if (multiSelectOptions.length <= visibleMultiCount) return multiSelectOptions;
+    const topSlice = multiSelectOptions.slice(0, visibleMultiCount);
+    const selectedSet = new Set(selectedMultiOptions || []);
+    const missingSelected = multiSelectOptions.filter(
+      (o) => selectedSet.has(o.value) && !topSlice.some((t) => t.value === o.value),
+    );
+    return [...missingSelected, ...topSlice];
+  }, [multiSelectOptions, visibleMultiCount, selectedMultiOptions]);
+
+  const visibleSecondMultiOptions = useMemo(() => {
+    if (secondMultiSelectOptions.length <= visibleSecondMultiCount)
+      return secondMultiSelectOptions;
+    const topSlice = secondMultiSelectOptions.slice(0, visibleSecondMultiCount);
+    const selectedSet = new Set(selectedSecondMultiOptions || []);
+    const missingSelected = secondMultiSelectOptions.filter(
+      (o) => selectedSet.has(o.value) && !topSlice.some((t) => t.value === o.value),
+    );
+    return [...missingSelected, ...topSlice];
+  }, [secondMultiSelectOptions, visibleSecondMultiCount, selectedSecondMultiOptions]);
+
+  const visibleSelectOptions = useMemo(() => {
+    if (selectOptions.length <= visibleSingleCount) return selectOptions;
+    const topSlice = selectOptions.slice(0, visibleSingleCount);
+    if (selectedOption && !topSlice.some((t) => t.value === selectedOption)) {
+      const found = selectOptions.find((o) => o.value === selectedOption);
+      if (found) return [found, ...topSlice];
+    }
+    return topSlice;
+  }, [selectOptions, visibleSingleCount, selectedOption]);
+
   const showClearButton =
     Boolean(onClearFilters) &&
     (hasActiveFilters !== undefined
@@ -187,13 +225,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           }}
           MenuProps={{
             PaperProps: {
-              style: {
+              sx: {
                 maxHeight: 320,
               },
+              onScroll: (e: React.UIEvent<HTMLDivElement>) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                if (scrollHeight - scrollTop - clientHeight <= 60) {
+                  setVisibleMultiCount((prev) =>
+                    Math.min(prev + BATCH_SIZE, multiSelectOptions.length),
+                  );
+                }
+              },
+            },
+            onClose: () => {
+              setVisibleMultiCount(BATCH_SIZE);
             },
           }}
         >
-          {multiSelectOptions.map((opt) => {
+          {visibleMultiOptions.map((opt) => {
             const isChecked = selectedMultiOptions
               ? selectedMultiOptions.includes(opt.value)
               : false;
@@ -204,6 +253,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </MenuItem>
             );
           })}
+          {visibleMultiCount < multiSelectOptions.length && (
+            <Box
+              sx={{
+                py: 1,
+                px: 2,
+                textAlign: 'center',
+                backgroundColor: theme.palette.tokens.fieldBg,
+                borderTop: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+              >
+                Scroll to load more ({visibleMultiCount} of {multiSelectOptions.length})
+              </Typography>
+            </Box>
+          )}
         </Select>
       </FormControl>
     ) : null;
@@ -245,13 +312,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           }}
           MenuProps={{
             PaperProps: {
-              style: {
+              sx: {
                 maxHeight: 320,
               },
+              onScroll: (e: React.UIEvent<HTMLDivElement>) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                if (scrollHeight - scrollTop - clientHeight <= 60) {
+                  setVisibleSecondMultiCount((prev) =>
+                    Math.min(prev + BATCH_SIZE, secondMultiSelectOptions.length),
+                  );
+                }
+              },
+            },
+            onClose: () => {
+              setVisibleSecondMultiCount(BATCH_SIZE);
             },
           }}
         >
-          {secondMultiSelectOptions.map((opt) => {
+          {visibleSecondMultiOptions.map((opt) => {
             const isChecked = selectedSecondMultiOptions
               ? selectedSecondMultiOptions.includes(opt.value)
               : false;
@@ -262,6 +340,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </MenuItem>
             );
           })}
+          {visibleSecondMultiCount < secondMultiSelectOptions.length && (
+            <Box
+              sx={{
+                py: 1,
+                px: 2,
+                textAlign: 'center',
+                backgroundColor: theme.palette.tokens.fieldBg,
+                borderTop: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+              >
+                Scroll to load more ({visibleSecondMultiCount} of {secondMultiSelectOptions.length})
+              </Typography>
+            </Box>
+          )}
         </Select>
       </FormControl>
     ) : null;
@@ -325,6 +421,26 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         value={selectedOption || selectOptions[0]?.value || ''}
         onChange={(e) => onSelectChange(e.target.value)}
         label={selectLabel}
+        SelectProps={{
+          MenuProps: {
+            PaperProps: {
+              sx: {
+                maxHeight: 320,
+              },
+              onScroll: (e: React.UIEvent<HTMLDivElement>) => {
+                const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                if (scrollHeight - scrollTop - clientHeight <= 60) {
+                  setVisibleSingleCount((prev) =>
+                    Math.min(prev + BATCH_SIZE, selectOptions.length),
+                  );
+                }
+              },
+            },
+            onClose: () => {
+              setVisibleSingleCount(BATCH_SIZE);
+            },
+          },
+        }}
         sx={{
           minWidth: fullWidth ? '100%' : 150,
           flexGrow: fullWidth ? 1 : 0,
@@ -332,11 +448,29 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           borderRadius: `${theme.customRadii.inner}px`,
         }}
       >
-        {selectOptions.map((opt) => (
+        {visibleSelectOptions.map((opt) => (
           <MenuItem key={opt.value} value={opt.value}>
             {opt.label}
           </MenuItem>
         ))}
+        {visibleSingleCount < selectOptions.length && (
+          <Box
+            sx={{
+              py: 1,
+              px: 2,
+              textAlign: 'center',
+              backgroundColor: theme.palette.tokens.fieldBg,
+              borderTop: `1px solid ${theme.palette.tokens.divider}`,
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600 }}
+            >
+              Scroll to load more ({visibleSingleCount} of {selectOptions.length})
+            </Typography>
+          </Box>
+        )}
       </TextField>
     ) : null;
 

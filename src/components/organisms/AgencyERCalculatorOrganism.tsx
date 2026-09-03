@@ -23,7 +23,6 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid2';
-import Autocomplete from '@mui/material/Autocomplete';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
@@ -43,7 +42,13 @@ import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { useAuth, useToast } from '@hooks';
-import { apiClient, useAgencyInfluencers, useAssignERToInfluencer } from '@api';
+import {
+  apiClient,
+  useAgencyInfluencers,
+  useInfiniteAgencyInfluencers,
+  useAssignERToInfluencer,
+} from '@api';
+import { InfiniteAutocomplete } from '@molecules';
 import {
   safeUrl,
   safeImageUrl,
@@ -55,7 +60,7 @@ import {
   cleanInstagramHandle,
   formatInstagramHandle,
 } from '@utils';
-import type { AnalyzedPost, CalculateERResponse } from '@contracts';
+import type { AnalyzedPost, CalculateERResponse, InfluencerResponse } from '@contracts';
 
 type ERResult = CalculateERResponse;
 
@@ -81,25 +86,43 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialInfluencerId = searchParams.get('influencerId') || '';
 
-  // Agency Roster Query
-  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers({
-    limit: 100,
-  });
-  const influencersList = useMemo(() => influencersData?.items || [], [influencersData]);
-
   // Selected Influencer from Roster
+  const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
   const [selectedInfluencerId, setSelectedInfluencerId] = useState<string>(initialInfluencerId);
-  const selectedInfluencer = useMemo(
-    () => influencersList.find((inf) => inf.id === selectedInfluencerId) || null,
-    [influencersList, selectedInfluencerId],
-  );
 
-  // Assign ER Mutation
-  const assignERMutation = useAssignERToInfluencer();
+  // Main Roster Infinite Query (Infinite scroll + server search, 20 items per page)
+  const [rosterSearch, setRosterSearch] = useState('');
+  const {
+    data: rosterData,
+    isLoading: rosterLoading,
+    isFetchingNextPage: rosterFetchingNext,
+    hasNextPage: rosterHasNextPage,
+    fetchNextPage: rosterFetchNextPage,
+  } = useInfiniteAgencyInfluencers({
+    search: rosterSearch,
+    limit: 20,
+  });
 
-  // Assign ER Modal Dialog State
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [assignDialogTargetId, setAssignDialogTargetId] = useState<string>('');
+  const rosterTotal = rosterData?.pages[0]?.total;
+
+  // Flatten and deduplicate options, guaranteeing selectedInfluencer is present
+  const rosterOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: InfluencerResponse[] = [];
+    if (selectedInfluencer) {
+      seen.add(selectedInfluencer.id);
+      list.push(selectedInfluencer);
+    }
+    for (const page of rosterData?.pages || []) {
+      for (const item of page.items || []) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          list.push(item);
+        }
+      }
+    }
+    return list;
+  }, [rosterData?.pages, selectedInfluencer]);
 
   // Auto Profile Fetch Inputs & State
   const [autoHandle, setAutoHandle] = useState('');
@@ -118,12 +141,24 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
    */
   const [excludedPostKeys, setExcludedPostKeys] = useState<string[]>([]);
 
-  // When initialInfluencerId arrives from URL query param
+  // Initial lookup if initialInfluencerId arrives from URL query param and not yet loaded
+  const { data: initialInfluencerData } = useAgencyInfluencers(
+    { search: initialInfluencerId },
+    { enabled: Boolean(initialInfluencerId && !selectedInfluencer) },
+  );
+
   useEffect(() => {
-    if (initialInfluencerId && !selectedInfluencerId) {
-      setSelectedInfluencerId(initialInfluencerId);
+    if (initialInfluencerId && !selectedInfluencer) {
+      const match =
+        rosterOptions.find((inf) => inf.id === initialInfluencerId) ||
+        initialInfluencerData?.items?.find((inf) => inf.id === initialInfluencerId) ||
+        initialInfluencerData?.items?.[0];
+      if (match) {
+        setSelectedInfluencer(match);
+        setSelectedInfluencerId(match.id);
+      }
     }
-  }, [initialInfluencerId, selectedInfluencerId]);
+  }, [initialInfluencerId, selectedInfluencer, rosterOptions, initialInfluencerData]);
 
   // When selected influencer changes, auto-populate inputs
   useEffect(() => {
@@ -137,6 +172,48 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
       }
     }
   }, [selectedInfluencer]);
+
+  // Assign ER Mutation
+  const assignERMutation = useAssignERToInfluencer();
+
+  // Assign ER Modal Dialog State
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignDialogTargetId, setAssignDialogTargetId] = useState<string>('');
+  const [assignTargetInfluencer, setAssignTargetInfluencer] = useState<InfluencerResponse | null>(null);
+  const [assignSearch, setAssignSearch] = useState('');
+
+  // Infinite query for assign dialog picker (Infinite scroll + server search, 20 items per page)
+  const {
+    data: assignData,
+    isLoading: assignLoading,
+    isFetchingNextPage: assignFetchingNext,
+    hasNextPage: assignHasNextPage,
+    fetchNextPage: assignFetchNextPage,
+  } = useInfiniteAgencyInfluencers({
+    search: assignSearch,
+    limit: 20,
+    enabled: assignDialogOpen,
+  });
+
+  const assignTotal = assignData?.pages[0]?.total;
+
+  const assignOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: InfluencerResponse[] = [];
+    if (assignTargetInfluencer) {
+      seen.add(assignTargetInfluencer.id);
+      list.push(assignTargetInfluencer);
+    }
+    for (const page of assignData?.pages || []) {
+      for (const item of page.items || []) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          list.push(item);
+        }
+      }
+    }
+    return list;
+  }, [assignData?.pages, assignTargetInfluencer]);
 
   // ---------------------------------------------------------------------------
   // Calculations for Auto Mode
@@ -322,22 +399,26 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
   };
 
   const openAssignDialog = () => {
-    if (selectedInfluencerId) {
-      setAssignDialogTargetId(selectedInfluencerId);
+    if (selectedInfluencer) {
+      setAssignTargetInfluencer(selectedInfluencer);
+      setAssignDialogTargetId(selectedInfluencer.id);
     } else {
       const clean = cleanInstagramHandle(autoHandle).toLowerCase();
       if (clean) {
-        const match = influencersList.find(
+        const match = rosterOptions.find(
           (inf) =>
             (inf.instagram && cleanInstagramHandle(inf.instagram).toLowerCase() === clean) ||
             inf.name.toLowerCase() === autoHandle.trim().toLowerCase(),
         );
         if (match) {
+          setAssignTargetInfluencer(match);
           setAssignDialogTargetId(match.id);
         } else {
+          setAssignTargetInfluencer(null);
           setAssignDialogTargetId('');
         }
       } else {
+        setAssignTargetInfluencer(null);
         setAssignDialogTargetId('');
       }
     }
@@ -345,7 +426,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
   };
 
   const handleAssignToInfluencer = async (targetIdOverride?: string) => {
-    const targetInfluencerId = targetIdOverride || selectedInfluencerId;
+    const targetInfluencerId =
+      targetIdOverride || assignTargetInfluencer?.id || selectedInfluencerId;
 
     if (!targetInfluencerId) {
       openAssignDialog();
@@ -380,12 +462,18 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         rawResponse: { autoResult, excludedPostKeys, analyzedPosts: activePosts },
       });
 
-      if (targetInfluencerId !== selectedInfluencerId) {
+      const targetInfluencerObj =
+        assignTargetInfluencer ||
+        selectedInfluencer ||
+        rosterOptions.find((inf) => inf.id === targetInfluencerId) ||
+        assignOptions.find((inf) => inf.id === targetInfluencerId);
+
+      if (targetInfluencerObj && targetInfluencerId !== selectedInfluencerId) {
+        setSelectedInfluencer(targetInfluencerObj);
         setSelectedInfluencerId(targetInfluencerId);
       }
       setAssignDialogOpen(false);
 
-      const targetInfluencerObj = influencersList.find((inf) => inf.id === targetInfluencerId);
       showSuccess(
         res.message ||
           `Engagement rate of ${erValue.toFixed(2)}% successfully assigned to ${targetInfluencerObj?.name || 'influencer'}!`,
@@ -474,88 +562,74 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
           <Grid container spacing={2.5} alignItems="center">
             {/* Roster Influencer Selector */}
             <Grid size={{ xs: 12, md: 4 }}>
-              <Autocomplete
-                options={influencersList}
-                loading={influencersLoading}
-                loadingText="Loading roster…"
-                getOptionLabel={(option) =>
-                  option.instagram ? `${option.name} (@${option.instagram})` : option.name
-                }
+              <InfiniteAutocomplete<InfluencerResponse>
+                options={rosterOptions}
                 value={selectedInfluencer}
                 onChange={(_, newValue) => {
+                  setSelectedInfluencer(newValue);
                   setSelectedInfluencerId(newValue?.id || '');
                   if (newValue) {
                     const handle = newValue.instagram || newValue.name || '';
                     setAutoHandle(handle);
                     if (newValue.avgCommercialMin || newValue.avgCommercialMax) {
-                      const fee = newValue.avgCommercialMin || newValue.avgCommercialMax || '';
+                      const fee =
+                        newValue.avgCommercialMin || newValue.avgCommercialMax || '';
                       setAutoCommercialFee(String(fee));
                     }
                   }
                 }}
+                loading={rosterLoading}
+                hasNextPage={rosterHasNextPage}
+                isFetchingNextPage={rosterFetchingNext}
+                onLoadMore={() => void rosterFetchNextPage()}
+                onSearchChange={(query) => setRosterSearch(query)}
+                totalCount={rosterTotal}
+                loadingText="Loading roster…"
+                loadingMoreText="Loading more creators…"
+                noOptionsText={rosterSearch ? 'No creators match search' : 'No creators in roster'}
+                getOptionLabel={(option) =>
+                  option.instagram ? `${option.name} (@${option.instagram})` : option.name
+                }
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 fullWidth
                 size="small"
-                renderOption={(props, option) => {
-                  return (
-                    <Box
-                      component="li"
-                      {...props}
-                      key={option.id}
-                      sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
-                    >
-                      <Avatar
-                        sx={{
-                          width: 28,
-                          height: 28,
-                          bgcolor: theme.palette.primary.main,
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {option.name?.slice(0, 1).toUpperCase()}
-                      </Avatar>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {option.name}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{ color: theme.palette.tokens.textSecondary }}
-                        >
-                          {option.instagram ? `@${option.instagram}` : option.category || 'Creator'}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select from Roster (Optional)"
-                    placeholder="Search roster..."
-                    slotProps={{
-                      input: {
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <InputAdornment position="start">
-                              <PeopleAltRoundedIcon
-                                sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
-                              />
-                            </InputAdornment>
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                        endAdornment: (
-                          <>
-                            {influencersLoading && <CircularProgress size={16} sx={{ mr: 1 }} />}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      },
-                    }}
+                label="Select from Roster (Optional)"
+                placeholder="Search roster..."
+                startAdornment={
+                  <PeopleAltRoundedIcon
+                    sx={{ color: theme.palette.tokens.textSecondary, fontSize: 18 }}
                   />
+                }
+                renderOption={(props, option) => (
+                  <Box
+                    component="li"
+                    {...props}
+                    key={option.id}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        bgcolor: theme.palette.primary.main,
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {option.name?.slice(0, 1).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {option.name}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.textSecondary }}
+                      >
+                        {option.instagram ? `@${option.instagram}` : option.category || 'Creator'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 )}
               />
             </Grid>
@@ -1674,83 +1748,78 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Select Target Influencer from Roster
               </Typography>
-              <Autocomplete
-                options={influencersList}
+              <InfiniteAutocomplete<InfluencerResponse>
+                options={assignOptions}
+                value={assignTargetInfluencer}
+                onChange={(_, newValue) => {
+                  setAssignTargetInfluencer(newValue);
+                  setAssignDialogTargetId(newValue?.id || '');
+                }}
+                loading={assignLoading}
+                hasNextPage={assignHasNextPage}
+                isFetchingNextPage={assignFetchingNext}
+                onLoadMore={() => void assignFetchNextPage()}
+                onSearchChange={(query) => setAssignSearch(query)}
+                totalCount={assignTotal}
+                loadingText="Loading roster…"
+                loadingMoreText="Loading more creators…"
+                noOptionsText={assignSearch ? 'No creators match search' : 'No creators in roster'}
                 getOptionLabel={(option) =>
                   option.instagram ? `${option.name} (@${option.instagram})` : option.name
                 }
-                value={influencersList.find((inf) => inf.id === assignDialogTargetId) || null}
-                onChange={(_, newValue) => {
-                  setAssignDialogTargetId(newValue?.id || '');
-                }}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 fullWidth
-                renderOption={(props, option) => {
-                  return (
-                    <Box
-                      component="li"
-                      {...props}
-                      key={option.id}
-                      sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
-                    >
-                      <Avatar
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          bgcolor: theme.palette.primary.main,
-                          fontSize: '0.875rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {option.name?.slice(0, 1).toUpperCase()}
-                      </Avatar>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {option.name}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{ color: theme.palette.tokens.textSecondary }}
-                        >
-                          {option.instagram ? `@${option.instagram}` : option.category || 'Creator'}{' '}
-                          ·{' '}
-                          {option.followers
-                            ? `${option.followers.toLocaleString()} followers`
-                            : 'Followers pending'}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Target Influencer *"
-                    placeholder="Search by name or Instagram handle..."
-                    size="medium"
-                    slotProps={{
-                      input: {
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <InputAdornment position="start">
-                              <PeopleAltRoundedIcon
-                                sx={{ color: theme.palette.tokens.textSecondary, fontSize: 20 }}
-                              />
-                            </InputAdornment>
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                      },
-                    }}
+                size="medium"
+                label="Target Influencer *"
+                placeholder="Search by name or Instagram handle..."
+                startAdornment={
+                  <PeopleAltRoundedIcon
+                    sx={{ color: theme.palette.tokens.textSecondary, fontSize: 20 }}
                   />
+                }
+                renderOption={(props, option) => (
+                  <Box
+                    component="li"
+                    {...props}
+                    key={option.id}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        bgcolor: theme.palette.primary.main,
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {option.name?.slice(0, 1).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {option.name}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.textSecondary }}
+                      >
+                        {option.instagram ? `@${option.instagram}` : option.category || 'Creator'}{' '}
+                        ·{' '}
+                        {option.followers
+                          ? `${option.followers.toLocaleString()} followers`
+                          : 'Followers pending'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 )}
               />
             </Box>
 
             {/* Selected influencer confirmation details */}
             {(() => {
-              const target = influencersList.find((inf) => inf.id === assignDialogTargetId);
+              const target =
+                assignTargetInfluencer ||
+                rosterOptions.find((inf) => inf.id === assignDialogTargetId);
               if (!target) return null;
               return (
                 <Box

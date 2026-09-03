@@ -5,8 +5,6 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -16,9 +14,10 @@ import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
 import RecordVoiceOverRoundedIcon from '@mui/icons-material/RecordVoiceOverRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { useAgencyInfluencers, useAgencyBrands } from '@api';
+import { useInfiniteAgencyInfluencers, useInfiniteAgencyBrands } from '@api';
 import { InfluencerResponse, BrandResponse, ChatResponse, ChatTypeCode } from '@contracts';
 import { safeImageUrl } from '@utils';
+import { InfiniteAutocomplete } from './InfiniteAutocomplete';
 
 function formatDisplaySocial(urlOrHandle: string | null | undefined): string {
   if (!urlOrHandle) return '—';
@@ -62,26 +61,68 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
   const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
   const [error, setError] = useState('');
 
-  // The dialog stays mounted so it can animate, so these must not fetch until
-  // it is actually opened - otherwise every visit to Messages pulls two
-  // hundred rows for a picker the user may never open.
-  const { data: influencersData, isLoading: influencersLoading } = useAgencyInfluencers(
-    { limit: 100 },
-    { enabled: open },
-  );
-  const { data: brandsData, isLoading: brandsLoading } = useAgencyBrands(
-    { limit: 100 },
-    { enabled: open },
-  );
+  // Infinite queries with debounced search & scroll loading (limit 20 per page)
+  const [influencerSearch, setInfluencerSearch] = useState('');
+  const {
+    data: influencersInfiniteData,
+    isLoading: influencersLoading,
+    isFetchingNextPage: influencersFetchingNext,
+    hasNextPage: influencersHasNextPage,
+    fetchNextPage: influencersFetchNextPage,
+  } = useInfiniteAgencyInfluencers({
+    limit: 20,
+    search: influencerSearch,
+    enabled: open && recipientType === 'INFLUENCER',
+  });
 
-  const influencers: InfluencerResponse[] = React.useMemo(
-    () => influencersData?.items || [],
-    [influencersData],
-  );
-  const brands: BrandResponse[] = React.useMemo(
-    () => brandsData?.items || [],
-    [brandsData],
-  );
+  const [brandSearch, setBrandSearch] = useState('');
+  const {
+    data: brandsInfiniteData,
+    isLoading: brandsLoading,
+    isFetchingNextPage: brandsFetchingNext,
+    hasNextPage: brandsHasNextPage,
+    fetchNextPage: brandsFetchNextPage,
+  } = useInfiniteAgencyBrands({
+    limit: 20,
+    search: brandSearch,
+    enabled: open && recipientType === 'BRAND',
+  });
+
+  const influencers: InfluencerResponse[] = React.useMemo(() => {
+    const seen = new Set<string>();
+    const list: InfluencerResponse[] = [];
+    if (selectedInfluencer) {
+      seen.add(selectedInfluencer.id);
+      list.push(selectedInfluencer);
+    }
+    for (const page of influencersInfiniteData?.pages || []) {
+      for (const item of page.items || []) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          list.push(item);
+        }
+      }
+    }
+    return list;
+  }, [influencersInfiniteData?.pages, selectedInfluencer]);
+
+  const brands: BrandResponse[] = React.useMemo(() => {
+    const seen = new Set<string>();
+    const list: BrandResponse[] = [];
+    if (selectedBrand) {
+      seen.add(selectedBrand.id);
+      list.push(selectedBrand);
+    }
+    for (const page of brandsInfiniteData?.pages || []) {
+      for (const item of page.items || []) {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          list.push(item);
+        }
+      }
+    }
+    return list;
+  }, [brandsInfiniteData?.pages, selectedBrand]);
 
   const isInfluencerChatActive = React.useCallback(
     (influencer: InfluencerResponse) => {
@@ -240,7 +281,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
 
             {/* 2. Participant Autocomplete Picker */}
             {recipientType === 'INFLUENCER' ? (
-              <Autocomplete
+              <InfiniteAutocomplete<InfluencerResponse>
                 options={influencers}
                 value={selectedInfluencer}
                 onChange={(_, val) => {
@@ -250,7 +291,16 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, val) => option.id === val.id}
                 loading={influencersLoading}
+                hasNextPage={influencersHasNextPage}
+                isFetchingNextPage={influencersFetchingNext}
+                onLoadMore={() => void influencersFetchNextPage()}
+                onSearchChange={(query) => setInfluencerSearch(query)}
                 disabled={loading || Boolean(preselectedParticipantId)}
+                label="Select Influencer *"
+                placeholder="Search influencer by name..."
+                error={Boolean(error && !selectedInfluencer)}
+                helperText={error && !selectedInfluencer ? error : undefined}
+                fullWidth
                 renderOption={(props, option) => (
                   <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
                     <Avatar
@@ -297,19 +347,9 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                     </Box>
                   </Box>
                 )}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Influencer *"
-                    placeholder="Search influencer by name..."
-                    error={Boolean(error && !selectedInfluencer)}
-                    helperText={error && !selectedInfluencer ? error : undefined}
-                    fullWidth
-                  />
-                )}
               />
             ) : (
-              <Autocomplete
+              <InfiniteAutocomplete<BrandResponse>
                 options={brands}
                 value={selectedBrand}
                 onChange={(_, val) => {
@@ -319,7 +359,16 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 getOptionLabel={(option) => option.name}
                 isOptionEqualToValue={(option, val) => option.id === val.id}
                 loading={brandsLoading}
+                hasNextPage={brandsHasNextPage}
+                isFetchingNextPage={brandsFetchingNext}
+                onLoadMore={() => void brandsFetchNextPage()}
+                onSearchChange={(query) => setBrandSearch(query)}
                 disabled={loading || Boolean(preselectedParticipantId)}
+                label="Select Client Brand *"
+                placeholder="Search brand by name..."
+                error={Boolean(error && !selectedBrand)}
+                helperText={error && !selectedBrand ? error : undefined}
+                fullWidth
                 renderOption={(props, option) => (
                   <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
                     <Avatar
@@ -363,16 +412,6 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                       </Typography>
                     </Box>
                   </Box>
-                )}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Client Brand *"
-                    placeholder="Search brand by name..."
-                    error={Boolean(error && !selectedBrand)}
-                    helperText={error && !selectedBrand ? error : undefined}
-                    fullWidth
-                  />
                 )}
               />
             )}

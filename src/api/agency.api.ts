@@ -1,5 +1,11 @@
 import { useEffect, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import { invalidateEntity } from './invalidate';
 import {
@@ -29,6 +35,7 @@ import {
   AssignERToInfluencerRequest,
   AssignERResponse,
   CalculateInfluencerERRequest,
+  SyncInstagramProfileResponse,
   InfluencerEngagementResponse,
   AgencyDashboardSummary,
   InfluencerFilterOptions,
@@ -180,6 +187,52 @@ export function useAgencyBrands(params?: BrandListQuery, options?: { enabled?: b
   });
 }
 
+export interface UseInfiniteAgencyBrandsOptions {
+  limit?: number;
+  search?: string;
+  enabled?: boolean;
+}
+
+/**
+ * Paged infinite query for brands.
+ * Loads a small page at a time (default 20) and fetches the next page as the user
+ * scrolls down or searches, preventing loading 1000+ brands at once.
+ */
+export function useInfiniteAgencyBrands(options?: UseInfiniteAgencyBrandsOptions) {
+  const limit = options?.limit ?? 20;
+  const search = options?.search;
+
+  return useInfiniteQuery<PaginatedResult<BrandResponse>, Error>({
+    queryKey: ['agency', 'brands', 'infinite', { limit, search: search?.trim() || '' }],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await apiClient.get<PaginatedResult<BrandResponse>>('/agency/brands', {
+        params: {
+          page: pageParam,
+          limit,
+          search: search?.trim() || undefined,
+        },
+      });
+      return response.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.totalPages !== undefined) {
+        return allPages.length < lastPage.totalPages ? allPages.length + 1 : undefined;
+      }
+      if (lastPage.total !== undefined) {
+        const loadedCount = allPages.reduce((acc, p) => acc + (p.items?.length || 0), 0);
+        return loadedCount < lastPage.total ? allPages.length + 1 : undefined;
+      }
+      if (!lastPage.items || lastPage.items.length < limit) {
+        return undefined;
+      }
+      return allPages.length + 1;
+    },
+    enabled: options?.enabled ?? true,
+    staleTime: 1000 * 60,
+  });
+}
+
 /**
  * Signs up a new client brand under this agency.
  *
@@ -306,6 +359,66 @@ export function useAgencyInfluencers(
     },
     placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
+  });
+}
+
+export interface UseInfiniteAgencyInfluencersOptions {
+  limit?: number;
+  search?: string;
+  category?: string[];
+  location?: string[];
+  enabled?: boolean;
+}
+
+/**
+ * Paged infinite query for creators.
+ * Loads a small page at a time (default 20) and fetches the next page as the user
+ * scrolls down or searches, preventing loading 1000+ creators at once.
+ */
+export function useInfiniteAgencyInfluencers(options?: UseInfiniteAgencyInfluencersOptions) {
+  const limit = options?.limit ?? 20;
+  const search = options?.search;
+  const category = options?.category;
+  const location = options?.location;
+
+  return useInfiniteQuery<PaginatedResult<InfluencerResponse>, Error>({
+    queryKey: [
+      'agency',
+      'influencers',
+      'infinite',
+      { limit, search: search?.trim() || '', category, location },
+    ],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await apiClient.get<PaginatedResult<InfluencerResponse>>(
+        '/agency/influencers',
+        {
+          params: {
+            page: pageParam,
+            limit,
+            search: search?.trim() || undefined,
+            categories: category && category.length > 0 ? category : undefined,
+            locations: location && location.length > 0 ? location : undefined,
+          },
+        },
+      );
+      return response.data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.totalPages !== undefined) {
+        return allPages.length < lastPage.totalPages ? allPages.length + 1 : undefined;
+      }
+      if (lastPage.total !== undefined) {
+        const loadedCount = allPages.reduce((acc, p) => acc + (p.items?.length || 0), 0);
+        return loadedCount < lastPage.total ? allPages.length + 1 : undefined;
+      }
+      if (!lastPage.items || lastPage.items.length < limit) {
+        return undefined;
+      }
+      return allPages.length + 1;
+    },
+    enabled: options?.enabled ?? true,
+    staleTime: 1000 * 60,
   });
 }
 
@@ -698,6 +811,29 @@ export function useInfluencerEngagement(influencerId?: string) {
       return response.data;
     },
     enabled: Boolean(influencerId),
+  });
+}
+
+/**
+ * Refreshes the stored Instagram profile (follower count, handle) from Meta.
+ *
+ * Deliberately no ER: this used to call calculate-er, so a follower refresh
+ * also wrote a new engagement record and re-quoted the pre-eval ER on the
+ * creator's campaign assignments. Recalculating ER is its own action now.
+ */
+export function useSyncInstagramProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (influencerId: string) => {
+      const response = await apiClient.post<SyncInstagramProfileResponse>(
+        `/agency/influencers/${influencerId}/sync-instagram`,
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      invalidateEntity(queryClient, 'influencer');
+      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
+    },
   });
 }
 
