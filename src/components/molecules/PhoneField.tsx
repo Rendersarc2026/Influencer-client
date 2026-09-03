@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -42,17 +42,37 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
   fullWidth = true,
   sx,
 }) => {
-  const parts = useMemo(() => splitPhone(value), [value]);
-  const countryCode = parts?.countryCode ?? DEFAULT_CALLING_CODE;
-  const nationalNumber = parts?.nationalNumber ?? '';
+  // The parts are held locally rather than re-parsed from `value` on each
+  // render: `splitPhone` only recognises a complete E.164 number, so a
+  // half-typed one parses as null and would blank the field out from under the
+  // user on every keystroke before the eighth digit.
+  const initial = splitPhone(value);
+  const [countryCode, setCountryCode] = useState(initial?.countryCode ?? DEFAULT_CALLING_CODE);
+  const [nationalNumber, setNationalNumber] = useState(initial?.nationalNumber ?? '');
+
+  // Anything we emitted is already reflected locally; anything else came from
+  // outside (a dialog opening on a saved record, a reset after submit) and has
+  // to be adopted.
+  const lastEmitted = useRef<string>(value);
+  useEffect(() => {
+    if (value === lastEmitted.current) return;
+    lastEmitted.current = value;
+    const parts = splitPhone(value);
+    setCountryCode(parts?.countryCode ?? DEFAULT_CALLING_CODE);
+    setNationalNumber(parts?.nationalNumber ?? '');
+  }, [value]);
 
   const selected = COUNTRY_CALLING_CODES.find((c) => c.code === countryCode);
   const maxDigits = selected ? Math.max(...selected.lengths) : 15;
 
   const emit = (code: string, national: string) => {
+    setCountryCode(code);
+    setNationalNumber(national);
     // An emptied number clears the whole value rather than leaving a bare "+91"
     // behind, which no schema would accept and no user meant to enter.
-    onChange(national ? `+${code}${national}` : '');
+    const next = national ? `+${code}${national}` : '';
+    lastEmitted.current = next;
+    onChange(next);
   };
 
   return (
@@ -63,7 +83,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
         value={selected ? countryCode : DEFAULT_CALLING_CODE}
         onChange={(e) => emit(e.target.value, nationalNumber)}
         disabled={disabled}
-        sx={{ width: 132, flexShrink: 0 }}
+        sx={{ width: 104, flexShrink: 0 }}
         slotProps={{ select: { MenuProps: { PaperProps: { sx: { maxHeight: 320 } } } } }}
       >
         {COUNTRY_CALLING_CODES.map((c) => (

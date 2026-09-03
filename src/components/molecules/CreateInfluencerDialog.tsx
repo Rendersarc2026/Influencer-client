@@ -349,9 +349,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               disabled={loading}
             />
 
-            <Box
-              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
-            >
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
               <TextField
                 label="Login / Contact Email *"
                 value={email}
