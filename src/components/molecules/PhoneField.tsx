@@ -83,7 +83,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
         value={selected ? countryCode : DEFAULT_CALLING_CODE}
         onChange={(e) => emit(e.target.value, nationalNumber)}
         disabled={disabled}
-        sx={{ width: 104, flexShrink: 0 }}
+        sx={{ width: 92, flexShrink: 0 }}
         slotProps={{ select: { MenuProps: { PaperProps: { sx: { maxHeight: 320 } } } } }}
       >
         {COUNTRY_CALLING_CODES.map((c) => (
@@ -108,6 +108,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
         helperText={helperText}
         fullWidth
         inputMode="numeric"
+        sx={{ flex: 1, minWidth: 168 }}
       />
     </Box>
   );

@@ -504,39 +504,35 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               Contact & Location Details
             </Typography>
 
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                label="Contact Person"
-                value={contactPerson}
-                onChange={(e) => {
-                  setContactPerson(capitalizeWords(e.target.value));
-                  setContactPersonError('');
-                }}
-                placeholder="e.g. Varghese Alukkas"
-                fullWidth
-                disabled={busy}
-                error={Boolean(contactPersonError)}
-                helperText={contactPersonError}
-                sx={{ flex: 1 }}
-              />
+            <TextField
+              label="Contact Person"
+              value={contactPerson}
+              onChange={(e) => {
+                setContactPerson(capitalizeWords(e.target.value));
+                setContactPersonError('');
+              }}
+              placeholder="e.g. Varghese Alukkas"
+              fullWidth
+              disabled={busy}
+              error={Boolean(contactPersonError)}
+              helperText={contactPersonError}
+            />
 
-              <PhoneField
-                label="Contact Phone"
-                required
-                value={contactPhone}
-                onChange={(next) => {
-                  setContactPhone(next);
-                  if (phoneError) {
-                    if (!next.trim()) setPhoneError('Phone number is required');
-                    else setPhoneError(validatePhoneNumber(next));
-                  }
-                }}
-                error={Boolean(phoneError)}
-                helperText={phoneError || 'Direct phone number for manager'}
-                disabled={busy}
-                sx={{ flex: 1 }}
-              />
-            </Box>
+            <PhoneField
+              label="Contact Phone"
+              required
+              value={contactPhone}
+              onChange={(next) => {
+                setContactPhone(next);
+                if (phoneError) {
+                  if (!next.trim()) setPhoneError('Phone number is required');
+                  else setPhoneError(validatePhoneNumber(next));
+                }
+              }}
+              error={Boolean(phoneError)}
+              helperText={phoneError || 'Direct phone number for manager'}
+              disabled={busy}
+            />
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <TextField
