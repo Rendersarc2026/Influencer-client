@@ -7,6 +7,7 @@ export * from './PromoCard';
 export * from './UserMenu';
 export * from './FilterBar';
 export * from './ConfirmDialog';
+export * from './PhoneField';
 export * from './CommentDialog';
 export * from './ApproveRateDialog';
 export * from './EditPreEvalDialog';

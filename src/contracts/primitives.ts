@@ -40,6 +40,27 @@ export function safeText(max: number, min = 1) {
     .refine((v) => v.length >= min, `Must be at least ${min} character${min === 1 ? '' : 's'}`);
 }
 
+/**
+ * A human name: the contact person on a brand, a creator's own name, the name
+ * on a profile.
+ *
+ * `safeText` alone is length-and-control-bytes only, so it accepts "1233" and
+ * "-----" — which is how a brand came to display a number as its contact
+ * person, on the profile header and in the account menu. Requiring at least one
+ * letter is the strictest rule that stays correct across scripts: it keeps
+ * "Jose", "Anne-Marie", "O'Brien" and non-Latin names, and rejects values made
+ * only of digits, spaces and punctuation.
+ *
+ * Digits are still allowed *within* a name — the rule is "contains a letter",
+ * not "letters only", so a suffix or a transliterated form is not blocked.
+ */
+export function personName(max: number, min = 1) {
+  return safeText(max, min).refine(
+    (v) => /\p{L}/u.test(v),
+    'Must contain at least one letter',
+  );
+}
+
 /** Multi-line free text (notes, comments, bios). Newlines and tabs allowed. */
 export function safeMultilineText(max: number, min = 1) {
   return z
@@ -132,12 +153,77 @@ export function slug(max = 80) {
     );
 }
 
-/** E.164-ish phone number. Separators are stripped before validation. */
+/**
+ * How many digits the subscriber number has, per country calling code.
+ *
+ * The old rule was `7..15 digits total`, which is only E.164's global envelope:
+ * it happily accepted "+91938739353600" — a country code plus thirteen digits
+ * where an Indian number has ten. Checking the national length against the code
+ * the number actually carries is what makes the field mean something.
+ *
+ * Only the codes this platform actually sees are listed. Anything else falls
+ * back to the global envelope rather than being rejected, so an unlisted country
+ * is still usable — add its lengths here to tighten it.
+ */
+const NATIONAL_DIGIT_LENGTHS: Record<string, readonly number[]> = {
+  '1': [10], // US / Canada
+  '44': [10], // United Kingdom
+  '49': [10, 11], // Germany
+  '61': [9], // Australia
+  '65': [8], // Singapore
+  '91': [10], // India
+  '971': [9], // United Arab Emirates
+};
+
+/** Longest first: calling codes are 1-3 digits and "971" must beat "97" and "9". */
+const CALLING_CODES = Object.keys(NATIONAL_DIGIT_LENGTHS).sort((a, b) => b.length - a.length);
+
+/** Everything that is punctuation in a written phone number and noise in a stored one. */
+const PHONE_SEPARATORS = /[\s()./-]/g;
+
+/**
+ * Splits a stored E.164 number into the parts a form edits separately.
+ *
+ * Returns `null` for anything that is not E.164, which is what lets a caller
+ * fall back to showing the raw stored value instead of silently mangling it.
+ */
+export function splitPhone(value: string): { countryCode: string; nationalNumber: string } | null {
+  const compact = value.replace(PHONE_SEPARATORS, '');
+  if (!/^\+[0-9]{8,15}$/.test(compact)) return null;
+
+  const digits = compact.slice(1);
+  for (const code of CALLING_CODES) {
+    if (digits.startsWith(code)) {
+      return { countryCode: code, nationalNumber: digits.slice(code.length) };
+    }
+  }
+  // Unknown code: assume the shortest plausible one so the number stays editable.
+  return { countryCode: digits.slice(0, 2), nationalNumber: digits.slice(2) };
+}
+
+/**
+ * A phone number in E.164 form: a leading `+`, a country calling code, then the
+ * subscriber number.
+ *
+ * The `+` is required. Without it a number is ambiguous — "9876543210" could be
+ * a ten-digit Indian number or a national number in any other plan — and the
+ * per-country length check below has nothing to key on.
+ */
 export const phone = z
   .string()
   .max(32)
-  .transform((v) => v.replace(/[\s()-]/g, ''))
-  .refine((v) => /^\+?[0-9]{7,15}$/.test(v), 'Must be a valid phone number');
+  .transform((v) => v.replace(PHONE_SEPARATORS, ''))
+  .refine(
+    (v) => /^\+[0-9]{8,15}$/.test(v),
+    'Must be a phone number in international format, e.g. +91 9876543210',
+  )
+  .refine((v) => {
+    const parts = splitPhone(v);
+    if (!parts) return false;
+    const expected = NATIONAL_DIGIT_LENGTHS[parts.countryCode];
+    // Unlisted country code: the E.164 envelope above is all we can assert.
+    return !expected || expected.includes(parts.nationalNumber.length);
+  }, 'Phone number has the wrong number of digits for its country code');
 
 /** Password primitive: length-bounded (min 6, max 128), no whitespace, no control characters. */
 export const password = z

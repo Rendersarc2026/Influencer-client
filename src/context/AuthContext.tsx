@@ -61,11 +61,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     refetchOnReconnect: true,
-    refetchOnWindowFocus: false,
-    // The server renews the session on use rather than expiring it on a clock,
-    // so there is nothing to re-check on a schedule; a reconnect refetch is
-    // enough. Re-validating more often only risks turning a blip into a logout.
-    staleTime: 1000 * 60 * 60 * 24,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   const requestOtpMutation = useMutation({

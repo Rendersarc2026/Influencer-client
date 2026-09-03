@@ -13,6 +13,7 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
+import { PhoneField } from './PhoneField';
 import { useCategories, useLocations } from '@api';
 import { CreateInfluencerRequest, CategoryTypeCode } from '@contracts';
 import {
@@ -23,6 +24,7 @@ import {
   getInfluencerTier,
   getTierInfo,
   InfluencerTier,
+  validatePhoneNumber,
 } from '@utils';
 
 export interface CreateInfluencerDialogProps {
@@ -69,7 +71,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     const trimmed = val.trim();
     if (!trimmed) return '';
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`)) return `https://${trimmed}`;
+    if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`))
+      return `https://${trimmed}`;
     if (domain === 'instagram.com') {
       const handle = trimmed.replace(/^@/, '');
       return `https://instagram.com/${handle}`;
@@ -104,16 +107,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     if (!trimmed) return '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       return 'Must be a valid email address (e.g. riya@gmail.com)';
-    }
-    return '';
-  };
-
-  const validatePhone = (val: string): string => {
-    const trimmed = val.trim();
-    if (!trimmed) return '';
-    const stripped = trimmed.replace(/[\s()-]/g, '');
-    if (!/^\+?[0-9]{7,15}$/.test(stripped)) {
-      return 'Must be a valid phone number (7-15 digits, optional + prefix)';
     }
     return '';
   };
@@ -210,7 +203,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       setPhoneError('Phone number is required');
       hasFieldErr = true;
     } else {
-      const pErr = validatePhone(trimmedPhone);
+      const pErr = validatePhoneNumber(trimmedPhone);
       if (pErr) {
         setPhoneError(pErr);
         hasFieldErr = true;
@@ -261,7 +254,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
       }
     }
 
-    const finalInstagram = instagram.trim() ? normalizeSocialUrl(instagram, 'instagram.com') : undefined;
+    const finalInstagram = instagram.trim()
+      ? normalizeSocialUrl(instagram, 'instagram.com')
+      : undefined;
     const finalYoutube = youtube.trim() ? normalizeSocialUrl(youtube, 'youtube.com') : undefined;
 
     const payload: CreateInfluencerRequest = {
@@ -354,7 +349,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               disabled={loading}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Login / Contact Email *"
                 value={email}
@@ -381,28 +378,17 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 fullWidth
                 disabled={loading}
               />
-              <TextField
-                label="Contact Phone *"
+              <PhoneField
+                label="Contact Phone"
+                required
                 value={contactPhone}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setContactPhone(val);
-                  if (val.trim()) {
-                    setPhoneError(validatePhone(val));
-                  }
-                }}
-                onBlur={(e) => {
-                  const val = e.target.value.trim();
-                  if (!val) {
-                    setPhoneError('Phone number is required');
-                  } else {
-                    setPhoneError(validatePhone(val));
-                  }
+                onChange={(next) => {
+                  setContactPhone(next);
+                  if (next.trim()) setPhoneError(validatePhoneNumber(next));
+                  else setPhoneError('');
                 }}
                 error={Boolean(phoneError)}
                 helperText={phoneError || 'Required: the influencer’s direct line'}
-                placeholder="e.g. +91 9876543210"
-                fullWidth
                 disabled={loading}
               />
             </Box>
@@ -514,7 +500,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               </Box>
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <Autocomplete
                 freeSolo
                 options={locationOptions}
@@ -571,34 +559,34 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               renderTags={(value: readonly string[], getTagProps) =>
                 value.map((option: string, index: number) => {
                   const { key, ...tagProps } = getTagProps({ index });
-                  return (
-                    <Chip
-                      key={key}
-                      label={option}
-                      size="small"
-                      {...tagProps}
-                    />
-                  );
+                  return <Chip key={key} label={option} size="small" {...tagProps} />;
                 })
               }
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Influencing Regions (Optional)"
-                  placeholder={regions.length === 0 ? "Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter" : ""}
+                  placeholder={
+                    regions.length === 0
+                      ? 'Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter'
+                      : ''
+                  }
                   helperText="Key geographical target regions where this influencer's audience is strongest (optional)"
                   fullWidth
                 />
               )}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Instagram Profile URL"
                 value={instagram}
                 onChange={(e) => {
                   setInstagram(e.target.value);
-                  if (instagramError) setInstagramError(validateSocialUrl(e.target.value, 'Instagram URL'));
+                  if (instagramError)
+                    setInstagramError(validateSocialUrl(e.target.value, 'Instagram URL'));
                 }}
                 onBlur={() => {
                   if (instagram.trim()) {
@@ -616,7 +604,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 value={youtube}
                 onChange={(e) => {
                   setYoutube(e.target.value);
-                  if (youtubeError) setYoutubeError(validateSocialUrl(e.target.value, 'YouTube URL'));
+                  if (youtubeError)
+                    setYoutubeError(validateSocialUrl(e.target.value, 'YouTube URL'));
                 }}
                 onBlur={() => {
                   if (youtube.trim()) {
@@ -631,7 +620,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Indicative Rate — Min (₹)"
                 value={avgCommercialMin}

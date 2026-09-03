@@ -17,10 +17,15 @@ import CircularProgress from '@mui/material/CircularProgress';
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
+import { PhoneField } from './PhoneField';
 import { useCategories, useLocations, uploadImage } from '@api';
-import { CreateBrandRequest, UpdateBrandRequest, BrandResponse, CategoryTypeCode } from '@contracts';
-import { capitalizeWords, safeImageUrl } from '@utils';
-
+import {
+  CreateBrandRequest,
+  UpdateBrandRequest,
+  BrandResponse,
+  CategoryTypeCode,
+} from '@contracts';
+import { capitalizeWords, safeImageUrl, validatePhoneNumber } from '@utils';
 
 export interface CreateBrandDialogProps {
   open: boolean;
@@ -64,10 +69,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   );
 
   const { data: locationsData } = useLocations();
-  const locationOptions = useMemo(
-    () => (locationsData || []).map((l) => l.name),
-    [locationsData],
-  );
+  const locationOptions = useMemo(() => (locationsData || []).map((l) => l.name), [locationsData]);
 
   const isEdit = Boolean(brandToEdit);
   const busy = loading;
@@ -91,6 +93,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   const [phoneError, setPhoneError] = useState('');
   const [websiteError, setWebsiteError] = useState('');
   const [logoUrlError, setLogoUrlError] = useState('');
+  const [contactPersonError, setContactPersonError] = useState('');
   const [error, setError] = useState('');
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +112,6 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       return;
     }
 
-
     try {
       setUploadingLogo(true);
       setLogoUrlError('');
@@ -126,18 +128,10 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     }
   };
 
-
   const validateEmail = (val: string) => {
     if (!val) return '';
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(val)) return 'Please enter a valid email address';
-    return '';
-  };
-
-  const validatePhone = (val: string) => {
-    if (!val) return '';
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,15}$/;
-    if (!phoneRegex.test(val)) return 'Please enter a valid phone number (e.g. +91 9876543210)';
     return '';
   };
 
@@ -174,6 +168,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       setPhoneError('');
       setWebsiteError('');
       setLogoUrlError('');
+      setContactPersonError('');
       setError('');
     }
   }, [open, brandToEdit]);
@@ -206,6 +201,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     setPhoneError('');
     setWebsiteError('');
     setLogoUrlError('');
+    setContactPersonError('');
 
     const trimmedName = name.trim();
     const trimmedEmail = contactEmail.trim().toLowerCase();
@@ -237,7 +233,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       return;
     }
 
-    const pErr = validatePhone(trimmedPhone);
+    const pErr = validatePhoneNumber(trimmedPhone);
     if (pErr) {
       setPhoneError(pErr);
       return;
@@ -257,6 +253,14 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
         setLogoUrlError(lErr);
         return;
       }
+    }
+
+    // Optional here, but a contact person that is present has to be a name.
+    // CreateBrandSchema rejects it either way; catching it now puts the message
+    // on the field instead of in the dialog's generic error banner.
+    if (contactPerson.trim() && !/\p{L}/u.test(contactPerson)) {
+      setContactPersonError('Enter a contact name, not just numbers');
+      return;
     }
 
     const payload: CreateBrandRequest | UpdateBrandRequest = {
@@ -475,7 +479,6 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               </Box>
             </Box>
 
-
             <TextField
               label="Bio & Brand Overview"
               multiline
@@ -505,35 +508,31 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               <TextField
                 label="Contact Person"
                 value={contactPerson}
-                onChange={(e) => setContactPerson(capitalizeWords(e.target.value))}
+                onChange={(e) => {
+                  setContactPerson(capitalizeWords(e.target.value));
+                  setContactPersonError('');
+                }}
                 placeholder="e.g. Varghese Alukkas"
                 fullWidth
                 disabled={busy}
+                error={Boolean(contactPersonError)}
+                helperText={contactPersonError}
                 sx={{ flex: 1 }}
               />
 
-              <TextField
-                label="Contact Phone *"
+              <PhoneField
+                label="Contact Phone"
+                required
                 value={contactPhone}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setContactPhone(val);
+                onChange={(next) => {
+                  setContactPhone(next);
                   if (phoneError) {
-                    if (!val.trim()) setPhoneError('Phone number is required');
-                    else setPhoneError(validatePhone(val));
-                  }
-                }}
-                onBlur={() => {
-                  if (!contactPhone.trim()) {
-                    setPhoneError('Phone number is required');
-                  } else {
-                    setPhoneError(validatePhone(contactPhone));
+                    if (!next.trim()) setPhoneError('Phone number is required');
+                    else setPhoneError(validatePhoneNumber(next));
                   }
                 }}
                 error={Boolean(phoneError)}
                 helperText={phoneError || 'Direct phone number for manager'}
-                placeholder="e.g. +91 9876543210"
-                fullWidth
                 disabled={busy}
                 sx={{ flex: 1 }}
               />
@@ -559,9 +558,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                   }
                 }}
                 error={Boolean(emailError)}
-                helperText={
-                  emailError || 'Brand manager will use this email address to log in'
-                }
+                helperText={emailError || 'Brand manager will use this email address to log in'}
                 placeholder="e.g. manager@brand.com"
                 fullWidth
                 disabled={busy}
@@ -624,7 +621,12 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" disabled={submitDisabled} sx={{ minWidth: 140 }}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={submitDisabled}
+            sx={{ minWidth: 140 }}
+          >
             {busy ? (
               <CircularProgress size={20} color="inherit" />
             ) : isEdit ? (
@@ -638,4 +640,3 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     </Dialog>
   );
 };
-

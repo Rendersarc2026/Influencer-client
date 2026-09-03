@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
+import { invalidateEntity } from './invalidate';
 import {
   BrandResponse,
   BrandListQuery,
@@ -59,7 +60,6 @@ export function agencyDashboardSummaryQueryOptions() {
 export function useAgencyDashboardSummary() {
   return useQuery<AgencyDashboardSummary>({
     ...agencyDashboardSummaryQueryOptions(),
-    staleTime: 1000 * 60,
   });
 }
 
@@ -76,7 +76,6 @@ export function useInfluencerFilterOptions() {
       );
       return response.data;
     },
-    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -94,7 +93,6 @@ export function useCampaignRollups() {
       const response = await apiClient.get<CampaignRollup[]>('/agency/reports/rollup');
       return response.data;
     },
-    staleTime: 1000 * 60,
     placeholderData: keepPreviousData,
   });
 }
@@ -144,6 +142,7 @@ export function useSetUserBlocked() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'user');
       queryClient.invalidateQueries({ queryKey: ['agency', 'users'] });
     },
   });
@@ -192,6 +191,7 @@ export function useCreateBrand() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'brand');
       // refetchType: 'all' so a brand picker cached from an earlier visit
       // (mounted elsewhere, currently inactive) is already fresh by the time
       // it is shown again, rather than waiting for its next mount to notice.
@@ -208,6 +208,7 @@ export function useUpdateBrand() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'brand');
       queryClient.invalidateQueries({ queryKey: ['agency', 'brands'], refetchType: 'all' });
     },
   });
@@ -259,6 +260,7 @@ export function useCreateCampaign() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'campaign');
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'] });
     },
   });
@@ -272,6 +274,7 @@ export function useUpdateCampaign() {
       return response.data;
     },
     onSuccess: (_, variables) => {
+      invalidateEntity(queryClient, 'campaign');
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
@@ -285,7 +288,10 @@ export function useUpdateCampaign() {
 // -------------------------------------------------------------
 
 /** The creators this agency represents — also the assign-to-campaign picker. */
-export function useAgencyInfluencers(params?: InfluencerListQuery, options?: { enabled?: boolean }) {
+export function useAgencyInfluencers(
+  params?: InfluencerListQuery,
+  options?: { enabled?: boolean },
+) {
   return useQuery<PaginatedResult<InfluencerResponse>>({
     queryKey: ['agency', 'influencers', params],
     queryFn: async () => {
@@ -313,6 +319,7 @@ export function useCreateInfluencer() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'influencer');
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
     },
   });
@@ -326,6 +333,7 @@ export function useUpdateInfluencer() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'influencer');
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'], refetchType: 'all' });
       queryClient.invalidateQueries({ queryKey: ['agency', 'campaigns'], refetchType: 'all' });
     },
@@ -366,6 +374,7 @@ export function useAddInfluencerToCampaign(campaignId: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       queryClient.invalidateQueries({
         queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
       });
@@ -380,6 +389,7 @@ export function useRemoveInfluencerFromCampaign(campaignId?: string) {
       await apiClient.delete(`/agency/mappers/${mapperId}`);
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
@@ -436,6 +446,7 @@ export function useApproveRate(campaignId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
@@ -468,6 +479,7 @@ export function useUpdatePreEval(campaignId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
@@ -494,6 +506,7 @@ export function useRequestRevision(campaignId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
@@ -514,6 +527,7 @@ export function useSubmitForBrandReview(campaignId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
@@ -534,6 +548,7 @@ export function useRevertApproval(campaignId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
@@ -563,6 +578,7 @@ export function useRecordMetric(campaignId?: string) {
       return response.data;
     },
     onSuccess: (_, variables) => {
+      invalidateEntity(queryClient, 'assignment');
       queryClient.invalidateQueries({
         queryKey: ['agency', 'mappers', variables.mapperId, 'metrics'],
       });
@@ -619,7 +635,6 @@ export function useCampaignReports(campaignIds: Array<string>) {
       return response.data;
     },
     enabled: key.length > 0,
-    staleTime: 1000 * 60,
     placeholderData: keepPreviousData,
   });
 
@@ -652,6 +667,7 @@ export function useAssignERToInfluencer() {
       return response.data;
     },
     onSuccess: (data) => {
+      invalidateEntity(queryClient, 'influencer');
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
       queryClient.invalidateQueries({ queryKey: ['agency', 'mappers'] });
       if (data.engagement?.influencerId) {
@@ -702,6 +718,7 @@ export function useCalculateInfluencerER() {
       return response.data;
     },
     onSuccess: (data, variables) => {
+      invalidateEntity(queryClient, 'influencer');
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
       queryClient.invalidateQueries({
         queryKey: ['agency', 'influencers', variables.influencerId, 'engagement'],
@@ -715,5 +732,3 @@ export function useCalculateInfluencerER() {
     },
   });
 }
-
-

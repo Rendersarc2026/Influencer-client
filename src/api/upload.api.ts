@@ -1,4 +1,5 @@
 import { apiClient } from './axios.client';
+import { invalidateEntity } from './invalidate';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export interface UploadResult {
@@ -13,6 +14,12 @@ export interface UploadResult {
 export interface UploadAvatarResult {
   message: string;
   avatarUrl: string;
+  profile: Record<string, unknown>;
+}
+
+export interface RemoveAvatarResult {
+  message: string;
+  avatarUrl: null;
   profile: Record<string, unknown>;
 }
 
@@ -41,6 +48,11 @@ export async function uploadAvatar(file: File): Promise<UploadAvatarResult> {
   return response.data;
 }
 
+export async function removeAvatar(): Promise<RemoveAvatarResult> {
+  const response = await apiClient.delete<RemoveAvatarResult>('/users/profile/avatar');
+  return response.data;
+}
+
 export async function uploadChatAttachment(chatId: string, file: File): Promise<UploadResult> {
   const formData = new FormData();
   formData.append('attachment', file);
@@ -58,7 +70,17 @@ export function useUploadAvatar() {
   return useMutation({
     mutationFn: (file: File) => uploadAvatar(file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      invalidateEntity(queryClient, 'profile');
+    },
+  });
+}
+
+export function useRemoveAvatar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => removeAvatar(),
+    onSuccess: () => {
+      invalidateEntity(queryClient, 'profile');
     },
   });
 }

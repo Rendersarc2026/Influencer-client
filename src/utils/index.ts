@@ -1,4 +1,5 @@
 export * from './safe-url';
+export * from './phone-codes';
 
 const defaultDateTimeFormat = new Intl.DateTimeFormat('en-IN', {
   dateStyle: 'medium',

@@ -1,20 +1,6 @@
 import { z } from 'zod';
 import { UpdateBrandSchema } from './brand.contract';
-import {
-  boolQuery,
-  count,
-  email,
-  httpUrl,
-  limit,
-  money,
-  moneyQuery,
-  multiStringQuery,
-  page,
-  phone,
-  regionsArray,
-  safeMultilineText,
-  safeText,
-} from './primitives';
+import { boolQuery, count, email, httpUrl, limit, money, moneyQuery, multiStringQuery, page, phone, regionsArray, safeMultilineText, safeText, personName } from './primitives';
 
 /** Identity fields every role has. Creator-only data lives on InfluencerDetail. */
 export const ProfileResponseSchema = z.object({
@@ -53,7 +39,7 @@ export type InfluencerResponse = z.infer<typeof InfluencerResponseSchema>;
  */
 export const CreateInfluencerSchema = z
   .object({
-    name: safeText(200),
+    name: personName(200),
     /**
      * Both are mandatory: the pair becomes the creator's login when the agency
      * enters them, ahead of their first sign-in.
@@ -85,7 +71,7 @@ export type CreateInfluencerRequest = z.infer<typeof CreateInfluencerSchema>;
 
 export const UpdateInfluencerSchema = z
   .object({
-    name: safeText(200).optional(),
+    name: personName(200).optional(),
     category: safeText(120).optional(),
     location: safeText(120).optional(),
     regions: regionsArray,
@@ -122,7 +108,7 @@ export type UpdateInfluencerRequest = z.infer<typeof UpdateInfluencerSchema>;
  * creator row.
  */
 export const UpdateProfileSchema = z.object({
-  fullName: safeText(120).optional(),
+  fullName: personName(120).optional(),
   displayName: safeText(120).optional(),
   avatarUrl: httpUrl.optional(),
   bio: safeMultilineText(2000).optional(),

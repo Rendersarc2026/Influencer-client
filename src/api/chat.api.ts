@@ -1,4 +1,10 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import {
   ChatResponse,
@@ -21,7 +27,6 @@ export function useChats(options?: UseChatsOptions) {
       return response.data;
     },
     enabled: options?.enabled ?? true,
-    staleTime: 30000,
   });
 }
 
@@ -55,7 +60,12 @@ export function useInfiniteChats(options?: UseInfiniteChatsOptions) {
       return allPages.length + 1;
     },
     enabled: options?.enabled ?? true,
-    staleTime: 30000,
+    // The search term is part of the query key, so every term that survives the
+    // debounce asks for a key with nothing cached behind it. Without this the
+    // list empties to `[]` while that loads and the panel flashes its empty
+    // state — which is what read as the page reloading mid-search. Holding the
+    // previous page until the new one lands makes the filter feel live.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -72,7 +82,6 @@ export function useChatMessages(chatId: string | undefined) {
       return response.data;
     },
     enabled: Boolean(chatId),
-    staleTime: 30000,
   });
 }
 
@@ -114,12 +123,7 @@ export async function sendMessageApi(
 export function useSendMessage(chatId: string | undefined, currentUserId?: string) {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    MessageResponse,
-    Error,
-    SendMessageRequest,
-    { tempId?: string }
-  >({
+  return useMutation<MessageResponse, Error, SendMessageRequest, { tempId?: string }>({
     mutationFn: async (data) => {
       if (!chatId) throw new Error('No active conversation selected.');
       return sendMessageApi(chatId, data);
@@ -143,10 +147,10 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
         createdOn: new Date(),
       };
 
-      queryClient.setQueryData<MessageResponse[]>(
-        ['chats', chatId, 'messages'],
-        (old = []) => [...old, optimisticMsg],
-      );
+      queryClient.setQueryData<MessageResponse[]>(['chats', chatId, 'messages'], (old = []) => [
+        ...old,
+        optimisticMsg,
+      ]);
 
       return { tempId };
     },
@@ -167,9 +171,8 @@ export function useSendMessage(chatId: string | undefined, currentUserId?: strin
       // Drop only the failed placeholder. Restoring a whole snapshot would also
       // erase any message the socket delivered while the request was in flight.
       if (chatId && context?.tempId) {
-        queryClient.setQueryData<MessageResponse[]>(
-          ['chats', chatId, 'messages'],
-          (old = []) => old.filter((m) => m.id !== context.tempId),
+        queryClient.setQueryData<MessageResponse[]>(['chats', chatId, 'messages'], (old = []) =>
+          old.filter((m) => m.id !== context.tempId),
         );
       }
     },

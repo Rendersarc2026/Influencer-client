@@ -30,7 +30,14 @@ import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, CommentDialog, FilterBar, OverviewDrawer } from '@molecules';
+import {
+  DataTable,
+  DataTableColumn,
+  CommentDialog,
+  ConfirmDialog,
+  FilterBar,
+  OverviewDrawer,
+} from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import {
   useBrandCampaign,
@@ -83,6 +90,15 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
 
   const isApproved = row.brandStatus === BrandStatusCode.APPROVED;
   const isRejected = row.brandStatus === BrandStatusCode.REJECTED;
+  const isPendingReview = row.brandStatus === BrandStatusCode.PENDING_REVIEW;
+
+  // Straight off `nextBrandStatus`: APPROVED is terminal, and CORRECTION_REQUESTED
+  // / NOT_VISIBLE are waiting on the agency, so the brand has no move in any of
+  // them. Offering these anyway meant a menu item that always failed with an
+  // invalid-transition error.
+  const canApprove = isPendingReview || isRejected;
+  const canReject = isPendingReview;
+  const canRequestCorrection = isPendingReview || isRejected;
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -131,8 +147,34 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
       >
         {/* --- SECTION 1: Decision Actions --- */}
 
+        {/* Approved is terminal: say so, rather than showing an empty menu where
+            the decision actions used to be. */}
+        {isApproved && (
+          <MenuItem
+            disabled
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              opacity: 1,
+              color: theme.palette.tokens.positiveText,
+              '&.Mui-disabled': { opacity: 1 },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
+              <CheckCircleRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Approved — rate is final
+          </MenuItem>
+        )}
+
         {/* Approve Proposal */}
-        {!isApproved && !isRejected && (
+        {canApprove && !isRejected && (
           <MenuItem
             onClick={(e) => {
               handleClose(e);
@@ -160,7 +202,7 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
         )}
 
         {/* Re-Approve Proposal (when rejected) */}
-        {isRejected && (
+        {canApprove && isRejected && (
           <MenuItem
             onClick={(e) => {
               handleClose(e);
@@ -188,34 +230,34 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
         )}
 
         {/* Send Remarks & Feedback */}
-        <MenuItem
-          onClick={(e) => {
-            handleClose(e);
-            onSendRemarks(row.id);
-          }}
-          sx={{
-            fontSize: '13px',
-            fontWeight: 500,
-            py: 0.85,
-            px: 1.25,
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            color: theme.palette.warning.dark,
-            '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
-          }}
-        >
-          <ListItemIcon sx={{ color: theme.palette.warning.main, minWidth: 'auto' }}>
-            <EditNoteRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          {row.brandStatus === BrandStatusCode.CORRECTION_REQUESTED
-            ? 'Edit Remarks / Correction'
-            : 'Send Remarks & Feedback'}
-        </MenuItem>
+        {canRequestCorrection && (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onSendRemarks(row.id);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.warning.dark,
+              '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.warning.main, minWidth: 'auto' }}>
+              <EditNoteRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Send Remarks & Feedback
+          </MenuItem>
+        )}
 
         {/* Reject Proposal */}
-        {!isRejected && (
+        {canReject && (
           <MenuItem
             onClick={(e) => {
               handleClose(e);
@@ -353,13 +395,31 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   // Detailed Influencer Pre-Eval Drawer/Modal State
   const [selectedInfluencer, setSelectedInfluencer] = useState<BrandMapperResponse | null>(null);
 
-  // 1. Single-click Approve Action
-  const handleApprove = async (mapperId: string) => {
+  /**
+   * Approval is the one decision with no way back: `nextBrandStatus` has no
+   * transition out of APPROVED, and the agency is blocked from reverting its
+   * own rate approval once the brand has approved. So the price the brand sees
+   * here is the price it is committing to, and this asks before it commits
+   * rather than acting on a single menu click.
+   */
+  const [approveDialogMapper, setApproveDialogMapper] = useState<BrandMapperResponse | null>(null);
+
+  const handleOpenApprove = (mapperId: string) => {
+    const mapper = mappers.find((m) => m.id === mapperId);
+    if (mapper) setApproveDialogMapper(mapper);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!approveDialogMapper) return;
     const decision: BrandDecisionRequest = {
       action: 'APPROVE',
     };
     try {
-      await brandDecisionMutation.mutateAsync({ mapperId, decision });
+      await brandDecisionMutation.mutateAsync({
+        mapperId: approveDialogMapper.id,
+        decision,
+      });
+      setApproveDialogMapper(null);
       showSuccess('Influencer commercial proposal approved.');
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -660,7 +720,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       render: (row) => (
         <BrandRowActions
           row={row}
-          onApprove={handleApprove}
+          onApprove={handleOpenApprove}
           onSendRemarks={handleOpenCorrection}
           onReject={handleOpenReject}
           onViewDossier={setSelectedInfluencer}
@@ -1240,7 +1300,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                         onClick: () => {
                           const id = selectedInfluencer.id;
                           setSelectedInfluencer(null);
-                          handleApprove(id);
+                          handleOpenApprove(id);
                         },
                       },
                     ]
@@ -1291,6 +1351,61 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           onCancel={() => setActiveDialog(null)}
         />
       )}
+
+      {/* 6. Approval confirmation — the decision that cannot be undone */}
+      <ConfirmDialog
+        open={Boolean(approveDialogMapper)}
+        title="Approve this commercial proposal?"
+        body={
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              You are approving <strong>{approveDialogMapper?.influencerName}</strong> for this
+              campaign at the rate below.
+            </Typography>
+
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 2,
+                p: 1.5,
+                mb: 1.5,
+                borderRadius: `${theme.customRadii.inner}px`,
+                backgroundColor: theme.palette.tokens.fieldBg,
+                border: `1px solid ${theme.palette.tokens.divider}`,
+              }}
+            >
+              <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                Agreed rate
+              </Typography>
+              {approveDialogMapper?.clientRate !== null &&
+              approveDialogMapper?.clientRate !== undefined ? (
+                <MoneyText
+                  amount={approveDialogMapper.clientRate}
+                  currency={approveDialogMapper.currency}
+                  variant="h3"
+                />
+              ) : (
+                <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+                  Not quoted
+                </Typography>
+              )}
+            </Box>
+
+            <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+              This is final. Once approved, the rate cannot be changed, the agency cannot revert it,
+              and this creator cannot be rejected or sent back for correction. Send remarks instead
+              if anything still needs to change.
+            </Typography>
+          </Box>
+        }
+        confirmText="Approve at this rate"
+        cancelText="Cancel"
+        loading={brandDecisionMutation.isPending}
+        onConfirm={handleConfirmApprove}
+        onCancel={() => setApproveDialogMapper(null)}
+      />
     </DashboardLayout>
   );
 };

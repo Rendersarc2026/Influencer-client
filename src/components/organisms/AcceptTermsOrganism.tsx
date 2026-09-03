@@ -4,8 +4,14 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { ConfirmDialog } from '@molecules';
 import { useAuth, useToast } from '@hooks';
@@ -19,7 +25,7 @@ export const AcceptTermsOrganism: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
 
   const handleAccept = async () => {
     try {
@@ -52,149 +58,280 @@ export const AcceptTermsOrganism: React.FC = () => {
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
-        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
-        backgroundColor: theme.palette.tokens.pageBg,
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: { xs: '16px', sm: '24px' },
+        justifyContent: 'flex-start',
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        backgroundColor: theme.palette.tokens.pageBg,
+        backgroundImage: `radial-gradient(ellipse at 50% 0%, rgba(47, 128, 237, 0.08) 0%, rgba(237, 243, 249, 0) 65%)`,
+        padding: { xs: '24px 16px 40px', sm: '40px 24px 60px' },
       }}
     >
       <Card
         sx={{
+          position: 'relative',
+          my: 'auto',
           width: '100%',
-          maxWidth: 600,
+          maxWidth: 620,
+          flexShrink: 0,
           padding: {
-            xs: `${theme.customSpacing.cardPaddingMobile}px`,
-            sm: `${theme.customSpacing.cardPadding}px`,
+            xs: '24px 18px 28px',
+            sm: '36px 36px 32px',
           },
           borderRadius: `${theme.customRadii.card}px`,
           backgroundColor: theme.palette.tokens.surface,
           border: `1px solid ${theme.palette.tokens.divider}`,
-          boxShadow: 'none',
+          boxShadow: '0 20px 48px -12px rgba(16, 24, 40, 0.07), 0 2px 6px rgba(16, 24, 40, 0.03)',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        {/* Top-Right Close Button */}
+        <IconButton
+          aria-label="close"
+          onClick={() => setConfirmCloseOpen(true)}
+          disabled={loading}
+          sx={{
+            position: 'absolute',
+            top: { xs: 14, sm: 20 },
+            right: { xs: 14, sm: 20 },
+            color: theme.palette.tokens.textSecondary,
+            '&:hover': {
+              backgroundColor: theme.palette.tokens.fieldBg,
+              color: theme.palette.tokens.textPrimary,
+            },
+          }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+
+        {/* Brand / Header Section */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3, textAlign: 'center' }}>
           <Box
             sx={{
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               borderRadius: `${theme.customRadii.inner}px`,
               backgroundColor: theme.palette.tokens.accentBg,
               color: theme.palette.tokens.accentText,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(47, 128, 237, 0.16)',
+              mb: 1.75,
             }}
           >
-            <ShieldRoundedIcon fontSize="medium" />
+            <ShieldRoundedIcon sx={{ fontSize: 28 }} />
           </Box>
-          <Box>
-            <Typography variant="h2">Platform Terms & Conditions</Typography>
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-              Version 1.0 — Effective August 2026
-            </Typography>
-          </Box>
+
+          <Chip
+            label="TERMS & COMPLIANCE"
+            size="small"
+            sx={{
+              height: 24,
+              px: 1,
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              backgroundColor: theme.palette.tokens.accentBg,
+              color: theme.palette.tokens.accentText,
+              borderRadius: `${theme.customRadii.pill}px`,
+              mb: 1,
+            }}
+          />
+
+          <Typography
+            variant="h1"
+            sx={{
+              fontSize: { xs: '22px', sm: '26px' },
+              fontWeight: 700,
+              color: theme.palette.tokens.textPrimary,
+              mb: 0.5,
+            }}
+          >
+            Platform Terms & Conditions
+          </Typography>
+
+          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+            Version 1.0 — Effective August 2026
+          </Typography>
         </Box>
 
         {/* Scrollable Terms Content */}
         <Box
           sx={{
-            maxHeight: 280,
+            maxHeight: 290,
             overflowY: 'auto',
-            padding: '16px',
+            padding: '20px',
             backgroundColor: theme.palette.tokens.fieldBg,
             borderRadius: `${theme.customRadii.inner}px`,
             border: `1px solid ${theme.palette.tokens.divider}`,
             mb: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
           }}
         >
-          <Typography
-            variant="body2"
-            sx={{ mb: 1.5, fontWeight: 600, color: theme.palette.tokens.textPrimary }}
-          >
-            1. Commercial Terms & Segregated Rates
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: theme.palette.tokens.textSecondary, display: 'block', mb: 2 }}
-          >
-            Influencers submit binding rates for campaign deliverables. Agencies manage and approve
-            client margins. Brand users review final agreed client rates.
-          </Typography>
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{ mb: 0.5, fontWeight: 700, color: theme.palette.tokens.textPrimary }}
+            >
+              1. Commercial Terms & Segregated Rates
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
+            >
+              Influencers submit binding rates for campaign deliverables. Agencies manage and approve
+              client margins. Brand users review final agreed client rates. Rates and commercials are
+              strictly confidential and segregated by role.
+            </Typography>
+          </Box>
 
-          <Typography
-            variant="body2"
-            sx={{ mb: 1.5, fontWeight: 600, color: theme.palette.tokens.textPrimary }}
-          >
-            2. Confidentiality & Data Privacy
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: theme.palette.tokens.textSecondary, display: 'block', mb: 2 }}
-          >
-            All campaign briefs, rate structures, engagement metrics, and chat communications are
-            confidential and protected by role-based isolation.
-          </Typography>
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{ mb: 0.5, fontWeight: 700, color: theme.palette.tokens.textPrimary }}
+            >
+              2. Confidentiality & Data Privacy
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
+            >
+              All campaign briefs, rate structures, performance metrics, and chat communications are
+              confidential and protected by end-to-end role-based data isolation.
+            </Typography>
+          </Box>
 
-          <Typography
-            variant="body2"
-            sx={{ mb: 1.5, fontWeight: 600, color: theme.palette.tokens.textPrimary }}
-          >
-            3. Deliverables & Compliance
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
-          >
-            Creators agree to deliver content aligned with agreed deadlines. Payments are disbursed
-            upon agency verification and brand approval.
-          </Typography>
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{ mb: 0.5, fontWeight: 700, color: theme.palette.tokens.textPrimary }}
+            >
+              3. Deliverables & Timeline Compliance
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
+            >
+              Creators agree to deliver content aligned with agreed deadlines and guidelines. Payments
+              are disbursed following agency verification and brand approval.
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{ mb: 0.5, fontWeight: 700, color: theme.palette.tokens.textPrimary }}
+            >
+              4. Code of Conduct & Integrity
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
+            >
+              Users must represent metrics and deliverables truthfully. Fraudulent activity or artificial
+              engagement inflation is grounds for immediate account termination.
+            </Typography>
+          </Box>
         </Box>
 
         {error && (
-          <Typography
-            variant="body2"
-            sx={{ color: theme.palette.tokens.negative, mb: 2, textAlign: 'center' }}
+          <Box
+            sx={{
+              padding: '12px 16px',
+              borderRadius: `${theme.customRadii.inner}px`,
+              backgroundColor: theme.palette.tokens.negativeBg,
+              border: `1px solid ${theme.palette.tokens.negative}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              mb: 2.5,
+            }}
           >
-            {error}
-          </Typography>
+            <ErrorOutlineRoundedIcon sx={{ color: theme.palette.tokens.negative, fontSize: 20, flexShrink: 0 }} />
+            <Typography variant="body2" sx={{ color: theme.palette.tokens.negativeText, fontWeight: 600 }}>
+              {error}
+            </Typography>
+          </Box>
         )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Footer Actions */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            pt: 2.5,
+            borderTop: `1px solid ${theme.palette.tokens.divider}`,
+            gap: 2,
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+          }}
+        >
           <Button
             variant="text"
-            onClick={() => setConfirmLogoutOpen(true)}
+            onClick={() => setConfirmCloseOpen(true)}
             disabled={loading}
-            sx={{ color: theme.palette.tokens.textSecondary }}
+            startIcon={<CloseRoundedIcon sx={{ fontSize: 18 }} />}
+            sx={{
+              color: theme.palette.tokens.textSecondary,
+              fontWeight: 600,
+              '&:hover': {
+                color: theme.palette.tokens.negative,
+                backgroundColor: theme.palette.tokens.negativeBg,
+              },
+            }}
           >
-            Log Out
+            Close
           </Button>
 
           <Button
+            type="button"
             variant="contained"
             onClick={handleAccept}
             disabled={loading}
-            sx={{ minWidth: 160, height: 44 }}
+            endIcon={loading ? undefined : <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />}
+            sx={{
+              minWidth: { xs: '100%', sm: 190 },
+              height: 46,
+              fontSize: '15px',
+              fontWeight: 800,
+              borderRadius: `${theme.customRadii.pill}px`,
+              boxShadow: '0 4px 14px rgba(47, 128, 237, 0.3)',
+              '&:hover': {
+                boxShadow: '0 6px 20px rgba(47, 128, 237, 0.45)',
+              },
+            }}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Accept & Proceed'}
+            {loading ? <CircularProgress size={22} color="inherit" /> : 'Accept & Proceed'}
           </Button>
+        </Box>
+
+        {/* Security assurance */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75, mt: 2.5 }}>
+          <LockOutlinedIcon sx={{ fontSize: 14, color: theme.palette.tokens.textSecondary }} />
+          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}>
+            Protected by Fetch platform security & role-based isolation
+          </Typography>
         </Box>
       </Card>
 
-      {/* Logout Confirmation Dialog */}
+      {/* Close / Logout Confirmation Dialog */}
       <ConfirmDialog
-        open={confirmLogoutOpen}
-        title="Log Out?"
-        body="Are you sure you want to log out of your account?"
-        confirmText="Log Out"
-        cancelText="Cancel"
+        open={confirmCloseOpen}
+        title="Exit Terms Acceptance?"
+        body="You must accept the platform Terms & Conditions to access your account workspace. If you close now, you will be returned to the login screen."
+        confirmText="Exit to Login"
+        cancelText="Review Terms"
         variant="destructive"
         onConfirm={async () => {
-          setConfirmLogoutOpen(false);
+          setConfirmCloseOpen(false);
           await logout();
         }}
-        onCancel={() => setConfirmLogoutOpen(false)}
+        onCancel={() => setConfirmCloseOpen(false)}
       />
     </Box>
   );

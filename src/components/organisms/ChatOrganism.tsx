@@ -372,6 +372,7 @@ export const ChatOrganism: React.FC = () => {
   const users: UserResponse[] = useMemo(() => usersData?.items || [], [usersData]);
 
   const [selectedChatId, setSelectedChatId] = useState<string | null>(queryChatId || null);
+  const [persistedActiveChat, setPersistedActiveChat] = useState<ChatResponse | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [attachmentInput, setAttachmentInput] = useState('');
   const [attachmentMeta, setAttachmentMeta] = useState<{ name: string; size: string } | null>(null);
@@ -479,8 +480,25 @@ export const ChatOrganism: React.FC = () => {
       return rawChat;
     }
 
+    // Preserve the currently open conversation while searching or filtering the list
+    if (persistedActiveChat && persistedActiveChat.id === selectedChatId) {
+      return persistedActiveChat;
+    }
+
     return null;
-  }, [chats, uniqueChats, selectedChatId, roleCode, brands, influencers, users]);
+  }, [chats, uniqueChats, selectedChatId, roleCode, brands, influencers, users, persistedActiveChat]);
+
+  // Sync persistedActiveChat whenever a live chat matches
+  useEffect(() => {
+    if (
+      activeChat &&
+      (!persistedActiveChat ||
+        persistedActiveChat.id !== activeChat.id ||
+        persistedActiveChat.unreadCount !== activeChat.unreadCount)
+    ) {
+      setPersistedActiveChat(activeChat);
+    }
+  }, [activeChat, persistedActiveChat]);
 
   const effectiveChatId = activeChat?.id || selectedChatId || undefined;
 
@@ -502,6 +520,7 @@ export const ChatOrganism: React.FC = () => {
 
   const handleCloseConversation = () => {
     setSelectedChatId(null);
+    setPersistedActiveChat(null);
     setEditingMessageId(null);
     setEditingBody('');
     setMessageInput('');
@@ -706,6 +725,7 @@ export const ChatOrganism: React.FC = () => {
   useEffect(() => {
     return () => {
       setSelectedChatId(null);
+      setPersistedActiveChat(null);
       setEditingMessageId(null);
       setEditingBody('');
       setMessageInput('');
@@ -1369,8 +1389,14 @@ export const ChatOrganism: React.FC = () => {
                 ) : null}
               </Box>
 
-              {/* Search conversations */}
-              {chats.length > 0 && (
+              {/* Search conversations.
+                  Gated on more than `chats.length` on purpose: a term that
+                  matches nothing empties the list, and keying the input's
+                  existence off that count unmounted the field mid-keystroke —
+                  focus jumped away and the search could not even be cleared.
+                  Once there is something to filter, or a filter is active, the
+                  input stays mounted. */}
+              {(chats.length > 0 || searchFilter.length > 0) && (
                 <TextField
                   size="small"
                   placeholder="Filter conversations..."
@@ -1444,7 +1470,12 @@ export const ChatOrganism: React.FC = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                   <CircularProgress size={24} />
                 </Box>
-              ) : chats.length === 0 ? (
+              ) : chats.length === 0 && !searchFilter.trim() ? (
+                /* Only the genuinely-empty inbox gets the "start a thread"
+                   prompt. A search that matches nothing also empties the list,
+                   and offering to create a conversation there answered a
+                   question the user had not asked — the no-matches branch
+                   below is the right one. */
                 <Box sx={{ p: 2, textAlign: 'center', my: 'auto' }}>
                   <EmptyState
                     icon={<ChatBubbleOutlineRoundedIcon />}
@@ -1563,9 +1594,10 @@ export const ChatOrganism: React.FC = () => {
                               : hasUnread
                                 ? theme.palette.tokens.rail
                                 : theme.palette.tokens.divider,
-                            color: isSelected || hasUnread
-                              ? theme.palette.tints.butter
-                              : theme.palette.tokens.textPrimary,
+                            color:
+                              isSelected || hasUnread
+                                ? theme.palette.tints.butter
+                                : theme.palette.tokens.textPrimary,
                             fontWeight: 700,
                             fontSize: '15px',
                             flexShrink: 0,
@@ -1695,13 +1727,15 @@ export const ChatOrganism: React.FC = () => {
                   );
                 })
               )}
-                {isFetchingNextPage && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-                    <CircularProgress size={20} />
-                  </Box>
-                )}
-              </Box>
+              {isFetchingNextPage && (
+                <Box
+                  sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}
+                >
+                  <CircularProgress size={20} />
+                </Box>
+              )}
             </Box>
+          </Box>
         )}
 
         {/* RIGHT PANE: Message Thread */}
@@ -2161,9 +2195,9 @@ export const ChatOrganism: React.FC = () => {
                                   <>
                                     {Boolean(
                                       msg.body &&
-                                        (msg.body.includes('[Audience Reach Proof') ||
-                                          msg.body.includes('[Reach Proof:') ||
-                                          msg.body.includes('#AudienceProof')),
+                                      (msg.body.includes('[Audience Reach Proof') ||
+                                        msg.body.includes('[Reach Proof:') ||
+                                        msg.body.includes('#AudienceProof')),
                                     ) && (
                                       <Box
                                         sx={{
@@ -2192,7 +2226,9 @@ export const ChatOrganism: React.FC = () => {
                                         fontSize: '13.5px',
                                         lineHeight: 1.5,
                                         whiteSpace: 'pre-wrap',
-                                        color: isMine ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                                        color: isMine
+                                          ? '#FFFFFF'
+                                          : theme.palette.tokens.textPrimary,
                                       }}
                                     >
                                       {visibleMessageBody(msg.body)}

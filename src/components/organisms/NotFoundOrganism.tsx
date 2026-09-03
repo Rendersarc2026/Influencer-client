@@ -36,11 +36,14 @@ export const NotFoundOrganism: React.FC = () => {
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
-        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
-        backgroundColor: theme.palette.tokens.pageBg,
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        backgroundColor: theme.palette.tokens.pageBg,
         padding: {
           xs: `${theme.customSpacing.dialogPaddingMobile}px`,
           sm: `${theme.customSpacing.cardPadding}px`,
@@ -49,8 +52,10 @@ export const NotFoundOrganism: React.FC = () => {
     >
       <Card
         sx={{
+          my: 'auto',
           width: '100%',
           maxWidth: 480,
+          flexShrink: 0,
           padding: {
             xs: `${theme.customSpacing.cardPaddingMobile}px`,
             sm: `${theme.customSpacing.cardPadding}px`,

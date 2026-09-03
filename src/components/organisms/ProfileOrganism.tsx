@@ -9,10 +9,17 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import IconButton from '@mui/material/IconButton';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import ZoomInRoundedIcon from '@mui/icons-material/ZoomInRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
+import { invalidateEntity } from '@api';
+import { ConfirmDialog, PhoneField } from '@molecules';
 
 import { getNavItemsForRole } from '@routes/navConfig';
 import { SectionHeading } from '@atoms';
@@ -23,6 +30,7 @@ import {
   useBrandProfile,
   useUpdateBrandProfile,
   uploadAvatar,
+  removeAvatar,
 } from '@api';
 
 import {
@@ -36,7 +44,13 @@ import {
 import { z } from 'zod';
 import { useAuth, useToast } from '@hooks';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { capitalizeWords, parseShorthandNumber, formatShorthandNumber, safeImageUrl } from '@utils';
+import {
+  capitalizeWords,
+  parseShorthandNumber,
+  formatShorthandNumber,
+  safeImageUrl,
+  validatePhoneNumber,
+} from '@utils';
 
 const normalizeUrl = (val: string): string | undefined => {
   const trimmed = val.trim();
@@ -98,6 +112,9 @@ export const ProfileOrganism: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,7 +127,6 @@ export const ProfileOrganism: React.FC = () => {
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-
 
     // Validate MIME
     const allowed = [
@@ -133,13 +149,10 @@ export const ProfileOrganism: React.FC = () => {
       if (isBrand && res.avatarUrl) {
         setLogoUrl(res.avatarUrl);
       }
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-      await queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] });
+      invalidateEntity(queryClient, 'profile');
       await refetchUser();
       showSuccess(
-        isBrand
-          ? 'Brand logo uploaded successfully.'
-          : 'Profile picture uploaded successfully.',
+        isBrand ? 'Brand logo uploaded successfully.' : 'Profile picture uploaded successfully.',
       );
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -154,6 +167,29 @@ export const ProfileOrganism: React.FC = () => {
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    try {
+      setRemovingAvatar(true);
+      await removeAvatar();
+      // A brand's logo and its avatar are the same column, so the locally held
+      // logo has to be cleared too or the old image survives until a reload.
+      setLogoUrl('');
+      invalidateEntity(queryClient, 'profile');
+      await refetchUser();
+      setConfirmRemoveOpen(false);
+      setPreviewOpen(false);
+      showSuccess(isBrand ? 'Brand logo removed.' : 'Profile picture removed.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to remove image. Please try again.',
+      );
+    } finally {
+      setRemovingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     if (isBrand && brandData) {
@@ -193,7 +229,7 @@ export const ProfileOrganism: React.FC = () => {
       return response.data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      invalidateEntity(queryClient, 'profile');
       await refetchUser();
       showSuccess('Profile updated successfully.');
       setSavedSuccess(true);
@@ -210,12 +246,14 @@ export const ProfileOrganism: React.FC = () => {
 
   const fieldsLocked = updateProfileMutation.isPending || updateBrandProfileMutation.isPending;
 
-  const validatePhone = (val: string) => {
-    if (!val) return '';
-    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,15}$/;
-    if (!phoneRegex.test(val)) return 'Please enter a valid phone number (e.g. +91 9876543210)';
-    return '';
-  };
+  // The one URL the avatar, the zoom view and the remove control all read, so
+  // they can never disagree about whether a picture is actually set. A brand's
+  // logo and its profile avatar are the same stored column.
+  const currentAvatarUrl = safeImageUrl(
+    isBrand ? logoUrl || brandData?.logoUrl || user?.profile?.avatarUrl : user?.profile?.avatarUrl,
+  );
+  const hasAvatar = Boolean(currentAvatarUrl);
+  const avatarBusy = uploadingAvatar || removingAvatar;
 
   const validateHttpUrl = (val: string) => {
     if (!val.trim()) return '';
@@ -252,7 +290,7 @@ export const ProfileOrganism: React.FC = () => {
       }
 
       if (contactPhone.trim()) {
-        const pErr = validatePhone(contactPhone.trim());
+        const pErr = validatePhoneNumber(contactPhone.trim());
         if (pErr) {
           setFieldErrors({ contactPhone: pErr });
           return;
@@ -302,9 +340,7 @@ export const ProfileOrganism: React.FC = () => {
 
       try {
         await updateBrandProfileMutation.mutateAsync(brandPayload);
-        await queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] });
-        await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
-        await queryClient.invalidateQueries({ queryKey: ['agency', 'brands'] });
+        invalidateEntity(queryClient, 'profile', 'brand');
         await refetchUser();
         showSuccess('Brand details saved successfully.');
         setSavedSuccess(true);
@@ -312,7 +348,9 @@ export const ProfileOrganism: React.FC = () => {
       } catch (err: unknown) {
         const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
         const msg =
-          errorObj?.response?.data?.message || errorObj?.message || 'Failed to update brand details.';
+          errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Failed to update brand details.';
         setErrorMsg(msg);
         showError(msg);
       }
@@ -329,11 +367,15 @@ export const ProfileOrganism: React.FC = () => {
       parsedFollowers = parsed;
     }
 
-    const normalizeSocialUrl = (val: string, domain: 'instagram.com' | 'youtube.com'): string | undefined => {
+    const normalizeSocialUrl = (
+      val: string,
+      domain: 'instagram.com' | 'youtube.com',
+    ): string | undefined => {
       const trimmed = val.trim();
       if (!trimmed) return undefined;
       if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-      if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`)) return `https://${trimmed}`;
+      if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`))
+        return `https://${trimmed}`;
       if (domain === 'instagram.com') {
         const handle = trimmed.replace(/^@/, '');
         return `https://instagram.com/${handle}`;
@@ -453,15 +495,34 @@ export const ProfileOrganism: React.FC = () => {
                     opacity: 1,
                   },
                 }}
-                onClick={() => !uploadingAvatar && !fieldsLocked && fileInputRef.current?.click()}
+                // With a picture set, the click is a request to look at it —
+                // opening the file dialog instead is what made it impossible to
+                // view one at full size. With none set, there is nothing to
+                // view, so the click still means "upload".
+                onClick={() => {
+                  if (avatarBusy) return;
+                  if (hasAvatar) {
+                    setPreviewOpen(true);
+                  } else if (!fieldsLocked) {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={hasAvatar ? 'View profile picture' : 'Upload profile picture'}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  if (avatarBusy) return;
+                  if (hasAvatar) {
+                    setPreviewOpen(true);
+                  } else if (!fieldsLocked) {
+                    fileInputRef.current?.click();
+                  }
+                }}
               >
                 <Avatar
-                  src={safeImageUrl(
-                    isBrand
-                      ? logoUrl || brandData?.logoUrl || user?.profile?.avatarUrl
-                      : user?.profile?.avatarUrl,
-                  )}
-
+                  src={currentAvatarUrl}
                   alt={displayName || brandData?.name || fullName || 'Profile Photo'}
                   sx={{
                     width: 68,
@@ -475,14 +536,12 @@ export const ProfileOrganism: React.FC = () => {
                     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
                   }}
                 >
-                  {isBrand ? (
-                    (displayName || brandData?.name || fullName || 'B').charAt(0).toUpperCase()
-                  ) : (
-                    (fullName || user?.profile?.fullName || 'U').charAt(0).toUpperCase()
-                  )}
+                  {isBrand
+                    ? (displayName || brandData?.name || fullName || 'B').charAt(0).toUpperCase()
+                    : (fullName || user?.profile?.fullName || 'U').charAt(0).toUpperCase()}
                 </Avatar>
 
-                {/* Hover overlay with camera icon */}
+                {/* Hover overlay: zoom when there is a picture to open, camera when there is not */}
                 <Box
                   className="avatar-upload-overlay"
                   sx={{
@@ -494,18 +553,24 @@ export const ProfileOrganism: React.FC = () => {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: uploadingAvatar ? 1 : 0,
+                    opacity: avatarBusy ? 1 : 0,
                     transition: 'opacity 0.2s ease',
                     color: '#FFFFFF',
                   }}
                 >
-                  {uploadingAvatar ? (
+                  {avatarBusy ? (
                     <CircularProgress size={22} sx={{ color: '#FFFFFF' }} />
                   ) : (
                     <>
-                      <PhotoCameraRoundedIcon sx={{ fontSize: '20px' }} />
-                      <Typography sx={{ fontSize: '10px', fontWeight: 700, mt: 0.25, color: '#FFFFFF' }}>
-                        Change
+                      {hasAvatar ? (
+                        <ZoomInRoundedIcon sx={{ fontSize: '20px' }} />
+                      ) : (
+                        <PhotoCameraRoundedIcon sx={{ fontSize: '20px' }} />
+                      )}
+                      <Typography
+                        sx={{ fontSize: '10px', fontWeight: 700, mt: 0.25, color: '#FFFFFF' }}
+                      >
+                        {hasAvatar ? 'View' : 'Upload'}
                       </Typography>
                     </>
                   )}
@@ -513,7 +578,9 @@ export const ProfileOrganism: React.FC = () => {
               </Box>
 
               <Box sx={{ minWidth: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+                <Box
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}
+                >
                   <Typography variant="h2" sx={{ fontSize: '18px', fontWeight: 700 }}>
                     {isBrand
                       ? displayName || brandData?.name || fullName || 'Brand Profile'
@@ -568,38 +635,58 @@ export const ProfileOrganism: React.FC = () => {
                     {uploadingAvatar
                       ? 'Uploading...'
                       : isBrand
-                      ? logoUrl || brandData?.logoUrl
-                        ? 'Change Brand Logo'
-                        : 'Upload Brand Logo'
-                      : user?.profile?.avatarUrl
-                      ? 'Change Picture'
-                      : 'Upload Picture'}
+                        ? hasAvatar
+                          ? 'Change Brand Logo'
+                          : 'Upload Brand Logo'
+                        : hasAvatar
+                          ? 'Change Picture'
+                          : 'Upload Picture'}
                   </Button>
+
+                  {/* Removal is only offered when there is something to remove,
+                      so the control never sits there doing nothing. */}
+                  {hasAvatar && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={
+                        removingAvatar ? (
+                          <CircularProgress size={14} color="inherit" />
+                        ) : (
+                          <DeleteOutlineRoundedIcon fontSize="small" />
+                        )
+                      }
+                      onClick={() => setConfirmRemoveOpen(true)}
+                      disabled={avatarBusy || fieldsLocked}
+                      sx={{
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        height: 30,
+                        px: 1.5,
+                        borderRadius: `${theme.customRadii.pill}px`,
+                        borderColor: theme.palette.tokens.divider,
+                        color: theme.palette.error.main,
+                        backgroundColor: theme.palette.tokens.fieldBg,
+                        '&:hover': {
+                          borderColor: theme.palette.error.main,
+                          backgroundColor: theme.palette.tokens.surface,
+                        },
+                      }}
+                    >
+                      {removingAvatar ? 'Removing...' : isBrand ? 'Remove Logo' : 'Remove Picture'}
+                    </Button>
+                  )}
                   <Typography
                     variant="caption"
                     sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}
                   >
                     JPG, PNG, WEBP or SVG (Max 5MB)
-
                   </Typography>
                 </Box>
               </Box>
             </Box>
-            <Chip
-              label={
-                roleCode === 'INFLUENCER'
-                  ? 'INFLUENCER'
-                  : roleCode === 'BRAND'
-                  ? 'BRAND'
-                  : roleCode === 'AGENCY'
-                  ? 'AGENCY'
-                  : 'USER'
-              }
-              size="small"
-              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-            />
           </Box>
-
 
           <SectionHeading
             title={isBrand ? 'Personal & Brand Details' : 'Personal & Workspace Details'}
@@ -649,24 +736,23 @@ export const ProfileOrganism: React.FC = () => {
                       sx={{ flex: 1 }}
                     />
 
-                    <TextField
+                    <PhoneField
                       label="Contact Phone"
-                      placeholder="e.g. +91 9876543210"
                       value={contactPhone}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setContactPhone(val);
+                      onChange={(next) => {
+                        setContactPhone(next);
                         if (fieldErrors.contactPhone) {
                           setFieldErrors((prev) => {
-                            const next = { ...prev };
-                            delete next.contactPhone;
-                            return next;
+                            const nextErrors = { ...prev };
+                            delete nextErrors.contactPhone;
+                            return nextErrors;
                           });
                         }
                       }}
                       error={Boolean(fieldErrors.contactPhone)}
-                      helperText={fieldErrors.contactPhone || 'Direct phone line for campaign coordination'}
-                      fullWidth
+                      helperText={
+                        fieldErrors.contactPhone || 'Direct phone line for campaign coordination'
+                      }
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
                     />
@@ -688,7 +774,11 @@ export const ProfileOrganism: React.FC = () => {
                           label="Brand Category / Industry"
                           placeholder="Select or enter industry (e.g. Fashion & Apparel)"
                           error={Boolean(fieldErrors.industry || fieldErrors.category)}
-                          helperText={fieldErrors.industry || fieldErrors.category || 'Industry classification for your brand'}
+                          helperText={
+                            fieldErrors.industry ||
+                            fieldErrors.category ||
+                            'Industry classification for your brand'
+                          }
                           fullWidth
                         />
                       )}
@@ -808,14 +898,20 @@ export const ProfileOrganism: React.FC = () => {
 
                   {isInfluencer && (
                     <>
-                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Box
+                        sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}
+                      >
                         <Autocomplete
                           fullWidth
                           freeSolo
                           options={locationOptions}
                           value={city}
-                          onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
-                          onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
+                          onInputChange={(_, newInputValue) =>
+                            setCity(capitalizeWords(newInputValue))
+                          }
+                          onChange={(_, newValue) =>
+                            setCity(newValue ? capitalizeWords(newValue) : '')
+                          }
                           disabled={fieldsLocked}
                           sx={{ flex: 1 }}
                           renderInput={(params) => (
@@ -845,7 +941,9 @@ export const ProfileOrganism: React.FC = () => {
                               label="Influencer Category"
                               placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
                               error={Boolean(fieldErrors.category)}
-                              helperText={fieldErrors.category || 'Influencer niche / content domain'}
+                              helperText={
+                                fieldErrors.category || 'Influencer niche / content domain'
+                              }
                               fullWidth
                             />
                           )}
@@ -867,21 +965,18 @@ export const ProfileOrganism: React.FC = () => {
                         renderTags={(value: readonly string[], getTagProps) =>
                           value.map((option: string, index: number) => {
                             const { key, ...tagProps } = getTagProps({ index });
-                            return (
-                              <Chip
-                                key={key}
-                                label={option}
-                                size="small"
-                                {...tagProps}
-                              />
-                            );
+                            return <Chip key={key} label={option} size="small" {...tagProps} />;
                           })
                         }
                         renderInput={(params) => (
                           <TextField
                             {...params}
                             label="Influencing Regions (Optional)"
-                            placeholder={regions.length === 0 ? "Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter" : ""}
+                            placeholder={
+                              regions.length === 0
+                                ? 'Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter'
+                                : ''
+                            }
                             error={Boolean(fieldErrors.regions || fieldErrors.influencingRegions)}
                             helperText={
                               fieldErrors.regions ||
@@ -893,7 +988,9 @@ export const ProfileOrganism: React.FC = () => {
                         )}
                       />
 
-                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Box
+                        sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}
+                      >
                         <TextField
                           label="Instagram Profile URL"
                           placeholder="https://instagram.com/username"
@@ -956,7 +1053,9 @@ export const ProfileOrganism: React.FC = () => {
                         disabled={fieldsLocked}
                       />
 
-                      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Box
+                        sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}
+                      >
                         <TextField
                           label="Avg Commercial Min (₹)"
                           placeholder="e.g. 5000"
@@ -1058,7 +1157,124 @@ export const ProfileOrganism: React.FC = () => {
           </form>
         </Card>
       </Box>
+
+      {/* Full-size view. The avatar itself is 68px, so the only way to actually
+          look at an uploaded picture is to open it at its natural size. */}
+      <Dialog
+        open={previewOpen && hasAvatar}
+        onClose={() => setPreviewOpen(false)}
+        maxWidth="md"
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundImage: 'none',
+              backgroundColor: theme.palette.tokens.surface,
+              m: 2,
+              position: 'relative',
+              overflow: 'hidden',
+            },
+          },
+        }}
+      >
+        <IconButton
+          onClick={() => setPreviewOpen(false)}
+          aria-label="Close preview"
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 1,
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(15, 23, 42, 0.55)',
+            '&:hover': { backgroundColor: 'rgba(15, 23, 42, 0.75)' },
+          }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+
+        <Box
+          component="img"
+          src={currentAvatarUrl}
+          alt={displayName || brandData?.name || fullName || 'Profile picture'}
+          sx={{
+            display: 'block',
+            maxWidth: '86vw',
+            maxHeight: '80vh',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            backgroundColor: theme.palette.tokens.fieldBg,
+          }}
+        />
+
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 1.25,
+            p: 1.5,
+            borderTop: `1px solid ${theme.palette.tokens.divider}`,
+          }}
+        >
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PhotoCameraRoundedIcon fontSize="small" />}
+            onClick={() => {
+              setPreviewOpen(false);
+              fileInputRef.current?.click();
+            }}
+            disabled={avatarBusy || fieldsLocked}
+            sx={{
+              fontSize: '12px',
+              fontWeight: 600,
+              textTransform: 'none',
+              height: 30,
+              px: 1.5,
+              borderRadius: `${theme.customRadii.pill}px`,
+              borderColor: theme.palette.tokens.divider,
+              color: theme.palette.tokens.textPrimary,
+            }}
+          >
+            Change
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<DeleteOutlineRoundedIcon fontSize="small" />}
+            onClick={() => setConfirmRemoveOpen(true)}
+            disabled={avatarBusy || fieldsLocked}
+            sx={{
+              fontSize: '12px',
+              fontWeight: 600,
+              textTransform: 'none',
+              height: 30,
+              px: 1.5,
+              borderRadius: `${theme.customRadii.pill}px`,
+              borderColor: theme.palette.tokens.divider,
+              color: theme.palette.error.main,
+            }}
+          >
+            Remove
+          </Button>
+        </Box>
+      </Dialog>
+
+      <ConfirmDialog
+        open={confirmRemoveOpen}
+        title={isBrand ? 'Remove Brand Logo?' : 'Remove Profile Picture?'}
+        body={
+          isBrand
+            ? 'This deletes your brand logo. The brand will fall back to its initial until a new logo is uploaded.'
+            : 'This deletes your profile picture. Your profile will fall back to your initial until a new picture is uploaded.'
+        }
+        confirmText={isBrand ? 'Remove Logo' : 'Remove Picture'}
+        variant="destructive"
+        loading={removingAvatar}
+        onConfirm={handleRemoveAvatar}
+        onCancel={() => setConfirmRemoveOpen(false)}
+      />
     </DashboardLayout>
   );
 };
-

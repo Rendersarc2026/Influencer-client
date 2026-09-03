@@ -249,8 +249,10 @@ export const StyleGuideOrganism: React.FC = () => {
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
-        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
+        overflowY: 'auto',
+        overflowX: 'hidden',
         backgroundColor: theme.palette.tokens.pageBg,
         // Below `md` the rail is a fixed bottom bar, so the page has to reserve
         // its height the same way DashboardLayout does or the last card sits

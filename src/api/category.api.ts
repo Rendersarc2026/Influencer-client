@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
+import { invalidateEntity } from './invalidate';
 import {
   CategoryResponse,
   CategoryListQuery,
@@ -60,7 +61,6 @@ export function useCategories(type?: CategoryType, search?: string) {
       });
       return response.data.items;
     },
-    staleTime: 60 * 1000,
   });
 }
 
@@ -75,6 +75,7 @@ export function useCreateCategory() {
     // invalidation covers them; refetchType 'all' so a dropdown cached from an
     // earlier visit is fresh when it is next shown.
     onSuccess: () => {
+      invalidateEntity(queryClient, 'category');
       queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' });
     },
   });
@@ -88,6 +89,7 @@ export function useUpdateCategory() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'category');
       queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' });
     },
   });
@@ -104,6 +106,7 @@ export function useSetCategoryArchived() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'category');
       queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' });
     },
   });
@@ -117,6 +120,7 @@ export function useDeleteCategory() {
       await apiClient.delete(`/categories/${id}`);
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'category');
       queryClient.invalidateQueries({ queryKey: ['categories'], refetchType: 'all' });
     },
   });

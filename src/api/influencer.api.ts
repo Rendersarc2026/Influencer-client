@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
+import { invalidateEntity } from './invalidate';
 import {
   InfluencerMapperResponse,
   CampaignMapperListQuery,
@@ -31,7 +32,6 @@ export function influencerDashboardSummaryQueryOptions() {
 export function useInfluencerDashboardSummary() {
   return useQuery<InfluencerDashboardSummary>({
     ...influencerDashboardSummaryQueryOptions(),
-    staleTime: 1000 * 60,
   });
 }
 
@@ -106,6 +106,7 @@ export function useSubmitInfluencerRate(assignmentId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (assignmentId) {
         queryClient.invalidateQueries({ queryKey: ['influencer', 'assignments', assignmentId] });
       }
@@ -122,6 +123,7 @@ export function useUpdateInfluencerProfile() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'profile');
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
     },
   });

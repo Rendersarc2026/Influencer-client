@@ -1,14 +1,5 @@
 import { z } from 'zod';
-import {
-  boolQuery,
-  email,
-  httpUrl,
-  limit,
-  page,
-  phone,
-  safeMultilineText,
-  safeText,
-} from './primitives';
+import { boolQuery, email, httpUrl, limit, page, phone, safeMultilineText, safeText, personName } from './primitives';
 
 export const BrandResponseSchema = z.object({
   id: z.string().uuid(),
@@ -38,7 +29,7 @@ export type BrandResponse = z.infer<typeof BrandResponseSchema>;
 export const CreateBrandSchema = z.object({
   name: safeText(200),
   industry: safeText(120).optional(),
-  contactPerson: safeText(200).optional(),
+  contactPerson: personName(200).optional(),
   /**
    * Both are mandatory on creation: the pair becomes the brand manager's login
    * (see AgencyBrandUseCases.create, which provisions a BRAND user from them),
@@ -58,7 +49,7 @@ export type CreateBrandRequest = z.infer<typeof CreateBrandSchema>;
 export const UpdateBrandSchema = z.object({
   name: safeText(200).optional(),
   industry: safeText(120).optional(),
-  contactPerson: safeText(200).optional(),
+  contactPerson: personName(200).optional(),
   contactPhone: phone.optional(),
   contactEmail: email.optional(),
   website: httpUrl.optional(),

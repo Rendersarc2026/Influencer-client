@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
+import { invalidateEntity } from './invalidate';
 import {
   LocationResponse,
   LocationListQuery,
@@ -73,7 +74,6 @@ export function useLocations(search?: string, options?: LocationOptionsOptions) 
       });
       return response.data.items;
     },
-    staleTime: 60 * 1000,
   });
 }
 
@@ -88,6 +88,7 @@ export function useSetLocationArchived() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'location');
       queryClient.invalidateQueries({ queryKey: ['locations'], refetchType: 'all' });
     },
   });
@@ -104,6 +105,7 @@ export function useCreateLocation() {
     // invalidation covers them; refetchType 'all' so a dropdown cached from an
     // earlier visit is fresh when it is next shown.
     onSuccess: () => {
+      invalidateEntity(queryClient, 'location');
       queryClient.invalidateQueries({ queryKey: ['locations'], refetchType: 'all' });
     },
   });
@@ -117,6 +119,7 @@ export function useUpdateLocation() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'location');
       queryClient.invalidateQueries({ queryKey: ['locations'], refetchType: 'all' });
     },
   });
@@ -130,6 +133,7 @@ export function useDeleteLocation() {
       await apiClient.delete(`/locations/${id}`);
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'location');
       queryClient.invalidateQueries({ queryKey: ['locations'], refetchType: 'all' });
     },
   });

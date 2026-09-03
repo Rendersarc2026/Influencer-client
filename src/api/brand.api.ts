@@ -1,6 +1,13 @@
 import { useMemo } from 'react';
-import { useQuery, useQueries, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import {
+  useQuery,
+  useQueries,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { apiClient } from './axios.client';
+import { invalidateEntity } from './invalidate';
 import {
   CampaignResponse,
   CampaignListQuery,
@@ -33,7 +40,6 @@ export function brandDashboardSummaryQueryOptions() {
 export function useBrandDashboardSummary() {
   return useQuery<BrandDashboardSummary>({
     ...brandDashboardSummaryQueryOptions(),
-    staleTime: 1000 * 60,
   });
 }
 
@@ -106,10 +112,7 @@ export function useBrandCampaignsInfluencers(campaignIds: Array<string>) {
 
   const isLoading = queries.some((q) => q.isLoading);
   const isFetching = queries.some((q) => q.isFetching);
-  const mappers = useMemo(
-    () => queries.flatMap((q) => q.data?.items || []),
-    [queries],
-  );
+  const mappers = useMemo(() => queries.flatMap((q) => q.data?.items || []), [queries]);
 
   return { mappers, isLoading, isFetching };
 }
@@ -129,6 +132,7 @@ export function useBrandDecision(campaignId?: string) {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'assignment');
       if (campaignId) {
         queryClient.invalidateQueries({
           queryKey: ['brand', 'campaigns', campaignId, 'influencers'],
@@ -169,6 +173,7 @@ export function useApprovePayment() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'payment');
       queryClient.invalidateQueries({ queryKey: ['brand', 'payments'] });
     },
   });
@@ -200,10 +205,10 @@ export function useUpdateBrandProfile() {
       return response.data;
     },
     onSuccess: () => {
+      invalidateEntity(queryClient, 'brand');
       queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] });
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['agency', 'brands'] });
     },
   });
 }
-

@@ -39,7 +39,7 @@ export const LoginOrganism: React.FC = () => {
   // OTP input refs
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // 60s countdown timer
+  // 15s countdown timer
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (countdown > 0) {
@@ -64,7 +64,7 @@ export const LoginOrganism: React.FC = () => {
       await requestOtp(email.trim());
       showSuccess(`Verification code sent to ${email.trim()}`);
       setStep(2);
-      setCountdown(60);
+      setCountdown(15);
       setOtp(['', '', '', '', '', '']);
       setOtpError('');
       setAttemptsRemaining(null);
@@ -97,7 +97,7 @@ export const LoginOrganism: React.FC = () => {
       setOtpError('');
       await requestOtp(email.trim());
       showSuccess(`New verification code sent to ${email.trim()}`);
-      setCountdown(60);
+      setCountdown(15);
       setOtp(['', '', '', '', '', '']);
       setAttemptsRemaining(null);
     } catch (err: unknown) {
@@ -209,18 +209,23 @@ export const LoginOrganism: React.FC = () => {
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
-        '@supports (min-height: 100dvh)': { minHeight: '100dvh' },
-        backgroundColor: theme.palette.tokens.pageBg,
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: { xs: '16px', sm: '24px' },
+        justifyContent: 'flex-start',
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        backgroundColor: theme.palette.tokens.pageBg,
+        padding: { xs: '24px 16px', sm: '32px 24px' },
       }}
     >
       <Card
         sx={{
+          my: 'auto',
           width: '100%',
           maxWidth: 440,
+          flexShrink: 0,
           padding: { xs: '28px 20px', sm: '40px 36px' },
           borderRadius: `${theme.customRadii.card}px`,
           backgroundColor: theme.palette.tokens.surface,
@@ -459,6 +464,7 @@ export const LoginOrganism: React.FC = () => {
                 size="small"
                 onClick={() => {
                   setStep(1);
+                  setCountdown(0);
                   setOtpError('');
                   setIsEmailBlocked(false);
                 }}

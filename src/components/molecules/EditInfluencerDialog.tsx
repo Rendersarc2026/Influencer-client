@@ -13,6 +13,7 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
+import { PhoneField } from './PhoneField';
 import { useCategories, useLocations } from '@api';
 import { InfluencerResponse, UpdateInfluencerRequest, CategoryTypeCode } from '@contracts';
 import {
@@ -23,6 +24,7 @@ import {
   getInfluencerTier,
   getTierInfo,
   InfluencerTier,
+  validatePhoneNumber,
 } from '@utils';
 
 export interface EditInfluencerDialogProps {
@@ -69,7 +71,8 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
     const trimmed = val.trim();
     if (!trimmed) return '';
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`)) return `https://${trimmed}`;
+    if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`))
+      return `https://${trimmed}`;
     if (domain === 'instagram.com') {
       const handle = trimmed.replace(/^@/, '');
       return `https://instagram.com/${handle}`;
@@ -95,16 +98,6 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
       }
     } catch {
       return `Please enter a valid ${label} (e.g. https://${label.toLowerCase().includes('instagram') ? 'instagram.com/influencer' : 'youtube.com/@channel'})`;
-    }
-    return '';
-  };
-
-  const validatePhone = (val: string): string => {
-    const trimmed = val.trim();
-    if (!trimmed) return '';
-    const stripped = trimmed.replace(/[\s()-]/g, '');
-    if (!/^\+?[0-9]{7,15}$/.test(stripped)) {
-      return 'Must be a valid phone number (7-15 digits, optional + prefix)';
     }
     return '';
   };
@@ -185,7 +178,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
 
     const trimmedPhone = contactPhone.trim();
     if (trimmedPhone) {
-      const pErr = validatePhone(trimmedPhone);
+      const pErr = validatePhoneNumber(trimmedPhone);
       if (pErr) {
         setPhoneError(pErr);
         hasFieldErr = true;
@@ -244,7 +237,9 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
       }
     }
 
-    const finalInstagram = instagram.trim() ? normalizeSocialUrl(instagram, 'instagram.com') : undefined;
+    const finalInstagram = instagram.trim()
+      ? normalizeSocialUrl(instagram, 'instagram.com')
+      : undefined;
     const finalYoutube = youtube.trim() ? normalizeSocialUrl(youtube, 'youtube.com') : undefined;
 
     const payload: UpdateInfluencerRequest = {
@@ -318,7 +313,10 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                   border: `1px solid ${theme.palette.error.main}30`,
                 }}
               >
-                <Typography variant="body2" sx={{ color: theme.palette.error.main, fontWeight: 600 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: theme.palette.error.main, fontWeight: 600 }}
+                >
                   {error}
                 </Typography>
               </Box>
@@ -349,23 +347,16 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               disabled={loading}
             />
 
-            <TextField
+            <PhoneField
               label="Contact Phone"
               value={contactPhone}
-              onChange={(e) => {
-                const val = e.target.value;
-                setContactPhone(val);
-                if (phoneError) setPhoneError(validatePhone(val));
-              }}
-              onBlur={(e) => {
-                const val = e.target.value.trim();
-                if (val) setPhoneError(validatePhone(val));
+              onChange={(next) => {
+                setContactPhone(next);
+                if (next.trim()) setPhoneError(validatePhoneNumber(next));
                 else setPhoneError('');
               }}
-              placeholder="+91 98765 43210"
               error={Boolean(phoneError)}
               helperText={phoneError || 'Influencer direct contact number'}
-              fullWidth
               disabled={loading}
             />
 
@@ -460,7 +451,9 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               </Box>
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Location"
                 value={location}
@@ -509,34 +502,34 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               renderTags={(value: readonly string[], getTagProps) =>
                 value.map((option: string, index: number) => {
                   const { key, ...tagProps } = getTagProps({ index });
-                  return (
-                    <Chip
-                      key={key}
-                      label={option}
-                      size="small"
-                      {...tagProps}
-                    />
-                  );
+                  return <Chip key={key} label={option} size="small" {...tagProps} />;
                 })
               }
               renderInput={(params) => (
                 <TextField
                   {...params}
                   label="Influencing Regions (Optional)"
-                  placeholder={regions.length === 0 ? "Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter" : ""}
+                  placeholder={
+                    regions.length === 0
+                      ? 'Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter'
+                      : ''
+                  }
                   helperText="Key geographical target regions where this influencer's audience is strongest (optional)"
                   fullWidth
                 />
               )}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Instagram Profile URL"
                 value={instagram}
                 onChange={(e) => {
                   setInstagram(e.target.value);
-                  if (instagramError) setInstagramError(validateSocialUrl(e.target.value, 'Instagram URL'));
+                  if (instagramError)
+                    setInstagramError(validateSocialUrl(e.target.value, 'Instagram URL'));
                 }}
                 onBlur={() => {
                   if (instagram.trim()) {
@@ -554,7 +547,8 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 value={youtube}
                 onChange={(e) => {
                   setYoutube(e.target.value);
-                  if (youtubeError) setYoutubeError(validateSocialUrl(e.target.value, 'YouTube URL'));
+                  if (youtubeError)
+                    setYoutubeError(validateSocialUrl(e.target.value, 'YouTube URL'));
                 }}
                 onBlur={() => {
                   if (youtube.trim()) {
@@ -569,7 +563,9 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Indicative Rate — Min (₹)"
                 value={avgCommercialMin}
