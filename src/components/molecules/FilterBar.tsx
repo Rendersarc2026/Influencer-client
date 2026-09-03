@@ -134,7 +134,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     (selectedSecondMultiOptions ? selectedSecondMultiOptions.length : 0) +
     (selectedPriceRange ? 1 : 0) +
     extraSelects.filter((sel) => Boolean(sel.value)).length +
-    (selectedOption && selectOptions.length > 0 && selectedOption !== selectOptions[0]?.value ? 1 : 0);
+    (selectedOption && selectOptions.length > 0 && selectedOption !== selectOptions[0]?.value
+      ? 1
+      : 0);
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(activeDropdownCount > 0);
 
@@ -155,8 +157,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   }, [multiSelectOptions, visibleMultiCount, selectedMultiOptions]);
 
   const visibleSecondMultiOptions = useMemo(() => {
-    if (secondMultiSelectOptions.length <= visibleSecondMultiCount)
-      return secondMultiSelectOptions;
+    if (secondMultiSelectOptions.length <= visibleSecondMultiCount) return secondMultiSelectOptions;
     const topSlice = secondMultiSelectOptions.slice(0, visibleSecondMultiCount);
     const selectedSet = new Set(selectedSecondMultiOptions || []);
     const missingSelected = secondMultiSelectOptions.filter(
@@ -200,9 +201,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           borderRadius: `${theme.customRadii.inner}px`,
         }}
       >
-        <InputLabel id="filter-multi-select-label">
-          {multiSelectLabel || 'Category'}
-        </InputLabel>
+        <InputLabel id="filter-multi-select-label">{multiSelectLabel || 'Category'}</InputLabel>
         <Select
           labelId="filter-multi-select-label"
           multiple
@@ -211,6 +210,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             const val = e.target.value;
             const newValues = typeof val === 'string' ? val.split(',') : val;
             onMultiSelectChange(newValues);
+          }}
+          onClose={() => {
+            setVisibleMultiCount(BATCH_SIZE);
           }}
           input={<OutlinedInput label={multiSelectLabel || 'Category'} />}
           renderValue={(selected) => {
@@ -236,9 +238,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   );
                 }
               },
-            },
-            onClose: () => {
-              setVisibleMultiCount(BATCH_SIZE);
             },
           }}
         >
@@ -299,6 +298,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             const newValues = typeof val === 'string' ? val.split(',') : val;
             onSecondMultiSelectChange(newValues);
           }}
+          onClose={() => {
+            setVisibleSecondMultiCount(BATCH_SIZE);
+          }}
           input={<OutlinedInput label={secondMultiSelectLabel || 'Location'} />}
           renderValue={(selected) => {
             if (!selected || selected.length === 0) {
@@ -323,9 +325,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   );
                 }
               },
-            },
-            onClose: () => {
-              setVisibleSecondMultiCount(BATCH_SIZE);
             },
           }}
         >
@@ -371,6 +370,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         value={selectedPriceRange || ''}
         onChange={(e) => onPriceRangeChange(e.target.value)}
         label={priceRangeLabel || 'Commercials'}
+        SelectProps={{
+          MenuProps: {
+            PaperProps: {
+              sx: {
+                maxHeight: 320,
+              },
+            },
+          },
+        }}
         sx={{
           minWidth: fullWidth ? '100%' : 180,
           flexGrow: fullWidth ? 1 : 0,
@@ -397,6 +405,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         onChange={(e) => sel.onChange(e.target.value)}
         label={sel.label}
         disabled={sel.disabled}
+        SelectProps={{
+          MenuProps: {
+            PaperProps: {
+              sx: {
+                maxHeight: 320,
+              },
+            },
+          },
+        }}
         sx={{
           minWidth: fullWidth ? '100%' : 180,
           flexGrow: fullWidth ? 1 : 0,
@@ -422,6 +439,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         onChange={(e) => onSelectChange(e.target.value)}
         label={selectLabel}
         SelectProps={{
+          onClose: () => {
+            setVisibleSingleCount(BATCH_SIZE);
+          },
           MenuProps: {
             PaperProps: {
               sx: {
@@ -435,9 +455,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   );
                 }
               },
-            },
-            onClose: () => {
-              setVisibleSingleCount(BATCH_SIZE);
             },
           },
         }}
@@ -554,7 +571,10 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               }}
               sx={{
                 minWidth: { xs: 0, sm: 220 },
-                width: pills.length === 0 ? { xs: '100%', sm: 260, md: 300 } : { xs: '100%', sm: 'auto' },
+                width:
+                  pills.length === 0
+                    ? { xs: '100%', sm: 260, md: 300 }
+                    : { xs: '100%', sm: 'auto' },
                 flexGrow: { xs: 1, sm: pills.length === 0 ? 0 : 1 },
               }}
             />
