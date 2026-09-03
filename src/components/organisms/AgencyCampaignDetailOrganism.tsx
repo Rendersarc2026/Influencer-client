@@ -1155,22 +1155,26 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={
-                isDownloadingReport ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : (
-                  <AssessmentRoundedIcon fontSize="small" />
-                )
-              }
-              onClick={handleDownloadPerformanceReport}
-              disabled={isDownloadingReport || campaignLoading}
-              sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
-            >
-              {isDownloadingReport ? 'Generating Report...' : 'Download Performance Report'}
-            </Button>
+            {/* Post-evaluation only reads as a report once the campaign is over:
+                before that the metrics are partial, so offer it at Completed. */}
+            {isCompleted && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  isDownloadingReport ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <AssessmentRoundedIcon fontSize="small" />
+                  )
+                }
+                onClick={handleDownloadPerformanceReport}
+                disabled={isDownloadingReport || campaignLoading}
+                sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
+              >
+                {isDownloadingReport ? 'Generating Report...' : 'Download Performance Report'}
+              </Button>
+            )}
 
             {canEditCampaign && (
               <Button
