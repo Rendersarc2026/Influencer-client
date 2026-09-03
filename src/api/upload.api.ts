@@ -1,6 +1,4 @@
 import { apiClient } from './axios.client';
-import { invalidateEntity } from './invalidate';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export interface UploadResult {
   success: boolean;
@@ -63,24 +61,4 @@ export async function uploadChatAttachment(chatId: string, file: File): Promise<
     },
   });
   return response.data;
-}
-
-export function useUploadAvatar() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (file: File) => uploadAvatar(file),
-    onSuccess: () => {
-      invalidateEntity(queryClient, 'profile');
-    },
-  });
-}
-
-export function useRemoveAvatar() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => removeAvatar(),
-    onSuccess: () => {
-      invalidateEntity(queryClient, 'profile');
-    },
-  });
 }

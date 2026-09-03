@@ -111,7 +111,7 @@ export function subscribeToPresence(handlers: PresenceHandlers): () => void {
   };
 }
 
-export function requestPresence(): void {
+function requestPresence(): void {
   const s = getSocket();
   if (s.connected) {
     s.emit('presence:request');

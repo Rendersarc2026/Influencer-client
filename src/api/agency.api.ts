@@ -109,7 +109,7 @@ export function useCampaignRollups() {
  * the creators it represents. Shared with the boot-time prefetch, so the query
  * key and the fetcher cannot drift apart.
  */
-export function agencyUsersQueryOptions(params?: UserListQuery) {
+function agencyUsersQueryOptions(params?: UserListQuery) {
   return {
     queryKey: ['agency', 'users', params] as const,
     queryFn: async () => {
@@ -160,7 +160,7 @@ export function useSetUserBlocked() {
  * the fetcher cannot drift apart — a mismatched key would silently turn a
  * warmed cache entry into a second network request.
  */
-export function agencyBrandsQueryOptions(params?: BrandListQuery) {
+function agencyBrandsQueryOptions(params?: BrandListQuery) {
   return {
     queryKey: ['agency', 'brands', params] as const,
     queryFn: async () => {

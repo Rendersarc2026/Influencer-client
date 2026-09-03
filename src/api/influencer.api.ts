@@ -36,7 +36,7 @@ export function useInfluencerDashboardSummary() {
   });
 }
 
-export function influencerCampaignsQueryOptions(params?: CampaignListQuery) {
+function influencerCampaignsQueryOptions(params?: CampaignListQuery) {
   return {
     queryKey: ['influencer', 'campaigns', params] as const,
     queryFn: async () => {

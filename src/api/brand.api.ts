@@ -145,7 +145,7 @@ export function useBrandDecision(campaignId?: string) {
 }
 
 /** Shared with the boot-time prefetch — see brandCampaignsQueryOptions. */
-export function brandPaymentsQueryOptions(params?: PaymentListQuery) {
+function brandPaymentsQueryOptions(params?: PaymentListQuery) {
   return {
     queryKey: ['brand', 'payments', params] as const,
     queryFn: async () => {
