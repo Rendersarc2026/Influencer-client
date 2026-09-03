@@ -9,5 +9,6 @@ export function useNavigation(roleCode?: string | null) {
       const response = await apiClient.get<NavigationListResponse>('/navigation');
       return response.data.items;
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

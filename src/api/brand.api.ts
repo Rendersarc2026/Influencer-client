@@ -40,6 +40,7 @@ export function brandDashboardSummaryQueryOptions() {
 export function useBrandDashboardSummary() {
   return useQuery<BrandDashboardSummary>({
     ...brandDashboardSummaryQueryOptions(),
+    staleTime: 1000 * 60,
   });
 }
 

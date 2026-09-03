@@ -74,6 +74,7 @@ export function useLocations(search?: string, options?: LocationOptionsOptions) 
       });
       return response.data.items;
     },
+    staleTime: 60 * 1000,
   });
 }
 

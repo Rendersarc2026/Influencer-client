@@ -27,6 +27,7 @@ export function useChats(options?: UseChatsOptions) {
       return response.data;
     },
     enabled: options?.enabled ?? true,
+    staleTime: 30000,
   });
 }
 
@@ -60,6 +61,7 @@ export function useInfiniteChats(options?: UseInfiniteChatsOptions) {
       return allPages.length + 1;
     },
     enabled: options?.enabled ?? true,
+    staleTime: 30000,
     // The search term is part of the query key, so every term that survives the
     // debounce asks for a key with nothing cached behind it. Without this the
     // list empties to `[]` while that loads and the panel flashes its empty
@@ -82,6 +84,7 @@ export function useChatMessages(chatId: string | undefined) {
       return response.data;
     },
     enabled: Boolean(chatId),
+    staleTime: 30000,
   });
 }
 

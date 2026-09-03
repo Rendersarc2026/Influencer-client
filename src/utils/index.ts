@@ -1,5 +1,6 @@
 export * from './safe-url';
 export * from './phone-codes';
+export * from './chat-emoji';
 
 const defaultDateTimeFormat = new Intl.DateTimeFormat('en-IN', {
   dateStyle: 'medium',

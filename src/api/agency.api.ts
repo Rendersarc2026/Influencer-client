@@ -60,6 +60,7 @@ export function agencyDashboardSummaryQueryOptions() {
 export function useAgencyDashboardSummary() {
   return useQuery<AgencyDashboardSummary>({
     ...agencyDashboardSummaryQueryOptions(),
+    staleTime: 1000 * 60,
   });
 }
 
@@ -76,6 +77,7 @@ export function useInfluencerFilterOptions() {
       );
       return response.data;
     },
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -93,6 +95,7 @@ export function useCampaignRollups() {
       const response = await apiClient.get<CampaignRollup[]>('/agency/reports/rollup');
       return response.data;
     },
+    staleTime: 1000 * 60,
     placeholderData: keepPreviousData,
   });
 }
@@ -635,6 +638,7 @@ export function useCampaignReports(campaignIds: Array<string>) {
       return response.data;
     },
     enabled: key.length > 0,
+    staleTime: 1000 * 60,
     placeholderData: keepPreviousData,
   });
 

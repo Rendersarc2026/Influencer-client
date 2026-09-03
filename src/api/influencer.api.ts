@@ -32,6 +32,7 @@ export function influencerDashboardSummaryQueryOptions() {
 export function useInfluencerDashboardSummary() {
   return useQuery<InfluencerDashboardSummary>({
     ...influencerDashboardSummaryQueryOptions(),
+    staleTime: 1000 * 60,
   });
 }
 

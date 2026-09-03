@@ -61,6 +61,7 @@ export function useCategories(type?: CategoryType, search?: string) {
       });
       return response.data.items;
     },
+    staleTime: 60 * 1000,
   });
 }
 

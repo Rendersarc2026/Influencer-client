@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
+import SentimentSatisfiedRoundedIcon from '@mui/icons-material/SentimentSatisfiedRounded';
 import Avatar from '@mui/material/Avatar';
 import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -31,7 +32,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { StartChatDialog } from '@molecules';
+import { StartChatDialog, EmojiPicker } from '@molecules';
 import { EmptyState } from '@atoms';
 import {
   useInfiniteChats,
@@ -50,6 +51,7 @@ import {
   leaveChat,
   sendTyping,
   sendStopTyping,
+  subscribeToPresence,
 } from '@api';
 
 import {
@@ -62,7 +64,7 @@ import {
   UserResponse,
 } from '@contracts';
 import { useAuth, useToast, useNotifications, useDebounce } from '@hooks';
-import { safeUrl, safeImageUrl } from '@utils';
+import { safeUrl, safeImageUrl, isStickerMessage, insertAtCaret } from '@utils';
 
 const isImageAttachmentUrl = (url?: string | null): boolean => {
   if (!url) return false;
@@ -374,12 +376,45 @@ export const ChatOrganism: React.FC = () => {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(queryChatId || null);
   const [persistedActiveChat, setPersistedActiveChat] = useState<ChatResponse | null>(null);
   const [messageInput, setMessageInput] = useState('');
+  const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLElement | null>(null);
+  const [editEmojiAnchorEl, setEditEmojiAnchorEl] = useState<HTMLElement | null>(null);
+  const composerInputRef = useRef<HTMLInputElement | null>(null);
+  const editInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [attachmentInput, setAttachmentInput] = useState('');
   const [attachmentMeta, setAttachmentMeta] = useState<{ name: string; size: string } | null>(null);
   const [showAttachmentField, setShowAttachmentField] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
   const [partnerTyping, setPartnerTyping] = useState(false);
+
+  /**
+   * User ids with at least one live socket, as reported by the server.
+   *
+   * Presence is independent of which thread is open — the list needs it for
+   * every row — so this subscribes once for the screen rather than inside the
+   * per-chat effect below.
+   */
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    return subscribeToPresence({
+      onSnapshot: (userIds) => setOnlineUserIds(new Set(userIds)),
+      onOnline: (userId) =>
+        setOnlineUserIds((prev) => {
+          if (prev.has(userId)) return prev;
+          const next = new Set(prev);
+          next.add(userId);
+          return next;
+        }),
+      onOffline: (userId) =>
+        setOnlineUserIds((prev) => {
+          if (!prev.has(userId)) return prev;
+          const next = new Set(prev);
+          next.delete(userId);
+          return next;
+        }),
+    });
+  }, []);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Inline edit of an own message, plus the clock that retires the action once
@@ -486,7 +521,16 @@ export const ChatOrganism: React.FC = () => {
     }
 
     return null;
-  }, [chats, uniqueChats, selectedChatId, roleCode, brands, influencers, users, persistedActiveChat]);
+  }, [
+    chats,
+    uniqueChats,
+    selectedChatId,
+    roleCode,
+    brands,
+    influencers,
+    users,
+    persistedActiveChat,
+  ]);
 
   // Sync persistedActiveChat whenever a live chat matches
   useEffect(() => {
@@ -1006,6 +1050,57 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
+  /**
+   * Inserts at the caret and keeps the picker open, so several can be picked.
+   *
+   * Focus and caret are restored on the next frame: React has to commit the new
+   * value first, and clicking inside the picker took focus off the input.
+   */
+  const handleSelectEmoji = (emoji: string) => {
+    const input = composerInputRef.current;
+    const { value, caret } = insertAtCaret(input, messageInput, emoji);
+    setMessageInput(value);
+    requestAnimationFrame(() => {
+      const el = composerInputRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
+  };
+
+  /** Same, for the inline edit box on an existing message. */
+  const handleSelectEmojiForEdit = (emoji: string) => {
+    const input = editInputRef.current;
+    const { value, caret } = insertAtCaret(input, editingBody, emoji);
+    setEditingBody(value);
+    requestAnimationFrame(() => {
+      const el = editInputRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
+  };
+
+  /** A sticker is the whole message, so it goes straight out. */
+  const handleSelectSticker = async (sticker: string) => {
+    setEmojiAnchorEl(null);
+    if (!effectiveChatId || sendMessageMutation.isPending || uploadingAttachment) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    sendStopTyping(effectiveChatId);
+
+    try {
+      await sendMessageMutation.mutateAsync({ body: sticker });
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to send sticker.',
+      );
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1073,6 +1168,35 @@ export const ChatOrganism: React.FC = () => {
       cancelEditMessage();
     }
   };
+
+  /**
+   * The user id on the other side of a thread.
+   *
+   * All three participant columns hold user ids (`influencerId` on a chat row is
+   * the creator's *user* id, which is what the repository scopes on), so
+   * presence keys on them directly. Agency staff share one org-wide view of a
+   * thread, so for them the partner is whichever counterparty the chat has.
+   */
+  const getChatPartnerUserId = React.useCallback(
+    (chat: ChatResponse): string | null => {
+      if (roleCode === 'AGENCY') {
+        return chat.type === ChatTypeCode.AGENCY_BRAND
+          ? (chat.brandUserId ?? null)
+          : (chat.influencerId ?? null);
+      }
+      // A brand or creator always talks to the agency side of the thread.
+      return chat.agencyUserId ?? null;
+    },
+    [roleCode],
+  );
+
+  const isChatPartnerOnline = React.useCallback(
+    (chat: ChatResponse): boolean => {
+      const partnerId = getChatPartnerUserId(chat);
+      return partnerId !== null && onlineUserIds.has(partnerId);
+    },
+    [getChatPartnerUserId, onlineUserIds],
+  );
 
   const getChatPartnerName = React.useCallback(
     (chat: ChatResponse) => {
@@ -1193,6 +1317,8 @@ export const ChatOrganism: React.FC = () => {
     if (roleCode === 'BRAND') return navConfig.BRAND;
     return navConfig.INFLUENCER;
   };
+
+  const partnerOnline = activeChat ? isChatPartnerOnline(activeChat) : false;
 
   // Filtered conversation list
   const filteredChats = useMemo(() => {
@@ -1573,38 +1699,54 @@ export const ChatOrganism: React.FC = () => {
                       <Badge
                         variant="dot"
                         overlap="circular"
-                        invisible={!hasUnread}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        invisible={!isChatPartnerOnline(chat)}
                         sx={{
                           '& .MuiBadge-badge': {
-                            backgroundColor: theme.palette.tokens.negative,
-                            width: 10,
-                            height: 10,
+                            backgroundColor: theme.palette.tokens.positive,
+                            width: 11,
+                            height: 11,
                             borderRadius: '50%',
                             boxShadow: `0 0 0 2px ${theme.palette.tokens.surface}`,
                           },
                         }}
                       >
-                        <Avatar
-                          src={safeImageUrl(getChatPartnerAvatar(chat))}
+                        <Badge
+                          variant="dot"
+                          overlap="circular"
+                          invisible={!hasUnread}
                           sx={{
-                            width: 42,
-                            height: 42,
-                            bgcolor: isSelected
-                              ? theme.palette.tokens.rail
-                              : hasUnread
-                                ? theme.palette.tokens.rail
-                                : theme.palette.tokens.divider,
-                            color:
-                              isSelected || hasUnread
-                                ? theme.palette.tints.butter
-                                : theme.palette.tokens.textPrimary,
-                            fontWeight: 700,
-                            fontSize: '15px',
-                            flexShrink: 0,
+                            '& .MuiBadge-badge': {
+                              backgroundColor: theme.palette.tokens.negative,
+                              width: 10,
+                              height: 10,
+                              borderRadius: '50%',
+                              boxShadow: `0 0 0 2px ${theme.palette.tokens.surface}`,
+                            },
                           }}
                         >
-                          {partnerName[0]?.toUpperCase() || 'C'}
-                        </Avatar>
+                          <Avatar
+                            src={safeImageUrl(getChatPartnerAvatar(chat))}
+                            sx={{
+                              width: 42,
+                              height: 42,
+                              bgcolor: isSelected
+                                ? theme.palette.tokens.rail
+                                : hasUnread
+                                  ? theme.palette.tokens.rail
+                                  : theme.palette.tokens.divider,
+                              color:
+                                isSelected || hasUnread
+                                  ? theme.palette.tints.butter
+                                  : theme.palette.tokens.textPrimary,
+                              fontWeight: 700,
+                              fontSize: '15px',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {partnerName[0]?.toUpperCase() || 'C'}
+                          </Avatar>
+                        </Badge>
                       </Badge>
 
                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1845,15 +1987,40 @@ export const ChatOrganism: React.FC = () => {
                       <Typography
                         variant="caption"
                         sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.6,
                           color: partnerTyping
                             ? theme.palette.tokens.accentText
-                            : theme.palette.tokens.textSecondary,
-                          fontWeight: partnerTyping ? 700 : 500,
+                            : partnerOnline
+                              ? theme.palette.tokens.positiveText
+                              : theme.palette.tokens.textSecondary,
+                          fontWeight: partnerTyping || partnerOnline ? 700 : 500,
                           fontSize: '11px',
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        {partnerTyping ? 'Typing a message...' : 'Direct 1-on-1 Conversation'}
+                        {/* Typing outranks presence: someone typing is online by
+                            definition, and the more specific signal is the useful one. */}
+                        {!partnerTyping && (
+                          <Box
+                            component="span"
+                            sx={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: '50%',
+                              flexShrink: 0,
+                              backgroundColor: partnerOnline
+                                ? theme.palette.tokens.positive
+                                : theme.palette.tokens.divider,
+                            }}
+                          />
+                        )}
+                        {partnerTyping
+                          ? 'Typing a message...'
+                          : partnerOnline
+                            ? 'Online'
+                            : 'Offline'}
                       </Typography>
                     </Box>
                   </Box>
@@ -2220,11 +2387,14 @@ export const ChatOrganism: React.FC = () => {
                                         <span>Audience Reach Proof</span>
                                       </Box>
                                     )}
+                                    {/* A message that is nothing but emoji was
+                                        meant as a sticker, so it is rendered at
+                                        sticker size rather than as body text. */}
                                     <Typography
                                       variant="body2"
                                       sx={{
-                                        fontSize: '13.5px',
-                                        lineHeight: 1.5,
+                                        fontSize: isStickerMessage(msg.body) ? '38px' : '13.5px',
+                                        lineHeight: isStickerMessage(msg.body) ? 1.15 : 1.5,
                                         whiteSpace: 'pre-wrap',
                                         color: isMine
                                           ? '#FFFFFF'
@@ -2625,6 +2795,37 @@ export const ChatOrganism: React.FC = () => {
                         <AttachFileRoundedIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
+
+                    {/* Emoji & stickers */}
+                    <Tooltip title="Emoji & stickers">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => setEmojiAnchorEl(e.currentTarget)}
+                        disabled={sendMessageMutation.isPending || uploadingAttachment}
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          backgroundColor: emojiAnchorEl
+                            ? theme.palette.tokens.accentBg
+                            : 'transparent',
+                          color: emojiAnchorEl
+                            ? theme.palette.tokens.accentText
+                            : theme.palette.tokens.textSecondary,
+                          borderRadius: `${theme.customRadii.pill}px`,
+                          transition: 'all 0.15s ease',
+                          '&:hover': { backgroundColor: theme.palette.tokens.divider },
+                        }}
+                      >
+                        <SentimentSatisfiedRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    <EmojiPicker
+                      anchorEl={emojiAnchorEl}
+                      onClose={() => setEmojiAnchorEl(null)}
+                      onSelectEmoji={handleSelectEmoji}
+                      onSelectSticker={handleSelectSticker}
+                    />
 
                     <TextField
                       size="small"

@@ -77,7 +77,13 @@ const AFFECTED: Record<EntityKind, QueryKey[]> = {
 };
 
 /**
- * Marks every view an entity appears in as out of date and triggers real-time updates.
+ * Marks every view an entity appears in as out of date.
+ *
+ * Left at the default `refetchType: 'active'` on purpose: only what is on
+ * screen refetches now, and everything else is stale and refetches the moment
+ * it is next mounted. Forcing `'all'` here would fire a burst of requests at a
+ * database that is a long round trip away, to refresh screens nobody is
+ * looking at.
  */
 export function invalidateEntity(queryClient: QueryClient, ...kinds: EntityKind[]): void {
   const seen = new Set<string>();
@@ -87,7 +93,7 @@ export function invalidateEntity(queryClient: QueryClient, ...kinds: EntityKind[
       const hash = JSON.stringify(queryKey);
       if (seen.has(hash)) continue;
       seen.add(hash);
-      queryClient.invalidateQueries({ queryKey, refetchType: 'all' });
+      queryClient.invalidateQueries({ queryKey });
     }
   }
 }
