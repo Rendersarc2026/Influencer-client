@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Popover from '@mui/material/Popover';
 import Tabs from '@mui/material/Tabs';
@@ -8,6 +8,10 @@ import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import { EMOJI_GROUPS, STICKERS } from '@utils';
 
+const PICKER_WIDTH = 312;
+/** Matches MUI's own default gap between a popover and the viewport edge. */
+const VIEWPORT_MARGIN = 16;
+
 export interface EmojiPickerProps {
   anchorEl: HTMLElement | null;
   onClose: () => void;
@@ -15,6 +19,15 @@ export interface EmojiPickerProps {
   onSelectEmoji: (emoji: string) => void;
   /** Send a sticker straight away — a sticker is the whole message. */
   onSelectSticker: (sticker: string) => void;
+  /**
+   * Which way to open vertically.
+   *
+   * The caller knows its own layout, and no measurement can infer this: in the
+   * inline edit box the text field sits *above* the button, so opening upward
+   * covers the very thing being edited. The composer sits at the bottom of the
+   * screen and wants the opposite.
+   */
+  openDirection?: 'up' | 'down';
 }
 
 export const EmojiPicker: React.FC<EmojiPickerProps> = ({
@@ -22,9 +35,24 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
   onClose,
   onSelectEmoji,
   onSelectSticker,
+  openDirection = 'up',
 }) => {
   const theme = useTheme();
   const [tab, setTab] = useState(0);
+
+  /**
+   * Which side to open toward.
+   *
+   * Anchoring left always meant opening rightward, which runs off the screen
+   * for a button that already sits near the right edge — the emoji control on a
+   * message bubble in the transcript, for one. Measuring at open time and
+   * flipping only when there is no room keeps the usual direction usual.
+   */
+  const alignRight = useMemo(() => {
+    if (!anchorEl || typeof window === 'undefined') return false;
+    const { left } = anchorEl.getBoundingClientRect();
+    return left + PICKER_WIDTH + VIEWPORT_MARGIN > window.innerWidth;
+  }, [anchorEl]);
 
   const isStickerTab = tab === EMOJI_GROUPS.length;
   const items = isStickerTab ? STICKERS : EMOJI_GROUPS[tab].emojis;
@@ -34,12 +62,21 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({
       open={Boolean(anchorEl)}
       anchorEl={anchorEl}
       onClose={onClose}
-      anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-      transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      anchorOrigin={{
+        vertical: openDirection === 'up' ? 'top' : 'bottom',
+        horizontal: alignRight ? 'right' : 'left',
+      }}
+      transformOrigin={{
+        vertical: openDirection === 'up' ? 'bottom' : 'top',
+        horizontal: alignRight ? 'right' : 'left',
+      }}
+      marginThreshold={VIEWPORT_MARGIN}
       slotProps={{
         paper: {
           sx: {
-            width: 312,
+            width: PICKER_WIDTH,
+            // A phone is narrower than the picker; never let it push the page.
+            maxWidth: `calc(100vw - ${VIEWPORT_MARGIN * 2}px)`,
             borderRadius: `${theme.customRadii.card}px`,
             border: `1px solid ${theme.palette.tokens.divider}`,
             backgroundImage: 'none',

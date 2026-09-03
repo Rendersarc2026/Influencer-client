@@ -1012,6 +1012,11 @@ export const ChatOrganism: React.FC = () => {
     }
   };
 
+  /** Returns the caret to the message box once React has settled the DOM. */
+  const focusComposer = () => {
+    requestAnimationFrame(() => composerInputRef.current?.focus());
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmedBody = messageInput.trim();
@@ -1039,6 +1044,10 @@ export const ChatOrganism: React.FC = () => {
     setAttachmentInput('');
     setAttachmentMeta(null);
     setShowAttachmentField(false);
+
+    // Clicking the send button moves focus onto the button, so hand it back to
+    // the composer either way — the next thing anyone does here is type again.
+    focusComposer();
 
     try {
       await sendMessageMutation.mutateAsync(payload);
@@ -1091,6 +1100,8 @@ export const ChatOrganism: React.FC = () => {
     }
     sendStopTyping(effectiveChatId);
 
+    focusComposer();
+
     try {
       await sendMessageMutation.mutateAsync({ body: sticker });
     } catch (err: unknown) {
@@ -1115,11 +1126,13 @@ export const ChatOrganism: React.FC = () => {
   const beginEditMessage = (msg: MessageResponse) => {
     setEditingMessageId(msg.id);
     setEditingBody(visibleMessageBody(msg.body));
+    setEditEmojiAnchorEl(null);
   };
 
   const cancelEditMessage = () => {
     setEditingMessageId(null);
     setEditingBody('');
+    setEditEmojiAnchorEl(null);
   };
 
   const handleSaveEdit = async () => {
@@ -2277,6 +2290,7 @@ export const ChatOrganism: React.FC = () => {
                                     maxRows={6}
                                     size="small"
                                     fullWidth
+                                    inputRef={editInputRef}
                                     inputProps={{ maxLength: 4000 }}
                                     sx={{
                                       '& .MuiOutlinedInput-root': {
@@ -2315,6 +2329,54 @@ export const ChatOrganism: React.FC = () => {
                                       gap: 0.75,
                                     }}
                                   >
+                                    {/* Editing a message should reach the same
+                                        emoji as writing one — otherwise the only
+                                        way to add one to an existing message is
+                                        the operating system's picker. */}
+                                    <Tooltip title="Emoji">
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => setEditEmojiAnchorEl(e.currentTarget)}
+                                        sx={{
+                                          // The theme gives every IconButton a
+                                          // light pill background. Inside a
+                                          // bubble that reads as a stray white
+                                          // circle — and on a dark bubble it hid
+                                          // the icon entirely, white on white.
+                                          mr: 'auto',
+                                          width: 26,
+                                          height: 26,
+                                          backgroundColor: 'transparent',
+                                          color: isMine
+                                            ? 'rgba(255, 255, 255, 0.75)'
+                                            : theme.palette.tokens.textSecondary,
+                                          '&:hover': {
+                                            backgroundColor: isMine
+                                              ? 'rgba(255, 255, 255, 0.16)'
+                                              : theme.palette.tokens.fieldBg,
+                                            color: isMine
+                                              ? '#FFFFFF'
+                                              : theme.palette.tokens.textPrimary,
+                                          },
+                                        }}
+                                      >
+                                        <SentimentSatisfiedRoundedIcon sx={{ fontSize: '16px' }} />
+                                      </IconButton>
+                                    </Tooltip>
+
+                                    <EmojiPicker
+                                      anchorEl={editEmojiAnchorEl}
+                                      onClose={() => setEditEmojiAnchorEl(null)}
+                                      openDirection="down"
+                                      onSelectEmoji={handleSelectEmojiForEdit}
+                                      // In an edit box a sticker is just an
+                                      // insertion; there is nothing to send.
+                                      onSelectSticker={(sticker) => {
+                                        handleSelectEmojiForEdit(sticker);
+                                        setEditEmojiAnchorEl(null);
+                                      }}
+                                    />
+
                                     <Button
                                       size="small"
                                       onClick={cancelEditMessage}
@@ -2838,9 +2900,16 @@ export const ChatOrganism: React.FC = () => {
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       variant="standard"
+                      inputRef={composerInputRef}
                       InputProps={{ disableUnderline: true }}
                       fullWidth
-                      disabled={sendMessageMutation.isPending || uploadingAttachment}
+                      // Not disabled while a send is in flight: the browser
+                      // blurs a disabled field, and re-enabling does not give
+                      // focus back — which is why the caret vanished after every
+                      // message. `handleSendMessage` already refuses to fire
+                      // twice, so nothing is gained by locking the input, and
+                      // the next message can be typed while this one is going.
+                      disabled={uploadingAttachment}
                       sx={{
                         '& input': {
                           fontSize: '14px',
