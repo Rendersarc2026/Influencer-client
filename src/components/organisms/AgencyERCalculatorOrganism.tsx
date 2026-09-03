@@ -129,6 +129,14 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   const [autoCommercialFee, setAutoCommercialFee] = useState('');
   const [autoLoading, setAutoLoading] = useState(false);
   const [autoResult, setAutoResult] = useState<ERResult | null>(null);
+  /**
+   * The handle the result on screen belongs to, normalised.
+   *
+   * Kept separately from `autoResult`, which is cleared the moment a lookup
+   * starts: without it, refreshing a loaded profile would flip the button back
+   * to "Fetch Profile" for the duration of its own request.
+   */
+  const [loadedHandle, setLoadedHandle] = useState('');
   /** Server error code from the last failed lookup, e.g. NOT_PROFESSIONAL_ACCOUNT. */
   const [autoErrorCode, setAutoErrorCode] = useState<string | null>(null);
   /**
@@ -179,7 +187,9 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   // Assign ER Modal Dialog State
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignDialogTargetId, setAssignDialogTargetId] = useState<string>('');
-  const [assignTargetInfluencer, setAssignTargetInfluencer] = useState<InfluencerResponse | null>(null);
+  const [assignTargetInfluencer, setAssignTargetInfluencer] = useState<InfluencerResponse | null>(
+    null,
+  );
   const [assignSearch, setAssignSearch] = useState('');
 
   // Infinite query for assign dialog picker (Infinite scroll + server search, 20 items per page)
@@ -372,6 +382,17 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
    * Fetches metrics for a handle via Meta official Instagram Graph API.
    * forceRefresh bypasses the server's 24h stored copy.
    */
+  /**
+   * Whether the box holds the profile already on screen.
+   *
+   * Both buttons at once asked the agency to pick between two words for the
+   * same intent. Fetching is offered until a profile is loaded; after that the
+   * only thing left to do to *that* creator is re-read it live — and typing or
+   * selecting anyone else makes it a fetch again.
+   */
+  const showsLoadedProfile =
+    loadedHandle.length > 0 && cleanInstagramHandle(autoHandle).toLowerCase() === loadedHandle;
+
   const handleCalculateAuto = async (forceRefresh = false) => {
     const trimmed = autoHandle.trim();
     if (!trimmed) return;
@@ -387,11 +408,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         ...(forceRefresh ? { forceRefresh: true } : {}),
       });
       setAutoResult(res.data);
+      setLoadedHandle(res.data.instagramHandle.toLowerCase());
       showSuccess(`Fetched profile for @${res.data.instagramHandle}`);
     } catch (err: unknown) {
       const response = (err as { response?: { data?: { message?: string; code?: string } } })
         ?.response?.data;
       setAutoErrorCode(response?.code ?? null);
+      // Nothing is on screen to refresh any more, so offer the fetch again.
+      setLoadedHandle('');
       showError(response?.message || 'Failed to calculate engagement rate via Meta Graph API.');
     } finally {
       setAutoLoading(false);
@@ -572,8 +596,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     const handle = newValue.instagram || newValue.name || '';
                     setAutoHandle(handle);
                     if (newValue.avgCommercialMin || newValue.avgCommercialMax) {
-                      const fee =
-                        newValue.avgCommercialMin || newValue.avgCommercialMax || '';
+                      const fee = newValue.avgCommercialMin || newValue.avgCommercialMax || '';
                       setAutoCommercialFee(String(fee));
                     }
                   }
@@ -656,29 +679,42 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     },
                   }}
                 />
-                <Button
-                  variant="contained"
-                  onClick={() => void handleCalculateAuto()}
-                  disabled={autoLoading || !autoHandle.trim()}
-                  startIcon={autoLoading ? <CircularProgress size={18} /> : <CalculateRoundedIcon />}
-                  sx={{ height: 40, px: 3, fontWeight: 700 }}
-                >
-                  {autoLoading ? 'Fetching Profile…' : 'Fetch Profile'}
-                </Button>
-                {autoResult && (
+                {showsLoadedProfile ? (
                   <Tooltip title="Bypass cache and read fresh live metrics from Meta Graph API">
                     <span>
                       <Button
-                        variant="outlined"
+                        variant="contained"
                         onClick={() => void handleCalculateAuto(true)}
                         disabled={autoLoading}
-                        startIcon={<RefreshRoundedIcon />}
-                        sx={{ height: 40 }}
+                        startIcon={
+                          autoLoading ? (
+                            <CircularProgress size={18} color="inherit" />
+                          ) : (
+                            <RefreshRoundedIcon />
+                          )
+                        }
+                        sx={{ height: 40, px: 3, fontWeight: 700 }}
                       >
-                        Refresh Live
+                        {autoLoading ? 'Refreshing…' : 'Refresh Live'}
                       </Button>
                     </span>
                   </Tooltip>
+                ) : (
+                  <Button
+                    variant="contained"
+                    onClick={() => void handleCalculateAuto()}
+                    disabled={autoLoading || !autoHandle.trim()}
+                    startIcon={
+                      autoLoading ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <CalculateRoundedIcon />
+                      )
+                    }
+                    sx={{ height: 40, px: 3, fontWeight: 700 }}
+                  >
+                    {autoLoading ? 'Fetching Profile…' : 'Fetch Profile'}
+                  </Button>
                 )}
               </Box>
             </Grid>
@@ -701,8 +737,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               <InfoOutlinedIcon sx={{ color: theme.palette.warning.main }} />
               <Typography variant="body2" sx={{ color: theme.palette.tokens.textPrimary }}>
                 <strong>@{autoHandle.trim()}</strong> is not an Instagram Business or Creator
-                account. Meta&apos;s official Graph API only provides insights for Business & Creator
-                accounts.
+                account. Meta&apos;s official Graph API only provides insights for Business &
+                Creator accounts.
               </Typography>
             </Box>
           )}
@@ -994,9 +1030,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       my: 1,
                     }}
                   >
-                    {autoCommittedViews > 0
-                      ? `${autoCommittedViews.toLocaleString()} views`
-                      : '—'}
+                    {autoCommittedViews > 0 ? `${autoCommittedViews.toLocaleString()} views` : '—'}
                   </Typography>
                   <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
                     Median of {autoReelViews.length} analyzed reel views
@@ -1116,8 +1150,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       }}
                     >
                       No standby posts left to pull in — the rate is now based on{' '}
-                      {liveMetrics.count} post{liveMetrics.count === 1 ? '' : 's'}, not {sampleSize}.
-                      Use Refresh Live to fetch more.
+                      {liveMetrics.count} post{liveMetrics.count === 1 ? '' : 's'}, not {sampleSize}
+                      . Use Refresh Live to fetch more.
                     </Typography>
                   )}
                 </Box>
@@ -1305,7 +1339,14 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                             </TableCell>
 
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                              <Tooltip title={formattedTime ? `${formattedDate}, ${formattedTime}` : formattedDate} arrow>
+                              <Tooltip
+                                title={
+                                  formattedTime
+                                    ? `${formattedDate}, ${formattedTime}`
+                                    : formattedDate
+                                }
+                                arrow
+                              >
                                 <Box component="span" sx={{ cursor: 'default' }}>
                                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                     {formattedDate}
@@ -1313,7 +1354,10 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                   {formattedTime && (
                                     <Typography
                                       variant="caption"
-                                      sx={{ display: 'block', color: theme.palette.tokens.textSecondary }}
+                                      sx={{
+                                        display: 'block',
+                                        color: theme.palette.tokens.textSecondary,
+                                      }}
                                     >
                                       {formattedTime}
                                     </Typography>
@@ -1414,10 +1458,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   <Typography variant="h6" sx={{ fontWeight: 700 }}>
                     Influencer Evaluation Summary
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: theme.palette.tokens.textSecondary }}
-                  >
+                  <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
                     Shareable summary report & direct ER assignment to roster
                   </Typography>
                 </Box>
@@ -1489,9 +1530,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                       {selectedInfluencer.name.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
-                      >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
                           {selectedInfluencer.name}
                         </Typography>
@@ -1803,8 +1842,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         variant="caption"
                         sx={{ color: theme.palette.tokens.textSecondary }}
                       >
-                        {option.instagram ? `@${option.instagram}` : option.category || 'Creator'}{' '}
-                        ·{' '}
+                        {option.instagram ? `@${option.instagram}` : option.category || 'Creator'} ·{' '}
                         {option.followers
                           ? `${option.followers.toLocaleString()} followers`
                           : 'Followers pending'}
@@ -1865,9 +1903,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
             variant="contained"
             onClick={() => void handleAssignToInfluencer(assignDialogTargetId)}
             disabled={
-              !assignDialogTargetId ||
-              liveMetrics.engagementRate <= 0 ||
-              assignERMutation.isPending
+              !assignDialogTargetId || liveMetrics.engagementRate <= 0 || assignERMutation.isPending
             }
             startIcon={
               assignERMutation.isPending ? (
