@@ -167,9 +167,8 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               disableHoverListener={!hasAvatarImage}
             >
               {hasAvatarImage ? (
-                <Box
-                  component="button"
-                  type="button"
+                <IconButton
+                  size="small"
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -181,22 +180,11 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                   aria-label={`View ${title} profile picture`}
                   sx={{
                     p: 0,
-                    m: 0,
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     borderRadius: '50%',
-                    outline: 'none',
                     flexShrink: 0,
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
                       transform: 'scale(1.06)',
-                    },
-                    '&:focus-visible': {
-                      boxShadow: `0 0 0 2px ${theme.palette.tokens.accent}`,
                     },
                   }}
                 >
@@ -210,13 +198,12 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                       fontWeight: 700,
                       fontSize: '18px',
                       border: `1.5px solid ${theme.palette.tokens.divider}`,
-                      pointerEvents: 'none',
                     }}
                   >
                     {avatarIcon ||
                       (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
                   </Avatar>
-                </Box>
+                </IconButton>
               ) : (
                 <Avatar
                   src={resolvedAvatarUrl}

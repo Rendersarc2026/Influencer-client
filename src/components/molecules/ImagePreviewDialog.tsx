@@ -23,7 +23,8 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
 }) => {
   const theme = useTheme();
   const safeSrc = safeImageUrl(imageUrl);
-  const displaySrc = safeSrc || (typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : '');
+  const displaySrc =
+    safeSrc || (typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : '');
 
   if (!open || !displaySrc) return null;
 
@@ -45,12 +46,13 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
             boxShadow: 'none',
             backgroundImage: 'none',
             overflow: 'visible',
-            m: 2,
+            m: { xs: 1, sm: 2 },
+            p: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            maxWidth: '90vw',
+            maxWidth: '92vw',
             maxHeight: '90vh',
           },
         },
@@ -63,35 +65,38 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          maxWidth: '90vw',
-          maxHeight: '90vh',
+          maxWidth: '100%',
+          maxHeight: '100%',
         }}
       >
         {/* Floating Close (X) Button */}
         <IconButton
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           size="small"
           aria-label="Close preview"
           sx={{
             position: 'absolute',
-            top: { xs: -12, sm: -14 },
-            right: { xs: -12, sm: -14 },
-            zIndex: 10,
+            top: 12,
+            right: 12,
+            zIndex: 20,
             color: '#FFFFFF',
-            backgroundColor: 'rgba(16, 17, 20, 0.75)',
+            backgroundColor: 'rgba(16, 17, 20, 0.65)',
             backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
             borderRadius: '50%',
-            p: 0.75,
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
+            p: 0.85,
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.4)',
             transition: 'all 0.15s ease',
             '&:hover': {
               backgroundColor: 'rgba(16, 17, 20, 0.95)',
-              transform: 'scale(1.1)',
+              transform: 'scale(1.08)',
             },
           }}
         >
-          <CloseRoundedIcon sx={{ fontSize: { xs: '18px', sm: '20px' } }} />
+          <CloseRoundedIcon sx={{ fontSize: '20px' }} />
         </IconButton>
 
         {/* Floating Image */}
@@ -101,13 +106,14 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
           alt={title || 'Preview image'}
           sx={{
             display: 'block',
-            maxWidth: '88vw',
+            maxWidth: { xs: '92vw', sm: '85vw', md: '80vw' },
             maxHeight: '85vh',
             width: 'auto',
             height: 'auto',
-            borderRadius: `${theme.customRadii.inner}px`,
+            borderRadius: `${theme.customRadii.card}px`,
             objectFit: 'contain',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.65)',
+            backgroundColor: theme.palette.tokens.fieldBg,
           }}
         />
       </Box>
