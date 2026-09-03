@@ -952,7 +952,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     },
     {
       id: 'rateStatus',
-      header: 'Rate Status',
+      header: 'Agency Status',
       type: 'custom',
       accessor: 'rateStatus',
       statusCategory: 'RATE_STATUS',

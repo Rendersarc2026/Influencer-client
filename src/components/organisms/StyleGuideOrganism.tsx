@@ -214,7 +214,7 @@ export const StyleGuideOrganism: React.FC = () => {
     },
     {
       id: 'rateStatus',
-      header: 'Rate Status',
+      header: 'Agency Status',
       type: 'status',
       accessor: 'rateStatus',
     },

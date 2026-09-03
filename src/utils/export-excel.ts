@@ -480,7 +480,7 @@ export async function exportCampaignPerformanceReport(
     'Influencer Commercial (₹)',
     'Agency Margin (₹)',
     'Client Rate (₹)',
-    'Rate Status',
+    'Agency Status',
     'Brand Status',
     'Post-Eval Reach (Unique)',
     'Post-Eval Engagements',
@@ -516,7 +516,7 @@ export async function exportCampaignPerformanceReport(
     { wch: 24 }, // Inf Rate
     { wch: 18 }, // Margin
     { wch: 18 }, // Client Rate
-    { wch: 16 }, // Rate Status
+    { wch: 16 }, // Agency Status
     { wch: 16 }, // Brand Status
     { wch: 24 }, // Reach
     { wch: 22 }, // Engagements

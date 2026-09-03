@@ -29,7 +29,7 @@ export const STATUS_CONFIG: Record<StatusCategory, Record<number, StatusConfig>>
     [RateStatusCode.PENDING_SUBMISSION]: { label: 'Pending Submission', tone: 'warning' },
     [RateStatusCode.SUBMITTED]: { label: 'Submitted', tone: 'progress' },
     [RateStatusCode.REVISION_REQUESTED]: { label: 'Revision Requested', tone: 'warning' },
-    [RateStatusCode.AGENCY_APPROVED]: { label: 'Agency Approved', tone: 'positive' },
+    [RateStatusCode.AGENCY_APPROVED]: { label: 'Approved', tone: 'positive' },
   },
   BRAND_STATUS: {
     [BrandStatusCode.NOT_VISIBLE]: { label: 'Draft Proposal', tone: 'neutral' },
