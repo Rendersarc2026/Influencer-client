@@ -41,12 +41,34 @@ export function safeUrl(value: string | null | undefined): string | undefined {
 }
 
 /**
- * Same check for image sources, minus `mailto:`.
+ * Same check for image sources, minus `mailto:`, but allowing safe `data:image/...` and `blob:` URLs.
  * A `javascript:` image source does not execute in current browsers, but a
  * malformed value still causes a failed request that leaks the referrer.
  */
 export function safeImageUrl(value: string | null | undefined): string | undefined {
-  const url = safeUrl(value);
+  if (!value) return undefined;
+
+  // eslint-disable-next-line no-control-regex
+  const sanitized = value.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+  if (sanitized.length === 0) return undefined;
+
+  // Explicitly reject dangerous executable or local pseudo-schemes
+  if (/^(javascript|vbscript|file):/i.test(sanitized)) return undefined;
+
+  // If it's a data URL, verify it is an image MIME type and not data:text/html
+  if (sanitized.toLowerCase().startsWith('data:')) {
+    if (/^data:image\/(png|jpe?g|webp|gif|svg\+xml|avif|bmp|ico);base64,/i.test(sanitized)) {
+      return sanitized;
+    }
+    return undefined;
+  }
+
+  // If it's a blob URL, ensure it is a blob scheme
+  if (sanitized.toLowerCase().startsWith('blob:')) {
+    return sanitized;
+  }
+
+  const url = safeUrl(sanitized);
   if (!url) return undefined;
   return url.startsWith('mailto:') ? undefined : url;
 }

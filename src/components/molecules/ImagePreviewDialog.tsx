@@ -1,7 +1,6 @@
 import React from 'react';
 import Dialog from '@mui/material/Dialog';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useTheme } from '@mui/material/styles';
@@ -26,140 +25,93 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
 }) => {
   const theme = useTheme();
   const safeSrc = safeImageUrl(imageUrl);
+  const displaySrc = safeSrc || (typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : '');
 
-  if (!safeSrc) return null;
+  if (!open || !displaySrc) return null;
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="md"
+      maxWidth="lg"
       slotProps={{
         backdrop: {
           sx: {
-            backgroundColor: 'rgba(16, 17, 20, 0.7)',
-            backdropFilter: 'blur(4px)',
+            backgroundColor: 'rgba(16, 17, 20, 0.85)',
+            backdropFilter: 'blur(6px)',
           },
         },
         paper: {
           sx: {
-            borderRadius: `${theme.customRadii.card}px`,
+            backgroundColor: 'transparent',
+            boxShadow: 'none',
             backgroundImage: 'none',
-            backgroundColor: theme.palette.tokens.surface,
+            overflow: 'visible',
             m: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             position: 'relative',
-            overflow: 'hidden',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            maxWidth: { xs: '92vw', sm: '80vw', md: '720px' },
+            maxWidth: '90vw',
+            maxHeight: '90vh',
           },
         },
       }}
     >
       <Box
         sx={{
-          display: 'flex',
+          position: 'relative',
+          display: 'inline-flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          px: 2.5,
-          py: 1.75,
-          borderBottom: `1px solid ${theme.palette.tokens.divider}`,
-          backgroundColor: theme.palette.tokens.surface,
-          gap: 2,
+          justifyContent: 'center',
+          maxWidth: '90vw',
+          maxHeight: '90vh',
         }}
       >
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography
-            variant="h3"
-            sx={{
-              fontWeight: 700,
-              fontSize: '16px',
-              color: theme.palette.tokens.textPrimary,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {title || 'Image Preview'}
-          </Typography>
-          {subtitle && (
-            <Typography
-              variant="caption"
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                display: 'block',
-              }}
-            >
-              {subtitle}
-            </Typography>
-          )}
-        </Box>
-
+        {/* Floating Close (X) Button */}
         <IconButton
           onClick={onClose}
           size="small"
           aria-label="Close preview"
           sx={{
-            color: theme.palette.tokens.textSecondary,
-            backgroundColor: theme.palette.tokens.fieldBg,
-            borderRadius: `${theme.customRadii.inner}px`,
+            position: 'absolute',
+            top: { xs: -12, sm: -14 },
+            right: { xs: -12, sm: -14 },
+            zIndex: 10,
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(16, 17, 20, 0.75)',
+            backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '50%',
             p: 0.75,
-            flexShrink: 0,
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
+            transition: 'all 0.15s ease',
             '&:hover': {
-              backgroundColor: theme.palette.tokens.divider,
-              color: theme.palette.tokens.textPrimary,
+              backgroundColor: 'rgba(16, 17, 20, 0.95)',
+              transform: 'scale(1.1)',
             },
           }}
         >
-          <CloseRoundedIcon fontSize="small" />
+          <CloseRoundedIcon sx={{ fontSize: { xs: '18px', sm: '20px' } }} />
         </IconButton>
-      </Box>
 
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 1.5, sm: 2.5 },
-          backgroundColor: theme.palette.tokens.fieldBg,
-          minHeight: 220,
-        }}
-      >
+        {/* Floating Image */}
         <Box
           component="img"
-          src={safeSrc}
+          src={displaySrc}
           alt={title || 'Preview image'}
           sx={{
             display: 'block',
-            maxWidth: '100%',
-            maxHeight: '70vh',
+            maxWidth: '88vw',
+            maxHeight: '85vh',
             width: 'auto',
             height: 'auto',
             borderRadius: `${theme.customRadii.inner}px`,
             objectFit: 'contain',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
           }}
         />
       </Box>
-
-      {actions && (
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 1.25,
-            px: 2.5,
-            py: 1.5,
-            borderTop: `1px solid ${theme.palette.tokens.divider}`,
-            backgroundColor: theme.palette.tokens.surface,
-          }}
-        >
-          {actions}
-        </Box>
-      )}
     </Dialog>
   );
 };

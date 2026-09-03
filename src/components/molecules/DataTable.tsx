@@ -296,36 +296,46 @@ export function DataTable<T extends Record<string, unknown>>({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             {validImageUrl ? (
               <Tooltip title="Click to view image" arrow>
-                <Avatar
-                  src={validImageUrl}
-                  onClick={(e) => {
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     setPreviewImage({ url: validImageUrl, title: displayValue });
                   }}
-                  role="button"
-                  tabIndex={0}
                   aria-label={`View ${displayValue} image`}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setPreviewImage({ url: validImageUrl, title: displayValue });
-                    }
-                  }}
                   sx={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: `${theme.customRadii.inner}px`,
+                    p: 0,
+                    m: 0,
+                    border: 'none',
+                    background: 'transparent',
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    outline: 'none',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    border: `1px solid ${theme.palette.tokens.divider}`,
                     '&:hover': {
                       transform: 'scale(1.08)',
-                      borderColor: theme.palette.tokens.accent,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                    },
+                    '&:focus-visible': {
+                      boxShadow: `0 0 0 2px ${theme.palette.tokens.accent}`,
                     },
                   }}
-                />
+                >
+                  <Avatar
+                    src={validImageUrl}
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: `${theme.customRadii.inner}px`,
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </Box>
               </Tooltip>
             ) : iconOrAvatar ? (
               <Box sx={{ display: 'flex', alignItems: 'center' }}>{iconOrAvatar as ReactNode}</Box>

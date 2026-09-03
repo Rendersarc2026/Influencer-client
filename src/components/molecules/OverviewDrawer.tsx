@@ -166,47 +166,72 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               arrow
               disableHoverListener={!hasAvatarImage}
             >
-              <Avatar
-                src={resolvedAvatarUrl}
-                onClick={() => {
-                  if (hasAvatarImage) {
-                    setImagePreviewOpen(true);
-                  }
-                }}
-                role={hasAvatarImage ? 'button' : undefined}
-                tabIndex={hasAvatarImage ? 0 : undefined}
-                aria-label={hasAvatarImage ? `View ${title} profile picture` : undefined}
-                onKeyDown={(e) => {
-                  if (hasAvatarImage && (e.key === 'Enter' || e.key === ' ')) {
+              {hasAvatarImage ? (
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
                     e.preventDefault();
                     setImagePreviewOpen(true);
-                  }
-                }}
-                sx={{
-                  width: 48,
-                  height: 48,
-                  backgroundColor: theme.palette.tokens.accentBg,
-                  color: theme.palette.tokens.accentText,
-                  fontWeight: 700,
-                  fontSize: '18px',
-                  flexShrink: 0,
-                  border: `1px solid ${theme.palette.tokens.divider}`,
-                  cursor: hasAvatarImage ? 'pointer' : 'default',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  ...(hasAvatarImage
-                    ? {
-                        '&:hover': {
-                          transform: 'scale(1.06)',
-                          borderColor: theme.palette.tokens.accent,
-                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
-                        },
-                      }
-                    : {}),
-                }}
-              >
-                {avatarIcon ||
-                  (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
-              </Avatar>
+                  }}
+                  aria-label={`View ${title} profile picture`}
+                  sx={{
+                    p: 0,
+                    m: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    outline: 'none',
+                    flexShrink: 0,
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      transform: 'scale(1.06)',
+                    },
+                    '&:focus-visible': {
+                      boxShadow: `0 0 0 2px ${theme.palette.tokens.accent}`,
+                    },
+                  }}
+                >
+                  <Avatar
+                    src={resolvedAvatarUrl}
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      backgroundColor: theme.palette.tokens.accentBg,
+                      color: theme.palette.tokens.accentText,
+                      fontWeight: 700,
+                      fontSize: '18px',
+                      border: `1.5px solid ${theme.palette.tokens.divider}`,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {avatarIcon ||
+                      (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
+                  </Avatar>
+                </Box>
+              ) : (
+                <Avatar
+                  src={resolvedAvatarUrl}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    backgroundColor: theme.palette.tokens.accentBg,
+                    color: theme.palette.tokens.accentText,
+                    fontWeight: 700,
+                    fontSize: '18px',
+                    flexShrink: 0,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                  }}
+                >
+                  {avatarIcon ||
+                    (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
+                </Avatar>
+              )}
             </Tooltip>
           )}
 
