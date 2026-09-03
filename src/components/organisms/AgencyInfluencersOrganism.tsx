@@ -816,6 +816,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         }
         badge={selectedInfluencer?.category || 'INFLUENCER'}
         avatarText={selectedInfluencer?.name}
+        avatarUrl={selectedInfluencer?.avatarUrl || undefined}
         highlights={
           selectedInfluencer
             ? [

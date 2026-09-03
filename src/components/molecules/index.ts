@@ -21,6 +21,7 @@ export * from './EditInfluencerDialog';
 export * from './SubmitRateDialog';
 export * from './SendProofScreenshotsDialog';
 export * from './OverviewDrawer';
+export * from './ImagePreviewDialog';
 export * from './StartChatDialog';
 export * from './NotificationCenter';
 export * from './ErrorBoundary';

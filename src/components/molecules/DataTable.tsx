@@ -14,6 +14,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
 import Avatar from '@mui/material/Avatar';
+import Tooltip from '@mui/material/Tooltip';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
@@ -27,6 +28,7 @@ import {
   BusyOverlay,
 } from '@atoms';
 import { safeImageUrl, exportTableToExcel, ExcelColumnConfig } from '@utils';
+import { ImagePreviewDialog } from './ImagePreviewDialog';
 
 export type ColumnType =
   | 'text'
@@ -144,6 +146,7 @@ export function DataTable<T extends Record<string, unknown>>({
   const [isExporting, setIsExporting] = useState(false);
   const [internalPage, setInternalPage] = useState(0);
   const [internalRowsPerPage, setInternalRowsPerPage] = useState(initialRowsPerPage);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const hasExplicitRowNumber = useMemo(() => {
     return columns.some(
@@ -286,13 +289,44 @@ export function DataTable<T extends Record<string, unknown>>({
             : column.iconAccessor
               ? row[column.iconAccessor]
               : null;
+        const validImageUrl =
+          typeof iconOrAvatar === 'string' ? safeImageUrl(iconOrAvatar) : undefined;
+
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            {typeof iconOrAvatar === 'string' && iconOrAvatar.startsWith('http') ? (
-              <Avatar
-                src={safeImageUrl(iconOrAvatar)}
-                sx={{ width: 36, height: 36, borderRadius: `${theme.customRadii.inner}px` }}
-              />
+            {validImageUrl ? (
+              <Tooltip title="Click to view image" arrow>
+                <Avatar
+                  src={validImageUrl}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewImage({ url: validImageUrl, title: displayValue });
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View ${displayValue} image`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setPreviewImage({ url: validImageUrl, title: displayValue });
+                    }
+                  }}
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    '&:hover': {
+                      transform: 'scale(1.08)',
+                      borderColor: theme.palette.tokens.accent,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                    },
+                  }}
+                />
+              </Tooltip>
             ) : iconOrAvatar ? (
               <Box sx={{ display: 'flex', alignItems: 'center' }}>{iconOrAvatar as ReactNode}</Box>
             ) : (
@@ -1085,6 +1119,14 @@ export function DataTable<T extends Record<string, unknown>>({
           }}
         />
       )}
+
+      {/* Entity Image Preview Dialog */}
+      <ImagePreviewDialog
+        open={Boolean(previewImage)}
+        onClose={() => setPreviewImage(null)}
+        imageUrl={previewImage?.url}
+        title={previewImage?.title}
+      />
     </Card>
   );
 }

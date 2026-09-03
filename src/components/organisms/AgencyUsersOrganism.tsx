@@ -427,7 +427,11 @@ export const AgencyUsersOrganism: React.FC = () => {
         subtitle={`Role: ${selectedUser?.roleCode || 'USER'}`}
         badge={selectedUser?.isActive ? 'ACTIVE' : 'BLOCKED'}
         avatarText={selectedUser?.profile?.fullName || selectedUser?.email}
-        avatarUrl={selectedUser?.profile?.avatarUrl || undefined}
+        avatarUrl={
+          selectedUser?.profile?.avatarUrl ||
+          selectedUser?.influencer?.avatarUrl ||
+          undefined
+        }
         highlights={
           selectedUser
             ? [

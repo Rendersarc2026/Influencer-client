@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -15,6 +15,7 @@ import { useTheme } from '@mui/material/styles';
 import { StatusChip, StatusCategory, MoneyText } from '@atoms';
 import { useToast } from '@hooks';
 import { safeImageUrl, safeExternalUrl } from '@utils';
+import { ImagePreviewDialog } from './ImagePreviewDialog';
 
 export interface OverviewField {
   label: string;
@@ -98,6 +99,10 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
 }) => {
   const theme = useTheme();
   const { showToast } = useToast();
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+
+  const resolvedAvatarUrl = safeImageUrl(avatarUrl);
+  const hasAvatarImage = Boolean(resolvedAvatarUrl);
 
   const handleCopy = (text: string, label: string) => {
     if (!text) return;
@@ -156,21 +161,53 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flex: 1 }}>
           {(avatarText || avatarUrl || avatarIcon) && (
-            <Avatar
-              src={safeImageUrl(avatarUrl)}
-              sx={{
-                width: 48,
-                height: 48,
-                backgroundColor: theme.palette.tokens.accentBg,
-                color: theme.palette.tokens.accentText,
-                fontWeight: 700,
-                fontSize: '18px',
-                flexShrink: 0,
-                border: `1px solid ${theme.palette.tokens.divider}`,
-              }}
+            <Tooltip
+              title={hasAvatarImage ? 'Click to view image' : ''}
+              arrow
+              disableHoverListener={!hasAvatarImage}
             >
-              {avatarIcon || (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
-            </Avatar>
+              <Avatar
+                src={resolvedAvatarUrl}
+                onClick={() => {
+                  if (hasAvatarImage) {
+                    setImagePreviewOpen(true);
+                  }
+                }}
+                role={hasAvatarImage ? 'button' : undefined}
+                tabIndex={hasAvatarImage ? 0 : undefined}
+                aria-label={hasAvatarImage ? `View ${title} profile picture` : undefined}
+                onKeyDown={(e) => {
+                  if (hasAvatarImage && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    setImagePreviewOpen(true);
+                  }
+                }}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  backgroundColor: theme.palette.tokens.accentBg,
+                  color: theme.palette.tokens.accentText,
+                  fontWeight: 700,
+                  fontSize: '18px',
+                  flexShrink: 0,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  cursor: hasAvatarImage ? 'pointer' : 'default',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  ...(hasAvatarImage
+                    ? {
+                        '&:hover': {
+                          transform: 'scale(1.06)',
+                          borderColor: theme.palette.tokens.accent,
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+                        },
+                      }
+                    : {}),
+                }}
+              >
+                {avatarIcon ||
+                  (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
+              </Avatar>
+            </Tooltip>
           )}
 
           <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -503,6 +540,15 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
           ))}
         </Box>
       )}
+
+      {/* Profile / Entity Image Preview Dialog */}
+      <ImagePreviewDialog
+        open={imagePreviewOpen && hasAvatarImage}
+        onClose={() => setImagePreviewOpen(false)}
+        imageUrl={resolvedAvatarUrl}
+        title={title}
+        subtitle={subtitle}
+      />
     </Drawer>
   );
 };
