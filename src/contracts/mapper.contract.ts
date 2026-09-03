@@ -170,7 +170,7 @@ export type UpdatePreEvalRequest = z.infer<typeof UpdatePreEvalRequestSchema>;
 
 export const BrandDecisionRequestSchema = z
   .object({
-    action: z.enum(['APPROVE', 'REJECT', 'REQUEST_CORRECTION']),
+    action: z.enum(['APPROVE', 'REJECT', 'REQUEST_CORRECTION', 'REVOKE_APPROVAL']),
     comment: safeMultilineText(2000).optional(),
   })
   .refine(

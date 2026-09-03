@@ -128,6 +128,7 @@ export const ApprovalActionCode = {
   BRAND_CORRECTION_REQUESTED: 6,
   PAYMENT_APPROVED: 7,
   PAYMENT_REJECTED: 8,
+  BRAND_APPROVAL_REVOKED: 9,
 } as const;
 export type ApprovalAction = (typeof ApprovalActionCode)[keyof typeof ApprovalActionCode];
 export const ApprovalActionEnum = z.nativeEnum(ApprovalActionCode);
@@ -179,6 +180,7 @@ export const BrandActionEnum = z.enum([
   'REQUEST_CORRECTION',
   'APPROVE',
   'REJECT',
+  'REVOKE_APPROVAL',
 ]);
 export type BrandAction = z.infer<typeof BrandActionEnum>;
 

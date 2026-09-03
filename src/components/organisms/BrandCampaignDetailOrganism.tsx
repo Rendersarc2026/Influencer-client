@@ -16,6 +16,7 @@ import Divider from '@mui/material/Divider';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
+import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
@@ -60,18 +61,23 @@ import { safeExternalUrl, exportBrandCampaignPerformanceReport } from '@utils';
 interface BrandRowActionsProps {
   row: BrandMapperResponse;
   onApprove: (mapperId: string) => void;
+  onRemoveApproval: (mapperId: string) => void;
   onSendRemarks: (mapperId: string) => void;
   onReject: (mapperId: string) => void;
   onViewDossier: (row: BrandMapperResponse) => void;
+  /** An approval can only be taken back while the campaign is still a draft. */
+  campaignIsDraft: boolean;
   loading?: boolean;
 }
 
 const BrandRowActions: React.FC<BrandRowActionsProps> = ({
   row,
   onApprove,
+  onRemoveApproval,
   onSendRemarks,
   onReject,
   onViewDossier,
+  campaignIsDraft,
   loading = false,
 }) => {
   const theme = useTheme();
@@ -92,13 +98,17 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
   const isRejected = row.brandStatus === BrandStatusCode.REJECTED;
   const isPendingReview = row.brandStatus === BrandStatusCode.PENDING_REVIEW;
 
-  // Straight off `nextBrandStatus`: APPROVED is terminal, and CORRECTION_REQUESTED
-  // / NOT_VISIBLE are waiting on the agency, so the brand has no move in any of
-  // them. Offering these anyway meant a menu item that always failed with an
-  // invalid-transition error.
+  // Straight off `nextBrandStatus`: CORRECTION_REQUESTED / NOT_VISIBLE are
+  // waiting on the agency, so the brand has no move in either. Offering these
+  // anyway meant a menu item that always failed with an invalid-transition
+  // error.
   const canApprove = isPendingReview || isRejected;
   const canReject = isPendingReview;
   const canRequestCorrection = isPendingReview || isRejected;
+  // APPROVED -> PENDING_REVIEW exists, but only while the campaign is a draft:
+  // once it is live the creator is briefed against the agreed rate and the
+  // server refuses the transition, so do not offer it.
+  const canRemoveApproval = isApproved && campaignIsDraft;
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -147,9 +157,9 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
       >
         {/* --- SECTION 1: Decision Actions --- */}
 
-        {/* Approved is terminal: say so, rather than showing an empty menu where
-            the decision actions used to be. */}
-        {isApproved && (
+        {/* Approved and the campaign has gone live: the decision is locked, so
+            say so rather than showing an empty menu where the actions were. */}
+        {isApproved && !campaignIsDraft && (
           <MenuItem
             disabled
             sx={{
@@ -170,6 +180,34 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({
               <CheckCircleRoundedIcon fontSize="small" />
             </ListItemIcon>
             Approved — rate is final
+          </MenuItem>
+        )}
+
+        {/* Remove Approval — the way back out, while the campaign is a draft */}
+        {canRemoveApproval && (
+          <MenuItem
+            onClick={(e) => {
+              handleClose(e);
+              onRemoveApproval(row.id);
+            }}
+            disabled={loading}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.warning.dark,
+              '&:hover': { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.warning.main, minWidth: 'auto' }}>
+              <UndoRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Remove Approval
           </MenuItem>
         )}
 
@@ -339,6 +377,13 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   const debouncedSearch = useDebounce(search, 300);
 
   const { data: campaign, isLoading: campaignLoading } = useBrandCampaign(campaignId);
+
+  /**
+   * Every brand decision that walks something backwards is gated on the campaign
+   * still being a draft. Once it is Active the roster is briefed against agreed
+   * rates, and the server refuses the transition anyway.
+   */
+  const campaignIsDraft = Number(campaign?.status) === CampaignStatusCode.DRAFT;
   const {
     data: mappersData,
     isLoading: mappersLoading,
@@ -396,13 +441,15 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   const [selectedInfluencer, setSelectedInfluencer] = useState<BrandMapperResponse | null>(null);
 
   /**
-   * Approval is the one decision with no way back: `nextBrandStatus` has no
-   * transition out of APPROVED, and the agency is blocked from reverting its
-   * own rate approval once the brand has approved. So the price the brand sees
-   * here is the price it is committing to, and this asks before it commits
-   * rather than acting on a single menu click.
+   * Approval commits the brand to the price it is looking at, and the agency is
+   * blocked from reverting its own rate approval underneath it. It can be taken
+   * back only while the campaign is a draft — see the revoke dialog below — so
+   * this asks before committing rather than acting on a single menu click.
    */
   const [approveDialogMapper, setApproveDialogMapper] = useState<BrandMapperResponse | null>(null);
+
+  /** Taking an approval back, which returns the row to the brand's own queue. */
+  const [revokeDialogMapper, setRevokeDialogMapper] = useState<BrandMapperResponse | null>(null);
 
   const handleOpenApprove = (mapperId: string) => {
     const mapper = mappers.find((m) => m.id === mapperId);
@@ -425,6 +472,31 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
         errorObj?.response?.data?.message || errorObj?.message || 'Failed to approve proposal.',
+      );
+    }
+  };
+
+  const handleOpenRemoveApproval = (mapperId: string) => {
+    const mapper = mappers.find((m) => m.id === mapperId);
+    if (mapper) setRevokeDialogMapper(mapper);
+  };
+
+  const handleConfirmRemoveApproval = async () => {
+    if (!revokeDialogMapper) return;
+    const decision: BrandDecisionRequest = {
+      action: 'REVOKE_APPROVAL',
+    };
+    try {
+      await brandDecisionMutation.mutateAsync({
+        mapperId: revokeDialogMapper.id,
+        decision,
+      });
+      setRevokeDialogMapper(null);
+      showSuccess('Approval removed. This creator is back in your pending review list.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove approval.',
       );
     }
   };
@@ -721,9 +793,11 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         <BrandRowActions
           row={row}
           onApprove={handleOpenApprove}
+          onRemoveApproval={handleOpenRemoveApproval}
           onSendRemarks={handleOpenCorrection}
           onReject={handleOpenReject}
           onViewDossier={setSelectedInfluencer}
+          campaignIsDraft={campaignIsDraft}
           loading={brandDecisionMutation.isPending}
         />
       ),
@@ -1305,6 +1379,20 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                       },
                     ]
                   : []),
+                ...(selectedInfluencer.brandStatus === BrandStatusCode.APPROVED && campaignIsDraft
+                  ? [
+                      {
+                        label: 'Remove Approval',
+                        variant: 'outlined' as const,
+                        color: 'warning' as const,
+                        onClick: () => {
+                          const id = selectedInfluencer.id;
+                          setSelectedInfluencer(null);
+                          handleOpenRemoveApproval(id);
+                        },
+                      },
+                    ]
+                  : []),
                 {
                   label:
                     selectedInfluencer.brandStatus === BrandStatusCode.CORRECTION_REQUESTED
@@ -1394,9 +1482,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
             </Box>
 
             <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
-              This is final. Once approved, the rate cannot be changed, the agency cannot revert it,
-              and this creator cannot be rejected or sent back for correction. Send remarks instead
-              if anything still needs to change.
+              {campaignIsDraft
+                ? 'Once approved, the rate is locked and the agency cannot revert it. While this campaign is still a draft you can take the approval back from the row menu; once it goes Active that is no longer possible.'
+                : 'This is final. Once approved, the rate cannot be changed, the agency cannot revert it, and this creator cannot be rejected or sent back for correction. Send remarks instead if anything still needs to change.'}
             </Typography>
           </Box>
         }
@@ -1405,6 +1493,31 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         loading={brandDecisionMutation.isPending}
         onConfirm={handleConfirmApprove}
         onCancel={() => setApproveDialogMapper(null)}
+      />
+
+      {/* 7. Removing an approval — only reachable while the campaign is a draft */}
+      <ConfirmDialog
+        open={Boolean(revokeDialogMapper)}
+        title="Remove this approval?"
+        body={
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              <strong>{revokeDialogMapper?.influencerName}</strong> goes back to Pending Review and
+              your approval of this rate is withdrawn.
+            </Typography>
+
+            <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
+              You can approve, reject or send remarks again afterwards. This is only possible while
+              the campaign is a draft — the agency is notified, and the campaign cannot be marked
+              Active until every assigned creator is approved again.
+            </Typography>
+          </Box>
+        }
+        confirmText="Remove approval"
+        cancelText="Keep approval"
+        loading={brandDecisionMutation.isPending}
+        onConfirm={handleConfirmRemoveApproval}
+        onCancel={() => setRevokeDialogMapper(null)}
       />
     </DashboardLayout>
   );

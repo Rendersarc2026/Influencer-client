@@ -8,6 +8,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import FormControl from '@mui/material/FormControl';
+import FormHelperText from '@mui/material/FormHelperText';
 import Select from '@mui/material/Select';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -510,6 +511,22 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   const mappers = mappersData?.items || [];
   const totalMappers = mappersData?.total ?? mappers.length;
+
+  /**
+   * A campaign may only go Active or Completed once the brand has approved the
+   * whole roster — the server refuses otherwise. Two limit-1 reads answer it
+   * without paging: the roster size, and how much of it is approved. The list
+   * above cannot stand in for the first, because a search narrows its total.
+   */
+  const { data: rosterCount } = useCampaignInfluencers(campaignId, { page: 1, limit: 1 });
+  const { data: approvedCount } = useCampaignInfluencers(campaignId, {
+    page: 1,
+    limit: 1,
+    brandStatus: BrandStatusCode.APPROVED,
+  });
+  const rosterSize = rosterCount?.total ?? 0;
+  const awaitingBrandApproval = rosterSize - (approvedCount?.total ?? 0);
+  const rosterFullyApproved = rosterSize > 0 && awaitingBrandApproval === 0;
 
   // Mutations
   const updateCampaignMutation = useUpdateCampaign();
@@ -1183,10 +1200,22 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 }}
               >
                 <MenuItem value={CampaignStatusCode.DRAFT}>Draft</MenuItem>
-                <MenuItem value={CampaignStatusCode.ACTIVE}>Active</MenuItem>
-                <MenuItem value={CampaignStatusCode.COMPLETED}>Completed</MenuItem>
+                <MenuItem value={CampaignStatusCode.ACTIVE} disabled={!rosterFullyApproved}>
+                  Active
+                </MenuItem>
+                <MenuItem value={CampaignStatusCode.COMPLETED} disabled={!rosterFullyApproved}>
+                  Completed
+                </MenuItem>
                 <MenuItem value={CampaignStatusCode.CANCELLED}>Cancelled</MenuItem>
               </Select>
+              {/* Say why the two are greyed out, rather than leaving a dead option. */}
+              {!rosterFullyApproved && (
+                <FormHelperText sx={{ fontSize: '11.5px', mx: 0, mt: 0.5 }}>
+                  {rosterSize === 0
+                    ? 'Assign an influencer before going live'
+                    : `${awaitingBrandApproval} of ${rosterSize} awaiting brand approval`}
+                </FormHelperText>
+              )}
             </FormControl>
 
             {safeExternalUrl(campaign?.briefUrl) && (
