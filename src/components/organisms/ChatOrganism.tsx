@@ -1478,27 +1478,7 @@ export const ChatOrganism: React.FC = () => {
                     </Box>
                   )}
                 </Box>
-                {roleCode === 'AGENCY' ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<AddRoundedIcon fontSize="small" />}
-                    onClick={() => openNewChatDialog()}
-                    sx={{
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      height: 32,
-                      px: 1.5,
-                      borderRadius: `${theme.customRadii.pill}px`,
-                      flexShrink: 0,
-                      whiteSpace: 'nowrap',
-                      ml: 'auto',
-                    }}
-                  >
-                    New
-                  </Button>
-                ) : !hasAgencyChat && !chatsLoading ? (
+                {roleCode !== 'AGENCY' && !hasAgencyChat && !chatsLoading ? (
                   <Button
                     variant="outlined"
                     size="small"
@@ -1625,16 +1605,7 @@ export const ChatOrganism: React.FC = () => {
                         : 'Start a direct thread with your agency account manager.'
                     }
                     action={
-                      roleCode === 'AGENCY' ? (
-                        <Button
-                          variant="contained"
-                          size="small"
-                          startIcon={<AddRoundedIcon fontSize="small" />}
-                          onClick={() => openNewChatDialog()}
-                        >
-                          Start a Chat
-                        </Button>
-                      ) : (
+                      roleCode === 'AGENCY' ? undefined : (
                         <Button
                           variant="contained"
                           size="small"
@@ -2978,16 +2949,7 @@ export const ChatOrganism: React.FC = () => {
                       : 'Choose a thread from the list on the left to view messages and collaborate.'
                   }
                   action={
-                    roleCode === 'AGENCY' ? (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<AddRoundedIcon fontSize="small" />}
-                        onClick={() => openNewChatDialog()}
-                      >
-                        New Conversation
-                      </Button>
-                    ) : !hasAgencyChat && !chatsLoading ? (
+                    roleCode !== 'AGENCY' && !hasAgencyChat && !chatsLoading ? (
                       <Button
                         variant="contained"
                         size="small"

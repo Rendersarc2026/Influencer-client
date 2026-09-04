@@ -157,27 +157,46 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
     return selectedBrand ? isBrandChatActive(selectedBrand) : false;
   }, [recipientType, selectedInfluencer, selectedBrand, isInfluencerChatActive, isBrandChatActive]);
 
+  // Reset the picker only on the closed -> open transition. `influencers` and
+  // `brands` change identity every time a selection is made (they prepend the
+  // current selection for label resolution), so keeping them as deps here wiped
+  // the user's choice the instant they clicked an option.
+  const wasOpenRef = React.useRef(false);
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
+      wasOpenRef.current = true;
       setRecipientType(preselectedType);
+      setSelectedInfluencer(null);
+      setSelectedBrand(null);
       setError('');
-
-      if (preselectedParticipantId) {
-        if (preselectedType === 'INFLUENCER') {
-          const match = influencers.find((i: InfluencerResponse) => i.id === preselectedParticipantId);
-          setSelectedInfluencer(match || null);
-          setSelectedBrand(null);
-        } else {
-          const match = brands.find((b: BrandResponse) => b.id === preselectedParticipantId);
-          setSelectedBrand(match || null);
-          setSelectedInfluencer(null);
-        }
-      } else {
-        setSelectedInfluencer(null);
-        setSelectedBrand(null);
-      }
+    } else if (!open) {
+      wasOpenRef.current = false;
     }
-  }, [open, preselectedType, preselectedParticipantId, influencers, brands]);
+  }, [open, preselectedType]);
+
+  // Deep-linked entry ("Message <brand/creator>"): adopt the preselected
+  // participant once it appears in the loaded options, but never override a
+  // choice the user has since made.
+  useEffect(() => {
+    if (!open || !preselectedParticipantId) return;
+    if (preselectedType === 'INFLUENCER') {
+      if (selectedInfluencer) return;
+      const match = influencers.find((i) => i.id === preselectedParticipantId);
+      if (match) setSelectedInfluencer(match);
+    } else {
+      if (selectedBrand) return;
+      const match = brands.find((b) => b.id === preselectedParticipantId);
+      if (match) setSelectedBrand(match);
+    }
+  }, [
+    open,
+    preselectedParticipantId,
+    preselectedType,
+    influencers,
+    brands,
+    selectedInfluencer,
+    selectedBrand,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,7 +204,9 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
       recipientType === 'INFLUENCER' ? selectedInfluencer?.id : selectedBrand?.id;
 
     if (!participantId) {
-      setError(`Please select ${recipientType === 'INFLUENCER' ? 'an influencer' : 'a brand'} to start a chat.`);
+      setError(
+        `Please select ${recipientType === 'INFLUENCER' ? 'an influencer' : 'a brand'} to start a chat.`,
+      );
       return;
     }
 
@@ -233,7 +254,15 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             {/* 1. Recipient Type Segmented Toggle */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.tokens.textSecondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.tokens.textSecondary,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
                 Chat With
               </Typography>
               <ToggleButtonGroup
@@ -302,7 +331,11 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 helperText={error && !selectedInfluencer ? error : undefined}
                 fullWidth
                 renderOption={(props, option) => (
-                  <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
+                  <Box
+                    component="li"
+                    {...props}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
+                  >
                     <Avatar
                       src={safeImageUrl(option.avatarUrl)}
                       sx={{
@@ -317,7 +350,14 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                       {option.name[0]?.toUpperCase()}
                     </Avatar>
                     <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 1,
+                        }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {option.name}
                         </Typography>
@@ -339,7 +379,10 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                           </Typography>
                         )}
                       </Box>
-                      <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.textSecondary }}
+                      >
                         {option.instagram
                           ? formatDisplaySocial(option.instagram)
                           : option.category || 'Influencer'}
@@ -370,7 +413,11 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 helperText={error && !selectedBrand ? error : undefined}
                 fullWidth
                 renderOption={(props, option) => (
-                  <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
+                  <Box
+                    component="li"
+                    {...props}
+                    sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}
+                  >
                     <Avatar
                       src={safeImageUrl(option.logoUrl)}
                       sx={{
@@ -385,7 +432,14 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                       {option.name[0]?.toUpperCase()}
                     </Avatar>
                     <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 1,
+                        }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {option.name}
                         </Typography>
@@ -407,7 +461,10 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                           </Typography>
                         )}
                       </Box>
-                      <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: theme.palette.tokens.textSecondary }}
+                      >
                         {option.industry || option.contactPerson || 'Brand Account'}
                       </Typography>
                     </Box>
@@ -431,7 +488,9 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={loading || (recipientType === 'INFLUENCER' ? !selectedInfluencer : !selectedBrand)}
+            disabled={
+              loading || (recipientType === 'INFLUENCER' ? !selectedInfluencer : !selectedBrand)
+            }
             sx={{ minWidth: 140 }}
           >
             {loading ? (

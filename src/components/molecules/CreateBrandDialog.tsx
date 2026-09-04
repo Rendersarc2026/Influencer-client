@@ -217,15 +217,19 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       return;
     }
 
-    if (!trimmedEmail) {
-      setEmailError('Email is required');
-      return;
-    }
+    // Email is the brand manager's login and is fixed once the account exists,
+    // so it is only entered — and only validated — on creation.
+    if (!isEdit) {
+      if (!trimmedEmail) {
+        setEmailError('Email is required');
+        return;
+      }
 
-    const eErr = validateEmail(trimmedEmail);
-    if (eErr) {
-      setEmailError(eErr);
-      return;
+      const eErr = validateEmail(trimmedEmail);
+      if (eErr) {
+        setEmailError(eErr);
+        return;
+      }
     }
 
     if (!trimmedPhone) {
@@ -267,14 +271,14 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       name: trimmedName,
       industry: industry.trim() || undefined,
       contactPerson: contactPerson.trim() || undefined,
-      contactEmail: trimmedEmail,
       contactPhone: trimmedPhone,
       website: normalizeUrl(website),
       city: city.trim() || undefined,
       address: address.trim() || undefined,
       logoUrl: normalizeUrl(logoUrl),
       bio: bio.trim() || undefined,
-      ...(isEdit ? { isActive } : {}),
+      // The login email is set at creation and not editable afterwards.
+      ...(isEdit ? { isActive } : { contactEmail: trimmedEmail }),
     };
 
     try {
@@ -290,7 +294,11 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   };
 
   const submitDisabled =
-    busy || !name.trim() || !contactEmail.trim() || !contactPhone.trim() || Boolean(duplicate);
+    busy ||
+    !name.trim() ||
+    (!isEdit && !contactEmail.trim()) ||
+    !contactPhone.trim() ||
+    Boolean(duplicate);
 
   return (
     <Dialog
@@ -536,7 +544,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <TextField
-                label="Login / Contact Email *"
+                label={isEdit ? 'Login / Contact Email' : 'Login / Contact Email *'}
                 value={contactEmail}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -547,6 +555,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                   }
                 }}
                 onBlur={() => {
+                  if (isEdit) return;
                   if (!contactEmail.trim()) {
                     setEmailError('Email is required');
                   } else {
@@ -554,10 +563,15 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                   }
                 }}
                 error={Boolean(emailError)}
-                helperText={emailError || 'Brand manager will use this email address to log in'}
+                helperText={
+                  emailError ||
+                  (isEdit
+                    ? "The brand manager's login email cannot be changed here"
+                    : 'Brand manager will use this email address to log in')
+                }
                 placeholder="e.g. manager@brand.com"
                 fullWidth
-                disabled={busy}
+                disabled={busy || isEdit}
                 sx={{ flex: 1 }}
               />
 
