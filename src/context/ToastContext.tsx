@@ -35,14 +35,24 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <ToastContext.Provider value={contextValue}>
       {children}
+      {/*
+        Centred, not corner-anchored. Pinned to the right it sat under the
+        notification bell and the account menu — the two things a user is most
+        likely to be looking away from at the moment an action completes — so
+        confirmations were being missed. Centre-top is the one position that
+        reads the same on every page and at every width.
+
+        `right` is deliberately not set: MUI centres a top-centre Snackbar with
+        `left: 50%` + `translateX(-50%)`, and a competing `right` offset would
+        drag it back off centre.
+      */}
       <Snackbar
         open={open}
         autoHideDuration={4000}
         onClose={handleClose}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{
           top: { xs: 16, sm: 24 },
-          right: { xs: 16, sm: 24 },
           zIndex: 9999,
         }}
       >
@@ -54,6 +64,11 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             borderRadius: `${theme.customRadii.inner}px`,
             fontWeight: 600,
             fontSize: '14px',
+            // Centred, the banner grows from the middle outwards, so a long
+            // server error would otherwise stretch most of a desktop width.
+            // Capped it wraps to a second line and stays a readable block.
+            width: { xs: '100%', sm: 'auto' },
+            maxWidth: { xs: '100%', sm: 560 },
             boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
             backgroundColor:
               severity === 'success'
