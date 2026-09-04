@@ -33,6 +33,7 @@ import { z } from 'zod';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
 import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
+import { BrandLogo } from '@atoms';
 
 export const CompleteProfileOrganism: React.FC = () => {
   const theme = useTheme();
@@ -54,7 +55,9 @@ export const CompleteProfileOrganism: React.FC = () => {
   const brandCategoryOptions = (brandCategoriesData || []).map((c) => c.name);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
-  const [displayName, setDisplayName] = useState(user?.profile?.displayName || user?.brandName || '');
+  const [displayName, setDisplayName] = useState(
+    user?.profile?.displayName || user?.brandName || '',
+  );
   const [bio, setBio] = useState(user?.profile?.bio || '');
   const [brandCategory, setBrandCategory] = useState('');
   const [website, setWebsite] = useState('');
@@ -97,11 +100,15 @@ export const CompleteProfileOrganism: React.FC = () => {
       parsedFollowers = parsed;
     }
 
-    const normalizeSocialUrl = (val: string, domain: 'instagram.com' | 'youtube.com'): string | undefined => {
+    const normalizeSocialUrl = (
+      val: string,
+      domain: 'instagram.com' | 'youtube.com',
+    ): string | undefined => {
       const trimmed = val.trim();
       if (!trimmed) return undefined;
       if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-      if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`)) return `https://${trimmed}`;
+      if (trimmed.startsWith(domain) || trimmed.startsWith(`www.${domain}`))
+        return `https://${trimmed}`;
       if (domain === 'instagram.com') {
         const handle = trimmed.replace(/^@/, '');
         return `https://instagram.com/${handle}`;
@@ -212,22 +219,27 @@ export const CompleteProfileOrganism: React.FC = () => {
         }}
       >
         {/* Header with Brand Logo and Pill Badge */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3.5, textAlign: 'center' }}>
-          <Box
-            component="img"
-            src="/fetch-logo.jpeg"
-            alt="Fetch"
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            mb: 3.5,
+            textAlign: 'center',
+          }}
+        >
+          <BrandLogo
+            size={52}
             sx={{
-              width: 52,
-              height: 52,
               borderRadius: `${theme.customRadii.inner}px`,
-              objectFit: 'cover',
               boxShadow: '0 8px 24px rgba(47, 128, 237, 0.16)',
               mb: 1.75,
             }}
           />
           <Chip
-            label={isInfluencer ? 'CREATOR ONBOARDING' : isBrand ? 'BRAND ONBOARDING' : 'PROFILE SETUP'}
+            label={
+              isInfluencer ? 'CREATOR ONBOARDING' : isBrand ? 'BRAND ONBOARDING' : 'PROFILE SETUP'
+            }
             size="small"
             sx={{
               height: 24,
@@ -299,7 +311,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <Box
+                sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+              >
                 <TextField
                   label="Full Name *"
                   value={fullName}
@@ -312,7 +326,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PersonOutlineRoundedIcon sx={{ fontSize: 19, color: theme.palette.tokens.textSecondary }} />
+                        <PersonOutlineRoundedIcon
+                          sx={{ fontSize: 19, color: theme.palette.tokens.textSecondary }}
+                        />
                       </InputAdornment>
                     ),
                   }}
@@ -330,7 +346,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <AlternateEmailRoundedIcon sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }} />
+                        <AlternateEmailRoundedIcon
+                          sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }}
+                        />
                       </InputAdornment>
                     ),
                   }}
@@ -369,7 +387,14 @@ export const CompleteProfileOrganism: React.FC = () => {
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    mb: 2,
+                  }}
+                >
                   <PhoneField
                     label="Contact Phone"
                     value={contactPhone}
@@ -391,14 +416,22 @@ export const CompleteProfileOrganism: React.FC = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <LanguageRoundedIcon sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }} />
+                          <LanguageRoundedIcon
+                            sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }}
+                          />
                         </InputAdornment>
                       ),
                     }}
                   />
                 </Box>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                  }}
+                >
                   <Autocomplete
                     freeSolo
                     options={brandCategoryOptions}
@@ -419,7 +452,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                           startAdornment: (
                             <>
                               <InputAdornment position="start">
-                                <CategoryRoundedIcon sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }} />
+                                <CategoryRoundedIcon
+                                  sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }}
+                                />
                               </InputAdornment>
                               {params.InputProps.startAdornment}
                             </>
@@ -450,7 +485,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                           startAdornment: (
                             <>
                               <InputAdornment position="start">
-                                <LocationOnOutlinedIcon sx={{ fontSize: 19, color: theme.palette.tokens.textSecondary }} />
+                                <LocationOnOutlinedIcon
+                                  sx={{ fontSize: 19, color: theme.palette.tokens.textSecondary }}
+                                />
                               </InputAdornment>
                               {params.InputProps.startAdornment}
                             </>
@@ -494,7 +531,14 @@ export const CompleteProfileOrganism: React.FC = () => {
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    mb: 2,
+                  }}
+                >
                   <TextField
                     label="Instagram Profile URL"
                     placeholder="https://instagram.com/username"
@@ -532,7 +576,14 @@ export const CompleteProfileOrganism: React.FC = () => {
                   />
                 </Box>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    mb: 2,
+                  }}
+                >
                   <Autocomplete
                     freeSolo
                     options={influencerCategoryOptions}
@@ -553,7 +604,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                           startAdornment: (
                             <>
                               <InputAdornment position="start">
-                                <CategoryRoundedIcon sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }} />
+                                <CategoryRoundedIcon
+                                  sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }}
+                                />
                               </InputAdornment>
                               {params.InputProps.startAdornment}
                             </>
@@ -584,7 +637,9 @@ export const CompleteProfileOrganism: React.FC = () => {
                           startAdornment: (
                             <>
                               <InputAdornment position="start">
-                                <LocationOnOutlinedIcon sx={{ fontSize: 19, color: theme.palette.tokens.textSecondary }} />
+                                <LocationOnOutlinedIcon
+                                  sx={{ fontSize: 19, color: theme.palette.tokens.textSecondary }}
+                                />
                               </InputAdornment>
                               {params.InputProps.startAdornment}
                             </>
@@ -631,7 +686,11 @@ export const CompleteProfileOrganism: React.FC = () => {
                       <TextField
                         {...params}
                         label="Influencing Regions (Optional)"
-                        placeholder={regions.length === 0 ? "Select or type regions (e.g. Mumbai, Bangalore) and press Enter" : ""}
+                        placeholder={
+                          regions.length === 0
+                            ? 'Select or type regions (e.g. Mumbai, Bangalore) and press Enter'
+                            : ''
+                        }
                         error={Boolean(fieldErrors.regions || fieldErrors.influencingRegions)}
                         helperText={
                           fieldErrors.regions ||
@@ -685,15 +744,28 @@ export const CompleteProfileOrganism: React.FC = () => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <PeopleAltRoundedIcon sx={{ fontSize: 20, color: theme.palette.tokens.textSecondary }} />
+                          <PeopleAltRoundedIcon
+                            sx={{ fontSize: 20, color: theme.palette.tokens.textSecondary }}
+                          />
                         </InputAdornment>
                       ),
                     }}
                   />
 
                   {/* Quick Preset Follower Badges */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
-                    <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600, mr: 0.5 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.75,
+                      flexWrap: 'wrap',
+                      mt: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 600, mr: 0.5 }}
+                    >
                       Quick select:
                     </Typography>
                     {['10k', '25k', '50k', '100k', '250k', '500k', '1M'].map((preset) => {
@@ -717,12 +789,16 @@ export const CompleteProfileOrganism: React.FC = () => {
                             fontSize: '11px',
                             fontWeight: 600,
                             borderRadius: `${theme.customRadii.pill}px`,
-                            backgroundColor: isSelected ? theme.palette.tokens.rail : theme.palette.tokens.fieldBg,
+                            backgroundColor: isSelected
+                              ? theme.palette.tokens.rail
+                              : theme.palette.tokens.fieldBg,
                             color: isSelected ? '#FFFFFF' : theme.palette.tokens.textPrimary,
                             border: `1px solid ${isSelected ? theme.palette.tokens.rail : theme.palette.tokens.divider}`,
                             transition: 'all 0.15s ease',
                             '&:hover': {
-                              backgroundColor: isSelected ? '#2D2E30' : theme.palette.tokens.divider,
+                              backgroundColor: isSelected
+                                ? '#2D2E30'
+                                : theme.palette.tokens.divider,
                             },
                           }}
                         />
@@ -795,8 +871,13 @@ export const CompleteProfileOrganism: React.FC = () => {
                 mt: 2.5,
               }}
             >
-              <ErrorOutlineRoundedIcon sx={{ color: theme.palette.tokens.negative, fontSize: 20, flexShrink: 0 }} />
-              <Typography variant="body2" sx={{ color: theme.palette.tokens.negativeText, fontWeight: 600 }}>
+              <ErrorOutlineRoundedIcon
+                sx={{ color: theme.palette.tokens.negative, fontSize: 20, flexShrink: 0 }}
+              />
+              <Typography
+                variant="body2"
+                sx={{ color: theme.palette.tokens.negativeText, fontWeight: 600 }}
+              >
                 {error}
               </Typography>
             </Box>
@@ -853,9 +934,20 @@ export const CompleteProfileOrganism: React.FC = () => {
           </Box>
 
           {/* Security footnote */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75, mt: 2.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 0.75,
+              mt: 2.5,
+            }}
+          >
             <LockOutlinedIcon sx={{ fontSize: 14, color: theme.palette.tokens.textSecondary }} />
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}
+            >
               Encrypted & secure connection • Role-isolated profile
             </Typography>
           </Box>

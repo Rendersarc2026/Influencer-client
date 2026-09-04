@@ -14,6 +14,7 @@ import { RequestOtpRequestSchema, VerifyOtpRequestSchema } from '@contracts';
 import { useAuth, useToast } from '@hooks';
 import { prefetchForRoute } from '@api';
 import { getRoleDashboardPath } from '@routes/navConfig';
+import { BrandLogo } from '@atoms';
 
 export const LoginOrganism: React.FC = () => {
   const theme = useTheme();
@@ -106,8 +107,7 @@ export const LoginOrganism: React.FC = () => {
         message?: string;
       };
       const data = errorObj?.response?.data;
-      const msg =
-        data?.message || errorObj?.message || 'Failed to resend login code.';
+      const msg = data?.message || errorObj?.message || 'Failed to resend login code.';
       setOtpError(msg);
       showError(msg);
       if (data?.code === 'ACCOUNT_LOCKED' || msg.toLowerCase().includes('blocked for 30 minutes')) {
@@ -237,15 +237,10 @@ export const LoginOrganism: React.FC = () => {
       >
         {/* Brand Symbol */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <Box
-            component="img"
-            src="/fetch-logo.jpeg"
-            alt="Fetch"
+          <BrandLogo
+            size={56}
             sx={{
-              width: 56,
-              height: 56,
               borderRadius: `${theme.customRadii.inner}px`,
-              objectFit: 'cover',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
             }}
           />

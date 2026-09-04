@@ -23,6 +23,8 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { NavItem } from '@routes/navConfig';
+import { BrandLogo } from '@atoms';
+import { branding } from '@config/branding';
 
 export interface SidebarRailProps {
   items?: NavItem[];
@@ -152,11 +154,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
             py: 4,
           }}
         >
-          <CircularProgress
-            size={24}
-            thickness={4}
-            sx={{ color: 'rgba(255, 255, 255, 0.4)' }}
-          />
+          <CircularProgress size={24} thickness={4} sx={{ color: 'rgba(255, 255, 255, 0.4)' }} />
         </Box>
       ) : (
         items.map((item) => {
@@ -263,10 +261,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         }}
       >
         <LogoutRoundedIcon fontSize="small" />
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit' }}
-        >
+        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit' }}>
           Log Out
         </Typography>
       </ButtonBase>
@@ -311,16 +306,9 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
           }}
           onClick={() => handleNavigate('/')}
         >
-          <Box
-            component="img"
-            src="/fetch-logo.jpeg"
-            alt="Fetch"
+          <BrandLogo
             sx={{
-              width: 36,
-              height: 36,
               borderRadius: `${theme.customRadii.inner}px`,
-              objectFit: 'cover',
-              flexShrink: 0,
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
             }}
           />
@@ -336,7 +324,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                 letterSpacing: '-0.01em',
               }}
             >
-              Fetch
+              {branding.name}
             </Typography>
             <Typography
               variant="caption"
@@ -412,16 +400,9 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
             }}
             onClick={() => handleNavigate('/')}
           >
-            <Box
-              component="img"
-              src="/fetch-logo.jpeg"
-              alt="Fetch"
+            <BrandLogo
               sx={{
-                width: 36,
-                height: 36,
                 borderRadius: `${theme.customRadii.inner}px`,
-                objectFit: 'cover',
-                flexShrink: 0,
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
               }}
             />
@@ -437,7 +418,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                   letterSpacing: '-0.01em',
                 }}
               >
-                Fetch
+                {branding.name}
               </Typography>
               <Typography
                 variant="caption"
@@ -477,5 +458,3 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
     </>
   );
 };
-
-
