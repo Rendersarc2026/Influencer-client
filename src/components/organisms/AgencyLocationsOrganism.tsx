@@ -456,7 +456,6 @@ export const AgencyLocationsOrganism: React.FC = () => {
       header: 'Location',
       type: 'entity',
       accessor: (row) => row.name,
-      subAccessor: (row) => row.state || row.country,
     },
     {
       id: 'state',
