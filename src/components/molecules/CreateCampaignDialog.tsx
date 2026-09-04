@@ -43,7 +43,9 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
 
   useEffect(() => {
     if (open) {
-      setBrandId(defaultBrandId || (brands.length > 0 ? brands[0].id : ''));
+      // Start with no brand chosen unless the caller pinned one — picking the
+      // first brand for them invites campaigns filed under the wrong client.
+      setBrandId(defaultBrandId || '');
       setName('');
       setDescription('');
       setBriefUrl('');
@@ -51,7 +53,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
       setEndDate('');
       setError('');
     }
-  }, [open, defaultBrandId, brands]);
+  }, [open, defaultBrandId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
