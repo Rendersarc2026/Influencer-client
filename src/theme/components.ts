@@ -21,6 +21,16 @@ export const components: Components<Theme> = {
       },
     },
   },
+  MuiMenu: {
+    styleOverrides: {
+      // Every elevation shadow is stripped to 'none', so a dropdown panel has
+      // nothing separating it from the rows behind it. The same 1px line the
+      // fields carry gives it an edge.
+      paper: {
+        border: `1px solid ${tokens.colors.divider}`,
+      },
+    },
+  },
   MuiCard: {
     defaultProps: {
       elevation: 0,
