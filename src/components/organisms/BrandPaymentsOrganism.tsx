@@ -10,7 +10,15 @@ import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { SectionHeading, MoneyText } from '@atoms';
 import { apiClient, useBrandPayments, useApprovePayment } from '@api';
 import { PaymentResponse, PaymentStatusEnum, PaymentStatusCode, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import {
+  useAuth,
+  useDebounce,
+  useEnumPills,
+  useToast,
+  useViewFilters,
+  usePillCode,
+  useTableExport,
+} from '@hooks';
 import { ExcelColumnConfig } from '@utils';
 
 export const BrandPaymentsOrganism: React.FC = () => {
@@ -129,7 +137,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'brand_payments',
     sheetName: 'Payments',
     columns: columns as Array<ExcelColumnConfig<PaymentResponse>>,
@@ -164,6 +172,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
           searchValue={search}
           onSearchChange={setSearch}
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalPayments === 0}
         />

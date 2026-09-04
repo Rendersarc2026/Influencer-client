@@ -28,6 +28,9 @@ import MonetizationOnRoundedIcon from '@mui/icons-material/MonetizationOnRounded
 import PercentRoundedIcon from '@mui/icons-material/PercentRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -56,7 +59,11 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeExternalUrl, exportBrandCampaignPerformanceReport } from '@utils';
+import {
+  safeExternalUrl,
+  exportBrandCampaignPerformanceReport,
+  exportBrandCampaignPerformanceReportPdf,
+} from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandMapperResponse;
@@ -807,8 +814,10 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
   // Post-evaluation report, offered once the campaign is Completed.
   const isCompleted = Number(campaign?.status) === CampaignStatusCode.COMPLETED;
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [reportMenuAnchor, setReportMenuAnchor] = useState<null | HTMLElement>(null);
 
-  const handleDownloadPerformanceReport = async () => {
+  const handleDownloadPerformanceReport = async (format: 'excel' | 'pdf') => {
+    setReportMenuAnchor(null);
     if (!campaign || isDownloadingReport) return;
     try {
       setIsDownloadingReport(true);
@@ -831,7 +840,14 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         (metricsByMapperId[metric.mapperId] ||= []).push(metric);
       }
 
-      await exportBrandCampaignPerformanceReport({
+      // Both writers render the same built model, so the workbook and the PDF
+      // always carry the same numbers.
+      const exportReport =
+        format === 'pdf'
+          ? exportBrandCampaignPerformanceReportPdf
+          : exportBrandCampaignPerformanceReport;
+
+      await exportReport({
         campaign: {
           id: campaign.id,
           name: campaign.name,
@@ -845,7 +861,9 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
         metricsByMapperId,
       });
 
-      showSuccess('Campaign performance report downloaded.');
+      showSuccess(
+        `Campaign performance report downloaded as ${format === 'pdf' ? 'PDF' : 'Excel'}.`,
+      );
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
@@ -1168,28 +1186,51 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           subtitle="Creator profiles, deliverables, and commercial rates. Click on any row to view full pre-evaluation metrics and dossier."
           action={
             isCompleted ? (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={
-                  isDownloadingReport ? (
-                    <CircularProgress size={16} color="inherit" />
-                  ) : (
-                    <AssessmentRoundedIcon fontSize="small" />
-                  )
-                }
-                onClick={handleDownloadPerformanceReport}
-                // `totalMappers` counts the current search, while the report
-                // always covers the whole roster — so an empty search result
-                // must not read as an empty campaign.
-                disabled={
-                  isDownloadingReport ||
-                  campaignLoading ||
-                  (!debouncedSearch.trim() && totalMappers === 0)
-                }
-              >
-                {isDownloadingReport ? 'Generating...' : 'Download Report'}
-              </Button>
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={
+                    isDownloadingReport ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <AssessmentRoundedIcon fontSize="small" />
+                    )
+                  }
+                  endIcon={!isDownloadingReport && <ExpandMoreRoundedIcon fontSize="small" />}
+                  onClick={(e) => setReportMenuAnchor(e.currentTarget)}
+                  // `totalMappers` counts the current search, while the report
+                  // always covers the whole roster — so an empty search result
+                  // must not read as an empty campaign.
+                  disabled={
+                    isDownloadingReport ||
+                    campaignLoading ||
+                    (!debouncedSearch.trim() && totalMappers === 0)
+                  }
+                >
+                  {isDownloadingReport ? 'Generating...' : 'Download Report'}
+                </Button>
+                <Menu
+                  anchorEl={reportMenuAnchor}
+                  open={Boolean(reportMenuAnchor)}
+                  onClose={() => setReportMenuAnchor(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                  <MenuItem onClick={() => handleDownloadPerformanceReport('excel')}>
+                    <ListItemIcon>
+                      <TableChartRoundedIcon fontSize="small" />
+                    </ListItemIcon>
+                    Excel (.xlsx)
+                  </MenuItem>
+                  <MenuItem onClick={() => handleDownloadPerformanceReport('pdf')}>
+                    <ListItemIcon>
+                      <PictureAsPdfRoundedIcon fontSize="small" />
+                    </ListItemIcon>
+                    PDF (.pdf)
+                  </MenuItem>
+                </Menu>
+              </>
             ) : undefined
           }
         />

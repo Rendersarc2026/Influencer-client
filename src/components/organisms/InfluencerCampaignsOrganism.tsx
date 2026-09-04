@@ -9,7 +9,12 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { StatusChip } from '@atoms';
 import { apiClient, useInfluencerCampaigns } from '@api';
-import { CampaignResponse, CampaignStatusEnum, CampaignStatusCode, PaginatedResult } from '@contracts';
+import {
+  CampaignResponse,
+  CampaignStatusEnum,
+  CampaignStatusCode,
+  PaginatedResult,
+} from '@contracts';
 import { useAuth, useDebounce, useViewFilters, usePillCode, useTableExport } from '@hooks';
 import { safeExternalUrl, ExcelColumnConfig } from '@utils';
 
@@ -60,7 +65,8 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
       header: 'Campaign & Brand',
       type: 'entity',
       accessor: (row) => row.name,
-      subAccessor: (row) => (row.brandName ? `Brand: ${row.brandName}` : row.description || 'Campaign Brief'),
+      subAccessor: (row) =>
+        row.brandName ? `Brand: ${row.brandName}` : row.description || 'Campaign Brief',
     },
     {
       id: 'status',
@@ -137,7 +143,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'my_campaign_assignments',
     sheetName: 'Assignments',
     columns: columns as Array<ExcelColumnConfig<CampaignResponse>>,
@@ -168,6 +174,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
           searchValue={search}
           onSearchChange={setSearch}
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalCampaigns === 0}
         />

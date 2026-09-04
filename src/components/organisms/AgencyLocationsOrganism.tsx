@@ -526,7 +526,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'locations',
     sheetName: 'Locations',
     columns: columns as Array<ExcelColumnConfig<LocationResponse>>,
@@ -599,6 +599,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
             },
           ]}
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalLocations === 0}
         />

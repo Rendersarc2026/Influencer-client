@@ -17,27 +17,18 @@ import Avatar from '@mui/material/Avatar';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import { useTheme } from '@mui/material/styles';
-import {
-  MoneyText,
-  DeltaBadge,
-  StatusChip,
-  StatusCategory,
-  EmptyState,
-  BusyOverlay,
-} from '@atoms';
-import { safeImageUrl, exportTableToExcel, ExcelColumnConfig } from '@utils';
+import { MoneyText, DeltaBadge, StatusChip, StatusCategory, EmptyState, BusyOverlay } from '@atoms';
+import { safeImageUrl, exportTableToExcel, exportTableToPdf, ExcelColumnConfig } from '@utils';
 
 export type ColumnType =
-  | 'text'
-  | 'entity'
-  | 'money'
-  | 'delta'
-  | 'status'
-  | 'star'
-  | 'actions'
-  | 'custom'
-  | 'index';
+  'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom' | 'index';
 
 export interface DataTableColumn<T> {
   id: string;
@@ -80,7 +71,11 @@ export interface DataTableProps<T> {
   exportable?: boolean;
   exportFilename?: string;
   exportSheetName?: string;
-  onExport?: (rows: T[], columns: DataTableColumn<T>[]) => void | Promise<void>;
+  onExport?: (
+    rows: T[],
+    columns: DataTableColumn<T>[],
+    format: 'excel' | 'pdf',
+  ) => void | Promise<void>;
   onExportAll?: () => Promise<T[]>;
   showRowNumbers?: boolean;
   rowNumberHeader?: string;
@@ -142,6 +137,7 @@ export function DataTable<T extends Record<string, unknown>>({
 }: DataTableProps<T>) {
   const theme = useTheme();
   const [isExporting, setIsExporting] = useState(false);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [internalPage, setInternalPage] = useState(0);
   const [internalRowsPerPage, setInternalRowsPerPage] = useState(initialRowsPerPage);
 
@@ -363,20 +359,19 @@ export function DataTable<T extends Record<string, unknown>>({
           (column.id === 'rateStatus'
             ? 'RATE_STATUS'
             : column.id === 'brandStatus'
-            ? 'BRAND_STATUS'
-            : column.id === 'paymentStatus'
-            ? 'PAYMENT_STATUS'
-            : column.id === 'campaignStatus' || column.id === 'status'
-            ? 'CAMPAIGN_STATUS'
-            : undefined);
+              ? 'BRAND_STATUS'
+              : column.id === 'paymentStatus'
+                ? 'PAYMENT_STATUS'
+                : column.id === 'campaignStatus' || column.id === 'status'
+                  ? 'CAMPAIGN_STATUS'
+                  : undefined);
 
         if (category && typeof value === 'number') {
           return <StatusChip category={category} code={value} />;
         }
 
         const isPositive =
-          displayValue.toUpperCase() === 'ACTIVE' ||
-          displayValue.toUpperCase() === 'APPROVED';
+          displayValue.toUpperCase() === 'ACTIVE' || displayValue.toUpperCase() === 'APPROVED';
         const isWarning =
           displayValue.toUpperCase().includes('PENDING') ||
           displayValue.toUpperCase().includes('REVISION');
@@ -389,10 +384,10 @@ export function DataTable<T extends Record<string, unknown>>({
         const palette = isPositive
           ? { bg: theme.palette.tokens.positiveBg, color: theme.palette.tokens.positiveText }
           : isWarning
-          ? { bg: theme.palette.tokens.warningBg, color: theme.palette.tokens.warningText }
-          : isNegative
-          ? { bg: theme.palette.tokens.negativeBg, color: theme.palette.tokens.negativeText }
-          : { bg: theme.palette.tokens.fieldBg, color: theme.palette.tokens.textSecondary };
+            ? { bg: theme.palette.tokens.warningBg, color: theme.palette.tokens.warningText }
+            : isNegative
+              ? { bg: theme.palette.tokens.negativeBg, color: theme.palette.tokens.negativeText }
+              : { bg: theme.palette.tokens.fieldBg, color: theme.palette.tokens.textSecondary };
 
         return (
           <Box
@@ -462,20 +457,21 @@ export function DataTable<T extends Record<string, unknown>>({
     }
   };
 
-  const handleExport = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleExport = async (format: 'excel' | 'pdf') => {
+    setExportMenuAnchor(null);
     if ((rows.length === 0 && !onExportAll) || isExporting) return;
     try {
       setIsExporting(true);
       if (onExport) {
-        await onExport(rows, effectiveColumns);
+        await onExport(rows, effectiveColumns, format);
       } else {
         const rowsToExport = onExportAll ? await onExportAll() : rows;
         if (!rowsToExport || rowsToExport.length === 0) return;
         const defaultFilename =
           exportFilename ||
           (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'table_data');
-        await exportTableToExcel({
+        const write = format === 'pdf' ? exportTableToPdf : exportTableToExcel;
+        await write({
           filename: defaultFilename,
           sheetName: exportSheetName || title || 'Data',
           columns: effectiveColumns as Array<ExcelColumnConfig<T>>,
@@ -483,7 +479,7 @@ export function DataTable<T extends Record<string, unknown>>({
         });
       }
     } catch (err) {
-      console.error('Failed to export table data to Excel:', err);
+      console.error(`Failed to export table data to ${format === 'pdf' ? 'PDF' : 'Excel'}:`, err);
     } finally {
       setIsExporting(false);
     }
@@ -491,44 +487,65 @@ export function DataTable<T extends Record<string, unknown>>({
 
   const exportButton =
     exportable && (rows.length > 0 || onExportAll) ? (
-      <Button
-        variant="outlined"
-        size="small"
-        onClick={handleExport}
-        disabled={loading || (rows.length === 0 && !onExportAll) || isExporting}
-        startIcon={
-          isExporting ? (
-            <CircularProgress size={14} color="inherit" />
-          ) : (
-            <FileDownloadRoundedIcon sx={{ fontSize: '18px !important' }} />
-          )
-        }
-        sx={{
-          height: { xs: 32, sm: 36 },
-          px: { xs: 1.25, sm: 1.75 },
-          fontSize: { xs: '12px', sm: '13px' },
-          fontWeight: 600,
-          textTransform: 'none',
-          borderRadius: `${theme.customRadii.inner}px`,
-          color: theme.palette.tokens.textPrimary,
-          borderColor: theme.palette.tokens.divider,
-          backgroundColor: theme.palette.tokens.surface,
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-          '&:hover': {
-            borderColor: theme.palette.tokens.accent,
-            backgroundColor: theme.palette.tokens.fieldBg,
-            color: theme.palette.tokens.accent,
-          },
-        }}
-      >
-        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-          Export Excel
-        </Box>
-        <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+      <>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExportMenuAnchor(e.currentTarget);
+          }}
+          disabled={loading || (rows.length === 0 && !onExportAll) || isExporting}
+          startIcon={
+            isExporting ? (
+              <CircularProgress size={14} color="inherit" />
+            ) : (
+              <FileDownloadRoundedIcon sx={{ fontSize: '18px !important' }} />
+            )
+          }
+          endIcon={!isExporting && <ExpandMoreRoundedIcon sx={{ fontSize: '18px !important' }} />}
+          sx={{
+            height: { xs: 32, sm: 36 },
+            px: { xs: 1.25, sm: 1.75 },
+            fontSize: { xs: '12px', sm: '13px' },
+            fontWeight: 600,
+            textTransform: 'none',
+            borderRadius: `${theme.customRadii.inner}px`,
+            color: theme.palette.tokens.textPrimary,
+            borderColor: theme.palette.tokens.divider,
+            backgroundColor: theme.palette.tokens.surface,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            '&:hover': {
+              borderColor: theme.palette.tokens.accent,
+              backgroundColor: theme.palette.tokens.fieldBg,
+              color: theme.palette.tokens.accent,
+            },
+          }}
+        >
           Export
-        </Box>
-      </Button>
+        </Button>
+        <Menu
+          anchorEl={exportMenuAnchor}
+          open={Boolean(exportMenuAnchor)}
+          onClose={() => setExportMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={() => void handleExport('excel')}>
+            <ListItemIcon>
+              <TableChartRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Excel (.xlsx)
+          </MenuItem>
+          <MenuItem onClick={() => void handleExport('pdf')}>
+            <ListItemIcon>
+              <PictureAsPdfRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            PDF (.pdf)
+          </MenuItem>
+        </Menu>
+      </>
     ) : null;
 
   const hasHeader = Boolean(title || subtitle || headerAction || exportButton);
@@ -646,7 +663,13 @@ export function DataTable<T extends Record<string, unknown>>({
                         }}
                       >
                         {col.type === 'index' ? (
-                          <Skeleton animation="wave" variant="text" width={20} height={16} sx={{ mx: 'auto' }} />
+                          <Skeleton
+                            animation="wave"
+                            variant="text"
+                            width={20}
+                            height={16}
+                            sx={{ mx: 'auto' }}
+                          />
                         ) : col.type === 'entity' ? (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Skeleton
@@ -658,7 +681,13 @@ export function DataTable<T extends Record<string, unknown>>({
                             />
                             <Box sx={{ minWidth: 0, flex: 1 }}>
                               <Skeleton animation="wave" variant="text" width={110} height={18} />
-                              <Skeleton animation="wave" variant="text" width={75} height={13} sx={{ mt: 0.5 }} />
+                              <Skeleton
+                                animation="wave"
+                                variant="text"
+                                width={75}
+                                height={13}
+                                sx={{ mt: 0.5 }}
+                              />
                             </Box>
                           </Box>
                         ) : col.type === 'actions' ? (
@@ -681,7 +710,9 @@ export function DataTable<T extends Record<string, unknown>>({
                           <Skeleton
                             animation="wave"
                             variant="text"
-                            width={typeof col.width === 'number' ? Math.min(col.width * 0.7, 120) : 90}
+                            width={
+                              typeof col.width === 'number' ? Math.min(col.width * 0.7, 120) : 90
+                            }
                             height={18}
                           />
                         )}
@@ -872,7 +903,9 @@ export function DataTable<T extends Record<string, unknown>>({
                           sx={{
                             cursor: onRowClick ? 'pointer' : 'default',
                             transition: 'background-color 0.15s ease',
-                            '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
+                            '&:hover': onRowClick
+                              ? { backgroundColor: theme.palette.tokens.tableHover }
+                              : {},
                           }}
                         >
                           {effectiveColumns.map((col) => (
@@ -1043,7 +1076,9 @@ export function DataTable<T extends Record<string, unknown>>({
                         sx={{
                           cursor: onRowClick ? 'pointer' : 'default',
                           transition: 'background-color 0.15s ease',
-                          '&:hover': onRowClick ? { backgroundColor: theme.palette.tokens.tableHover } : {},
+                          '&:hover': onRowClick
+                            ? { backgroundColor: theme.palette.tokens.tableHover }
+                            : {},
                         }}
                       >
                         {effectiveColumns.map((col) => (

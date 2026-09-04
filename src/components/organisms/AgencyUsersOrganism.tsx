@@ -289,7 +289,8 @@ export const AgencyUsersOrganism: React.FC = () => {
       header: 'Assigned Org',
       type: 'text',
       accessor: (row) => {
-        if (row.roleCode === 'BRAND') return row.brandName ? `Brand: ${row.brandName}` : 'Brand Client';
+        if (row.roleCode === 'BRAND')
+          return row.brandName ? `Brand: ${row.brandName}` : 'Brand Client';
         if (row.roleCode === 'INFLUENCER') return 'Influencer Studio';
         return '—';
       },
@@ -337,7 +338,7 @@ export const AgencyUsersOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'platform_users',
     sheetName: 'Users',
     columns: columns as Array<ExcelColumnConfig<UserResponse>>,
@@ -381,6 +382,7 @@ export const AgencyUsersOrganism: React.FC = () => {
           }}
           selectLabel="Account Status"
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalUsers === 0}
         />
@@ -428,9 +430,7 @@ export const AgencyUsersOrganism: React.FC = () => {
         badge={selectedUser?.isActive ? 'ACTIVE' : 'BLOCKED'}
         avatarText={selectedUser?.profile?.fullName || selectedUser?.email}
         avatarUrl={
-          selectedUser?.profile?.avatarUrl ||
-          selectedUser?.influencer?.avatarUrl ||
-          undefined
+          selectedUser?.profile?.avatarUrl || selectedUser?.influencer?.avatarUrl || undefined
         }
         highlights={
           selectedUser

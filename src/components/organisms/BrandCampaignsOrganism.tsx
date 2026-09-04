@@ -8,7 +8,14 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar } from '@molecules';
 import { apiClient, useBrandCampaigns } from '@api';
 import { CampaignResponse, CampaignStatusEnum, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useEnumOptions, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import {
+  useAuth,
+  useDebounce,
+  useEnumOptions,
+  useViewFilters,
+  usePillCode,
+  useTableExport,
+} from '@hooks';
 import { ExcelColumnConfig } from '@utils';
 
 export const BrandCampaignsOrganism: React.FC = () => {
@@ -107,7 +114,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'brand_campaigns',
     sheetName: 'Campaigns',
     columns: columns as Array<ExcelColumnConfig<CampaignResponse>>,
@@ -137,6 +144,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
           searchValue={search}
           onSearchChange={setSearch}
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalCampaigns === 0}
         />

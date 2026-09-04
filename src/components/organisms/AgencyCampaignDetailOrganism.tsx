@@ -34,6 +34,9 @@ import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
@@ -82,6 +85,7 @@ import {
   safeExternalUrl,
   humanizeCode,
   exportCampaignPerformanceReport,
+  exportCampaignPerformanceReportPdf,
   ExcelColumnConfig,
 } from '@utils';
 
@@ -718,7 +722,10 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   // 7. Handle Download Full Performance & Post-Eval Report
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
-  const handleDownloadPerformanceReport = async () => {
+  const [reportMenuAnchor, setReportMenuAnchor] = useState<null | HTMLElement>(null);
+  const [rosterMenuAnchor, setRosterMenuAnchor] = useState<null | HTMLElement>(null);
+  const handleDownloadPerformanceReport = async (format: 'excel' | 'pdf') => {
+    setReportMenuAnchor(null);
     if (!campaign || isDownloadingReport) return;
     try {
       setIsDownloadingReport(true);
@@ -744,10 +751,14 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         metricsByMapperId[item.mapperId] = item.metrics;
       }
 
-      // 3. Export structured multi-sheet Excel workbook
+      // 3. Export the report. Both writers are fed the same built model, so
+      //    the workbook and the PDF always carry the same numbers.
       const brandName = campaign.brandName || 'Brand Partner';
 
-      await exportCampaignPerformanceReport({
+      const exportReport =
+        format === 'pdf' ? exportCampaignPerformanceReportPdf : exportCampaignPerformanceReport;
+
+      await exportReport({
         campaign: {
           id: campaign.id,
           name: campaign.name,
@@ -761,7 +772,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         metricsByMapperId,
       });
 
-      showSuccess('Campaign post-evaluation performance report downloaded.');
+      showSuccess(
+        `Campaign post-evaluation performance report downloaded as ${format === 'pdf' ? 'PDF' : 'Excel'}.`,
+      );
     } catch (err) {
       console.error('Failed to export performance report:', err);
       showError('Failed to generate performance report.');
@@ -1030,14 +1043,17 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   // the roster with its rates, margins and statuses. The header's Performance
   // Report is the multi-sheet post-evaluation workbook — both buttons used to
   // produce that one, so the table itself could not be exported at all.
-  const { exportExcel: exportRoster, isExporting: isExportingRoster } =
-    useTableExport<AgencyMapperResponse>({
-      filename: `${campaign?.name || 'campaign'}_influencers`,
-      sheetName: 'Influencers',
-      columns: columns as Array<ExcelColumnConfig<AgencyMapperResponse>>,
-      rows: mappers,
-      onExportAll: handleExportAll,
-    });
+  const {
+    exportExcel: exportRosterExcel,
+    exportPdf: exportRosterPdf,
+    isExporting: isExportingRoster,
+  } = useTableExport<AgencyMapperResponse>({
+    filename: `${campaign?.name || 'campaign'}_influencers`,
+    sheetName: 'Influencers',
+    columns: columns as Array<ExcelColumnConfig<AgencyMapperResponse>>,
+    rows: mappers,
+    onExportAll: handleExportAll,
+  });
 
   const isDraft = (campaign?.status ?? CampaignStatusCode.DRAFT) === CampaignStatusCode.DRAFT;
   const isCompleted =
@@ -1158,22 +1174,45 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
             {/* Post-evaluation only reads as a report once the campaign is over:
                 before that the metrics are partial, so offer it at Completed. */}
             {isCompleted && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={
-                  isDownloadingReport ? (
-                    <CircularProgress size={16} color="inherit" />
-                  ) : (
-                    <AssessmentRoundedIcon fontSize="small" />
-                  )
-                }
-                onClick={handleDownloadPerformanceReport}
-                disabled={isDownloadingReport || campaignLoading}
-                sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
-              >
-                {isDownloadingReport ? 'Generating Report...' : 'Download Performance Report'}
-              </Button>
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={
+                    isDownloadingReport ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <AssessmentRoundedIcon fontSize="small" />
+                    )
+                  }
+                  endIcon={!isDownloadingReport && <ExpandMoreRoundedIcon fontSize="small" />}
+                  onClick={(e) => setReportMenuAnchor(e.currentTarget)}
+                  disabled={isDownloadingReport || campaignLoading}
+                  sx={{ height: 34, fontSize: '13px', fontWeight: 600 }}
+                >
+                  {isDownloadingReport ? 'Generating Report...' : 'Download Performance Report'}
+                </Button>
+                <Menu
+                  anchorEl={reportMenuAnchor}
+                  open={Boolean(reportMenuAnchor)}
+                  onClose={() => setReportMenuAnchor(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                  <MenuItem onClick={() => handleDownloadPerformanceReport('excel')}>
+                    <ListItemIcon>
+                      <TableChartRoundedIcon fontSize="small" />
+                    </ListItemIcon>
+                    Excel (.xlsx)
+                  </MenuItem>
+                  <MenuItem onClick={() => handleDownloadPerformanceReport('pdf')}>
+                    <ListItemIcon>
+                      <PictureAsPdfRoundedIcon fontSize="small" />
+                    </ListItemIcon>
+                    PDF (.pdf)
+                  </MenuItem>
+                </Menu>
+              </>
             )}
 
             {canEditCampaign && (
@@ -1298,13 +1337,42 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                     <FileDownloadRoundedIcon fontSize="small" />
                   )
                 }
-                onClick={() => {
-                  void exportRoster();
-                }}
+                endIcon={!isExportingRoster && <ExpandMoreRoundedIcon fontSize="small" />}
+                onClick={(e) => setRosterMenuAnchor(e.currentTarget)}
                 disabled={isExportingRoster || campaignLoading || mappers.length === 0}
               >
-                {isExportingRoster ? 'Exporting...' : 'Export Excel'}
+                {isExportingRoster ? 'Exporting...' : 'Export'}
               </Button>
+              <Menu
+                anchorEl={rosterMenuAnchor}
+                open={Boolean(rosterMenuAnchor)}
+                onClose={() => setRosterMenuAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <MenuItem
+                  onClick={() => {
+                    setRosterMenuAnchor(null);
+                    void exportRosterExcel();
+                  }}
+                >
+                  <ListItemIcon>
+                    <TableChartRoundedIcon fontSize="small" />
+                  </ListItemIcon>
+                  Excel (.xlsx)
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setRosterMenuAnchor(null);
+                    void exportRosterPdf();
+                  }}
+                >
+                  <ListItemIcon>
+                    <PictureAsPdfRoundedIcon fontSize="small" />
+                  </ListItemIcon>
+                  PDF (.pdf)
+                </MenuItem>
+              </Menu>
               {isDraft && (
                 <Button
                   variant="contained"

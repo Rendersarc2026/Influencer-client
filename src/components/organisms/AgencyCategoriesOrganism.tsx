@@ -354,7 +354,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           name: trimmedName,
           description: trimmedDesc || undefined,
         });
-        showSuccess(`${categoryType === CategoryTypeCode.BRAND ? 'Brand' : 'Influencer'} category created.`);
+        showSuccess(
+          `${categoryType === CategoryTypeCode.BRAND ? 'Brand' : 'Influencer'} category created.`,
+        );
       }
       setDialogOpen(false);
     } catch (err: unknown) {
@@ -408,7 +410,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       type: 'entity',
       accessor: (row) => row.name,
       subAccessor: (row) =>
-        row.type === CategoryTypeCode.BRAND ? 'Brand Industry Classification' : 'Creator Niche / Specialization',
+        row.type === CategoryTypeCode.BRAND
+          ? 'Brand Industry Classification'
+          : 'Creator Niche / Specialization',
     },
     {
       id: 'type',
@@ -486,7 +490,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: `${activeTab === CategoryTypeCode.BRAND ? 'brand' : 'influencer'}_categories`,
     sheetName: 'Categories',
     columns: columns as Array<ExcelColumnConfig<CategoryResponse>>,
@@ -513,8 +517,12 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={handleOpenCreate}
         >
-          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Add</Box>
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Add Category</Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            Add
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            Add Category
+          </Box>
         </Button>
       }
     >
@@ -542,8 +550,12 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               px: { xs: 1.5, sm: 3 },
               py: 1.25,
               borderRadius: `${theme.customRadii.pill}px`,
-              backgroundColor: activeTab === CategoryTypeCode.BRAND ? theme.palette.tokens.rail : 'transparent',
-              color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textSecondary,
+              backgroundColor:
+                activeTab === CategoryTypeCode.BRAND ? theme.palette.tokens.rail : 'transparent',
+              color:
+                activeTab === CategoryTypeCode.BRAND
+                  ? '#FFFFFF'
+                  : theme.palette.tokens.textSecondary,
               fontWeight: 600,
               fontSize: { xs: '12px', sm: theme.typography.body2.fontSize },
               display: 'flex',
@@ -552,9 +564,14 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               gap: { xs: 0.75, sm: 1.25 },
               transition: 'all 0.2s ease',
               '&:hover': {
-                color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                color:
+                  activeTab === CategoryTypeCode.BRAND
+                    ? '#FFFFFF'
+                    : theme.palette.tokens.textPrimary,
                 backgroundColor:
-                  activeTab === CategoryTypeCode.BRAND ? theme.palette.tokens.rail : theme.palette.tokens.fieldBg,
+                  activeTab === CategoryTypeCode.BRAND
+                    ? theme.palette.tokens.rail
+                    : theme.palette.tokens.fieldBg,
               },
             }}
           >
@@ -568,8 +585,13 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 fontSize: '11px',
                 fontWeight: 700,
                 backgroundColor:
-                  activeTab === CategoryTypeCode.BRAND ? 'rgba(255,255,255,0.2)' : theme.palette.tokens.fieldBg,
-                color: activeTab === CategoryTypeCode.BRAND ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                  activeTab === CategoryTypeCode.BRAND
+                    ? 'rgba(255,255,255,0.2)'
+                    : theme.palette.tokens.fieldBg,
+                color:
+                  activeTab === CategoryTypeCode.BRAND
+                    ? '#FFFFFF'
+                    : theme.palette.tokens.textPrimary,
               }}
             />
           </ButtonBase>
@@ -585,8 +607,13 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               py: 1.25,
               borderRadius: `${theme.customRadii.pill}px`,
               backgroundColor:
-                activeTab === CategoryTypeCode.INFLUENCER ? theme.palette.tokens.rail : 'transparent',
-              color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textSecondary,
+                activeTab === CategoryTypeCode.INFLUENCER
+                  ? theme.palette.tokens.rail
+                  : 'transparent',
+              color:
+                activeTab === CategoryTypeCode.INFLUENCER
+                  ? '#FFFFFF'
+                  : theme.palette.tokens.textSecondary,
               fontWeight: 600,
               fontSize: { xs: '12px', sm: theme.typography.body2.fontSize },
               display: 'flex',
@@ -595,7 +622,10 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               gap: { xs: 0.75, sm: 1.25 },
               transition: 'all 0.2s ease',
               '&:hover': {
-                color: activeTab === CategoryTypeCode.INFLUENCER ? '#FFFFFF' : theme.palette.tokens.textPrimary,
+                color:
+                  activeTab === CategoryTypeCode.INFLUENCER
+                    ? '#FFFFFF'
+                    : theme.palette.tokens.textPrimary,
                 backgroundColor:
                   activeTab === CategoryTypeCode.INFLUENCER
                     ? theme.palette.tokens.rail
@@ -634,6 +664,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           activePillId={statusFilter || 'ALL'}
           onPillChange={setStatusFilter}
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalCategories === 0}
         />
@@ -716,9 +747,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 }
               >
                 <MenuItem value={CategoryTypeCode.BRAND}>Brand Category (Industry)</MenuItem>
-                <MenuItem value={CategoryTypeCode.INFLUENCER}>
-                  Influencer Category (Niche)
-                </MenuItem>
+                <MenuItem value={CategoryTypeCode.INFLUENCER}>Influencer Category (Niche)</MenuItem>
               </TextField>
 
               <TextField
@@ -737,7 +766,9 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                     : 'e.g. Fashion Lifestyle, Tech Reviewer, Fitness & Wellness')
                 }
                 placeholder={
-                  categoryType === CategoryTypeCode.BRAND ? 'e.g. Beauty & Personal Care' : 'e.g. Food Vlogger'
+                  categoryType === CategoryTypeCode.BRAND
+                    ? 'e.g. Beauty & Personal Care'
+                    : 'e.g. Food Vlogger'
                 }
                 fullWidth
                 autoFocus

@@ -624,7 +624,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'influencers_roster',
     sheetName: 'Influencers',
     columns: columns as Array<ExcelColumnConfig<InfluencerResponse>>,
@@ -684,6 +684,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           hasActiveFilters={hasActiveFilters}
           onClearFilters={handleClearAllFilters}
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalInfluencers === 0}
         />

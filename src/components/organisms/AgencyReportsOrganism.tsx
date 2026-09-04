@@ -194,7 +194,7 @@ export const AgencyReportsOrganism: React.FC = () => {
     },
   ];
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'campaign_financial_reports',
     sheetName: 'Reports',
     columns: columns as Array<ExcelColumnConfig<CampaignMetricRow>>,
@@ -381,6 +381,7 @@ export const AgencyReportsOrganism: React.FC = () => {
           onSelectChange={setSelectedBrand}
           selectLabel="Brand"
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={filteredRows.length === 0}
         />

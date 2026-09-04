@@ -16,6 +16,11 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
+import Menu from '@mui/material/Menu';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import TableChartRoundedIcon from '@mui/icons-material/TableChartRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { useTheme } from '@mui/material/styles';
 import { Pill } from '@atoms';
 
@@ -69,6 +74,8 @@ export interface FilterBarProps {
   onClearFilters?: () => void;
   hasActiveFilters?: boolean;
   onExport?: () => void | Promise<void>;
+  /** Supplying this turns the export button into an Excel / PDF menu. */
+  onExportPdf?: () => void | Promise<void>;
   isExporting?: boolean;
   exportDisabled?: boolean;
   exportLabel?: string;
@@ -104,6 +111,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onClearFilters,
   hasActiveFilters,
   onExport,
+  onExportPdf,
   isExporting,
   exportDisabled,
   exportLabel,
@@ -111,6 +119,23 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   className,
 }) => {
   const theme = useTheme();
+
+  // One anchor for all three export buttons: only one of them is on screen at
+  // a given breakpoint. Without a PDF handler the button stays a direct click.
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+  const hasExportMenu = Boolean(onExport && onExportPdf);
+  const resolvedExportLabel = exportLabel || (hasExportMenu ? 'Export' : 'Export Excel');
+  const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (hasExportMenu) {
+      setExportMenuAnchor(event.currentTarget);
+      return;
+    }
+    void onExport?.();
+  };
+  const runExport = (handler?: () => void | Promise<void>) => {
+    setExportMenuAnchor(null);
+    void handler?.();
+  };
 
   const isPillSelected = (id: string): boolean => {
     if (activePillIds !== undefined) {
@@ -648,7 +673,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <Button
               variant="outlined"
               size="small"
-              onClick={onExport}
+              onClick={handleExportClick}
+              endIcon={
+                hasExportMenu && !isExporting ? (
+                  <ExpandMoreRoundedIcon sx={{ fontSize: '18px !important' }} />
+                ) : undefined
+              }
               disabled={exportDisabled || isExporting}
               startIcon={
                 isExporting ? (
@@ -729,7 +759,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <Button
                 variant="outlined"
                 size="small"
-                onClick={onExport}
+                onClick={handleExportClick}
+                endIcon={
+                  hasExportMenu && !isExporting ? (
+                    <ExpandMoreRoundedIcon sx={{ fontSize: '18px !important' }} />
+                  ) : undefined
+                }
                 disabled={exportDisabled || isExporting}
                 startIcon={
                   isExporting ? (
@@ -757,7 +792,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   },
                 }}
               >
-                {exportLabel || 'Export Excel'}
+                {resolvedExportLabel}
               </Button>
             )}
 
@@ -823,7 +858,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               variant="outlined"
               size="small"
               fullWidth
-              onClick={onExport}
+              onClick={handleExportClick}
+              endIcon={
+                hasExportMenu && !isExporting ? (
+                  <ExpandMoreRoundedIcon sx={{ fontSize: '18px !important' }} />
+                ) : undefined
+              }
               disabled={exportDisabled || isExporting}
               startIcon={
                 isExporting ? (
@@ -848,12 +888,35 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 },
               }}
             >
-              {exportLabel || 'Export Excel'}
+              {resolvedExportLabel}
             </Button>
           )}
 
           {extraAction && <Box sx={{ width: '100%' }}>{extraAction}</Box>}
         </Box>
+      )}
+
+      {hasExportMenu && (
+        <Menu
+          anchorEl={exportMenuAnchor}
+          open={Boolean(exportMenuAnchor)}
+          onClose={() => setExportMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={() => runExport(onExport)}>
+            <ListItemIcon>
+              <TableChartRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Excel (.xlsx)
+          </MenuItem>
+          <MenuItem onClick={() => runExport(onExportPdf)}>
+            <ListItemIcon>
+              <PictureAsPdfRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            PDF (.pdf)
+          </MenuItem>
+        </Menu>
       )}
     </Box>
   );

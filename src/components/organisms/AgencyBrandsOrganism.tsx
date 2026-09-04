@@ -16,7 +16,13 @@ import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { DataTable, DataTableColumn, FilterBar, CreateBrandDialog, OverviewDrawer } from '@molecules';
+import {
+  DataTable,
+  DataTableColumn,
+  FilterBar,
+  CreateBrandDialog,
+  OverviewDrawer,
+} from '@molecules';
 import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
@@ -251,7 +257,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'agency_brands',
     sheetName: 'Brands',
     columns: columns as Array<ExcelColumnConfig<BrandResponse>>,
@@ -278,8 +284,12 @@ export const AgencyBrandsOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={handleOpenCreate}
         >
-          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Add</Box>
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Add Brand</Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            Add
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            Add Brand
+          </Box>
         </Button>
       }
     >
@@ -292,6 +302,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
           }}
           searchPlaceholder="Search by brand name or industry"
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalBrands === 0}
         />
@@ -374,10 +385,18 @@ export const AgencyBrandsOrganism: React.FC = () => {
                   title: 'Contact Details',
                   fields: [
                     { label: 'Contact Person', value: selectedBrand.contactPerson || '—' },
-                    { label: 'Contact Email', value: selectedBrand.contactEmail || '—', copyable: true },
+                    {
+                      label: 'Contact Email',
+                      value: selectedBrand.contactEmail || '—',
+                      copyable: true,
+                    },
                     { label: 'Contact Phone', value: selectedBrand.contactPhone || '—' },
                     { label: 'City', value: selectedBrand.city || '—' },
-                    { label: 'Office Address', value: selectedBrand.address || '—', fullWidth: true },
+                    {
+                      label: 'Office Address',
+                      value: selectedBrand.address || '—',
+                      fullWidth: true,
+                    },
                   ],
                 },
               ]

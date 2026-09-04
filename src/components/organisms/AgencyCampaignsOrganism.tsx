@@ -8,8 +8,21 @@ import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, CreateCampaignDialog } from '@molecules';
 import { apiClient, useAgencyCampaigns, useAgencyBrands, useCreateCampaign } from '@api';
-import { CampaignResponse, CreateCampaignRequest, CampaignStatusEnum, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import {
+  CampaignResponse,
+  CreateCampaignRequest,
+  CampaignStatusEnum,
+  PaginatedResult,
+} from '@contracts';
+import {
+  useAuth,
+  useDebounce,
+  useEnumPills,
+  useToast,
+  useViewFilters,
+  usePillCode,
+  useTableExport,
+} from '@hooks';
 import { ExcelColumnConfig } from '@utils';
 
 export const AgencyCampaignsOrganism: React.FC = () => {
@@ -137,7 +150,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     return res.data.items || [];
   };
 
-  const { exportExcel, isExporting } = useTableExport({
+  const { exportExcel, exportPdf, isExporting } = useTableExport({
     filename: 'agency_campaigns',
     sheetName: 'Campaigns',
     columns: columns as Array<ExcelColumnConfig<CampaignResponse>>,
@@ -164,8 +177,12 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>New</Box>
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>New Campaign</Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            New
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            New Campaign
+          </Box>
         </Button>
       }
     >
@@ -181,6 +198,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
           onSelectChange={setSelectedBrand}
           selectLabel="Brand"
           onExport={exportExcel}
+          onExportPdf={exportPdf}
           isExporting={isExporting}
           exportDisabled={totalCampaigns === 0}
         />

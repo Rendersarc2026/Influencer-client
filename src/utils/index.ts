@@ -47,5 +47,7 @@ export * from './sound.utils';
 
 export * from './notification.utils';
 export * from './status-label';
+export * from './campaign-report-model';
 export * from './export-excel';
+export * from './export-pdf';
 export * from './er-calculator.utils';
