@@ -45,13 +45,26 @@ export const CreateBrandSchema = z.object({
 });
 export type CreateBrandRequest = z.infer<typeof CreateBrandSchema>;
 
-/** Ownership is fixed at creation, so it is absent here too. */
+/**
+ * Ownership is fixed at creation, so it is absent here.
+ *
+ * `contactEmail` is absent by design too: it doubles as the brand manager's
+ * login (see AgencyBrandUseCases.create, which provisions the BRAND user from
+ * it) and changing it on the brand row alone would desync the two. A request
+ * that carries it — e.g. one crafted past the UI — is rejected rather than
+ * silently dropped, so the caller gets a clear 400.
+ */
 export const UpdateBrandSchema = z.object({
   name: safeText(200).optional(),
   industry: safeText(120).optional(),
   contactPerson: personName(200).optional(),
   contactPhone: phone.optional(),
-  contactEmail: email.optional(),
+  contactEmail: z
+    .undefined({
+      invalid_type_error:
+        "A brand's login email is set when the account is created and cannot be changed.",
+    })
+    .optional(),
   website: httpUrl.optional(),
   address: safeText(400).optional(),
   city: safeText(120).optional(),

@@ -117,7 +117,16 @@ export const UpdateProfileSchema = z.object({
   address: safeText(400).optional(),
   city: safeText(120).optional(),
   contactPhone: phone.optional(),
-  contactEmail: email.optional(),
+  /**
+   * A login email is set once, when the account is provisioned, and is not
+   * self-editable — the org row and the user's credentials would drift apart.
+   * A payload that carries it is rejected rather than quietly ignored.
+   */
+  contactEmail: z
+    .undefined({
+      invalid_type_error: 'Your login email cannot be changed here.',
+    })
+    .optional(),
   regions: regionsArray,
   influencingRegions: regionsArray,
   influencer: UpdateInfluencerSchema.optional(),

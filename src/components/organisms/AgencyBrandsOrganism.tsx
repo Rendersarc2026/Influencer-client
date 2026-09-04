@@ -198,7 +198,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
   ) => {
     try {
       if (brandId) {
-        await updateBrandMutation.mutateAsync({ id: brandId, data });
+        await updateBrandMutation.mutateAsync({ id: brandId, data: data as UpdateBrandRequest });
         showSuccess('Brand updated successfully.');
       } else {
         await createBrandMutation.mutateAsync(data as CreateBrandRequest);

@@ -267,7 +267,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       return;
     }
 
-    const payload: CreateBrandRequest | UpdateBrandRequest = {
+    const base = {
       name: trimmedName,
       industry: industry.trim() || undefined,
       contactPerson: contactPerson.trim() || undefined,
@@ -277,9 +277,13 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       address: address.trim() || undefined,
       logoUrl: normalizeUrl(logoUrl),
       bio: bio.trim() || undefined,
-      // The login email is set at creation and not editable afterwards.
-      ...(isEdit ? { isActive } : { contactEmail: trimmedEmail }),
     };
+
+    // The contact email is the brand manager's login: collected only at
+    // creation, never sent on an edit — the server rejects it there too.
+    const payload: CreateBrandRequest | UpdateBrandRequest = isEdit
+      ? { ...base, isActive }
+      : { ...base, contactEmail: trimmedEmail };
 
     try {
       await onSubmit(payload, brandToEdit?.id);
@@ -543,37 +547,36 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
             />
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                label={isEdit ? 'Login / Contact Email' : 'Login / Contact Email *'}
-                value={contactEmail}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setContactEmail(val);
-                  if (emailError) {
-                    if (!val.trim()) setEmailError('Email is required');
-                    else setEmailError(validateEmail(val));
-                  }
-                }}
-                onBlur={() => {
-                  if (isEdit) return;
-                  if (!contactEmail.trim()) {
-                    setEmailError('Email is required');
-                  } else {
-                    setEmailError(validateEmail(contactEmail));
-                  }
-                }}
-                error={Boolean(emailError)}
-                helperText={
-                  emailError ||
-                  (isEdit
-                    ? "The brand manager's login email cannot be changed here"
-                    : 'Brand manager will use this email address to log in')
-                }
-                placeholder="e.g. manager@brand.com"
-                fullWidth
-                disabled={busy || isEdit}
-                sx={{ flex: 1 }}
-              />
+              {/* The contact email doubles as the brand manager's login and is
+                  fixed once the account exists, so it is only collected when the
+                  brand is created — never shown on the edit form. */}
+              {!isEdit && (
+                <TextField
+                  label="Login / Contact Email *"
+                  value={contactEmail}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setContactEmail(val);
+                    if (emailError) {
+                      if (!val.trim()) setEmailError('Email is required');
+                      else setEmailError(validateEmail(val));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!contactEmail.trim()) {
+                      setEmailError('Email is required');
+                    } else {
+                      setEmailError(validateEmail(contactEmail));
+                    }
+                  }}
+                  error={Boolean(emailError)}
+                  helperText={emailError || 'Brand manager will use this email address to log in'}
+                  placeholder="e.g. manager@brand.com"
+                  fullWidth
+                  disabled={busy}
+                  sx={{ flex: 1 }}
+                />
+              )}
 
               <Autocomplete
                 freeSolo
