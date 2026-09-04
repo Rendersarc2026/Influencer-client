@@ -25,6 +25,7 @@ import {
   getTierInfo,
   InfluencerTier,
   validatePhoneNumber,
+  validatePersonName,
 } from '@utils';
 
 export interface EditInfluencerDialogProps {
@@ -171,8 +172,13 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
     const trimmedName = name.trim();
     let hasFieldErr = false;
 
-    if (!trimmedName) {
-      setNameError('Influencer name is required');
+    const nameErr = validatePersonName(trimmedName, {
+      required: true,
+      fieldLabel: 'Influencer name',
+      max: 200,
+    });
+    if (nameErr) {
+      setNameError(nameErr);
       hasFieldErr = true;
     }
 
@@ -326,22 +332,31 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               label="Influencer Name *"
               value={name}
               onChange={(e) => {
-                const val = e.target.value;
+                const val = capitalizeWords(e.target.value);
                 setName(val);
-                if (val.trim()) {
-                  setNameError('');
+                if (nameError) {
+                  setNameError(
+                    validatePersonName(val, {
+                      required: true,
+                      fieldLabel: 'Influencer name',
+                      max: 200,
+                    }),
+                  );
+                } else if (/[\d\p{N}]/u.test(val)) {
+                  setNameError('Numbers are not allowed in name');
                 }
               }}
               onBlur={(e) => {
-                const val = e.target.value.trim();
-                if (!val) {
-                  setNameError('Influencer name is required');
-                } else {
-                  setNameError('');
-                }
+                setNameError(
+                  validatePersonName(e.target.value, {
+                    required: true,
+                    fieldLabel: 'Influencer name',
+                    max: 200,
+                  }),
+                );
               }}
               error={Boolean(nameError)}
-              helperText={nameError || undefined}
+              helperText={nameError || 'Required: Influencer full legal or professional name'}
               placeholder="e.g. Varsha, Neha Nazneen"
               fullWidth
               disabled={loading}

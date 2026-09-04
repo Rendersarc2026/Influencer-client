@@ -59,7 +59,7 @@ export const BrandHomeOrganism: React.FC = () => {
     },
     {
       id: 'timeline',
-      header: 'Timeline',
+      header: 'Timeline (DD/MM/YYYY)',
       type: 'text',
       accessor: (row) => {
         if (!row.startDate && !row.endDate) return 'Active';

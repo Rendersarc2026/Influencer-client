@@ -107,7 +107,15 @@ export const AcceptTermsOrganism: React.FC = () => {
         </IconButton>
 
         {/* Brand / Header Section */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3, textAlign: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            mb: 3,
+            textAlign: 'center',
+          }}
+        >
           <Box
             sx={{
               width: 52,
@@ -184,9 +192,9 @@ export const AcceptTermsOrganism: React.FC = () => {
               variant="caption"
               sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
             >
-              Influencers submit binding rates for campaign deliverables. Agencies manage and approve
-              client margins. Brand users review final agreed client rates. Rates and commercials are
-              strictly confidential and segregated by role.
+              Influencers submit binding rates for campaign deliverables. Agencies manage and
+              approve client margins. Brand users review final agreed client rates. Rates and
+              commercials are strictly confidential and segregated by role.
             </Typography>
           </Box>
 
@@ -217,8 +225,8 @@ export const AcceptTermsOrganism: React.FC = () => {
               variant="caption"
               sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
             >
-              Creators agree to deliver content aligned with agreed deadlines and guidelines. Payments
-              are disbursed following agency verification and brand approval.
+              Creators agree to deliver content aligned with agreed deadlines and guidelines.
+              Payments are disbursed following agency verification and brand approval.
             </Typography>
           </Box>
 
@@ -233,8 +241,8 @@ export const AcceptTermsOrganism: React.FC = () => {
               variant="caption"
               sx={{ color: theme.palette.tokens.textSecondary, display: 'block', lineHeight: 1.6 }}
             >
-              Users must represent metrics and deliverables truthfully. Fraudulent activity or artificial
-              engagement inflation is grounds for immediate account termination.
+              Users must represent metrics and deliverables truthfully. Fraudulent activity or
+              artificial engagement inflation is grounds for immediate account termination.
             </Typography>
           </Box>
         </Box>
@@ -252,8 +260,13 @@ export const AcceptTermsOrganism: React.FC = () => {
               mb: 2.5,
             }}
           >
-            <ErrorOutlineRoundedIcon sx={{ color: theme.palette.tokens.negative, fontSize: 20, flexShrink: 0 }} />
-            <Typography variant="body2" sx={{ color: theme.palette.tokens.negativeText, fontWeight: 600 }}>
+            <ErrorOutlineRoundedIcon
+              sx={{ color: theme.palette.tokens.negative, fontSize: 20, flexShrink: 0 }}
+            />
+            <Typography
+              variant="body2"
+              sx={{ color: theme.palette.tokens.negativeText, fontWeight: 600 }}
+            >
               {error}
             </Typography>
           </Box>
@@ -311,9 +324,20 @@ export const AcceptTermsOrganism: React.FC = () => {
         </Box>
 
         {/* Security assurance */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75, mt: 2.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 0.75,
+            mt: 2.5,
+          }}
+        >
           <LockOutlinedIcon sx={{ fontSize: 14, color: theme.palette.tokens.textSecondary }} />
-          <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}>
+          <Typography
+            variant="caption"
+            sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11px' }}
+          >
             Protected by Fetch platform security & role-based isolation
           </Typography>
         </Box>

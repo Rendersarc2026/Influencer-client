@@ -32,7 +32,13 @@ import { UpdateProfileSchema, CategoryTypeCode } from '@contracts';
 import { z } from 'zod';
 import { useAuth, useToast } from '@hooks';
 import { getRoleDashboardPath } from '@routes/navConfig';
-import { capitalizeWords, parseShorthandNumber, formatShorthandNumber } from '@utils';
+import {
+  capitalizeWords,
+  parseShorthandNumber,
+  formatShorthandNumber,
+  validatePersonName,
+  validateBrandName,
+} from '@utils';
 import { BrandLogo } from '@atoms';
 
 export const CompleteProfileOrganism: React.FC = () => {
@@ -82,6 +88,38 @@ export const CompleteProfileOrganism: React.FC = () => {
     e.preventDefault();
     setError('');
     setFieldErrors({});
+
+    const fnErr = validatePersonName(fullName, {
+      required: true,
+      fieldLabel: 'Full Name',
+      max: 120,
+    });
+    if (fnErr) {
+      setFieldErrors({ fullName: fnErr });
+      return;
+    }
+
+    if (isBrand) {
+      const dnErr = validateBrandName(displayName, {
+        required: true,
+        fieldLabel: 'Brand Display Name',
+        max: 120,
+      });
+      if (dnErr) {
+        setFieldErrors({ displayName: dnErr });
+        return;
+      }
+    } else if (displayName.trim()) {
+      const dnErr = validatePersonName(displayName, {
+        required: false,
+        fieldLabel: 'Display Name',
+        max: 120,
+      });
+      if (dnErr) {
+        setFieldErrors({ displayName: dnErr });
+        return;
+      }
+    }
 
     const normalizeUrl = (val: string): string | undefined => {
       const trimmed = val.trim();
@@ -317,9 +355,43 @@ export const CompleteProfileOrganism: React.FC = () => {
                 <TextField
                   label="Full Name *"
                   value={fullName}
-                  onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                  onChange={(e) => {
+                    const val = capitalizeWords(e.target.value);
+                    setFullName(val);
+                    if (fieldErrors.fullName) {
+                      const err = validatePersonName(val, {
+                        required: true,
+                        fieldLabel: 'Full Name',
+                        max: 120,
+                      });
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        if (err) next.fullName = err;
+                        else delete next.fullName;
+                        return next;
+                      });
+                    } else if (/[\d\p{N}]/u.test(val)) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        fullName: 'Numbers are not allowed in name',
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = validatePersonName(e.target.value, {
+                      required: true,
+                      fieldLabel: 'Full Name',
+                      max: 120,
+                    });
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      if (err) next.fullName = err;
+                      else delete next.fullName;
+                      return next;
+                    });
+                  }}
                   error={Boolean(fieldErrors.fullName)}
-                  helperText={fieldErrors.fullName}
+                  helperText={fieldErrors.fullName || undefined}
                   fullWidth
                   autoFocus
                   disabled={loading}
@@ -338,9 +410,54 @@ export const CompleteProfileOrganism: React.FC = () => {
                   label={isBrand ? 'Brand Display Name *' : 'Display Name'}
                   value={displayName}
                   placeholder={isBrand ? 'e.g. Jos Alukkas' : 'e.g. Alex Influencer'}
-                  onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
+                  onChange={(e) => {
+                    const val = capitalizeWords(e.target.value);
+                    setDisplayName(val);
+                    if (fieldErrors.displayName) {
+                      const err = isBrand
+                        ? validateBrandName(val, {
+                            required: true,
+                            fieldLabel: 'Brand Display Name',
+                            max: 120,
+                          })
+                        : val.trim()
+                          ? validatePersonName(val, {
+                              required: false,
+                              fieldLabel: 'Display Name',
+                              max: 120,
+                            })
+                          : '';
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        if (err) next.displayName = err;
+                        else delete next.displayName;
+                        return next;
+                      });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const err = isBrand
+                      ? validateBrandName(e.target.value, {
+                          required: true,
+                          fieldLabel: 'Brand Display Name',
+                          max: 120,
+                        })
+                      : e.target.value.trim()
+                        ? validatePersonName(e.target.value, {
+                            required: false,
+                            fieldLabel: 'Display Name',
+                            max: 120,
+                          })
+                        : '';
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      if (err) next.displayName = err;
+                      else delete next.displayName;
+                      return next;
+                    });
+                  }}
                   error={Boolean(fieldErrors.displayName)}
-                  helperText={fieldErrors.displayName}
+                  helperText={fieldErrors.displayName || undefined}
                   fullWidth
                   disabled={loading}
                   InputProps={{

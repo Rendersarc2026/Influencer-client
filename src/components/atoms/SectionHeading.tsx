@@ -44,7 +44,9 @@ export const SectionHeading: React.FC<SectionHeadingProps> = ({
         )}
       </Box>
       {action && (
-        <Box sx={{ flexShrink: 0, ml: { xs: 0, sm: 2 }, alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
+        <Box
+          sx={{ flexShrink: 0, ml: { xs: 0, sm: 2 }, alignSelf: { xs: 'flex-start', sm: 'auto' } }}
+        >
           {action}
         </Box>
       )}

@@ -96,8 +96,8 @@ export const BrandPaymentsOrganism: React.FC = () => {
     },
     {
       id: 'raisedOn',
-      header: 'Raised Date',
-      type: 'text',
+      header: 'Raised Date (DD/MM/YYYY)',
+      type: 'date',
       accessor: (row) =>
         row.raisedOn ? new Date(row.raisedOn).toLocaleDateString('en-IN') : 'Recent',
     },

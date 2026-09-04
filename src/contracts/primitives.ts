@@ -44,21 +44,14 @@ export function safeText(max: number, min = 1) {
  * A human name: the contact person on a brand, a creator's own name, the name
  * on a profile.
  *
- * `safeText` alone is length-and-control-bytes only, so it accepts "1233" and
- * "-----" — which is how a brand came to display a number as its contact
- * person, on the profile header and in the account menu. Requiring at least one
- * letter is the strictest rule that stays correct across scripts: it keeps
- * "Jose", "Anne-Marie", "O'Brien" and non-Latin names, and rejects values made
- * only of digits, spaces and punctuation.
- *
- * Digits are still allowed *within* a name — the rule is "contains a letter",
- * not "letters only", so a suffix or a transliterated form is not blocked.
+ * Rejects values containing numbers or invalid symbols. Requires letters across
+ * scripts, allowing spaces and standard name punctuation (hyphens, apostrophes, periods).
  */
 export function personName(max: number, min = 1) {
-  return safeText(max, min).refine(
-    (v) => /\p{L}/u.test(v),
-    'Must contain at least one letter',
-  );
+  return safeText(max, min)
+    .refine((v) => !/[\d\p{N}]/u.test(v), 'Numbers are not allowed')
+    .refine((v) => /^[\p{L}\p{M}\s'’‘.-]+$/u.test(v), 'Must contain only letters')
+    .refine((v) => /\p{L}/u.test(v), 'Must contain at least one letter');
 }
 
 /** Multi-line free text (notes, comments, bios). Newlines and tabs allowed. */
@@ -273,9 +266,7 @@ export function multiStringQuery(maxItem = 120, maxTotal = 2000) {
           .map((s) => s.trim())
           .filter(Boolean);
       }
-      return val
-        .map((s) => s.trim())
-        .filter(Boolean);
+      return val.map((s) => s.trim()).filter(Boolean);
     })
     .optional();
 }
@@ -284,14 +275,21 @@ export function multiStringQuery(maxItem = 120, maxTotal = 2000) {
  * Array of validated strings (e.g. influencing regions).
  * Accepts array of strings or comma-separated string, bounds items to safe strings.
  */
-export const regionsArray = z.preprocess((val) => {
-  if (val === undefined || val === null || val === '') return undefined;
-  if (Array.isArray(val)) return val.map((s) => (typeof s === 'string' ? s.trim() : s)).filter(Boolean);
-  if (typeof val === 'string') {
-    return val.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
-  }
-  return val;
-}, z.array(safeText(120)).max(50).optional());
+export const regionsArray = z.preprocess(
+  (val) => {
+    if (val === undefined || val === null || val === '') return undefined;
+    if (Array.isArray(val))
+      return val.map((s) => (typeof s === 'string' ? s.trim() : s)).filter(Boolean);
+    if (typeof val === 'string') {
+      return val
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return val;
+  },
+  z.array(safeText(120)).max(50).optional(),
+);
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),

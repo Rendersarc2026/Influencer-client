@@ -4,4 +4,3 @@ import { ProfileOrganism } from '@organisms';
 export const InfluencerProfilePage: React.FC = () => {
   return <ProfileOrganism />;
 };
-

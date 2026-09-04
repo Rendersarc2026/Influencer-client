@@ -1,4 +1,9 @@
-import { formatCellValueForExport, type ExportToExcelOptions } from './export-excel';
+import {
+  formatCellValueForExport,
+  isSerialColumn,
+  resolveExportColumns,
+  type ExportToExcelOptions,
+} from './export-excel';
 import {
   buildCampaignReportModel,
   buildBrandCampaignReportModel,
@@ -78,10 +83,13 @@ function renderTable(
   fontSize: number,
 ): void {
   // A URL is one unbreakable word, so left to itself autoTable asks for a
-  // column wider than the page. Capping it makes the link wrap instead.
+  // column wider than the page. Capping it makes the link wrap instead. The
+  // row number is pinned narrow for the opposite reason — autoTable would
+  // otherwise hand it a share of the page it has no use for.
   const columnStyles: Record<number, { cellWidth: number }> = {};
   table.headers.forEach((header, index) => {
     if (/URL/i.test(header)) columnStyles[index] = { cellWidth: 140 };
+    else if (/^(Sr No|#)$/i.test(header.trim())) columnStyles[index] = { cellWidth: 26 };
   });
 
   autoTable(doc, {
@@ -258,10 +266,10 @@ export async function exportTableToPdf<T extends Record<string, unknown>>({
   columns,
   rows,
 }: ExportToExcelOptions<T>): Promise<void> {
-  // Interactive columns carry no value on a page, same as in the workbook.
-  const exportableColumns = columns.filter(
-    (col) => col.type !== 'actions' && col.type !== 'star' && col.header,
-  );
+  // Same resolution the workbook uses — interactive columns dropped, a row
+  // number prepended — so a list exported as PDF matches its .xlsx column for
+  // column.
+  const exportableColumns = resolveExportColumns(columns);
 
   if (exportableColumns.length === 0) {
     throw new Error('No exportable columns found');
@@ -269,8 +277,13 @@ export async function exportTableToPdf<T extends Record<string, unknown>>({
 
   const [{ jsPDF }, autoTable] = await loadPdfKit();
 
+  // The row number is pinned to a fixed narrow width, so it must not be what
+  // tips a table into landscape or a smaller font — page geometry is chosen
+  // off the columns that actually carry content.
+  const contentColumnCount = exportableColumns.filter((col) => !isSerialColumn(col)).length;
+
   const doc = new jsPDF({
-    orientation: exportableColumns.length > 6 ? 'landscape' : 'portrait',
+    orientation: contentColumnCount > 6 ? 'landscape' : 'portrait',
     unit: 'pt',
     format: 'a4',
   });
@@ -310,7 +323,7 @@ export async function exportTableToPdf<T extends Record<string, unknown>>({
     autoTable,
     table,
     MARGIN + 44,
-    exportableColumns.length > 12 ? 6.5 : exportableColumns.length > 8 ? 7.5 : 8.5,
+    contentColumnCount > 12 ? 6.5 : contentColumnCount > 8 ? 7.5 : 8.5,
   );
 
   stampPageNumbers(doc, sheetName, pageWidth);

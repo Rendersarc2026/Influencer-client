@@ -10,7 +10,17 @@ import {
 export interface ExcelColumnConfig<T = Record<string, unknown>> {
   id: string;
   header: string;
-  type?: 'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom' | 'index';
+  type?:
+    | 'text'
+    | 'entity'
+    | 'money'
+    | 'delta'
+    | 'status'
+    | 'star'
+    | 'actions'
+    | 'custom'
+    | 'index'
+    | 'date';
   accessor?: keyof T | ((row: T) => unknown);
   subAccessor?: keyof T | ((row: T) => unknown);
   statusCategory?: StatusCategory;
@@ -50,6 +60,66 @@ export function sanitizeExcelCell<V>(cell: V): V {
  */
 export function sanitizeAoa<T>(aoa: T[][]): T[][] {
   return aoa.map((row) => row.map((cell) => sanitizeExcelCell(cell) as T));
+}
+
+/** The column ids DataTable and the export writers all treat as a row number. */
+export function isSerialColumn<T>(col: ExcelColumnConfig<T>): boolean {
+  return (
+    col.type === 'index' ||
+    col.id === 'srNo' ||
+    col.id === 'index' ||
+    col.id === 'sNo' ||
+    col.id === '#' ||
+    col.id === 'rowNumber'
+  );
+}
+
+/**
+ * The columns an export actually writes.
+ *
+ * Interactive columns carry nothing in a workbook or on a page, so they are
+ * dropped. A serial number is prepended when the caller has not configured one:
+ * `DataTable` adds the same column on screen, and a list that loses it on the
+ * way out leaves the reader with no way to cite a single record out of several
+ * hundred rows.
+ */
+export function resolveExportColumns<T extends Record<string, unknown>>(
+  columns: Array<ExcelColumnConfig<T>>,
+): Array<ExcelColumnConfig<T>> {
+  const exportable = columns
+    .filter((col) => col.type !== 'actions' && col.type !== 'star' && col.header)
+    .map((col) => {
+      const headerText = col.header || '';
+      const headerLower = headerText.toLowerCase();
+      const idLower = (col.id || '').toLowerCase();
+      const isDateCol =
+        col.type === 'date' ||
+        headerLower.includes('date') ||
+        headerLower.includes('timeline') ||
+        headerLower.includes('onboarded') ||
+        headerLower.includes('schedule') ||
+        idLower.includes('date') ||
+        idLower.includes('timeline') ||
+        idLower.includes('schedule') ||
+        idLower === 'createdon' ||
+        idLower === 'raisedon';
+
+      if (
+        isDateCol &&
+        headerText &&
+        !headerText.includes('DD/MM/YYYY') &&
+        !headerText.includes('dd/mm/yyyy')
+      ) {
+        return {
+          ...col,
+          header: `${headerText} (DD/MM/YYYY)`,
+        };
+      }
+      return col;
+    });
+
+  if (exportable.length === 0 || exportable.some(isSerialColumn)) return exportable;
+  return [{ id: 'srNo', header: 'Sr No', type: 'index' }, ...exportable];
 }
 
 /**
@@ -163,12 +233,25 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
     return mainStr || subStr || '—';
   }
 
-  if (value instanceof Date) {
-    return value.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+  if (col.type === 'date' || value instanceof Date) {
+    if (value instanceof Date) {
+      return value.toLocaleDateString('en-IN');
+    }
+    if (typeof value === 'string' && value.trim()) {
+      if (value.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(value)) {
+        const d = new Date(value);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('en-IN');
+        }
+      }
+      return value;
+    }
+    if (typeof value === 'number') {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-IN');
+      }
+    }
   }
 
   if (value === null || value === undefined) {
@@ -194,10 +277,7 @@ export async function exportTableToExcel<T extends Record<string, unknown>>({
   // Dynamically import xlsx on demand (keeps initial bundle lightweight)
   const XLSX = await import('xlsx');
 
-  // Filter out interactive/action columns
-  const exportableColumns = columns.filter(
-    (col) => col.type !== 'actions' && col.type !== 'star' && col.header,
-  );
+  const exportableColumns = resolveExportColumns(columns);
 
   if (exportableColumns.length === 0) {
     throw new Error('No exportable columns found');
@@ -310,6 +390,7 @@ const BRAND_PERFORMANCE_COL_WIDTHS = [
 ];
 
 const POST_SHEET_COL_WIDTHS = [
+  8, // Sr No
   22, // Influencer / Creator Name
   8, // Post #
   45, // Post URL

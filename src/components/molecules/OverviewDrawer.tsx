@@ -201,7 +201,9 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                     }}
                   >
                     {avatarIcon ||
-                      (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
+                      (avatarText
+                        ? avatarText.charAt(0).toUpperCase()
+                        : title.charAt(0).toUpperCase())}
                   </Avatar>
                 </IconButton>
               ) : (
@@ -219,7 +221,9 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                   }}
                 >
                   {avatarIcon ||
-                    (avatarText ? avatarText.charAt(0).toUpperCase() : title.charAt(0).toUpperCase())}
+                    (avatarText
+                      ? avatarText.charAt(0).toUpperCase()
+                      : title.charAt(0).toUpperCase())}
                 </Avatar>
               )}
             </Tooltip>
@@ -388,7 +392,13 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
             {section.title && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                 {section.icon && (
-                  <Box sx={{ color: theme.palette.tokens.accentText, display: 'flex', alignItems: 'center' }}>
+                  <Box
+                    sx={{
+                      color: theme.palette.tokens.accentText,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
                     {section.icon}
                   </Box>
                 )}
@@ -448,7 +458,13 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                         <StatusChip category={field.statusCategory} code={field.value} />
                       ) : field.isMoney ? (
                         <MoneyText
-                          amount={field.amount !== undefined ? field.amount : (typeof field.value === 'number' || typeof field.value === 'string' ? field.value : null)}
+                          amount={
+                            field.amount !== undefined
+                              ? field.amount
+                              : typeof field.value === 'number' || typeof field.value === 'string'
+                                ? field.value
+                                : null
+                          }
                           currency={field.currency || 'INR'}
                           variant="body2"
                           color={field.color}
@@ -481,7 +497,9 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                             wordBreak: 'break-word',
                           }}
                         >
-                          {field.value !== null && field.value !== undefined && field.value !== '' ? field.value : '—'}
+                          {field.value !== null && field.value !== undefined && field.value !== ''
+                            ? field.value
+                            : '—'}
                         </Typography>
                       )}
 
@@ -530,9 +548,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               key={aIdx}
               variant={act.variant || (aIdx === 0 ? 'contained' : 'outlined')}
               color={act.color || 'primary'}
-              startIcon={
-                act.loading ? <CircularProgress size={16} color="inherit" /> : act.icon
-              }
+              startIcon={act.loading ? <CircularProgress size={16} color="inherit" /> : act.icon}
               disabled={act.disabled || act.loading}
               onClick={act.onClick}
               sx={{

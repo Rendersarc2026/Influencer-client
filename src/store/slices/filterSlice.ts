@@ -70,34 +70,22 @@ export const filterSlice = createSlice({
   name: 'filters',
   initialState,
   reducers: {
-    setFilterSearch: (
-      state,
-      action: PayloadAction<{ view: FilterViewKey; search: string }>,
-    ) => {
+    setFilterSearch: (state, action: PayloadAction<{ view: FilterViewKey; search: string }>) => {
       const viewState = ensureViewState(state, action.payload.view);
       viewState.search = action.payload.search;
       viewState.page = 0;
     },
-    setFilterPill: (
-      state,
-      action: PayloadAction<{ view: FilterViewKey; pill: string }>,
-    ) => {
+    setFilterPill: (state, action: PayloadAction<{ view: FilterViewKey; pill: string }>) => {
       const viewState = ensureViewState(state, action.payload.view);
       viewState.activePill = action.payload.pill;
       viewState.page = 0;
     },
-    setFilterSelect: (
-      state,
-      action: PayloadAction<{ view: FilterViewKey; select: string }>,
-    ) => {
+    setFilterSelect: (state, action: PayloadAction<{ view: FilterViewKey; select: string }>) => {
       const viewState = ensureViewState(state, action.payload.view);
       viewState.selectedSelect = action.payload.select;
       viewState.page = 0;
     },
-    setFilterPage: (
-      state,
-      action: PayloadAction<{ view: FilterViewKey; page: number }>,
-    ) => {
+    setFilterPage: (state, action: PayloadAction<{ view: FilterViewKey; page: number }>) => {
       const viewState = ensureViewState(state, action.payload.view);
       viewState.page = action.payload.page;
     },

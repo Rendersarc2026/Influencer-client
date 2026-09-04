@@ -25,4 +25,3 @@ export * from './ChatOrganism';
 export * from './ProfileOrganism';
 export * from './InfluencerCampaignsOrganism';
 export * from './NotFoundOrganism';
-

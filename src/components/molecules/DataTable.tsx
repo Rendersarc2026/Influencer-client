@@ -28,7 +28,16 @@ import { MoneyText, DeltaBadge, StatusChip, StatusCategory, EmptyState, BusyOver
 import { safeImageUrl, exportTableToExcel, exportTableToPdf, ExcelColumnConfig } from '@utils';
 
 export type ColumnType =
-  'text' | 'entity' | 'money' | 'delta' | 'status' | 'star' | 'actions' | 'custom' | 'index';
+  | 'text'
+  | 'entity'
+  | 'money'
+  | 'delta'
+  | 'status'
+  | 'star'
+  | 'actions'
+  | 'custom'
+  | 'index'
+  | 'date';
 
 export interface DataTableColumn<T> {
   id: string;
@@ -154,8 +163,38 @@ export function DataTable<T extends Record<string, unknown>>({
   }, [columns]);
 
   const effectiveColumns = useMemo<Array<DataTableColumn<T>>>(() => {
+    const formattedColumns = columns.map((col) => {
+      const headerText = col.header || '';
+      const headerLower = headerText.toLowerCase();
+      const idLower = (col.id || '').toLowerCase();
+      const isDateCol =
+        col.type === 'date' ||
+        headerLower.includes('date') ||
+        headerLower.includes('timeline') ||
+        headerLower.includes('onboarded') ||
+        headerLower.includes('schedule') ||
+        idLower.includes('date') ||
+        idLower.includes('timeline') ||
+        idLower.includes('schedule') ||
+        idLower === 'createdon' ||
+        idLower === 'raisedon';
+
+      if (
+        isDateCol &&
+        headerText &&
+        !headerText.includes('DD/MM/YYYY') &&
+        !headerText.includes('dd/mm/yyyy')
+      ) {
+        return {
+          ...col,
+          header: `${headerText} (DD/MM/YYYY)`,
+        };
+      }
+      return col;
+    });
+
     if (!showRowNumbers || hasExplicitRowNumber) {
-      return columns;
+      return formattedColumns;
     }
     const indexCol: DataTableColumn<T> = {
       id: 'srNo',
@@ -165,7 +204,7 @@ export function DataTable<T extends Record<string, unknown>>({
       width: 56,
       minWidth: 48,
     };
-    return [indexCol, ...columns];
+    return [indexCol, ...formattedColumns];
   }, [columns, showRowNumbers, hasExplicitRowNumber, rowNumberHeader]);
 
   const isControlled = totalRows !== undefined;
@@ -436,6 +475,50 @@ export function DataTable<T extends Record<string, unknown>>({
 
       case 'actions':
         return wrapActions(column, value as ReactNode);
+
+      case 'date': {
+        if (!value) {
+          return (
+            <Typography
+              variant="body1"
+              sx={{ color: theme.palette.tokens.textSecondary, fontWeight: 500 }}
+            >
+              —
+            </Typography>
+          );
+        }
+        let formattedDate = displayValue;
+        if (value instanceof Date) {
+          formattedDate = value.toLocaleDateString('en-IN');
+        } else if (typeof value === 'string') {
+          if (value.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(value)) {
+            const d = new Date(value);
+            if (!isNaN(d.getTime())) {
+              formattedDate = d.toLocaleDateString('en-IN');
+            }
+          }
+        } else if (typeof value === 'number') {
+          const d = new Date(value);
+          if (!isNaN(d.getTime())) {
+            formattedDate = d.toLocaleDateString('en-IN');
+          }
+        }
+        return (
+          <Box>
+            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+              {formattedDate}
+            </Typography>
+            {displaySubValue && (
+              <Typography
+                variant="caption"
+                sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+              >
+                {displaySubValue}
+              </Typography>
+            )}
+          </Box>
+        );
+      }
 
       case 'text':
       default:

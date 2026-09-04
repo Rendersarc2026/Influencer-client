@@ -36,7 +36,9 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
           boxSizing: 'border-box',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}
+        >
           <Skeleton animation="wave" variant="text" width="55%" height={18} />
           <Skeleton
             animation="wave"
@@ -120,8 +122,16 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
           >
             {/* Creator Bio Shimmer */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flex: 1 }}>
-              <Skeleton animation="wave" variant="circular" width={48} height={48} sx={{ flexShrink: 0 }} />
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, flex: 1 }}>
+              <Skeleton
+                animation="wave"
+                variant="circular"
+                width={48}
+                height={48}
+                sx={{ flexShrink: 0 }}
+              />
+              <Box
+                sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0, flex: 1 }}
+              >
                 <Skeleton animation="wave" variant="text" width={140} height={20} />
                 <Skeleton animation="wave" variant="text" width={220} height={16} />
                 <Skeleton
@@ -159,7 +169,11 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
               variant="rounded"
               width={140}
               height={40}
-              sx={{ borderRadius: `${theme.customRadii.inner}px`, flexShrink: 0, alignSelf: { xs: 'stretch', sm: 'center' } }}
+              sx={{
+                borderRadius: `${theme.customRadii.inner}px`,
+                flexShrink: 0,
+                alignSelf: { xs: 'stretch', sm: 'center' },
+              }}
             />
           </Card>
         ))}
@@ -182,7 +196,9 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
           overflow: 'hidden',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}
+        >
           <Skeleton animation="wave" variant="text" width={180} height={28} />
           <Skeleton
             animation="wave"
@@ -219,14 +235,38 @@ export const LoadingBlock: React.FC<LoadingBlockProps> = ({
                   py: 1,
                 }}
               >
-                <Skeleton animation="wave" variant="text" width={24} height={18} sx={{ flexShrink: 0 }} />
-                <Skeleton animation="wave" variant="circular" width={34} height={34} sx={{ flexShrink: 0 }} />
+                <Skeleton
+                  animation="wave"
+                  variant="text"
+                  width={24}
+                  height={18}
+                  sx={{ flexShrink: 0 }}
+                />
+                <Skeleton
+                  animation="wave"
+                  variant="circular"
+                  width={34}
+                  height={34}
+                  sx={{ flexShrink: 0 }}
+                />
                 <Box sx={{ width: '25%', flexShrink: 0 }}>
                   <Skeleton animation="wave" variant="text" width="90%" height={18} />
                   <Skeleton animation="wave" variant="text" width="60%" height={12} />
                 </Box>
-                <Skeleton animation="wave" variant="text" width="20%" height={18} sx={{ flexShrink: 0 }} />
-                <Skeleton animation="wave" variant="text" width="15%" height={18} sx={{ flexShrink: 0 }} />
+                <Skeleton
+                  animation="wave"
+                  variant="text"
+                  width="20%"
+                  height={18}
+                  sx={{ flexShrink: 0 }}
+                />
+                <Skeleton
+                  animation="wave"
+                  variant="text"
+                  width="15%"
+                  height={18}
+                  sx={{ flexShrink: 0 }}
+                />
                 <Skeleton
                   animation="wave"
                   variant="rounded"

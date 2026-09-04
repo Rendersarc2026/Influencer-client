@@ -69,7 +69,6 @@ export const InfluencerHomeOrganism: React.FC = () => {
   const [activeRateDialogMapper, setActiveRateDialogMapper] =
     useState<InfluencerMapperResponse | null>(null);
 
-
   // The set comes from the registry; only the wording is creator-facing. This
   // also restores REVISION_REQUESTED, which the hardcoded list omitted — a
   // creator whose rate was sent back had no way to filter for it.
@@ -99,9 +98,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
       header: 'Campaign Assignment',
       type: 'entity',
       accessor: (row) =>
-        row.campaignName ||
-        row.campaign?.name ||
-        `Campaign #${row.campaignId.slice(0, 8)}`,
+        row.campaignName || row.campaign?.name || `Campaign #${row.campaignId.slice(0, 8)}`,
       subAccessor: (row) => {
         const parts: string[] = [];
         if (row.brandName) parts.push(row.brandName);

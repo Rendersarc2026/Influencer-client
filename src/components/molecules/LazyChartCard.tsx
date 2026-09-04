@@ -36,11 +36,7 @@ const ChartCardLoading: React.FC<{ height: number }> = ({ height }) => {
         justifyContent: 'center',
       }}
     >
-      <CircularProgress
-        size={32}
-        thickness={4}
-        sx={{ color: theme.palette.tokens.accent }}
-      />
+      <CircularProgress size={32} thickness={4} sx={{ color: theme.palette.tokens.accent }} />
     </Box>
   );
 };

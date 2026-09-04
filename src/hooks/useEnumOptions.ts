@@ -19,10 +19,7 @@ export interface EnumOption {
  *
  * `overrides` lets a screen re-word a single entry without re-listing the set.
  */
-export function useEnumOptions(
-  category: string,
-  overrides?: Record<string, string>,
-): EnumOption[] {
+export function useEnumOptions(category: string, overrides?: Record<string, string>): EnumOption[] {
   const { data } = useEnumCodes(category);
 
   return useMemo(

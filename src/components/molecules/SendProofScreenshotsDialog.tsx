@@ -26,13 +26,7 @@ import { useCreateOrFindChat, uploadChatAttachment, sendMessageApi } from '@api'
 import { useToast } from '@hooks';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 export interface SendProofScreenshotsDialogProps {
   open: boolean;
@@ -262,16 +256,16 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
         const uploaded = await uploadChatAttachment(chat.id, file);
 
         // Compose body with auto tags
-        const tagHeader = totalFiles > 1
-          ? `${tagLabel} (Proof ${i + 1}/${totalFiles})`
-          : tagLabel;
+        const tagHeader = totalFiles > 1 ? `${tagLabel} (Proof ${i + 1}/${totalFiles})` : tagLabel;
         const hashtags = autoTags.join(' ');
         const customNote = note.trim();
 
         const bodyParts = [
           tagHeader,
           hashtags,
-          customNote ? `\nNote: ${customNote}` : '\nInstagram Insights: Audience & Top Locations proof screenshot',
+          customNote
+            ? `\nNote: ${customNote}`
+            : '\nInstagram Insights: Audience & Top Locations proof screenshot',
         ];
         const messageBody = bodyParts.filter(Boolean).join('\n');
 
@@ -417,7 +411,9 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <LocationOnRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.accent }} />
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {normalizedRegion ? `Recorded Reach: ${normalizedRegion}` : 'Audience Location Proof'}
+                {normalizedRegion
+                  ? `Recorded Reach: ${normalizedRegion}`
+                  : 'Audience Location Proof'}
               </Typography>
             </Box>
             {displayName && (
@@ -435,13 +431,17 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
           </Box>
 
           {deliverables && (
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+            >
               <strong>Deliverables:</strong> {deliverables}
             </Typography>
           )}
 
           <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-            Please attach screenshots from <strong>Insights &gt; Audience &gt; Locations</strong> to verify your reach in {normalizedRegion || 'the campaign region'}.
+            Please attach screenshots from <strong>Insights &gt; Audience &gt; Locations</strong> to
+            verify your reach in {normalizedRegion || 'the campaign region'}.
           </Typography>
         </Box>
 
@@ -458,15 +458,28 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <LocalOfferRoundedIcon fontSize="small" sx={{ color: theme.palette.tokens.accent, fontSize: 18 }} />
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.accentText, fontWeight: 700 }}>
+            <LocalOfferRoundedIcon
+              fontSize="small"
+              sx={{ color: theme.palette.tokens.accent, fontSize: 18 }}
+            />
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.accentText, fontWeight: 700 }}
+            >
               AUTOMATIC TAG ADDED TO CHAT
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, alignItems: 'center' }}>
             <Chip
               size="small"
-              icon={<VerifiedRoundedIcon sx={{ fontSize: '14px !important', color: `${theme.palette.tokens.accentText} !important` }} />}
+              icon={
+                <VerifiedRoundedIcon
+                  sx={{
+                    fontSize: '14px !important',
+                    color: `${theme.palette.tokens.accentText} !important`,
+                  }}
+                />
+              }
               label={tagLabel}
               sx={{
                 fontWeight: 700,
@@ -491,8 +504,12 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
               />
             ))}
           </Box>
-          <Typography variant="caption" sx={{ color: theme.palette.tokens.accentText, fontSize: '11px', lineHeight: 1.4 }}>
-            This tag is automatically added to each screenshot message in the chat so the agency partner can immediately verify your proof.
+          <Typography
+            variant="caption"
+            sx={{ color: theme.palette.tokens.accentText, fontSize: '11px', lineHeight: 1.4 }}
+          >
+            This tag is automatically added to each screenshot message in the chat so the agency
+            partner can immediately verify your proof.
           </Typography>
         </Box>
 
@@ -533,9 +550,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
               p: 3,
               borderRadius: `${theme.customRadii.inner}px`,
               border: `2px dashed ${
-                isDragging
-                  ? theme.palette.tokens.accent
-                  : theme.palette.tokens.divider
+                isDragging ? theme.palette.tokens.accent : theme.palette.tokens.divider
               }`,
               backgroundColor: isDragging
                 ? theme.palette.tokens.accentBg
@@ -544,22 +559,31 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
               textAlign: 'center',
               transition: 'all 0.2s ease',
               '&:hover': {
-                borderColor: isSubmitting ? theme.palette.tokens.divider : theme.palette.tokens.accent,
-                backgroundColor: isSubmitting ? theme.palette.tokens.fieldBg : theme.palette.tokens.tableHover,
+                borderColor: isSubmitting
+                  ? theme.palette.tokens.divider
+                  : theme.palette.tokens.accent,
+                backgroundColor: isSubmitting
+                  ? theme.palette.tokens.fieldBg
+                  : theme.palette.tokens.tableHover,
               },
             }}
           >
             <CloudUploadRoundedIcon
               sx={{
                 fontSize: 36,
-                color: isDragging ? theme.palette.tokens.accent : theme.palette.tokens.textSecondary,
+                color: isDragging
+                  ? theme.palette.tokens.accent
+                  : theme.palette.tokens.textSecondary,
                 mb: 1,
               }}
             />
             <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
               Click to select multiple screenshots or drag and drop
             </Typography>
-            <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}>
+            <Typography
+              variant="caption"
+              sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
+            >
               Select all your proof images at once (PNG, JPG, JPEG, WEBP · up to 10MB each)
             </Typography>
           </Box>
@@ -569,7 +593,10 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
         {files.length > 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.textPrimary }}>
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 700, color: theme.palette.tokens.textPrimary }}
+              >
                 Ready to send ({files.length} {files.length === 1 ? 'screenshot' : 'screenshots'}):
               </Typography>
               <Button
@@ -674,7 +701,10 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
                     >
                       {file.name}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontSize: '10px', color: theme.palette.tokens.textSecondary }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ fontSize: '10px', color: theme.palette.tokens.textSecondary }}
+                    >
                       {formatFileSize(file.size)}
                     </Typography>
                   </Box>
@@ -709,11 +739,24 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
         {/* Submitting Progress Indicator */}
         {isSubmitting && (
           <Box sx={{ mt: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-              <Typography variant="caption" sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 0.75,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 600, color: theme.palette.tokens.textPrimary }}
+              >
                 {uploadStep}
               </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: theme.palette.tokens.accent }}>
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 700, color: theme.palette.tokens.accent }}
+              >
                 {progressPercent}%
               </Typography>
             </Box>
@@ -734,12 +777,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
       </DialogContent>
 
       <DialogActions sx={{ p: 0, pt: 3, gap: 1.5 }}>
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          disabled={isSubmitting}
-          sx={{ minWidth: 100 }}
-        >
+        <Button variant="outlined" onClick={onClose} disabled={isSubmitting} sx={{ minWidth: 100 }}>
           Cancel
         </Button>
         <Button

@@ -1166,7 +1166,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         <TableCell sx={{ fontWeight: 700 }}>Post</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>
                           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                            Date
+                            Date (DD/MM/YYYY)
                             <Typography
                               component="span"
                               variant="caption"
@@ -1205,11 +1205,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         const isActive = activeKeys.has(key);
                         const postDate = new Date(post.takenAt);
                         const formattedDate = !isNaN(postDate.getTime())
-                          ? postDate.toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })
+                          ? postDate.toLocaleDateString('en-IN')
                           : post.takenAt;
                         const formattedTime = !isNaN(postDate.getTime())
                           ? postDate.toLocaleTimeString('en-IN', {

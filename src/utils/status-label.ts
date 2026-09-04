@@ -46,10 +46,7 @@ export const STATUS_CONFIG: Record<StatusCategory, Record<number, StatusConfig>>
   },
 };
 
-export function getStatusLabel(
-  category: StatusCategory,
-  code: number | null | undefined,
-): string {
+export function getStatusLabel(category: StatusCategory, code: number | null | undefined): string {
   if (code !== null && code !== undefined && STATUS_CONFIG[category]?.[code]) {
     return STATUS_CONFIG[category][code].label;
   }
@@ -57,11 +54,7 @@ export function getStatusLabel(
 }
 
 export type DeliverableStatus =
-  | 'Briefed'
-  | 'Content Shared'
-  | 'Content Approved'
-  | 'Live'
-  | 'Completed';
+  'Briefed' | 'Content Shared' | 'Content Approved' | 'Live' | 'Completed';
 
 /**
  * Calculates where the deliverable stands in the campaign lifecycle:
@@ -99,4 +92,3 @@ export function getDeliverableStatus(row: {
   }
   return 'Briefed';
 }
-

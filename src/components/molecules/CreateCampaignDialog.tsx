@@ -13,7 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { CreateCampaignRequest, BrandResponse } from '@contracts';
-import { capitalizeWords, safeImageUrl } from '@utils';
+import { capitalizeWords, safeImageUrl, validateCampaignName } from '@utils';
 
 export interface CreateCampaignDialogProps {
   open: boolean;
@@ -39,6 +39,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
   const [briefUrl, setBriefUrl] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [nameError, setNameError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -51,18 +52,25 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
       setBriefUrl('');
       setStartDate('');
       setEndDate('');
+      setNameError('');
       setError('');
     }
   }, [open, defaultBrandId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNameError('');
     if (!brandId) {
       setError('Please select a brand');
       return;
     }
-    if (!name.trim()) {
-      setError('Campaign name is required');
+    const nErr = validateCampaignName(name, {
+      required: true,
+      fieldLabel: 'Campaign name',
+      max: 200,
+    });
+    if (nErr) {
+      setNameError(nErr);
       return;
     }
     if (!startDate) {
@@ -192,7 +200,9 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                 <TextField
                   {...params}
                   label="Select Brand *"
-                  placeholder={brands.length === 0 ? undefined : 'Search brand by name or contact...'}
+                  placeholder={
+                    brands.length === 0 ? undefined : 'Search brand by name or contact...'
+                  }
                   helperText={
                     brands.length === 0
                       ? 'No client brands yet — add one from the Brands page first'
@@ -206,10 +216,33 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
             <TextField
               label="Campaign Name *"
               value={name}
-              onChange={(e) => setName(capitalizeWords(e.target.value))}
+              onChange={(e) => {
+                const val = capitalizeWords(e.target.value);
+                setName(val);
+                if (nameError) {
+                  setNameError(
+                    validateCampaignName(val, {
+                      required: true,
+                      fieldLabel: 'Campaign name',
+                      max: 200,
+                    }),
+                  );
+                }
+              }}
+              onBlur={(e) => {
+                setNameError(
+                  validateCampaignName(e.target.value, {
+                    required: true,
+                    fieldLabel: 'Campaign name',
+                    max: 200,
+                  }),
+                );
+              }}
               placeholder="e.g. Summer Glow Skincare Launch"
               fullWidth
               disabled={loading}
+              error={Boolean(nameError)}
+              helperText={nameError || undefined}
             />
 
             <TextField
@@ -221,7 +254,9 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
               disabled={loading}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Start Date *"
                 type="date"

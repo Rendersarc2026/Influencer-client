@@ -72,7 +72,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         />
       </Box>
 
-      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', my: { xs: 0.25, sm: 0.5 } }}>
+      <Box
+        sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', my: { xs: 0.25, sm: 0.5 } }}
+      >
         {loading ? (
           <Skeleton
             animation="wave"

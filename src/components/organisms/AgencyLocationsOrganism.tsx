@@ -46,7 +46,7 @@ import {
   isSubdivisionOf,
 } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
-import { capitalizeWords, ExcelColumnConfig } from '@utils';
+import { capitalizeWords, ExcelColumnConfig, validateLocationName } from '@utils';
 
 /** The server accepts tier 1–5; anything outside that range is rejected. */
 const TIER_OPTIONS = [1, 2, 3, 4, 5];
@@ -361,13 +361,13 @@ export const AgencyLocationsOrganism: React.FC = () => {
     setNameError('');
 
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      setNameError('Location name is required');
-      return;
-    }
-
-    if (trimmedName.length > 100) {
-      setNameError('Location name must be at most 100 characters');
+    const nErr = validateLocationName(trimmedName, {
+      required: true,
+      fieldLabel: 'Location name',
+      max: 100,
+    });
+    if (nErr) {
+      setNameError(nErr);
       return;
     }
 
@@ -498,8 +498,8 @@ export const AgencyLocationsOrganism: React.FC = () => {
     },
     {
       id: 'createdOn',
-      header: 'Created Date',
-      type: 'text',
+      header: 'Created Date (DD/MM/YYYY)',
+      type: 'date',
       accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
     },
     {
@@ -664,8 +664,26 @@ export const AgencyLocationsOrganism: React.FC = () => {
                 label="Location Name *"
                 value={name}
                 onChange={(e) => {
-                  setName(capitalizeWords(e.target.value));
-                  if (nameError) setNameError('');
+                  const val = capitalizeWords(e.target.value);
+                  setName(val);
+                  if (nameError) {
+                    setNameError(
+                      validateLocationName(val, {
+                        required: true,
+                        fieldLabel: 'Location name',
+                        max: 100,
+                      }),
+                    );
+                  }
+                }}
+                onBlur={(e) => {
+                  setNameError(
+                    validateLocationName(e.target.value, {
+                      required: true,
+                      fieldLabel: 'Location name',
+                      max: 100,
+                    }),
+                  );
                 }}
                 error={Boolean(nameError)}
                 helperText={nameError || 'City or region name, e.g. Bengaluru'}

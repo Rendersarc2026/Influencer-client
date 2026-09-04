@@ -35,7 +35,13 @@ import {
   useInfluencerEngagement,
 } from '@api';
 import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
-import { safeImageUrl, safeExternalUrl, getInfluencerTier, getTierInfo, formatFollowersDisplay } from '@utils';
+import {
+  safeImageUrl,
+  safeExternalUrl,
+  getInfluencerTier,
+  getTierInfo,
+  formatFollowersDisplay,
+} from '@utils';
 import {
   AgencyMapperResponse,
   CreateInfluencerRequest,
@@ -147,12 +153,18 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
   const selectedCategories = useMemo(() => {
     if (!categoryFilter || categoryFilter === 'ALL') return [];
-    return categoryFilter.split(',').map((s) => s.trim()).filter(Boolean);
+    return categoryFilter
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [categoryFilter]);
 
   const selectedLocations = useMemo(() => {
     if (!locationFilter || locationFilter === 'ALL') return [];
-    return locationFilter.split(',').map((s) => s.trim()).filter(Boolean);
+    return locationFilter
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [locationFilter]);
 
   // The creators this agency represents — the only ones it can staff a campaign
@@ -208,9 +220,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
   const hasActiveFilters = Boolean(
     selectedCategories.length > 0 ||
-      selectedLocations.length > 0 ||
-      search.trim() ||
-      priceRangeFilter,
+    selectedLocations.length > 0 ||
+    search.trim() ||
+    priceRangeFilter,
   );
 
   const createInfluencerMutation = useCreateInfluencer();
@@ -256,10 +268,12 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
 
   // Narrowing the results while on a later page would otherwise land on a page
   // that no longer exists, showing an empty list with no way to tell why.
-  const goToFirstPage = <T,>(apply: (value: T) => void) => (value: T) => {
-    apply(value);
-    setPage(0);
-  };
+  const goToFirstPage =
+    <T,>(apply: (value: T) => void) =>
+    (value: T) => {
+      apply(value);
+      setPage(0);
+    };
 
   // Removing the last creator on the final page leaves the same dead end.
   useEffect(() => {
@@ -295,7 +309,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
       });
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign influencer.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to assign influencer.',
+      );
     } finally {
       clearPending(creatorId);
     }
@@ -320,7 +336,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
       });
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to remove influencer.',
+      );
     } finally {
       clearPending(creator.id);
     }
@@ -333,7 +351,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
       setCreateDialogOpen(false);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      showError(errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.');
+      showError(
+        errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.',
+      );
     }
   };
 
@@ -341,7 +361,9 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
     <DashboardLayout
       title="Add Influencers to Campaign"
       subtitle={
-        campaign ? `Assigning influencers from your roster to ${campaign.name}` : 'Your influencer roster'
+        campaign
+          ? `Assigning influencers from your roster to ${campaign.name}`
+          : 'Your influencer roster'
       }
       navItems={navConfig.AGENCY}
       activePath={location.pathname}
@@ -364,15 +386,21 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
           startIcon={<AddRoundedIcon fontSize="small" />}
           onClick={() => setCreateDialogOpen(true)}
         >
-          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>New</Box>
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>New Influencer</Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+            New
+          </Box>
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+            New Influencer
+          </Box>
         </Button>
       }
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {campaign && campaign.status !== CampaignStatusCode.DRAFT && (
           <Alert severity="warning" sx={{ borderRadius: `${theme.customRadii.inner}px` }}>
-            Influencers can only be added to campaigns in <strong>Draft</strong> status. This campaign is currently <strong>{CampaignStatusName[campaign.status] || 'Not in Draft'}</strong>.
+            Influencers can only be added to campaigns in <strong>Draft</strong> status. This
+            campaign is currently{' '}
+            <strong>{CampaignStatusName[campaign.status] || 'Not in Draft'}</strong>.
           </Alert>
         )}
 
@@ -588,7 +616,8 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                         variant="caption"
                         sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
                       >
-                        {creator.handle} · {creator.followers} followers {creator.tier ? `(${creator.tier})` : ''}
+                        {creator.handle} · {creator.followers} followers{' '}
+                        {creator.tier ? `(${creator.tier})` : ''}
                       </Typography>
                       <Typography
                         variant="caption"
@@ -810,18 +839,24 @@ export const AgencyAddInfluencerOrganism: React.FC = () => {
                       label: 'Influencing Regions',
                       value:
                         (detailCreator.regions && detailCreator.regions.length > 0) ||
-                        (detailCreator.influencingRegions && detailCreator.influencingRegions.length > 0) ? (
+                        (detailCreator.influencingRegions &&
+                          detailCreator.influencingRegions.length > 0) ? (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                            {(detailCreator.regions || detailCreator.influencingRegions || []).map((r) => (
-                              <Chip key={r} label={r} size="small" />
-                            ))}
+                            {(detailCreator.regions || detailCreator.influencingRegions || []).map(
+                              (r) => (
+                                <Chip key={r} label={r} size="small" />
+                              ),
+                            )}
                           </Box>
                         ) : (
                           '—'
                         ),
                       fullWidth: true,
                     },
-                    { label: 'Follower Reach', value: formatFollowersDisplay(detailCreator.followers) },
+                    {
+                      label: 'Follower Reach',
+                      value: formatFollowersDisplay(detailCreator.followers),
+                    },
                   ],
                 },
                 {

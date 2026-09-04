@@ -158,7 +158,9 @@ export function getInfluencerTier(followers: number | null | undefined): Influen
   return 'MEGA';
 }
 
-export function getTierInfo(tier: InfluencerTier | string | null | undefined): InfluencerTierInfo | null {
+export function getTierInfo(
+  tier: InfluencerTier | string | null | undefined,
+): InfluencerTierInfo | null {
   if (!tier) return null;
   const upper = tier.toUpperCase();
   return INFLUENCER_TIERS.find((t) => t.key === upper || t.label.toUpperCase() === upper) || null;

@@ -17,7 +17,7 @@ import {
   CampaignStatus,
   CampaignStatusCode,
 } from '@contracts';
-import { capitalizeWords } from '@utils';
+import { capitalizeWords, validateCampaignName } from '@utils';
 
 export interface EditCampaignDialogProps {
   open: boolean;
@@ -48,6 +48,7 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<CampaignStatus>(CampaignStatusCode.DRAFT);
+  const [nameError, setNameError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -58,14 +59,21 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
       setStartDate(toDateInputValue(campaign.startDate));
       setEndDate(toDateInputValue(campaign.endDate));
       setStatus(campaign.status ?? CampaignStatusCode.DRAFT);
+      setNameError('');
       setError('');
     }
   }, [open, campaign]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Campaign name is required');
+    setNameError('');
+    const nErr = validateCampaignName(name, {
+      required: true,
+      fieldLabel: 'Campaign name',
+      max: 200,
+    });
+    if (nErr) {
+      setNameError(nErr);
       return;
     }
     if (!startDate) {
@@ -150,13 +158,38 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
             <TextField
               label="Campaign Name *"
               value={name}
-              onChange={(e) => setName(capitalizeWords(e.target.value))}
+              onChange={(e) => {
+                const val = capitalizeWords(e.target.value);
+                setName(val);
+                if (nameError) {
+                  setNameError(
+                    validateCampaignName(val, {
+                      required: true,
+                      fieldLabel: 'Campaign name',
+                      max: 200,
+                    }),
+                  );
+                }
+              }}
+              onBlur={(e) => {
+                setNameError(
+                  validateCampaignName(e.target.value, {
+                    required: true,
+                    fieldLabel: 'Campaign name',
+                    max: 200,
+                  }),
+                );
+              }}
               placeholder="e.g. Summer Glow Skincare Launch"
               fullWidth
               disabled={loading}
+              error={Boolean(nameError)}
+              helperText={nameError || undefined}
             />
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 select
                 label="Campaign Status"
@@ -181,7 +214,9 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
               />
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
               <TextField
                 label="Start Date *"
                 type="date"

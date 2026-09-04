@@ -77,10 +77,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       authRoleCode === 'AGENCY'
         ? 'Agency Manager'
         : authRoleCode === 'BRAND'
-        ? 'Brand Manager'
-        : authRoleCode === 'INFLUENCER'
-        ? 'Creator'
-        : 'User';
+          ? 'Brand Manager'
+          : authRoleCode === 'INFLUENCER'
+            ? 'Creator'
+            : 'User';
     return {
       name: authUser?.profile?.fullName || explicitUser?.name || defaultRoleName,
       email: authUser?.email || explicitUser?.email,
@@ -178,7 +178,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         component="main"
         sx={{
           flexGrow: 1,
-          minHeight: 0,           // must shrink inside flex parent
+          minHeight: 0, // must shrink inside flex parent
           backgroundColor: theme.palette.tokens.surface,
           borderRadius: { xs: '16px', md: `${theme.customRadii.card}px` },
           border: `1px solid ${theme.palette.tokens.divider}`,
@@ -225,7 +225,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             flexDirection: 'column',
             gap: { xs: '14px', sm: '16px', md: `${theme.customSpacing.cardGap}px` },
             overflowX: 'hidden',
-            overflowY: 'auto',    // mixed-content pages scroll here; fillHeight tables scroll their own rows
+            overflowY: 'auto', // mixed-content pages scroll here; fillHeight tables scroll their own rows
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             '&::-webkit-scrollbar': { display: 'none' },

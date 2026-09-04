@@ -10,15 +10,7 @@ import { navConfig } from '../../routes/navConfig';
 import { RoleCode } from '@contracts';
 
 export type PageSkeletonVariant =
-  | 'dashboard'
-  | 'list'
-  | 'detail'
-  | 'reports'
-  | 'chat'
-  | 'form'
-  | 'grid'
-  | 'auth'
-  | 'shell';
+  'dashboard' | 'list' | 'detail' | 'reports' | 'chat' | 'form' | 'grid' | 'auth' | 'shell';
 
 export interface PageSkeletonProps {
   variant?: PageSkeletonVariant;
@@ -26,11 +18,7 @@ export interface PageSkeletonProps {
 
 function resolveVariant(pathname: string, requested?: PageSkeletonVariant): PageSkeletonVariant {
   if (requested && requested !== 'shell') return requested;
-  if (
-    pathname === '/login' ||
-    pathname === '/accept-terms' ||
-    pathname === '/complete-profile'
-  ) {
+  if (pathname === '/login' || pathname === '/accept-terms' || pathname === '/complete-profile') {
     return 'auth';
   }
   if (pathname === '/agency' || pathname === '/brand' || pathname === '/influencer') {
@@ -60,11 +48,7 @@ const AuthLoading: React.FC = () => {
         gap: 2,
       }}
     >
-      <CircularProgress
-        size={44}
-        thickness={4}
-        sx={{ color: theme.palette.tokens.accent }}
-      />
+      <CircularProgress size={44} thickness={4} sx={{ color: theme.palette.tokens.accent }} />
       <Typography
         variant="body2"
         sx={{
@@ -154,11 +138,7 @@ export const PageSkeleton: React.FC<PageSkeletonProps> = ({ variant = 'shell' })
             gap: 2,
           }}
         >
-          <CircularProgress
-            size={44}
-            thickness={4}
-            sx={{ color: theme.palette.tokens.accent }}
-          />
+          <CircularProgress size={44} thickness={4} sx={{ color: theme.palette.tokens.accent }} />
           <Typography
             variant="body2"
             sx={{

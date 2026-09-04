@@ -130,6 +130,11 @@ export interface BrandCampaignReportExportInput {
   metricsByMapperId?: CampaignReportExportInput['metricsByMapperId'];
 }
 
+/**
+ * Composed after the leading 'Sr No' and name columns. Note 'Post #' is the
+ * position within one creator's own set, so it restarts down the table — the
+ * running row number the reader cites is 'Sr No'.
+ */
 const POST_TABLE_HEADERS = [
   'Post #',
   'Post URL',
@@ -138,7 +143,7 @@ const POST_TABLE_HEADERS = [
   'Shares',
   'Saves',
   'Engagements',
-  'Recorded Date',
+  'Recorded Date (DD/MM/YYYY)',
 ];
 
 /**
@@ -212,6 +217,7 @@ export function buildCampaignReportModel(input: CampaignReportExportInput): Camp
       const postEngagements =
         (post.likes ?? 0) + (post.comments ?? 0) + (post.shares ?? 0) + (post.saves ?? 0);
       postRows.push([
+        postRows.length + 1,
         mapper.influencerName || '—',
         post.position,
         post.postUrl,
@@ -347,7 +353,7 @@ export function buildCampaignReportModel(input: CampaignReportExportInput): Camp
         'Watch Time',
         'Skip Rate %',
         'Live Deliverable URLs',
-        'Recorded Date',
+        'Recorded Date (DD/MM/YYYY)',
       ],
       rows: influencerRows,
     },
@@ -366,7 +372,7 @@ export function buildCampaignReportModel(input: CampaignReportExportInput): Camp
       postRows.length > 0
         ? {
             title: 'Post-Level Performance',
-            headers: ['Influencer Name', ...POST_TABLE_HEADERS],
+            headers: ['Sr No', 'Influencer Name', ...POST_TABLE_HEADERS],
             rows: postRows,
           }
         : null,
@@ -454,6 +460,7 @@ export function buildBrandCampaignReportModel(
       const postEngagements =
         (post.likes ?? 0) + (post.comments ?? 0) + (post.shares ?? 0) + (post.saves ?? 0);
       postRows.push([
+        postRows.length + 1,
         mapper.influencerName || '—',
         post.position,
         post.postUrl,
@@ -600,7 +607,7 @@ export function buildBrandCampaignReportModel(
         'Watch Time',
         'Skip Rate %',
         'Live Deliverable URLs',
-        'Recorded Date',
+        'Recorded Date (DD/MM/YYYY)',
       ],
       rows: influencerRows,
     },
@@ -619,7 +626,7 @@ export function buildBrandCampaignReportModel(
       postRows.length > 0
         ? {
             title: 'Post-Level Performance',
-            headers: ['Creator Name', ...POST_TABLE_HEADERS],
+            headers: ['Sr No', 'Creator Name', ...POST_TABLE_HEADERS],
             rows: postRows,
           }
         : null,

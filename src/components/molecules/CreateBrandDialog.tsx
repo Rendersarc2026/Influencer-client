@@ -25,7 +25,13 @@ import {
   BrandResponse,
   CategoryTypeCode,
 } from '@contracts';
-import { capitalizeWords, safeImageUrl, validatePhoneNumber } from '@utils';
+import {
+  capitalizeWords,
+  safeImageUrl,
+  validatePhoneNumber,
+  validateBrandName,
+  validatePersonName,
+} from '@utils';
 
 export interface CreateBrandDialogProps {
   open: boolean;
@@ -89,6 +95,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
   const brandLogoFileRef = useRef<HTMLInputElement | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [websiteError, setWebsiteError] = useState('');
@@ -164,6 +171,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       setBio(brandToEdit?.bio || '');
       setIsActive(brandToEdit?.isActive ?? true);
 
+      setNameError('');
       setEmailError('');
       setPhoneError('');
       setWebsiteError('');
@@ -197,6 +205,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     e.preventDefault();
 
     setError('');
+    setNameError('');
     setEmailError('');
     setPhoneError('');
     setWebsiteError('');
@@ -207,13 +216,18 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     const trimmedEmail = contactEmail.trim().toLowerCase();
     const trimmedPhone = contactPhone.trim();
 
-    if (!trimmedName) {
-      setError('Brand name is required');
+    const bErr = validateBrandName(trimmedName, {
+      required: true,
+      fieldLabel: 'Brand name',
+      max: 200,
+    });
+    if (bErr) {
+      setNameError(bErr);
       return;
     }
 
     if (duplicate) {
-      setError(`${duplicate.name} is already one of your client brands.`);
+      setNameError(`${duplicate.name} is already one of your client brands.`);
       return;
     }
 
@@ -259,12 +273,16 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       }
     }
 
-    // Optional here, but a contact person that is present has to be a name.
-    // CreateBrandSchema rejects it either way; catching it now puts the message
-    // on the field instead of in the dialog's generic error banner.
-    if (contactPerson.trim() && !/\p{L}/u.test(contactPerson)) {
-      setContactPersonError('Enter a contact name, not just numbers');
-      return;
+    if (contactPerson.trim()) {
+      const cpErr = validatePersonName(contactPerson, {
+        required: false,
+        fieldLabel: 'Contact person name',
+        max: 200,
+      });
+      if (cpErr) {
+        setContactPersonError(cpErr);
+        return;
+      }
     }
 
     const base = {
@@ -366,11 +384,38 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               <TextField
                 label="Brand Name *"
                 value={name}
-                onChange={(e) => setName(capitalizeWords(e.target.value))}
+                onChange={(e) => {
+                  const val = capitalizeWords(e.target.value);
+                  setName(val);
+                  if (nameError) {
+                    setNameError(
+                      validateBrandName(val, {
+                        required: true,
+                        fieldLabel: 'Brand name',
+                        max: 200,
+                      }),
+                    );
+                  }
+                }}
+                onBlur={(e) => {
+                  setNameError(
+                    validateBrandName(e.target.value, {
+                      required: true,
+                      fieldLabel: 'Brand name',
+                      max: 200,
+                    }),
+                  );
+                }}
                 placeholder="e.g. GlowSkin Co."
                 fullWidth
                 disabled={busy}
-                error={Boolean(duplicate)}
+                error={Boolean(nameError || duplicate)}
+                helperText={
+                  nameError ||
+                  (duplicate
+                    ? `${duplicate.name} is already one of your client brands.`
+                    : 'Public trading or legal name of the brand')
+                }
                 sx={{ flex: 1 }}
               />
 
@@ -520,14 +565,34 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               label="Contact Person"
               value={contactPerson}
               onChange={(e) => {
-                setContactPerson(capitalizeWords(e.target.value));
-                setContactPersonError('');
+                const val = capitalizeWords(e.target.value);
+                setContactPerson(val);
+                if (contactPersonError) {
+                  setContactPersonError(
+                    validatePersonName(val, {
+                      required: false,
+                      fieldLabel: 'Contact person name',
+                      max: 200,
+                    }),
+                  );
+                } else if (/[\d\p{N}]/u.test(val)) {
+                  setContactPersonError('Numbers are not allowed in name');
+                }
+              }}
+              onBlur={(e) => {
+                setContactPersonError(
+                  validatePersonName(e.target.value, {
+                    required: false,
+                    fieldLabel: 'Contact person name',
+                    max: 200,
+                  }),
+                );
               }}
               placeholder="e.g. Varghese Alukkas"
               fullWidth
               disabled={busy}
               error={Boolean(contactPersonError)}
-              helperText={contactPersonError}
+              helperText={contactPersonError || undefined}
             />
 
             <PhoneField

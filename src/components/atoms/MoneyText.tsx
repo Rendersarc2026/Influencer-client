@@ -42,55 +42,57 @@ function formatMoneyValue(val: number, currency: string, compact: boolean): stri
   return getCurrencyFormatter(currency).format(val);
 }
 
-export const MoneyText: React.FC<MoneyTextProps> = React.memo(({
-  amount,
-  currency = 'INR',
-  compact = false,
-  variant = 'body1',
-  fontWeight = 600,
-  color,
-  className,
-}) => {
-  const theme = useTheme();
+export const MoneyText: React.FC<MoneyTextProps> = React.memo(
+  ({
+    amount,
+    currency = 'INR',
+    compact = false,
+    variant = 'body1',
+    fontWeight = 600,
+    color,
+    className,
+  }) => {
+    const theme = useTheme();
 
-  if (amount === null || amount === undefined || amount === '') {
+    if (amount === null || amount === undefined || amount === '') {
+      return (
+        <Typography
+          variant={variant}
+          className={className}
+          sx={{ color: color || theme.palette.tokens.textSecondary, fontWeight }}
+        >
+          —
+        </Typography>
+      );
+    }
+
+    const numVal = typeof amount === 'number' ? amount : parseFloat(amount);
+
+    if (isNaN(numVal)) {
+      return (
+        <Typography
+          variant={variant}
+          className={className}
+          sx={{ color: color || theme.palette.tokens.textPrimary, fontWeight }}
+        >
+          {amount}
+        </Typography>
+      );
+    }
+
     return (
       <Typography
         variant={variant}
         className={className}
-        sx={{ color: color || theme.palette.tokens.textSecondary, fontWeight }}
+        sx={{
+          color: color || theme.palette.tokens.textPrimary,
+          fontWeight,
+        }}
       >
-        —
+        {formatMoneyValue(numVal, currency, compact)}
       </Typography>
     );
-  }
-
-  const numVal = typeof amount === 'number' ? amount : parseFloat(amount);
-
-  if (isNaN(numVal)) {
-    return (
-      <Typography
-        variant={variant}
-        className={className}
-        sx={{ color: color || theme.palette.tokens.textPrimary, fontWeight }}
-      >
-        {amount}
-      </Typography>
-    );
-  }
-
-  return (
-    <Typography
-      variant={variant}
-      className={className}
-      sx={{
-        color: color || theme.palette.tokens.textPrimary,
-        fontWeight,
-      }}
-    >
-      {formatMoneyValue(numVal, currency, compact)}
-    </Typography>
-  );
-});
+  },
+);
 
 MoneyText.displayName = 'MoneyText';

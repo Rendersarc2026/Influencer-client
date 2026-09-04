@@ -61,7 +61,7 @@ export const AgencyHomeOrganism: React.FC = () => {
     },
     {
       id: 'dates',
-      header: 'Timeline',
+      header: 'Timeline (DD/MM/YYYY)',
       type: 'text',
       accessor: (row) => {
         if (!row.startDate && !row.endDate) return 'Ongoing';

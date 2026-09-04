@@ -76,7 +76,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     },
     {
       id: 'timeline',
-      header: 'Timeline & Schedule',
+      header: 'Timeline & Schedule (DD/MM/YYYY)',
       type: 'text',
       accessor: (row) => {
         if (!row.startDate && !row.endDate) return 'Ongoing';

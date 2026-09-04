@@ -60,11 +60,7 @@ apiClient.interceptors.response.use(
     persistRenewedToken(error.response);
 
     const url = error.config?.url || '';
-    if (
-      error.response?.status === 401 &&
-      !url.includes('/auth/me') &&
-      !url.includes('/auth/otp')
-    ) {
+    if (error.response?.status === 401 && !url.includes('/auth/me') && !url.includes('/auth/otp')) {
       // Deliberately no sign-out here. A lone 401 is not proof the session
       // ended: it can come from a request that raced a token renewal, an API
       // restarting, or one endpoint this account cannot reach — and wiping

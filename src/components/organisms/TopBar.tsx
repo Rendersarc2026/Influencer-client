@@ -230,11 +230,15 @@ export const TopBar: React.FC<TopBarProps> = ({
             </Breadcrumbs>
           )}
 
+          {/* The page title is the top of the hierarchy on every screen, so it
+              is set at the theme's own h1 (32px) rather than under it. The old
+              17px mobile size also left it *smaller* than a SectionHeading
+              (18px) further down the page, which read as the wrong way round. */}
           <Typography
             variant="h1"
             noWrap
             sx={{
-              fontSize: { xs: '17px', sm: '20px', md: '26px' },
+              fontSize: { xs: '21px', sm: '26px', md: '32px' },
               lineHeight: 1.2,
               fontWeight: 800,
               overflow: 'hidden',
@@ -253,7 +257,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               sx={{
                 color: theme.palette.tokens.textSecondary,
                 mt: '1px',
-                fontSize: { xs: '11px', sm: '12px' },
+                fontSize: { xs: '12px', sm: '13px' },
                 lineHeight: 1.4,
                 display: { xs: 'none', sm: 'block' },
                 overflow: 'hidden',

@@ -161,9 +161,7 @@ const withBoundary = (Component: React.ComponentType, skeleton: PageSkeletonVari
   </ErrorBoundary>
 );
 
-const RootLayout: React.FC = () => (
-  <Outlet />
-);
+const RootLayout: React.FC = () => <Outlet />;
 
 const router = createBrowserRouter([
   {
@@ -175,239 +173,240 @@ const router = createBrowserRouter([
         element: <RootRedirect />,
       },
 
-  // Public Routes
-  {
-    path: '/login',
-    element: withBoundary(LoginPage, 'auth'),
-  },
-  // The style guide is a development-only reference. Excluding it from
-  // production keeps an unauthenticated internal surface — and its chunk — out
-  // of the deployed bundle. Vite drops the import entirely when DEV is false.
-  ...(import.meta.env.DEV
-    ? [
-        {
-          path: '/style-guide',
-          element: withBoundary(
-            lazy(() => import('../pages/StyleGuide').then((m) => ({ default: m.StyleGuidePage }))),
-          ),
-        },
-      ]
-    : []),
+      // Public Routes
+      {
+        path: '/login',
+        element: withBoundary(LoginPage, 'auth'),
+      },
+      // The style guide is a development-only reference. Excluding it from
+      // production keeps an unauthenticated internal surface — and its chunk — out
+      // of the deployed bundle. Vite drops the import entirely when DEV is false.
+      ...(import.meta.env.DEV
+        ? [
+            {
+              path: '/style-guide',
+              element: withBoundary(
+                lazy(() =>
+                  import('../pages/StyleGuide').then((m) => ({ default: m.StyleGuidePage })),
+                ),
+              ),
+            },
+          ]
+        : []),
 
-  // Blocking Setup Routes
-  {
-    path: '/accept-terms',
-    element: <RequireAuth skeleton="auth">{withBoundary(AcceptTerms, 'auth')}</RequireAuth>,
-  },
-  {
-    path: '/complete-profile',
-    element: (
-      <RequireAuth skeleton="auth">
-        <RequireTerms skeleton="auth">{withBoundary(CompleteProfile, 'auth')}</RequireTerms>
-      </RequireAuth>
-    ),
-  },
+      // Blocking Setup Routes
+      {
+        path: '/accept-terms',
+        element: <RequireAuth skeleton="auth">{withBoundary(AcceptTerms, 'auth')}</RequireAuth>,
+      },
+      {
+        path: '/complete-profile',
+        element: (
+          <RequireAuth skeleton="auth">
+            <RequireTerms skeleton="auth">{withBoundary(CompleteProfile, 'auth')}</RequireTerms>
+          </RequireAuth>
+        ),
+      },
 
+      // Agency Routes
+      {
+        path: '/agency',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="dashboard">
+            {withBoundary(AgencyHome, 'dashboard')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/brands',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
+            {withBoundary(AgencyBrandsPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/campaigns',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
+            {withBoundary(AgencyCampaignsPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/campaigns/:id',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="detail">
+            {withBoundary(AgencyCampaignDetailPage, 'detail')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/campaigns/:id/add',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="grid">
+            {withBoundary(AgencyAddInfluencerPage, 'grid')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/influencers',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
+            {withBoundary(AgencyInfluencersPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/categories',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
+            {withBoundary(AgencyCategoriesPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/locations',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
+            {withBoundary(AgencyLocationsPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/users',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
+            {withBoundary(AgencyUsersPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/chats',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="chat">
+            {withBoundary(ChatPage, 'chat')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/agency/er-calculator',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY']} skeleton="shell">
+            {withBoundary(AgencyERCalculatorPage, 'shell')}
+          </ProtectedRoute>
+        ),
+      },
 
-  // Agency Routes
-  {
-    path: '/agency',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="dashboard">
-        {withBoundary(AgencyHome, 'dashboard')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/brands',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
-        {withBoundary(AgencyBrandsPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/campaigns',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
-        {withBoundary(AgencyCampaignsPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/campaigns/:id',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="detail">
-        {withBoundary(AgencyCampaignDetailPage, 'detail')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/campaigns/:id/add',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="grid">
-        {withBoundary(AgencyAddInfluencerPage, 'grid')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/influencers',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
-        {withBoundary(AgencyInfluencersPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/categories',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
-        {withBoundary(AgencyCategoriesPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/locations',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
-        {withBoundary(AgencyLocationsPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/users',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="list">
-        {withBoundary(AgencyUsersPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/chats',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="chat">
-        {withBoundary(ChatPage, 'chat')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/agency/er-calculator',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY']} skeleton="shell">
-        {withBoundary(AgencyERCalculatorPage, 'shell')}
-      </ProtectedRoute>
-    ),
-  },
+      // Brand Routes
+      {
+        path: '/brand',
+        element: (
+          <ProtectedRoute allowedRoles={['BRAND']} skeleton="dashboard">
+            {withBoundary(BrandHome, 'dashboard')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/brand/campaigns',
+        element: (
+          <ProtectedRoute allowedRoles={['BRAND']} skeleton="list">
+            {withBoundary(BrandCampaignsPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/brand/campaigns/:id',
+        element: (
+          <ProtectedRoute allowedRoles={['BRAND']} skeleton="detail">
+            {withBoundary(BrandCampaignDetailPage, 'detail')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/brand/profile',
+        element: (
+          <ProtectedRoute allowedRoles={['BRAND']} skeleton="form">
+            {withBoundary(ProfilePage, 'form')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/brand/chats',
+        element: (
+          <ProtectedRoute allowedRoles={['BRAND']} skeleton="chat">
+            {withBoundary(ChatPage, 'chat')}
+          </ProtectedRoute>
+        ),
+      },
 
-  // Brand Routes
-  {
-    path: '/brand',
-    element: (
-      <ProtectedRoute allowedRoles={['BRAND']} skeleton="dashboard">
-        {withBoundary(BrandHome, 'dashboard')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/brand/campaigns',
-    element: (
-      <ProtectedRoute allowedRoles={['BRAND']} skeleton="list">
-        {withBoundary(BrandCampaignsPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/brand/campaigns/:id',
-    element: (
-      <ProtectedRoute allowedRoles={['BRAND']} skeleton="detail">
-        {withBoundary(BrandCampaignDetailPage, 'detail')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/brand/profile',
-    element: (
-      <ProtectedRoute allowedRoles={['BRAND']} skeleton="form">
-        {withBoundary(ProfilePage, 'form')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/brand/chats',
-    element: (
-      <ProtectedRoute allowedRoles={['BRAND']} skeleton="chat">
-        {withBoundary(ChatPage, 'chat')}
-      </ProtectedRoute>
-    ),
-  },
+      // Influencer Routes
+      {
+        path: '/influencer',
+        element: (
+          <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="dashboard">
+            {withBoundary(InfluencerHome, 'dashboard')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/influencer/campaigns',
+        element: (
+          <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="list">
+            {withBoundary(InfluencerCampaignsPage, 'list')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/influencer/campaigns/:id',
+        element: (
+          <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="detail">
+            {withBoundary(InfluencerAssignmentDetailPage, 'detail')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/influencer/profile',
+        element: (
+          <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="form">
+            {withBoundary(InfluencerProfilePage, 'form')}
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/influencer/chats',
+        element: (
+          <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="chat">
+            {withBoundary(ChatPage, 'chat')}
+          </ProtectedRoute>
+        ),
+      },
 
-  // Influencer Routes
-  {
-    path: '/influencer',
-    element: (
-      <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="dashboard">
-        {withBoundary(InfluencerHome, 'dashboard')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/influencer/campaigns',
-    element: (
-      <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="list">
-        {withBoundary(InfluencerCampaignsPage, 'list')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/influencer/campaigns/:id',
-    element: (
-      <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="detail">
-        {withBoundary(InfluencerAssignmentDetailPage, 'detail')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/influencer/profile',
-    element: (
-      <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="form">
-        {withBoundary(InfluencerProfilePage, 'form')}
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/influencer/chats',
-    element: (
-      <ProtectedRoute allowedRoles={['INFLUENCER']} skeleton="chat">
-        {withBoundary(ChatPage, 'chat')}
-      </ProtectedRoute>
-    ),
-  },
+      // Direct Unified Chat Route. Every thread has the agency on one side.
+      {
+        path: '/chat',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY', 'BRAND', 'INFLUENCER']} skeleton="chat">
+            {withBoundary(ChatPage, 'chat')}
+          </ProtectedRoute>
+        ),
+      },
 
-  // Direct Unified Chat Route. Every thread has the agency on one side.
-  {
-    path: '/chat',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY', 'BRAND', 'INFLUENCER']} skeleton="chat">
-        {withBoundary(ChatPage, 'chat')}
-      </ProtectedRoute>
-    ),
-  },
+      // Direct Unified Profile Route (All roles)
+      {
+        path: '/profile',
+        element: (
+          <ProtectedRoute allowedRoles={['AGENCY', 'BRAND', 'INFLUENCER']} skeleton="form">
+            {withBoundary(ProfilePage, 'form')}
+          </ProtectedRoute>
+        ),
+      },
 
-  // Direct Unified Profile Route (All roles)
-  {
-    path: '/profile',
-    element: (
-      <ProtectedRoute allowedRoles={['AGENCY', 'BRAND', 'INFLUENCER']} skeleton="form">
-        {withBoundary(ProfilePage, 'form')}
-      </ProtectedRoute>
-    ),
-  },
-
-  // Wildcard 404 Fallback
-  {
-    path: '*',
-    element: withBoundary(NotFoundPage, 'auth'),
-  },
+      // Wildcard 404 Fallback
+      {
+        path: '*',
+        element: withBoundary(NotFoundPage, 'auth'),
+      },
     ],
   },
 ]);

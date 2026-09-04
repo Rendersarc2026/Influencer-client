@@ -12,84 +12,81 @@ export interface DeltaBadgeProps {
   size?: 'small' | 'medium';
 }
 
-export const DeltaBadge: React.FC<DeltaBadgeProps> = React.memo(({
-  delta,
-  label,
-  inverted = false,
-  size = 'small',
-}) => {
-  const theme = useTheme();
+export const DeltaBadge: React.FC<DeltaBadgeProps> = React.memo(
+  ({ delta, label, inverted = false, size = 'small' }) => {
+    const theme = useTheme();
 
-  const isPositive = inverted ? delta <= 0 : delta >= 0;
-  const isZero = delta === 0;
+    const isPositive = inverted ? delta <= 0 : delta >= 0;
+    const isZero = delta === 0;
 
-  const bgColor = isZero
-    ? theme.palette.tokens.fieldBg
-    : isPositive
-      ? theme.palette.tokens.positiveBg
-      : theme.palette.tokens.negativeBg;
+    const bgColor = isZero
+      ? theme.palette.tokens.fieldBg
+      : isPositive
+        ? theme.palette.tokens.positiveBg
+        : theme.palette.tokens.negativeBg;
 
-  const textColor = isZero
-    ? theme.palette.tokens.textSecondary
-    : isPositive
-      ? theme.palette.tokens.positiveText
-      : theme.palette.tokens.negativeText;
+    const textColor = isZero
+      ? theme.palette.tokens.textSecondary
+      : isPositive
+        ? theme.palette.tokens.positiveText
+        : theme.palette.tokens.negativeText;
 
-  const iconColor = textColor;
-  const formattedDelta = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`;
+    const iconColor = textColor;
+    const formattedDelta = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}%`;
 
-  return (
-    <Box
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        backgroundColor: bgColor,
-        color: textColor,
-        borderRadius: `${theme.customRadii.pill}px`,
-        padding: size === 'small' ? '2px 8px' : '4px 12px',
-        fontWeight: 600,
-        fontSize:
-          size === 'small' ? theme.typography.caption.fontSize : theme.typography.body2.fontSize,
-      }}
-    >
-      {!isZero &&
-        (isPositive ? (
-          <NorthEastRoundedIcon
-            sx={{ fontSize: size === 'small' ? '12px' : '14px', color: iconColor }}
-          />
-        ) : (
-          <SouthEastRoundedIcon
-            sx={{ fontSize: size === 'small' ? '12px' : '14px', color: iconColor }}
-          />
-        ))}
-      <Typography
-        component="span"
+    return (
+      <Box
         sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          backgroundColor: bgColor,
+          color: textColor,
+          borderRadius: `${theme.customRadii.pill}px`,
+          padding: size === 'small' ? '2px 8px' : '4px 12px',
           fontWeight: 600,
-          fontSize: 'inherit',
-          color: 'inherit',
-          lineHeight: 1,
+          fontSize:
+            size === 'small' ? theme.typography.caption.fontSize : theme.typography.body2.fontSize,
         }}
       >
-        {formattedDelta}
-      </Typography>
-      {label && (
+        {!isZero &&
+          (isPositive ? (
+            <NorthEastRoundedIcon
+              sx={{ fontSize: size === 'small' ? '12px' : '14px', color: iconColor }}
+            />
+          ) : (
+            <SouthEastRoundedIcon
+              sx={{ fontSize: size === 'small' ? '12px' : '14px', color: iconColor }}
+            />
+          ))}
         <Typography
           component="span"
           sx={{
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: 'inherit',
             color: 'inherit',
-            opacity: 0.85,
             lineHeight: 1,
           }}
         >
-          {label}
+          {formattedDelta}
         </Typography>
-      )}
-    </Box>
-  );
-});
+        {label && (
+          <Typography
+            component="span"
+            sx={{
+              fontWeight: 500,
+              fontSize: 'inherit',
+              color: 'inherit',
+              opacity: 0.85,
+              lineHeight: 1,
+            }}
+          >
+            {label}
+          </Typography>
+        )}
+      </Box>
+    );
+  },
+);
 
 DeltaBadge.displayName = 'DeltaBadge';

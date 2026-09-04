@@ -229,8 +229,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
     },
     {
       id: 'createdOn',
-      header: 'Onboarded',
-      type: 'text',
+      header: 'Onboarded (DD/MM/YYYY)',
+      type: 'date',
       accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
     },
     {

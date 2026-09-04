@@ -303,8 +303,8 @@ export const AgencyUsersOrganism: React.FC = () => {
     },
     {
       id: 'createdOn',
-      header: 'Created Date',
-      type: 'text',
+      header: 'Created Date (DD/MM/YYYY)',
+      type: 'date',
       accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
     },
     {

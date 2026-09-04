@@ -51,3 +51,4 @@ export * from './campaign-report-model';
 export * from './export-excel';
 export * from './export-pdf';
 export * from './er-calculator.utils';
+export * from './name-validation';

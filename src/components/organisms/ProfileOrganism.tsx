@@ -39,6 +39,7 @@ import {
   UpdateBrandSchema,
   UpdateBrandRequest,
   UserResponse,
+  BrandResponse,
   CategoryTypeCode,
 } from '@contracts';
 import { z } from 'zod';
@@ -50,6 +51,8 @@ import {
   formatShorthandNumber,
   safeImageUrl,
   validatePhoneNumber,
+  validatePersonName,
+  validateBrandName,
 } from '@utils';
 
 const normalizeUrl = (val: string): string | undefined => {
@@ -148,9 +151,20 @@ export const ProfileOrganism: React.FC = () => {
       const res = await uploadAvatar(file);
       if (isBrand && res.avatarUrl) {
         setLogoUrl(res.avatarUrl);
+        // Write the stored value straight into the cached brand row. The brand
+        // profile query keeps previous data across a refetch, so without this
+        // the render and the form-sync effect keep seeing the pre-upload row
+        // (no logo) until the refetch lands — which is what made the new logo
+        // "disappear" a moment after it showed.
+        queryClient.setQueryData<BrandResponse>(['brand', 'profile'], (prev) =>
+          prev ? { ...prev, logoUrl: res.avatarUrl } : prev,
+        );
       }
       invalidateEntity(queryClient, 'profile');
-      await refetchUser();
+      await Promise.all([
+        refetchUser(),
+        queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] }),
+      ]);
       showSuccess(
         isBrand ? 'Brand logo uploaded successfully.' : 'Profile picture uploaded successfully.',
       );
@@ -174,8 +188,19 @@ export const ProfileOrganism: React.FC = () => {
       // A brand's logo and its avatar are the same column, so the locally held
       // logo has to be cleared too or the old image survives until a reload.
       setLogoUrl('');
+      // Same reason as the upload path: clear it in the cached brand row now,
+      // or keepPreviousData re-serves the old logo to the render and the
+      // form-sync effect and the removed image flickers back.
+      if (isBrand) {
+        queryClient.setQueryData<BrandResponse>(['brand', 'profile'], (prev) =>
+          prev ? { ...prev, logoUrl: null } : prev,
+        );
+      }
       invalidateEntity(queryClient, 'profile');
-      await refetchUser();
+      await Promise.all([
+        refetchUser(),
+        queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] }),
+      ]);
       setConfirmRemoveOpen(false);
       setPreviewOpen(false);
       showSuccess(isBrand ? 'Brand logo removed.' : 'Profile picture removed.');
@@ -191,8 +216,21 @@ export const ProfileOrganism: React.FC = () => {
     }
   };
 
+  // Hydrate the editable fields from server state once per identity load.
+  //
+  // This used to run on every `user` / `brandData` reference change. The brand
+  // profile query keeps previous data across a refetch, so a refetch triggered
+  // by an avatar upload / remove / save briefly re-serves the *old* row — and
+  // re-running here wrote that stale copy back over the just-changed logo (and
+  // any in-progress edit to another field). After the first hydrate, the
+  // mutation handlers own the fields.
+  const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    const hydrationKey = isBrand ? (brandData?.id ?? null) : (user?.id ?? null);
+    if (!hydrationKey || hydratedKeyRef.current === hydrationKey) return;
+
     if (isBrand && brandData) {
+      hydratedKeyRef.current = hydrationKey;
       setFullName(brandData.contactPerson || user?.profile?.fullName || '');
       setDisplayName(brandData.name || user?.profile?.displayName || '');
       setBrandCategory(brandData.industry || '');
@@ -200,23 +238,28 @@ export const ProfileOrganism: React.FC = () => {
       setWebsite(brandData.website || '');
       setCity(brandData.city || '');
       setAddress(brandData.address || '');
-      setLogoUrl(brandData.logoUrl || user?.profile?.avatarUrl || '');
+      setLogoUrl(brandData.logoUrl || '');
       setBio(brandData.bio || user?.profile?.bio || '');
-    } else if (user?.profile) {
+      return;
+    }
+
+    if (!isBrand && user?.profile) {
+      hydratedKeyRef.current = hydrationKey;
       setFullName(user.profile.fullName || '');
       setDisplayName(user.profile.displayName || '');
       setBio(user.profile.bio || '');
-    }
-    const detail = user?.influencer;
-    if (detail) {
-      setCity(detail.location || '');
-      setRegions(detail.regions || detail.influencingRegions || []);
-      setCategory(detail.category || '');
-      setInstagram(detail.instagram || '');
-      setYoutube(detail.youtube || '');
-      setFollowers(detail.followers ? formatShorthandNumber(detail.followers) : '');
-      setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
-      setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
+
+      const detail = user.influencer;
+      if (detail) {
+        setCity(detail.location || '');
+        setRegions(detail.regions || detail.influencingRegions || []);
+        setCategory(detail.category || '');
+        setInstagram(detail.instagram || '');
+        setYoutube(detail.youtube || '');
+        setFollowers(detail.followers ? formatShorthandNumber(detail.followers) : '');
+        setCommercialMin(detail.avgCommercialMin ? String(detail.avgCommercialMin) : '');
+        setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
+      }
     }
   }, [user, brandData, isBrand]);
 
@@ -247,10 +290,12 @@ export const ProfileOrganism: React.FC = () => {
   const fieldsLocked = updateProfileMutation.isPending || updateBrandProfileMutation.isPending;
 
   // The one URL the avatar, the zoom view and the remove control all read, so
-  // they can never disagree about whether a picture is actually set. A brand's
-  // logo and its profile avatar are the same stored column.
+  // they can never disagree about whether a picture is actually set. For a
+  // brand this is `logoUrl` (kept live by the avatar handlers) backed by the
+  // brand row; `user.profile.avatarUrl` is deliberately not a fallback here —
+  // it lags the brand row and was flashing a just-removed logo back.
   const currentAvatarUrl = safeImageUrl(
-    isBrand ? logoUrl || brandData?.logoUrl || user?.profile?.avatarUrl : user?.profile?.avatarUrl,
+    isBrand ? logoUrl || brandData?.logoUrl || undefined : user?.profile?.avatarUrl,
   );
   const hasAvatar = Boolean(currentAvatarUrl);
   const avatarBusy = uploadingAvatar || removingAvatar;
@@ -276,16 +321,24 @@ export const ProfileOrganism: React.FC = () => {
     setErrorMsg('');
     setFieldErrors({});
 
-    const trimmedFullName = fullName.trim();
-    if (!trimmedFullName) {
-      setFieldErrors({ fullName: 'Full Legal Name is required and cannot be whitespace only' });
+    const fnErr = validatePersonName(fullName, {
+      required: true,
+      fieldLabel: 'Full Legal Name',
+      max: 200,
+    });
+    if (fnErr) {
+      setFieldErrors({ fullName: fnErr, contactPerson: fnErr });
       return;
     }
 
     if (isBrand) {
-      const trimmedDisplayName = displayName.trim();
-      if (!trimmedDisplayName) {
-        setFieldErrors({ displayName: 'Brand Name is required' });
+      const dnErr = validateBrandName(displayName, {
+        required: true,
+        fieldLabel: 'Brand Name',
+        max: 200,
+      });
+      if (dnErr) {
+        setFieldErrors({ displayName: dnErr, name: dnErr });
         return;
       }
 
@@ -314,8 +367,8 @@ export const ProfileOrganism: React.FC = () => {
       }
 
       const brandPayload: UpdateBrandRequest = {
-        name: trimmedDisplayName,
-        contactPerson: trimmedFullName,
+        name: displayName.trim(),
+        contactPerson: fullName.trim(),
         industry: brandCategory.trim() || undefined,
         contactPhone: contactPhone.trim() || undefined,
         website: normalizeUrl(website),
@@ -387,8 +440,20 @@ export const ProfileOrganism: React.FC = () => {
       return `https://${trimmed}`;
     };
 
+    if (displayName.trim()) {
+      const dnErr = validatePersonName(displayName, {
+        required: false,
+        fieldLabel: 'Public Display Name',
+        max: 120,
+      });
+      if (dnErr) {
+        setFieldErrors({ displayName: dnErr });
+        return;
+      }
+    }
+
     const payload: UpdateProfileRequest = {
-      fullName: trimmedFullName,
+      fullName: fullName.trim(),
       displayName: displayName.trim() || undefined,
       bio: bio.trim() || undefined,
       ...(isInfluencer
@@ -706,9 +771,54 @@ export const ProfileOrganism: React.FC = () => {
                     <TextField
                       label="Full Legal Name / Contact Person *"
                       value={fullName}
-                      onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                      onChange={(e) => {
+                        const val = capitalizeWords(e.target.value);
+                        setFullName(val);
+                        if (fieldErrors.fullName || fieldErrors.contactPerson) {
+                          const err = validatePersonName(val, {
+                            required: true,
+                            fieldLabel: 'Full Legal Name',
+                            max: 200,
+                          });
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            if (err) {
+                              next.fullName = err;
+                              next.contactPerson = err;
+                            } else {
+                              delete next.fullName;
+                              delete next.contactPerson;
+                            }
+                            return next;
+                          });
+                        } else if (/[\d\p{N}]/u.test(val)) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            fullName: 'Numbers are not allowed in name',
+                            contactPerson: 'Numbers are not allowed in name',
+                          }));
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = validatePersonName(e.target.value, {
+                          required: true,
+                          fieldLabel: 'Full Legal Name',
+                          max: 200,
+                        });
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          if (err) {
+                            next.fullName = err;
+                            next.contactPerson = err;
+                          } else {
+                            delete next.fullName;
+                            delete next.contactPerson;
+                          }
+                          return next;
+                        });
+                      }}
                       error={Boolean(fieldErrors.fullName || fieldErrors.contactPerson)}
-                      helperText={fieldErrors.fullName || fieldErrors.contactPerson}
+                      helperText={fieldErrors.fullName || fieldErrors.contactPerson || undefined}
                       fullWidth
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
@@ -718,9 +828,48 @@ export const ProfileOrganism: React.FC = () => {
                       label="Public Brand Name *"
                       value={displayName}
                       placeholder="e.g. Jos Alukkas"
-                      onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
+                      onChange={(e) => {
+                        const val = capitalizeWords(e.target.value);
+                        setDisplayName(val);
+                        if (fieldErrors.displayName || fieldErrors.name) {
+                          const err = validateBrandName(val, {
+                            required: true,
+                            fieldLabel: 'Brand Name',
+                            max: 200,
+                          });
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            if (err) {
+                              next.displayName = err;
+                              next.name = err;
+                            } else {
+                              delete next.displayName;
+                              delete next.name;
+                            }
+                            return next;
+                          });
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = validateBrandName(e.target.value, {
+                          required: true,
+                          fieldLabel: 'Brand Name',
+                          max: 200,
+                        });
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          if (err) {
+                            next.displayName = err;
+                            next.name = err;
+                          } else {
+                            delete next.displayName;
+                            delete next.name;
+                          }
+                          return next;
+                        });
+                      }}
                       error={Boolean(fieldErrors.displayName || fieldErrors.name)}
-                      helperText={fieldErrors.displayName || fieldErrors.name}
+                      helperText={fieldErrors.displayName || fieldErrors.name || undefined}
                       fullWidth
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
@@ -870,9 +1019,43 @@ export const ProfileOrganism: React.FC = () => {
                     <TextField
                       label="Full Legal Name *"
                       value={fullName}
-                      onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+                      onChange={(e) => {
+                        const val = capitalizeWords(e.target.value);
+                        setFullName(val);
+                        if (fieldErrors.fullName) {
+                          const err = validatePersonName(val, {
+                            required: true,
+                            fieldLabel: 'Full Legal Name',
+                            max: 200,
+                          });
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            if (err) next.fullName = err;
+                            else delete next.fullName;
+                            return next;
+                          });
+                        } else if (/[\d\p{N}]/u.test(val)) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            fullName: 'Numbers are not allowed in name',
+                          }));
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = validatePersonName(e.target.value, {
+                          required: true,
+                          fieldLabel: 'Full Legal Name',
+                          max: 200,
+                        });
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          if (err) next.fullName = err;
+                          else delete next.fullName;
+                          return next;
+                        });
+                      }}
                       error={Boolean(fieldErrors.fullName)}
-                      helperText={fieldErrors.fullName}
+                      helperText={fieldErrors.fullName || undefined}
                       fullWidth
                       disabled={fieldsLocked}
                     />
@@ -881,9 +1064,47 @@ export const ProfileOrganism: React.FC = () => {
                       label="Public Display Name"
                       value={displayName}
                       placeholder="e.g. Alex Influencer"
-                      onChange={(e) => setDisplayName(capitalizeWords(e.target.value))}
+                      onChange={(e) => {
+                        const val = capitalizeWords(e.target.value);
+                        setDisplayName(val);
+                        if (fieldErrors.displayName) {
+                          const err = val.trim()
+                            ? validatePersonName(val, {
+                                required: false,
+                                fieldLabel: 'Public Display Name',
+                                max: 120,
+                              })
+                            : '';
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            if (err) next.displayName = err;
+                            else delete next.displayName;
+                            return next;
+                          });
+                        } else if (/[\d\p{N}]/u.test(val)) {
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            displayName: 'Numbers are not allowed in name',
+                          }));
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const err = e.target.value.trim()
+                          ? validatePersonName(e.target.value, {
+                              required: false,
+                              fieldLabel: 'Public Display Name',
+                              max: 120,
+                            })
+                          : '';
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          if (err) next.displayName = err;
+                          else delete next.displayName;
+                          return next;
+                        });
+                      }}
                       error={Boolean(fieldErrors.displayName)}
-                      helperText={fieldErrors.displayName}
+                      helperText={fieldErrors.displayName || undefined}
                       fullWidth
                       disabled={fieldsLocked}
                     />

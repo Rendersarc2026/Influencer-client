@@ -40,7 +40,7 @@ import {
 } from '@api';
 import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
-import { capitalizeWords, ExcelColumnConfig } from '@utils';
+import { capitalizeWords, ExcelColumnConfig, validateCategoryName } from '@utils';
 
 interface CategoryRowActionsProps {
   row: CategoryResponse;
@@ -322,13 +322,13 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     setNameError('');
 
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      setNameError('Category name is required');
-      return;
-    }
-
-    if (trimmedName.length > 100) {
-      setNameError('Category name must be at most 100 characters');
+    const nErr = validateCategoryName(trimmedName, {
+      required: true,
+      fieldLabel: 'Category name',
+      max: 100,
+    });
+    if (nErr) {
+      setNameError(nErr);
       return;
     }
 
@@ -458,8 +458,8 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     },
     {
       id: 'createdOn',
-      header: 'Created Date',
-      type: 'text',
+      header: 'Created Date (DD/MM/YYYY)',
+      type: 'date',
       accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
     },
     {
@@ -756,7 +756,24 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                 onChange={(e) => {
                   const val = capitalizeWords(e.target.value);
                   setName(val);
-                  if (nameError) setNameError('');
+                  if (nameError) {
+                    setNameError(
+                      validateCategoryName(val, {
+                        required: true,
+                        fieldLabel: 'Category name',
+                        max: 100,
+                      }),
+                    );
+                  }
+                }}
+                onBlur={(e) => {
+                  setNameError(
+                    validateCategoryName(e.target.value, {
+                      required: true,
+                      fieldLabel: 'Category name',
+                      max: 100,
+                    }),
+                  );
                 }}
                 error={Boolean(nameError)}
                 helperText={

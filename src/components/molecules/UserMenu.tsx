@@ -42,22 +42,23 @@ export const UserMenu: React.FC<UserMenuProps> = ({
     setAnchorEl(null);
   };
 
-  const initials = (user.name || 'User')
-    .split(' ')
-    .map((n) => n[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || 'U';
+  const initials =
+    (user.name || 'User')
+      .split(' ')
+      .map((n) => n[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'U';
 
   const roleLabel =
     user.roleCode === 'INFLUENCER'
       ? 'Influencer'
       : user.roleCode === 'BRAND'
-      ? 'Brand'
-      : user.roleCode === 'AGENCY'
-      ? 'Agency'
-      : user.roleCode || '';
+        ? 'Brand'
+        : user.roleCode === 'AGENCY'
+          ? 'Agency'
+          : user.roleCode || '';
 
   return (
     <Box className={className}>
@@ -77,9 +78,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
           border: `1px solid ${open ? theme.palette.primary.main : theme.palette.tokens.divider}`,
           cursor: 'pointer',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          boxShadow: open
-            ? `0 0 0 3px rgba(37, 99, 235, 0.12)`
-            : '0 1px 3px rgba(0, 0, 0, 0.04)',
+          boxShadow: open ? `0 0 0 3px rgba(37, 99, 235, 0.12)` : '0 1px 3px rgba(0, 0, 0, 0.04)',
           '&:hover': {
             backgroundColor: theme.palette.tokens.fieldBg,
             borderColor: open ? theme.palette.primary.main : 'rgba(0,0,0,0.15)',
