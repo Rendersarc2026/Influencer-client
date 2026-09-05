@@ -114,9 +114,9 @@ All routes are split into standalone chunks via `React.lazy()`:
   - `vendor-charts`: `38.4 kB` gzipped
 - **Route Chunks**: Average `1.2 kB – 4.8 kB` gzipped per screen.
 
-### 2. Nginx SPA Fallback Configuration
+### 2. Caddy SPA Fallback Configuration
 
-- **Rule**: `try_files $uri $uri/ /index.html;` in `nginx.conf` ensures deep linking across client routes (`/agency/campaigns/:id`, `/brand/payments`, etc.) resolves without HTTP 404s.
+- **Rule**: `try_files {path} /index.html` in `Caddyfile` ensures deep linking across client routes (`/agency/campaigns/:id`, `/brand/payments`, etc.) resolves without HTTP 404s.
 
 ### 3. Build-Time API Environment Variable
 

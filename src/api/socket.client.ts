@@ -5,6 +5,46 @@ const TOKEN_STORAGE_KEY = 'auth_token';
 
 let socket: Socket | null = null;
 
+/**
+ * Manual reconnection after a rejected handshake.
+ *
+ * Socket.io retries a *transport* failure on its own, but a handshake the
+ * server's auth middleware rejects is reported as unrecoverable: the client
+ * emits `connect_error`, sets `active` to false and stops trying forever. The
+ * stored token is rotated as the session slides forward, so a single attempt
+ * made with a token that had just aged out killed realtime for the whole tab —
+ * no messages, no presence, and a notification bell that stayed silent while
+ * the conversation list kept updating over HTTP.
+ *
+ * Retrying on our own timer fixes that: the `auth` callback below is re-read on
+ * every attempt, so the next one picks up whatever token the API has since
+ * handed back.
+ */
+const AUTH_RETRY_INITIAL_MS = 2000;
+const AUTH_RETRY_MAX_MS = 30000;
+let authRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let authRetryDelay = AUTH_RETRY_INITIAL_MS;
+
+function clearAuthRetry(): void {
+  if (authRetryTimer) {
+    clearTimeout(authRetryTimer);
+    authRetryTimer = null;
+  }
+  authRetryDelay = AUTH_RETRY_INITIAL_MS;
+}
+
+function scheduleAuthRetry(): void {
+  if (authRetryTimer) return;
+  const delay = authRetryDelay;
+  authRetryDelay = Math.min(authRetryDelay * 2, AUTH_RETRY_MAX_MS);
+  authRetryTimer = setTimeout(() => {
+    authRetryTimer = null;
+    if (socket && !socket.connected) {
+      socket.connect();
+    }
+  }, delay);
+}
+
 export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
@@ -23,6 +63,14 @@ export function getSocket(): Socket {
         cb({ token });
       },
     });
+
+    socket.on('connect', clearAuthRetry);
+    socket.on('connect_error', () => {
+      // `active` is false exactly when socket.io has given up on its own.
+      if (socket && !socket.active) {
+        scheduleAuthRetry();
+      }
+    });
   }
   return socket;
 }
@@ -35,11 +83,20 @@ export function connectSocket(): Socket {
   return s;
 }
 
+/**
+ * Disconnects without discarding the instance.
+ *
+ * Nulling the singleton here meant the next `getSocket()` built a *second*
+ * socket, so effect cleanups ran their `.off()` calls against an emitter that
+ * had never carried their handlers: the listeners on the original stayed bound
+ * and the chat screen ended up listening to a socket nobody would reconnect.
+ * Keeping one instance for the lifetime of the page makes `off` symmetric with
+ * `on`, and a later `connectSocket()` re-handshakes with a fresh token.
+ */
 export function disconnectSocket(): void {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
+  if (!socket) return;
+  clearAuthRetry();
+  socket.disconnect();
 }
 
 export function joinChat(chatId: string): void {

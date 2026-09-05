@@ -6,7 +6,6 @@ import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Divider from '@mui/material/Divider';
 import Avatar from '@mui/material/Avatar';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
@@ -364,39 +363,6 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             })
           )}
         </Box>
-
-        {/* 4. Footer */}
-        {notifications.length > 0 && (
-          <>
-            <Divider sx={{ borderColor: theme.palette.tokens.divider }} />
-            <Box
-              sx={{
-                p: 1.25,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.palette.tokens.surface,
-              }}
-            >
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => {
-                  navigate('/agency/chats');
-                  onClose();
-                }}
-                sx={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  color: theme.palette.tokens.textSecondary,
-                  '&:hover': { color: theme.palette.tokens.textPrimary },
-                }}
-              >
-                Open Direct Messages
-              </Button>
-            </Box>
-          </>
-        )}
       </Popover>
 
       <ConfirmDialog

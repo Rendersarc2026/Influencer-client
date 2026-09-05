@@ -19,26 +19,45 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { user, roleCode, isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
-  const storageKey = user?.id ? `ihub_notifs_${user.id}` : 'ihub_notifs_guest';
+  // Notifications belong to the signed-in user, and on a cold load that user is
+  // not known yet: `/auth/me` is still in flight for the first few renders.
+  const storageKey = user?.id ? `ihub_notifs_${user.id}` : null;
 
-  // Load initial notifications from local storage
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    try {
-      return parseStoredNotifications(localStorage.getItem(storageKey));
-    } catch {
-      return [];
-    }
-  });
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
-  // Keep local storage synced
+  // Load (and re-load) straight from render rather than in an effect.
+  //
+  // Seeding `useState` from storage read the key that was current on the *first*
+  // render, which is nobody's — `user` is still null there — so the list started
+  // empty and the sync effect below then wrote that empty list over the real
+  // one the moment the user resolved. Every reload silently erased the history,
+  // which is why the bell sat at zero next to a conversation list showing
+  // unread threads. Adjusting state during render keeps the load and the key it
+  // was loaded for in the same commit, so the writer below can never run
+  // against a list belonging to a different key.
+  if (storageKey !== loadedKey) {
+    setLoadedKey(storageKey);
+    setNotifications(() => {
+      if (!storageKey) return [];
+      try {
+        return parseStoredNotifications(localStorage.getItem(storageKey));
+      } catch {
+        return [];
+      }
+    });
+  }
+
+  // Keep local storage synced, but only once the list in hand is the one that
+  // was loaded for this key.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!storageKey || storageKey !== loadedKey) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(notifications.slice(0, 100)));
     } catch {
       // Storage quota or disabled fallback
     }
-  }, [notifications, storageKey, isAuthenticated]);
+  }, [notifications, storageKey, loadedKey]);
 
   // Track unread count.
   //

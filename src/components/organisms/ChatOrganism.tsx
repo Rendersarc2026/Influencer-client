@@ -802,6 +802,14 @@ export const ChatOrganism: React.FC = () => {
   // Keep the open thread in the URL
   useEffect(() => {
     if (effectiveChatId === (queryChatId ?? undefined)) return;
+    // A chatId that has only just arrived in the URL is adopted by the query
+    // parameter effect above, but not until the commit after this one. Without
+    // this guard that ordering worked against itself: clicking a notification
+    // while the chat screen was already open set `?chatId=`, this effect ran
+    // first, saw a selection that had not moved yet and stripped the parameter
+    // straight back out — which then reset the selection to null. The thread
+    // flickered open and shut and the click read as doing nothing.
+    if (!effectiveChatId && queryChatId) return;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
