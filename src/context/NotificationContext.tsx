@@ -218,14 +218,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       addNotification(draft);
 
-      // A campaign alert says the creator's own campaign list just changed
-      // underneath them. Without this the alert lands on a table that still
-      // does not contain the campaign it is about, and stays that way until
-      // something else happens to refetch.
+      // A campaign alert says the recipient's own campaign screens just changed
+      // underneath them — a new assignment, a rate that has come in, a revision
+      // to act on. Without this the alert lands on a table that still shows the
+      // state before it, and stays that way until something else refetches.
+      // Scoped by role because the two sides read different endpoints.
       if (CAMPAIGN_NOTIFICATION_TYPES.includes(draft.type)) {
-        queryClient.invalidateQueries({ queryKey: ['influencer', 'campaigns'] });
-        queryClient.invalidateQueries({ queryKey: ['influencer', 'assignments'] });
-        queryClient.invalidateQueries({ queryKey: ['influencer', 'dashboard'] });
+        const scope =
+          roleCode === 'AGENCY' ? 'agency' : roleCode === 'BRAND' ? 'brand' : 'influencer';
+        queryClient.invalidateQueries({ queryKey: [scope, 'campaigns'] });
+        queryClient.invalidateQueries({ queryKey: [scope, 'assignments'] });
+        queryClient.invalidateQueries({ queryKey: [scope, 'dashboard'] });
       }
     };
 
