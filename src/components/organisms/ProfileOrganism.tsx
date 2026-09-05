@@ -216,17 +216,56 @@ export const ProfileOrganism: React.FC = () => {
     }
   };
 
-  // Hydrate the editable fields from server state once per identity load.
+  // The session snapshot behind `user` is cached for a day and deliberately does
+  // not refetch on focus, so this screen would otherwise open on whatever the
+  // creator row looked like at sign-in. The agency edits that row — a creator's
+  // location or category can change between visits — and the stale copy both
+  // displayed the old value and would have been saved straight back over the
+  // agency's edit. Re-read the session once per visit so the form starts from
+  // what is actually stored.
+  useEffect(() => {
+    void refetchUser();
+  }, [refetchUser]);
+
+  /**
+   * What the creator branch below hydrates from. Folded into the hydration key
+   * so a refetch that brings *different* server values re-fills the fields,
+   * rather than the fields staying pinned to whatever the first render saw.
+   */
+  const influencerSnapshot = JSON.stringify([
+    user?.profile?.fullName ?? null,
+    user?.profile?.displayName ?? null,
+    user?.profile?.bio ?? null,
+    user?.influencer?.location ?? null,
+    user?.influencer?.regions ?? null,
+    user?.influencer?.influencingRegions ?? null,
+    user?.influencer?.category ?? null,
+    user?.influencer?.instagram ?? null,
+    user?.influencer?.youtube ?? null,
+    user?.influencer?.followers ?? null,
+    user?.influencer?.avgCommercialMin ?? null,
+    user?.influencer?.avgCommercialMax ?? null,
+  ]);
+
+  // Hydrate the editable fields from server state.
   //
   // This used to run on every `user` / `brandData` reference change. The brand
   // profile query keeps previous data across a refetch, so a refetch triggered
   // by an avatar upload / remove / save briefly re-serves the *old* row — and
   // re-running here wrote that stale copy back over the just-changed logo (and
-  // any in-progress edit to another field). After the first hydrate, the
-  // mutation handlers own the fields.
+  // any in-progress edit to another field). The brand branch is therefore still
+  // keyed on identity alone and hydrates once.
+  //
+  // The session query has no such stale replay — it holds the last response
+  // until the next one lands — so the creator branch is keyed on the values too
+  // and re-hydrates when the server's copy genuinely differs.
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    const hydrationKey = isBrand ? (brandData?.id ?? null) : (user?.id ?? null);
+    const hydrationKey = isBrand
+      ? (brandData?.id ?? null)
+      : user?.id
+        ? `${user.id}|${influencerSnapshot}`
+        : null;
     if (!hydrationKey || hydratedKeyRef.current === hydrationKey) return;
 
     if (isBrand && brandData) {
@@ -261,7 +300,7 @@ export const ProfileOrganism: React.FC = () => {
         setCommercialMax(detail.avgCommercialMax ? String(detail.avgCommercialMax) : '');
       }
     }
-  }, [user, brandData, isBrand]);
+  }, [user, brandData, isBrand, influencerSnapshot]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateProfileRequest) => {
