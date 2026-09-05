@@ -33,8 +33,17 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
  * One list drives both, plus the bell's own count, so the number on the bell
  * can never outrun what the panel has to show for it - the drift that put a
  * count next to an empty list once already.
+ *
+ * These are the events that hand someone a job to do on a campaign: a creator
+ * staffed on one, a creator asked to revise their rate, an agency told a rate
+ * has come in. Anything the recipient only needs to know about, rather than act
+ * on, stays a toast and is deliberately absent here.
  */
-export const CAMPAIGN_NOTIFICATION_TYPES: readonly NotificationType[] = ['CAMPAIGN_ASSIGNED'];
+export const CAMPAIGN_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'CAMPAIGN_ASSIGNED',
+  'RATE_REVISION_REQUESTED',
+  'RATE_SUBMITTED',
+];
 
 /** Identifiers carried alongside an alert so the UI can deep-link and dedupe. */
 export interface NotificationMetadata {
