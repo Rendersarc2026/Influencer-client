@@ -1,12 +1,5 @@
 import { parseShorthandNumber } from './shorthand-number';
 
-export interface ManualPostRowData {
-  id: string;
-  likes: string;
-  comments: string;
-  views: string;
-}
-
 /**
  * Calculates median of an array of numbers.
  * For even length arrays, returns the average of the two middle elements.
@@ -130,86 +123,6 @@ export function validateNumericInput(
 export function parseNumberInput(input: string | number | null | undefined): number {
   const result = validateNumericInput(input);
   return result.isValid && result.value !== null ? result.value : 0;
-}
-
-/**
- * Structured result of parsing bulk-pasted numeric data.
- */
-export interface BulkParseValidationResult {
-  raw: string;
-  tokens: NumericValidationResult[];
-  validTokens: NumericValidationResult[];
-  invalidTokens: NumericValidationResult[];
-  validValues: number[];
-  invalidStrings: string[];
-  totalCount: number;
-  validCount: number;
-  invalidCount: number;
-  hasErrors: boolean;
-}
-
-/**
- * Parses and strictly validates bulk-pasted numbers.
- * Splits by newlines, commas, semicolons, tabs, and spaces.
- */
-export function parseAndValidateBulkInput(input: string): BulkParseValidationResult {
-  if (!input || !input.trim()) {
-    return {
-      raw: '',
-      tokens: [],
-      validTokens: [],
-      invalidTokens: [],
-      validValues: [],
-      invalidStrings: [],
-      totalCount: 0,
-      validCount: 0,
-      invalidCount: 0,
-      hasErrors: false,
-    };
-  }
-
-  // Split by commas, newlines, semicolons, tabs, spaces
-  const rawParts = input.split(/[\n\r,;\t\s]+/).filter((p) => p.trim().length > 0);
-
-  const tokens: NumericValidationResult[] = [];
-  const validTokens: NumericValidationResult[] = [];
-  const invalidTokens: NumericValidationResult[] = [];
-  const validValues: number[] = [];
-  const invalidStrings: string[] = [];
-
-  for (const part of rawParts) {
-    const res = validateNumericInput(part);
-    tokens.push(res);
-    if (res.isValid && res.value !== null && res.value >= 0) {
-      validTokens.push(res);
-      validValues.push(res.value);
-    } else {
-      invalidTokens.push(res);
-      invalidStrings.push(part);
-    }
-  }
-
-  return {
-    raw: input,
-    tokens,
-    validTokens,
-    invalidTokens,
-    validValues,
-    invalidStrings,
-    totalCount: tokens.length,
-    validCount: validTokens.length,
-    invalidCount: invalidTokens.length,
-    hasErrors: invalidTokens.length > 0,
-  };
-}
-
-/**
- * Parses a bulk text containing numbers separated by commas, spaces, tabs, or newlines.
- * Returns only strictly valid positive integers.
- */
-export function parseNumberList(input: string): number[] {
-  const result = parseAndValidateBulkInput(input);
-  return result.validValues;
 }
 
 /**

@@ -12,3 +12,6 @@ coverage
 npm-debug.log*
 .DS_Store
 .vite
+
+# TypeScript incremental build cache
+*.tsbuildinfo

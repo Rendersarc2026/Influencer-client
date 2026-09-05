@@ -10,7 +10,7 @@ import { navConfig } from '../../routes/navConfig';
 import { RoleCode } from '@contracts';
 
 export type PageSkeletonVariant =
-  'dashboard' | 'list' | 'detail' | 'reports' | 'chat' | 'form' | 'grid' | 'auth' | 'shell';
+  'dashboard' | 'list' | 'detail' | 'chat' | 'form' | 'grid' | 'auth' | 'shell';
 
 export interface PageSkeletonProps {
   variant?: PageSkeletonVariant;
@@ -24,7 +24,6 @@ function resolveVariant(pathname: string, requested?: PageSkeletonVariant): Page
   if (pathname === '/agency' || pathname === '/brand' || pathname === '/influencer') {
     return 'dashboard';
   }
-  if (pathname.includes('/reports')) return 'reports';
   if (pathname.includes('/chats')) return 'chat';
   if (pathname.includes('/profile')) return 'form';
   if (pathname.endsWith('/add')) return 'grid';

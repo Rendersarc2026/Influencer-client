@@ -2,21 +2,6 @@ export * from './safe-url';
 export * from './phone-codes';
 export * from './chat-emoji';
 
-const defaultDateTimeFormat = new Intl.DateTimeFormat('en-IN', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
-export function formatDate(date: string | Date): string {
-  if (!date) return '—';
-  try {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return isNaN(d.getTime()) ? String(date) : defaultDateTimeFormat.format(d);
-  } catch {
-    return String(date);
-  }
-}
-
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
 
 export function formatCurrency(amount: number, currency = 'INR'): string {

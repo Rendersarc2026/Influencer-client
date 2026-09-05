@@ -7,8 +7,6 @@ import {
   CampaignResponse,
   CampaignListQuery,
   SubmitRateRequest,
-  UpdateProfileRequest,
-  UserResponse,
   PaginatedResult,
   InfluencerDashboardSummary,
 } from '@contracts';
@@ -112,20 +110,6 @@ export function useSubmitInfluencerRate(assignmentId?: string) {
         queryClient.invalidateQueries({ queryKey: ['influencer', 'assignments', assignmentId] });
       }
       queryClient.invalidateQueries({ queryKey: ['influencer', 'assignments'] });
-    },
-  });
-}
-
-export function useUpdateInfluencerProfile() {
-  const queryClient = useQueryClient();
-  return useMutation<UserResponse, Error, UpdateProfileRequest>({
-    mutationFn: async (data) => {
-      const response = await apiClient.put<UserResponse>('/users/profile', data);
-      return response.data;
-    },
-    onSuccess: () => {
-      invalidateEntity(queryClient, 'profile');
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
     },
   });
 }

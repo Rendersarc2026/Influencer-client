@@ -1,11 +1,4 @@
-import { useMemo } from 'react';
-import {
-  useQuery,
-  useQueries,
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-} from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from './axios.client';
 import { invalidateEntity } from './invalidate';
 import {
@@ -14,8 +7,6 @@ import {
   BrandMapperResponse,
   CampaignMapperListQuery,
   BrandDecisionRequest,
-  PaymentResponse,
-  PaymentListQuery,
   PaginatedResult,
   BrandResponse,
   UpdateBrandRequest,
@@ -97,27 +88,6 @@ export function useBrandCampaignInfluencers(
   });
 }
 
-export function useBrandCampaignsInfluencers(campaignIds: Array<string>) {
-  const queries = useQueries({
-    queries: campaignIds.map((campaignId) => ({
-      queryKey: ['brand', 'campaigns', campaignId, 'influencers', undefined] as const,
-      queryFn: async () => {
-        const response = await apiClient.get<PaginatedResult<BrandMapperResponse>>(
-          `/brand/campaigns/${campaignId}/influencers`,
-        );
-        return response.data;
-      },
-      enabled: Boolean(campaignId),
-    })),
-  });
-
-  const isLoading = queries.some((q) => q.isLoading);
-  const isFetching = queries.some((q) => q.isFetching);
-  const mappers = useMemo(() => queries.flatMap((q) => q.data?.items || []), [queries]);
-
-  return { mappers, isLoading, isFetching };
-}
-
 export function useBrandDecision(campaignId?: string) {
   const queryClient = useQueryClient();
   return useMutation<
@@ -140,42 +110,6 @@ export function useBrandDecision(campaignId?: string) {
         });
       }
       queryClient.invalidateQueries({ queryKey: ['brand', 'campaigns'] });
-    },
-  });
-}
-
-/** Shared with the boot-time prefetch — see brandCampaignsQueryOptions. */
-function brandPaymentsQueryOptions(params?: PaymentListQuery) {
-  return {
-    queryKey: ['brand', 'payments', params] as const,
-    queryFn: async () => {
-      const response = await apiClient.get<PaginatedResult<PaymentResponse>>('/brand/payments', {
-        params,
-      });
-      return response.data;
-    },
-  };
-}
-
-export function useBrandPayments(params?: PaymentListQuery) {
-  return useQuery<PaginatedResult<PaymentResponse>>({
-    ...brandPaymentsQueryOptions(params),
-    placeholderData: keepPreviousData,
-  });
-}
-
-export function useApprovePayment() {
-  const queryClient = useQueryClient();
-  return useMutation<PaymentResponse, Error, string>({
-    mutationFn: async (paymentId) => {
-      const response = await apiClient.post<PaymentResponse>(
-        `/brand/payments/${paymentId}/approve`,
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      invalidateEntity(queryClient, 'payment');
-      queryClient.invalidateQueries({ queryKey: ['brand', 'payments'] });
     },
   });
 }

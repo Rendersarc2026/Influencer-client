@@ -1,4 +1,3 @@
-import { useEffect, useMemo } from 'react';
 import {
   useQuery,
   useInfiniteQuery,
@@ -34,7 +33,6 @@ import {
   PaginatedResult,
   AssignERToInfluencerRequest,
   AssignERResponse,
-  CalculateInfluencerERRequest,
   SyncInstagramProfileResponse,
   InfluencerEngagementResponse,
   AgencyDashboardSummary,
@@ -708,72 +706,7 @@ export function useRecordMetric(campaignId?: string) {
 }
 
 // -------------------------------------------------------------
-// 6. Reports & Metrics Aggregates
-// -------------------------------------------------------------
-
-export interface CampaignReportResponse {
-  campaign: CampaignResponse;
-  influencerCount: number;
-  totalInfluencerRate: number;
-  totalClientRate: number;
-  totalMargin: number;
-  totalReach: number;
-  totalEngagements: number;
-  averageErPercent: number;
-  mappers: AgencyMapperResponse[];
-}
-
-/**
- * Fetches the aggregate report for several campaigns in a single request.
- *
- * This used to issue one request per campaign, which put a full page of
- * round trips between the dashboard and its first painted number. The server
- * now accepts the whole id set at once, so the screen waits on one response
- * regardless of how many campaigns are on the page.
- *
- * Each report is also written into its own per-campaign cache key, so a
- * detail screen opened from the dashboard can render from cache instead of
- * refetching what the dashboard already has.
- */
-export function useCampaignReports(campaignIds: Array<string>) {
-  const queryClient = useQueryClient();
-
-  // Sorted so that the same set of campaigns in a different order is one cache
-  // entry rather than two.
-  const key = useMemo(() => [...campaignIds].sort(), [campaignIds]);
-
-  const query = useQuery<CampaignReportResponse[]>({
-    queryKey: ['agency', 'reports', 'campaigns', 'batch', key],
-    queryFn: async () => {
-      const response = await apiClient.get<CampaignReportResponse[]>('/agency/reports/campaigns', {
-        params: { ids: key.join(',') },
-      });
-      return response.data;
-    },
-    enabled: key.length > 0,
-    staleTime: 1000 * 60,
-    placeholderData: keepPreviousData,
-  });
-
-  const reports = useMemo(() => query.data ?? [], [query.data]);
-
-  useEffect(() => {
-    for (const report of reports) {
-      if (!report?.campaign?.id) continue;
-      queryClient.setQueryData(['agency', 'reports', 'campaigns', report.campaign.id], report);
-    }
-  }, [reports, queryClient]);
-
-  return {
-    reports,
-    isLoading: key.length > 0 && query.isPending,
-    isFetching: key.length > 0 && query.isFetching,
-    isError: query.isError,
-  };
-}
-
-// -------------------------------------------------------------
-// 7. Influencer Engagement & ER Calculator
+// 6. Influencer Engagement & ER Calculator
 // -------------------------------------------------------------
 
 export function useAssignERToInfluencer() {
@@ -833,42 +766,6 @@ export function useSyncInstagramProfile() {
     onSuccess: () => {
       invalidateEntity(queryClient, 'influencer');
       queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
-    },
-  });
-}
-
-/**
- * Refetches live Instagram metrics & follower count using Meta Graph API,
- * updates the Influencer entity (followers/profile), and records the new calculation.
- */
-export function useCalculateInfluencerER() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      influencerId,
-      data,
-    }: {
-      influencerId: string;
-      data?: CalculateInfluencerERRequest;
-    }) => {
-      const response = await apiClient.post<AssignERResponse>(
-        `/agency/influencers/${influencerId}/calculate-er`,
-        data ?? { forceRefresh: true },
-      );
-      return response.data;
-    },
-    onSuccess: (data, variables) => {
-      invalidateEntity(queryClient, 'influencer');
-      queryClient.invalidateQueries({ queryKey: ['agency', 'influencers'] });
-      queryClient.invalidateQueries({
-        queryKey: ['agency', 'influencers', variables.influencerId, 'engagement'],
-      });
-      queryClient.invalidateQueries({ queryKey: ['agency', 'mappers'] });
-      if (data.engagement?.influencerId) {
-        queryClient.invalidateQueries({
-          queryKey: ['agency', 'influencers', data.engagement.influencerId, 'engagement'],
-        });
-      }
     },
   });
 }
