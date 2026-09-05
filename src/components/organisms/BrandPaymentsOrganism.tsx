@@ -12,7 +12,7 @@ import { apiClient, useBrandPayments, useApprovePayment } from '@api';
 import { PaymentResponse, PaymentStatusEnum, PaymentStatusCode, PaginatedResult } from '@contracts';
 import {
   useAuth,
-  useDebounce,
+  useDebouncedSearch,
   useEnumPills,
   useToast,
   useViewFilters,
@@ -37,7 +37,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('brandPayments');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
   const statusFilter = usePillCode(activePill, PaymentStatusEnum);
 
   const {
@@ -189,7 +189,7 @@ export const BrandPaymentsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={paymentsLoading}
-          isFetching={paymentsFetching}
+          isFetching={paymentsFetching || searchPending}
           fillHeight
         />
       </Box>

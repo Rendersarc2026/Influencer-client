@@ -45,7 +45,7 @@ import {
   subdivisionsOf,
   isSubdivisionOf,
 } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
 import { capitalizeWords, ExcelColumnConfig, validateLocationName } from '@utils';
 
 /** The server accepts tier 1–5; anything outside that range is rejected. */
@@ -247,7 +247,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('agencyLocations');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   // Country and state are the point of the constrained list, so they are
   // filters here as well; they live in local state rather than the persisted
@@ -299,6 +299,10 @@ export const AgencyLocationsOrganism: React.FC = () => {
   const [nameError, setNameError] = useState('');
   const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [pendingArchive, setPendingArchive] = useState<{
+    location: LocationResponse;
+    archived: boolean;
+  } | null>(null);
 
   const stateOptions = subdivisionsOf(country || DEFAULT_COUNTRY);
 
@@ -413,11 +417,14 @@ export const AgencyLocationsOrganism: React.FC = () => {
     }
   };
 
-  const handleSetArchived = async (row: LocationResponse, archived: boolean) => {
+  const handleConfirmArchive = async () => {
+    if (!pendingArchive) return;
+    const { location: row, archived } = pendingArchive;
     setArchivingId(row.id);
     try {
       await setArchivedMutation.mutateAsync({ id: row.id, archived });
       showSuccess(archived ? 'Location archived.' : 'Location restored.');
+      setPendingArchive(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
@@ -511,7 +518,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
           row={row}
           busy={archivingId === row.id}
           onEdit={handleOpenEdit}
-          onSetArchived={(r, archived) => void handleSetArchived(r, archived)}
+          onSetArchived={(r, archived) => setPendingArchive({ location: r, archived })}
           onDelete={(r) => setDeleteLocationId(r.id)}
         />
       ),
@@ -616,7 +623,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={locationsLoading}
-          isFetching={locationsFetching}
+          isFetching={locationsFetching || searchPending}
           onRowClick={(row) => setSelectedLocation(row)}
           fillHeight
         />
@@ -777,7 +784,23 @@ export const AgencyLocationsOrganism: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Confirm Deactivate Dialog */}
+      {/* Confirm Archive / Restore */}
+      <ConfirmDialog
+        open={Boolean(pendingArchive)}
+        title={pendingArchive?.archived ? 'Archive Location?' : 'Restore Location?'}
+        body={
+          pendingArchive?.archived
+            ? `Archive "${pendingArchive.location.name}"? It stops being offered in location dropdowns. Records already pointing at it stay readable.`
+            : `Restore "${pendingArchive?.location.name || 'this location'}"? It will be offered in location dropdowns again.`
+        }
+        confirmText={pendingArchive?.archived ? 'Archive Location' : 'Restore Location'}
+        variant={pendingArchive?.archived ? 'destructive' : 'neutral'}
+        loading={setArchivedMutation.isPending}
+        onConfirm={() => void handleConfirmArchive()}
+        onCancel={() => setPendingArchive(null)}
+      />
+
+      {/* Confirm Delete */}
       <ConfirmDialog
         open={Boolean(deleteLocationId)}
         title="Delete Location?"

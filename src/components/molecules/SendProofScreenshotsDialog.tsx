@@ -21,9 +21,11 @@ import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded';
+import ZoomInRoundedIcon from '@mui/icons-material/ZoomInRounded';
 import { useTheme } from '@mui/material/styles';
 import { useCreateOrFindChat, uploadChatAttachment, sendMessageApi } from '@api';
 import { useToast } from '@hooks';
+import { ImagePreviewDialog } from './ImagePreviewDialog';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
@@ -90,6 +92,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
   const [uploadStep, setUploadStep] = useState<string>('');
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [error, setError] = useState('');
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -102,6 +105,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
       });
       setFiles([]);
       setPreviews([]);
+      setPreviewIndex(null);
       setNote('');
       setIsDragging(false);
       setIsSubmitting(false);
@@ -197,6 +201,11 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
       } catch {
         // Ignore
       }
+    }
+    if (previewIndex === index) {
+      setPreviewIndex(null);
+    } else if (previewIndex !== null && previewIndex > index) {
+      setPreviewIndex(previewIndex - 1);
     }
     setFiles((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => prev.filter((_, i) => i !== index));
@@ -623,6 +632,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
               {files.map((file, index) => (
                 <Box
                   key={`${file.name}-${index}`}
+                  onClick={() => setPreviewIndex(index)}
                   sx={{
                     position: 'relative',
                     borderRadius: `${theme.customRadii.inner - 4}px`,
@@ -630,6 +640,18 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
                     overflow: 'hidden',
                     backgroundColor: theme.palette.tokens.surface,
                     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      borderColor: theme.palette.tokens.accent,
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+                      '& .screenshot-zoom-overlay': {
+                        opacity: 1,
+                      },
+                      '& img': {
+                        transform: 'scale(1.05)',
+                      },
+                    },
                   }}
                 >
                   <Box
@@ -641,21 +663,48 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
                       height: 100,
                       objectFit: 'cover',
                       display: 'block',
+                      transition: 'transform 0.2s ease',
                     }}
                   />
+
+                  {/* Zoom hint overlay on hover */}
+                  <Box
+                    className="screenshot-zoom-overlay"
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 100,
+                      backgroundColor: 'rgba(10, 11, 14, 0.48)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 0.5,
+                      color: '#FFFFFF',
+                      opacity: 0,
+                      transition: 'opacity 0.15s ease',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <ZoomInRoundedIcon sx={{ fontSize: 18 }} />
+                    <Typography sx={{ fontSize: '11px', fontWeight: 600 }}>Click to zoom</Typography>
+                  </Box>
+
                   {/* Badge top-left */}
                   <Box
                     sx={{
                       position: 'absolute',
                       top: 4,
                       left: 4,
-                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      backgroundColor: 'rgba(0,0,0,0.75)',
                       color: '#FFFFFF',
                       borderRadius: '4px',
                       px: 0.75,
                       py: 0.2,
                       fontSize: '10px',
                       fontWeight: 700,
+                      zIndex: 2,
                     }}
                   >
                     #{index + 1}
@@ -673,7 +722,8 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
                         position: 'absolute',
                         top: 4,
                         right: 4,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        zIndex: 3,
+                        backgroundColor: 'rgba(255, 255, 255, 0.92)',
                         color: theme.palette.tokens.negativeText,
                         p: 0.35,
                         '&:hover': {
@@ -798,6 +848,23 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
             : `Send ${files.length > 0 ? `${files.length} ` : ''}Screenshot${files.length === 1 ? '' : 's'} to Chat`}
         </Button>
       </DialogActions>
+
+      {/* Lightbox / Zoom Dialog for Uploaded Screenshot */}
+      <ImagePreviewDialog
+        open={previewIndex !== null}
+        onClose={() => setPreviewIndex(null)}
+        imageUrl={previewIndex !== null ? previews[previewIndex] : null}
+        title={
+          previewIndex !== null && files[previewIndex]
+            ? files[previewIndex].name
+            : 'Reach Proof Screenshot'
+        }
+        subtitle={
+          previewIndex !== null && files[previewIndex]
+            ? `${(files[previewIndex].size / 1024).toFixed(1)} KB · ${tagLabel}`
+            : undefined
+        }
+      />
     </Dialog>
   );
 };

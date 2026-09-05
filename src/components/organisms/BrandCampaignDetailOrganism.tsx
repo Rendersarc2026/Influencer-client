@@ -58,7 +58,7 @@ import {
   MetricResponse,
   PaginatedResult,
 } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters } from '@hooks';
+import { useAuth, useDebouncedSearch, useToast, useViewFilters } from '@hooks';
 import {
   safeExternalUrl,
   exportBrandCampaignPerformanceReport,
@@ -381,7 +381,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
 
   const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
     useViewFilters('brandCampaignDetail');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   const { data: campaign, isLoading: campaignLoading } = useBrandCampaign(campaignId);
 
@@ -1250,7 +1250,7 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
           }}
           onRowClick={(row) => setSelectedInfluencer(row)}
           loading={mappersLoading || campaignLoading}
-          isFetching={mappersFetching}
+          isFetching={mappersFetching || searchPending}
           exportFilename={`${campaign?.name || 'campaign'}_influencer_proposals`}
           exportSheetName="Proposals"
           onExportAll={handleExportAll}

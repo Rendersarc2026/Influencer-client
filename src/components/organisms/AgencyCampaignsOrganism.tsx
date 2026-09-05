@@ -16,7 +16,7 @@ import {
 } from '@contracts';
 import {
   useAuth,
-  useDebounce,
+  useDebouncedSearch,
   useEnumPills,
   useToast,
   useViewFilters,
@@ -43,7 +43,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('agencyCampaigns');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
   const statusFilter = usePillCode(activePill, CampaignStatusEnum);
 
   const {
@@ -215,7 +215,7 @@ export const AgencyCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={campaignsLoading}
-          isFetching={campaignsFetching}
+          isFetching={campaignsFetching || searchPending}
           fillHeight
           onRowClick={(row) => navigate(`/agency/campaigns/${row.id}`)}
         />

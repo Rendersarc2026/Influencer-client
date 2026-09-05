@@ -47,7 +47,7 @@ import {
   CategoryTypeCode,
   PaginatedResult,
 } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
 import {
   getInfluencerTier,
   getTierInfo,
@@ -323,7 +323,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('agencyInfluencers');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   const PRICE_RANGE_OPTIONS = useMemo(
     () => [
@@ -802,7 +802,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isLoading}
-          isFetching={isFetching}
+          isFetching={isFetching || searchPending}
           onRowClick={(row) => setSelectedInfluencer(row)}
           fillHeight
         />

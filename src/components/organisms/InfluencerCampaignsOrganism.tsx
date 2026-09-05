@@ -15,7 +15,7 @@ import {
   CampaignStatusCode,
   PaginatedResult,
 } from '@contracts';
-import { useAuth, useDebounce, useViewFilters, usePillCode, useTableExport } from '@hooks';
+import { useAuth, useDebouncedSearch, useViewFilters, usePillCode, useTableExport } from '@hooks';
 import { safeExternalUrl, ExcelColumnConfig } from '@utils';
 
 export const InfluencerCampaignsOrganism: React.FC = () => {
@@ -33,7 +33,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('influencerCampaigns');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
   const statusFilter = usePillCode(activePill, CampaignStatusEnum);
 
   const {
@@ -193,7 +193,7 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
               setPage(0);
             }}
             loading={isLoading}
-            isFetching={isFetching}
+            isFetching={isFetching || searchPending}
             fillHeight
             onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
           />

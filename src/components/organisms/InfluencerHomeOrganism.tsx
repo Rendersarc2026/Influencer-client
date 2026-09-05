@@ -24,7 +24,14 @@ import {
   RateStatusEnum,
   PaginatedResult,
 } from '@contracts';
-import { useAuth, useDebounce, useEnumPills, useToast, useViewFilters, usePillCode } from '@hooks';
+import {
+  useAuth,
+  useDebouncedSearch,
+  useEnumPills,
+  useToast,
+  useViewFilters,
+  usePillCode,
+} from '@hooks';
 import { formatCurrency } from '@utils';
 
 export const InfluencerHomeOrganism: React.FC = () => {
@@ -43,7 +50,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('influencerHome');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
   const rateStatusFilter = usePillCode(activePill, RateStatusEnum);
 
   const {
@@ -259,7 +266,7 @@ export const InfluencerHomeOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isTableLoading}
-          isFetching={isFetching}
+          isFetching={isFetching || searchPending}
           exportFilename="current_campaign_assignments"
           exportSheetName="Assignments"
           onExportAll={handleExportAll}

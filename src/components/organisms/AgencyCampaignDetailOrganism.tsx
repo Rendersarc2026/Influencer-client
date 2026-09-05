@@ -80,7 +80,7 @@ import {
   ApprovalActionName,
   PaginatedResult,
 } from '@contracts';
-import { useAuth, useDebounce, useTableExport, useToast, useViewFilters } from '@hooks';
+import { useAuth, useDebouncedSearch, useTableExport, useToast, useViewFilters } from '@hooks';
 import {
   safeExternalUrl,
   humanizeCode,
@@ -383,42 +383,34 @@ const RowActions: React.FC<RowActionsProps> = ({
           </MenuItem>
         )}
 
-        {/* Record Post-Evaluation Performance */}
-        <MenuItem
-          onClick={() => {
-            handleClose();
-            onRecordMetrics(row);
-          }}
-          sx={{
-            fontSize: '13px',
-            fontWeight: isCampaignCompleted ? 600 : 500,
-            py: 0.85,
-            px: 1.25,
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            ...(isCampaignCompleted
-              ? {
-                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                  color: theme.palette.primary.main,
-                }
-              : {}),
-            '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.12)' },
-          }}
-        >
-          <ListItemIcon
+        {/* Record Post-Evaluation Performance — only once the campaign has run
+            its course; there is nothing to measure before then. */}
+        {isCampaignCompleted && (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onRecordMetrics(row);
+            }}
             sx={{
-              color: isCampaignCompleted
-                ? theme.palette.primary.main
-                : theme.palette.tokens.textSecondary,
-              minWidth: 'auto',
+              fontSize: '13px',
+              fontWeight: 600,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              backgroundColor: 'rgba(59, 130, 246, 0.08)',
+              color: theme.palette.primary.main,
+              '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.12)' },
             }}
           >
-            <InsightsRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          Record Post-Evaluation Performance
-        </MenuItem>
+            <ListItemIcon sx={{ color: theme.palette.primary.main, minWidth: 'auto' }}>
+              <InsightsRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Record Post-Evaluation Performance
+          </MenuItem>
+        )}
 
         {/* Message Influencer */}
         <MenuItem
@@ -500,7 +492,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
 
   const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
     useViewFilters('agencyCampaignDetail');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   const { data: campaign, isLoading: campaignLoading } = useAgencyCampaign(campaignId);
   const {
@@ -1402,7 +1394,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           }}
           onRowClick={(row) => setOverviewDrawerMapper(row)}
           loading={mappersLoading || campaignLoading}
-          isFetching={mappersFetching}
+          isFetching={mappersFetching || searchPending}
         />
       </Box>
 
@@ -1594,7 +1586,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         actions={
           overviewDrawerMapper
             ? [
-                ...(isCompleted || overviewDrawerMapper.brandStatus === BrandStatusCode.APPROVED
+                ...(isCompleted
                   ? [
                       {
                         label: 'Record Post-Evaluation Performance',

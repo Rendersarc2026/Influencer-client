@@ -39,7 +39,7 @@ import {
   apiClient,
 } from '@api';
 import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
 import { capitalizeWords, ExcelColumnConfig, validateCategoryName } from '@utils';
 
 interface CategoryRowActionsProps {
@@ -239,7 +239,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('agencyCategories');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   const statusFilter = (selectedSelect || 'ACTIVE') as 'ACTIVE' | 'ARCHIVED' | 'ALL';
 
@@ -277,6 +277,10 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const [nameError, setNameError] = useState('');
   const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [pendingArchive, setPendingArchive] = useState<{
+    category: CategoryResponse;
+    archived: boolean;
+  } | null>(null);
 
   const statusOptions = [
     { value: 'ACTIVE', label: 'Active' },
@@ -355,11 +359,14 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     }
   };
 
-  const handleSetArchived = async (row: CategoryResponse, archived: boolean) => {
+  const handleConfirmArchive = async () => {
+    if (!pendingArchive) return;
+    const { category: row, archived } = pendingArchive;
     setArchivingId(row.id);
     try {
       await setArchivedMutation.mutateAsync({ id: row.id, archived });
       showSuccess(archived ? 'Category archived.' : 'Category restored.');
+      setPendingArchive(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
@@ -457,7 +464,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           row={row}
           busy={archivingId === row.id}
           onEdit={handleOpenEdit}
-          onSetArchived={(r, archived) => void handleSetArchived(r, archived)}
+          onSetArchived={(r, archived) => setPendingArchive({ category: r, archived })}
           onDelete={(r) => setDeleteCategoryId(r.id)}
         />
       ),
@@ -640,7 +647,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={categoriesLoading}
-          isFetching={categoriesFetching}
+          isFetching={categoriesFetching || searchPending}
           onRowClick={(row) => setSelectedCategory(row)}
           fillHeight
         />
@@ -789,7 +796,23 @@ export const AgencyCategoriesOrganism: React.FC = () => {
         </form>
       </Dialog>
 
-      {/* Confirm Deactivate Dialog */}
+      {/* Confirm Archive / Restore */}
+      <ConfirmDialog
+        open={Boolean(pendingArchive)}
+        title={pendingArchive?.archived ? 'Archive Category?' : 'Restore Category?'}
+        body={
+          pendingArchive?.archived
+            ? `Archive "${pendingArchive.category.name}"? It stops being offered when classifying brands and creators. Records already classified under it stay readable.`
+            : `Restore "${pendingArchive?.category.name || 'this category'}"? It will be offered when classifying brands and creators again.`
+        }
+        confirmText={pendingArchive?.archived ? 'Archive Category' : 'Restore Category'}
+        variant={pendingArchive?.archived ? 'destructive' : 'neutral'}
+        loading={setArchivedMutation.isPending}
+        onConfirm={() => void handleConfirmArchive()}
+        onCancel={() => setPendingArchive(null)}
+      />
+
+      {/* Confirm Delete */}
       <ConfirmDialog
         open={Boolean(deleteCategoryId)}
         title="Delete Category?"

@@ -18,7 +18,7 @@ import { navConfig } from '@routes/navConfig';
 import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } from '@molecules';
 import { apiClient, useAgencyUsers, useSetUserBlocked } from '@api';
 import { UserResponse, UserStatusFilter, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
 import { ExcelColumnConfig } from '@utils';
 
 interface UserRowActionsProps {
@@ -208,7 +208,7 @@ export const AgencyUsersOrganism: React.FC = () => {
     selectedSelect,
     setSelectedSelect,
   } = useViewFilters('agencyUsers');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   // Empty persisted state means nobody has touched the dropdown yet, which the
   // list has always treated as active-only.
@@ -399,7 +399,7 @@ export const AgencyUsersOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={usersLoading}
-          isFetching={usersFetching}
+          isFetching={usersFetching || searchPending}
           onRowClick={(row) => setSelectedUser(row)}
           fillHeight
         />

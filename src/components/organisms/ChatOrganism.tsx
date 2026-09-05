@@ -28,11 +28,12 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import DoneAllRoundedIcon from '@mui/icons-material/DoneAllRounded';
 import DoneRoundedIcon from '@mui/icons-material/DoneRounded';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import ZoomInRoundedIcon from '@mui/icons-material/ZoomInRounded';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
 import { navConfig } from '@routes/navConfig';
-import { StartChatDialog, EmojiPicker } from '@molecules';
+import { StartChatDialog, EmojiPicker, ImagePreviewDialog } from '@molecules';
 import { EmptyState } from '@atoms';
 import {
   useInfiniteChats,
@@ -339,6 +340,11 @@ export const ChatOrganism: React.FC = () => {
 
   const [searchFilter, setSearchFilter] = useState('');
   const debouncedSearchFilter = useDebounce(searchFilter, 300);
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    url: string;
+    title?: string;
+    subtitle?: string;
+  } | null>(null);
 
   const isAgency = roleCode === 'AGENCY';
   const {
@@ -2448,6 +2454,21 @@ export const ChatOrganism: React.FC = () => {
                                     href={safeUrl(msg.attachmentUrl) as string}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setPreviewAttachment({
+                                        url: msg.attachmentUrl as string,
+                                        title: 'Reach Proof / Attachment',
+                                        subtitle:
+                                          msg.body &&
+                                          (msg.body.includes('[Audience Reach Proof') ||
+                                            msg.body.includes('[Reach Proof:') ||
+                                            msg.body.includes('#AudienceProof'))
+                                            ? 'Audience Reach Proof'
+                                            : undefined,
+                                      });
+                                    }}
                                     sx={{
                                       mt: 1,
                                       display: 'block',
@@ -2463,6 +2484,16 @@ export const ChatOrganism: React.FC = () => {
                                       backgroundColor: isMine
                                         ? 'rgba(0, 0, 0, 0.1)'
                                         : 'rgba(0, 0, 0, 0.02)',
+                                      transition: 'all 0.2s ease',
+                                      '&:hover': {
+                                        boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                                        '& .chat-img-zoom-overlay': {
+                                          opacity: 1,
+                                        },
+                                        '& img': {
+                                          transform: 'scale(1.03)',
+                                        },
+                                      },
                                     }}
                                   >
                                     <Box
@@ -2476,11 +2507,34 @@ export const ChatOrganism: React.FC = () => {
                                         objectFit: 'cover',
                                         display: 'block',
                                         transition: 'transform 0.2s ease',
-                                        '&:hover': {
-                                          transform: 'scale(1.02)',
-                                        },
                                       }}
                                     />
+                                    {/* Hover Zoom Overlay */}
+                                    <Box
+                                      className="chat-img-zoom-overlay"
+                                      sx={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        p: 0.75,
+                                        backgroundColor: 'rgba(10, 11, 14, 0.65)',
+                                        backdropFilter: 'blur(4px)',
+                                        color: '#FFFFFF',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.5,
+                                        opacity: 0,
+                                        transition: 'opacity 0.15s ease',
+                                        pointerEvents: 'none',
+                                      }}
+                                    >
+                                      <ZoomInRoundedIcon sx={{ fontSize: 16 }} />
+                                      <Typography sx={{ fontSize: '11px', fontWeight: 600 }}>
+                                        Click to zoom
+                                      </Typography>
+                                    </Box>
                                   </Box>
                                 ) : (
                                   <Box
@@ -2624,6 +2678,12 @@ export const ChatOrganism: React.FC = () => {
                             component="img"
                             src={safeImageUrl(attachmentInput)}
                             alt="Attachment preview"
+                            onClick={() =>
+                              setPreviewAttachment({
+                                url: attachmentInput,
+                                title: 'Attachment Preview',
+                              })
+                            }
                             sx={{
                               width: 44,
                               height: 44,
@@ -2631,6 +2691,11 @@ export const ChatOrganism: React.FC = () => {
                               objectFit: 'cover',
                               border: `1px solid ${theme.palette.tokens.divider}`,
                               flexShrink: 0,
+                              cursor: 'pointer',
+                              transition: 'transform 0.15s ease',
+                              '&:hover': {
+                                transform: 'scale(1.08)',
+                              },
                             }}
                           />
                         ) : (
@@ -2989,6 +3054,15 @@ export const ChatOrganism: React.FC = () => {
             setSearchParams(effectiveChatId ? { chatId: effectiveChatId } : {}, { replace: true });
           }
         }}
+      />
+
+      {/* Lightbox / Zoom Dialog for Attachments & Reach Proof */}
+      <ImagePreviewDialog
+        open={Boolean(previewAttachment)}
+        onClose={() => setPreviewAttachment(null)}
+        imageUrl={previewAttachment?.url}
+        title={previewAttachment?.title}
+        subtitle={previewAttachment?.subtitle}
       />
     </DashboardLayout>
   );

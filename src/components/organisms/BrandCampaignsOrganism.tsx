@@ -10,7 +10,7 @@ import { apiClient, useBrandCampaigns } from '@api';
 import { CampaignResponse, CampaignStatusEnum, PaginatedResult } from '@contracts';
 import {
   useAuth,
-  useDebounce,
+  useDebouncedSearch,
   useEnumOptions,
   useViewFilters,
   usePillCode,
@@ -33,7 +33,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('brandCampaigns');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
   const statusFilter = usePillCode(activePill, CampaignStatusEnum);
 
   const {
@@ -161,7 +161,7 @@ export const BrandCampaignsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={isLoading}
-          isFetching={isFetching}
+          isFetching={isFetching || searchPending}
           fillHeight
           onRowClick={(row) => navigate(`/brand/campaigns/${row.id}`)}
         />

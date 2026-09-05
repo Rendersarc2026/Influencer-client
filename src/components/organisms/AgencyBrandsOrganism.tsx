@@ -25,7 +25,7 @@ import {
 } from '@molecules';
 import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
-import { useAuth, useDebounce, useToast, useViewFilters, useTableExport } from '@hooks';
+import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
 import { safeExternalUrl, safeImageUrl, ExcelColumnConfig } from '@utils';
 
 interface BrandRowActionsProps {
@@ -164,7 +164,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
 
   const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
     useViewFilters('agencyBrands');
-  const debouncedSearch = useDebounce(search, 300);
+  const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
@@ -319,7 +319,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
             setPage(0);
           }}
           loading={brandsQuery.isLoading}
-          isFetching={brandsQuery.isFetching}
+          isFetching={brandsQuery.isFetching || searchPending}
           onRowClick={(row) => setSelectedBrand(row)}
           fillHeight
         />
