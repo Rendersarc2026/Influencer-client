@@ -31,6 +31,7 @@ export * from './shorthand-number';
 export * from './sound.utils';
 
 export * from './notification.utils';
+export * from './search-match';
 export * from './status-label';
 export * from './campaign-report-model';
 export * from './export-excel';

@@ -26,6 +26,7 @@ import {
   InfluencerTier,
   validatePhoneNumber,
   validatePersonName,
+  wordPrefixFilterOptions,
 } from '@utils';
 
 export interface CreateInfluencerDialogProps {
@@ -408,6 +409,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               fullWidth
               freeSolo
               options={influencerCategoryOptions}
+              filterOptions={wordPrefixFilterOptions}
               value={category}
               onInputChange={(_, newInputValue) => setCategory(newInputValue)}
               onChange={(_, newValue) => setCategory(newValue || '')}
@@ -516,6 +518,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               <Autocomplete
                 freeSolo
                 options={locationOptions}
+                filterOptions={wordPrefixFilterOptions}
                 value={location}
                 onInputChange={(_, newInputValue) => setLocation(capitalizeWords(newInputValue))}
                 onChange={(_, newValue) => setLocation(newValue ? capitalizeWords(newValue) : '')}
@@ -558,6 +561,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               multiple
               freeSolo
               options={locationOptions}
+              filterOptions={wordPrefixFilterOptions}
               value={regions}
               onChange={(_, newValue) => {
                 const formatted = (newValue || [])

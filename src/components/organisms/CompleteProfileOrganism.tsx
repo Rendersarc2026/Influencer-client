@@ -38,6 +38,7 @@ import {
   formatShorthandNumber,
   validatePersonName,
   validateBrandName,
+  wordPrefixFilterOptions,
 } from '@utils';
 import { BrandLogo } from '@atoms';
 
@@ -571,6 +572,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                   <Autocomplete
                     freeSolo
                     options={brandCategoryOptions}
+                    filterOptions={wordPrefixFilterOptions}
                     value={brandCategory}
                     onInputChange={(_, newInputValue) => setBrandCategory(newInputValue)}
                     onChange={(_, newValue) => setBrandCategory(newValue || '')}
@@ -604,6 +606,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                     fullWidth
                     freeSolo
                     options={locationOptions}
+                    filterOptions={wordPrefixFilterOptions}
                     value={city}
                     onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
                     onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
@@ -723,6 +726,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                   <Autocomplete
                     freeSolo
                     options={influencerCategoryOptions}
+                    filterOptions={wordPrefixFilterOptions}
                     value={category}
                     onInputChange={(_, newInputValue) => setCategory(newInputValue)}
                     onChange={(_, newValue) => setCategory(newValue || '')}
@@ -756,6 +760,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                     fullWidth
                     freeSolo
                     options={locationOptions}
+                    filterOptions={wordPrefixFilterOptions}
                     value={city}
                     onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
                     onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
@@ -791,6 +796,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                     multiple
                     freeSolo
                     options={locationOptions}
+                    filterOptions={wordPrefixFilterOptions}
                     value={regions}
                     onChange={(_, newValue) => {
                       const formatted = (newValue || [])

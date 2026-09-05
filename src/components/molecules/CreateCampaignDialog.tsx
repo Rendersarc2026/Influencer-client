@@ -13,7 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { CreateCampaignRequest, BrandResponse } from '@contracts';
-import { capitalizeWords, safeImageUrl, validateCampaignName } from '@utils';
+import { capitalizeWords, matchesWordPrefix, safeImageUrl, validateCampaignName } from '@utils';
 
 export interface CreateCampaignDialogProps {
   open: boolean;
@@ -150,14 +150,16 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
               onChange={(_, val) => setBrandId(val ? val.id : '')}
               getOptionLabel={(option) => option.name}
               isOptionEqualToValue={(option, val) => option.id === val.id}
+              // Searches three fields, so it filters by hand rather than by
+              // `wordPrefixFilterOptions` — same rule, applied to each of them.
               filterOptions={(options, state) => {
-                const query = state.inputValue.trim().toLowerCase();
+                const query = state.inputValue.trim();
                 if (!query) return options;
                 return options.filter(
                   (b) =>
-                    b.name.toLowerCase().includes(query) ||
-                    (b.contactPerson && b.contactPerson.toLowerCase().includes(query)) ||
-                    (b.industry && b.industry.toLowerCase().includes(query)),
+                    matchesWordPrefix(b.name, query) ||
+                    matchesWordPrefix(b.contactPerson, query) ||
+                    matchesWordPrefix(b.industry, query),
                 );
               }}
               disabled={loading || Boolean(defaultBrandId) || brands.length === 0}

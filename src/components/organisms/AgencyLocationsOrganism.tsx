@@ -46,7 +46,12 @@ import {
   isSubdivisionOf,
 } from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
-import { capitalizeWords, ExcelColumnConfig, validateLocationName } from '@utils';
+import {
+  capitalizeWords,
+  ExcelColumnConfig,
+  validateLocationName,
+  wordPrefixFilterOptions,
+} from '@utils';
 
 /** The server accepts tier 1–5; anything outside that range is rejected. */
 const TIER_OPTIONS = [1, 2, 3, 4, 5];
@@ -703,6 +708,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
                   place into several values — "Kerala", "KERALA", "kerala". */}
               <Autocomplete
                 options={[...COUNTRIES]}
+                filterOptions={wordPrefixFilterOptions}
                 value={country || DEFAULT_COUNTRY}
                 onChange={(_, newValue) => handleCountryChange(newValue || DEFAULT_COUNTRY)}
                 disableClearable
@@ -718,6 +724,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
 
               <Autocomplete
                 options={[...stateOptions]}
+                filterOptions={wordPrefixFilterOptions}
                 value={state || null}
                 onChange={(_, newValue) => setState(newValue || '')}
                 fullWidth

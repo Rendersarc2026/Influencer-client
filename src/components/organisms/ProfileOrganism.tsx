@@ -53,6 +53,7 @@ import {
   validatePhoneNumber,
   validatePersonName,
   validateBrandName,
+  wordPrefixFilterOptions,
 } from '@utils';
 
 const normalizeUrl = (val: string): string | undefined => {
@@ -980,6 +981,7 @@ export const ProfileOrganism: React.FC = () => {
                       fullWidth
                       freeSolo
                       options={brandCategoryOptions}
+                      filterOptions={wordPrefixFilterOptions}
                       value={brandCategory}
                       onInputChange={(_, newInputValue) => setBrandCategory(newInputValue)}
                       onChange={(_, newValue) => setBrandCategory(newValue || '')}
@@ -1049,6 +1051,7 @@ export const ProfileOrganism: React.FC = () => {
                       fullWidth
                       freeSolo
                       options={locationOptions}
+                      filterOptions={wordPrefixFilterOptions}
                       value={city}
                       onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
                       onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
@@ -1193,6 +1196,7 @@ export const ProfileOrganism: React.FC = () => {
                           fullWidth
                           freeSolo
                           options={locationOptions}
+                          filterOptions={wordPrefixFilterOptions}
                           value={city}
                           onInputChange={(_, newInputValue) =>
                             setCity(capitalizeWords(newInputValue))
@@ -1218,6 +1222,7 @@ export const ProfileOrganism: React.FC = () => {
                           fullWidth
                           freeSolo
                           options={influencerCategoryOptions}
+                          filterOptions={wordPrefixFilterOptions}
                           value={category}
                           onInputChange={(_, newInputValue) => setCategory(newInputValue)}
                           onChange={(_, newValue) => setCategory(newValue || '')}
@@ -1242,6 +1247,7 @@ export const ProfileOrganism: React.FC = () => {
                         multiple
                         freeSolo
                         options={locationOptions}
+                        filterOptions={wordPrefixFilterOptions}
                         value={regions}
                         onChange={(_, newValue) => {
                           const formatted = (newValue || [])

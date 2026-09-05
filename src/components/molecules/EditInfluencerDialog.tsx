@@ -26,6 +26,7 @@ import {
   InfluencerTier,
   validatePhoneNumber,
   validatePersonName,
+  wordPrefixFilterOptions,
 } from '@utils';
 
 export interface EditInfluencerDialogProps {
@@ -378,6 +379,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
             <Autocomplete
               freeSolo
               options={influencerCategoryOptions}
+              filterOptions={wordPrefixFilterOptions}
               value={category}
               onInputChange={(_, newInputValue) => setCategory(newInputValue)}
               onChange={(_, newValue) => setCategory(newValue || '')}
@@ -505,6 +507,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               multiple
               freeSolo
               options={locationOptions}
+              filterOptions={wordPrefixFilterOptions}
               value={regions}
               onChange={(_, newValue) => {
                 const formatted = (newValue || [])

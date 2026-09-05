@@ -31,6 +31,7 @@ import {
   validatePhoneNumber,
   validateBrandName,
   validatePersonName,
+  wordPrefixFilterOptions,
 } from '@utils';
 
 export interface CreateBrandDialogProps {
@@ -422,6 +423,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               <Autocomplete
                 freeSolo
                 options={brandCategoryOptions}
+                filterOptions={wordPrefixFilterOptions}
                 value={industry}
                 onInputChange={(_, newInputValue) => setIndustry(newInputValue)}
                 onChange={(_, newValue) => setIndustry(newValue || '')}
@@ -646,6 +648,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               <Autocomplete
                 freeSolo
                 options={locationOptions}
+                filterOptions={wordPrefixFilterOptions}
                 value={city}
                 onInputChange={(_, newInputValue) => setCity(capitalizeWords(newInputValue))}
                 onChange={(_, newValue) => setCity(newValue ? capitalizeWords(newValue) : '')}
