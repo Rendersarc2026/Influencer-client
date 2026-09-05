@@ -16,7 +16,7 @@ import {
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebouncedSearch, useViewFilters, usePillCode, useTableExport } from '@hooks';
-import { safeExternalUrl, ExcelColumnConfig } from '@utils';
+import { safeExternalUrl, ExcelColumnConfig, formatDateDDMMYYYY } from '@utils';
 
 export const InfluencerCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -80,8 +80,8 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
       type: 'text',
       accessor: (row) => {
         if (!row.startDate && !row.endDate) return 'Ongoing';
-        const start = row.startDate ? new Date(row.startDate).toLocaleDateString('en-IN') : 'Start';
-        const end = row.endDate ? new Date(row.endDate).toLocaleDateString('en-IN') : 'Open';
+        const start = row.startDate ? formatDateDDMMYYYY(row.startDate) : 'Start';
+        const end = row.endDate ? formatDateDDMMYYYY(row.endDate) : 'Open';
         return `${start} — ${end}`;
       },
     },

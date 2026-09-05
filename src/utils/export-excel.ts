@@ -1,3 +1,4 @@
+import { formatDateDDMMYYYY } from './format-date';
 import { StatusCategory, getStatusLabel, getDeliverableStatus } from './status-label';
 import {
   buildCampaignReportModel,
@@ -242,13 +243,13 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
 
   if (col.type === 'date' || value instanceof Date) {
     if (value instanceof Date) {
-      return value.toLocaleDateString('en-IN');
+      return formatDateDDMMYYYY(value);
     }
     if (typeof value === 'string' && value.trim()) {
       if (value.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(value)) {
         const d = new Date(value);
         if (!isNaN(d.getTime())) {
-          return d.toLocaleDateString('en-IN');
+          return formatDateDDMMYYYY(d);
         }
       }
       return value;
@@ -256,7 +257,7 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
     if (typeof value === 'number') {
       const d = new Date(value);
       if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString('en-IN');
+        return formatDateDDMMYYYY(d);
       }
     }
   }

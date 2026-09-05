@@ -11,6 +11,7 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText } from '@atoms';
+import { sanitizeDecimalInput } from '@utils';
 
 export interface ApproveRateDialogProps {
   open: boolean;
@@ -125,7 +126,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
 
   const handleRateChange = (val: string) => {
     // Only allow positive numbers/decimals
-    const cleaned = val.replace(/[^0-9.]/g, '');
+    const cleaned = sanitizeDecimalInput(val);
     setRateInput(cleaned);
     const r = parseFloat(cleaned) || 0;
     const m = parseFloat(marginInput) || 0;
@@ -134,7 +135,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   };
 
   const handleMarginChange = (val: string) => {
-    const cleaned = val.replace(/[^0-9.]/g, '');
+    const cleaned = sanitizeDecimalInput(val);
     setMarginInput(cleaned);
     const m = parseFloat(cleaned) || 0;
     const r = parseFloat(rateInput) || 0;
@@ -143,18 +144,32 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
   };
 
   const handleClientRateChange = (val: string) => {
-    const cleaned = val.replace(/[^0-9.]/g, '');
+    const cleaned = sanitizeDecimalInput(val);
     setClientRateInput(cleaned);
     const cr = parseFloat(cleaned) || 0;
     const r = parseFloat(rateInput) || 0;
-    const newMargin = Math.max(0, cr - r);
-    setMarginInput(cleaned === '' ? '' : String(newMargin));
+
+    // A client rate below the influencer rate is a negative margin. Silently
+    // clamping it to zero is what let this dialog display "Billed to Brand
+    // ₹40,000" while submitting a ₹50,000 deal — the summary read the typed
+    // client rate, but the payload carries influencerRate + margin and the
+    // server recomputes the client rate from those. Say so instead of guessing.
+    if (cleaned !== '' && cr < r) {
+      setMarginInput('0');
+      setMarginError('Client rate cannot be below the influencer rate');
+      return;
+    }
+
+    setMarginInput(cleaned === '' ? '' : String(cr - r));
     if (marginError) setMarginError('');
   };
 
   const effectiveRate = parseFloat(rateInput) || 0;
   const marginNum = parseFloat(marginInput) || 0;
-  const clientRateNum = parseFloat(clientRateInput) || effectiveRate + marginNum;
+  // Always the figure that will actually be persisted. The server derives the
+  // client rate as influencerRate + margin and never accepts it from the body,
+  // so reading the typed box here let the summary disagree with the outcome.
+  const clientRateNum = effectiveRate + marginNum;
   const committedViewsNum = parseInt(committedViewsInput, 10) || 0;
   const cpv = committedViewsNum > 0 ? (clientRateNum / committedViewsNum).toFixed(2) : null;
 
@@ -169,6 +184,15 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
 
     if (marginNum < 0 || isNaN(marginNum)) {
       setMarginError('Margin cannot be negative');
+      hasErr = true;
+    }
+
+    // Catch the same condition on submit, not only on keystroke: the client
+    // rate box can still hold a figure below the influencer rate if the
+    // influencer rate was edited afterwards.
+    const typedClientRate = parseFloat(clientRateInput);
+    if (!isNaN(typedClientRate) && typedClientRate < effectiveRate) {
+      setMarginError('Client rate cannot be below the influencer rate');
       hasErr = true;
     }
 
@@ -204,7 +228,9 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ px: 1, pt: 1, pb: 0 }}>
+        {/* `component="div"`: DialogTitle renders an <h2>, so the heading below
+            was nested inside one. */}
+        <DialogTitle component="div" sx={{ px: 1, pt: 1, pb: 0 }}>
           <Typography variant="h3" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
             {isAlreadyApproved ? 'Edit Margin & Pre-Evaluation' : 'Set Margin & Pre-Evaluation'}
           </Typography>
@@ -262,7 +288,10 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
               value={clientRateInput}
               onChange={(e) => handleClientRateChange(e.target.value)}
               placeholder="e.g. 100000"
-              helperText="Total commercial billed to brand (Influencer Rate + Margin)"
+              error={Boolean(marginError)}
+              helperText={
+                marginError || 'Total commercial billed to brand (Influencer Rate + Margin)'
+              }
               fullWidth
               disabled={loading}
             />
@@ -309,7 +338,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
                 label="Pre-Eval ER %"
                 type="text"
                 value={preEvalErInput}
-                onChange={(e) => setPreEvalErInput(e.target.value.replace(/[^0-9.]/g, ''))}
+                onChange={(e) => setPreEvalErInput(sanitizeDecimalInput(e.target.value))}
                 placeholder="e.g. 4.5"
                 helperText="Expected engagement rate percentage"
                 fullWidth

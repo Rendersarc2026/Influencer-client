@@ -18,6 +18,7 @@ import { SectionHeading, StatusChip, MoneyText } from '@atoms';
 import { useInfluencerAssignment, useSubmitInfluencerRate, useCreateOrFindChat } from '@api';
 import { SubmitRateRequest, RateStatusCode } from '@contracts';
 import { useAuth, useToast } from '@hooks';
+import { formatDateDDMMYYYY } from '@utils';
 
 export const InfluencerAssignmentDetailOrganism: React.FC = () => {
   const theme = useTheme();
@@ -118,9 +119,7 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               </Box>
               <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>
                 Assigned on{' '}
-                {assignment?.createdOn
-                  ? new Date(assignment.createdOn).toLocaleDateString('en-IN')
-                  : 'Recent'}
+                {assignment?.createdOn ? formatDateDDMMYYYY(assignment.createdOn) : 'Recent'}
               </Typography>
             </Box>
 

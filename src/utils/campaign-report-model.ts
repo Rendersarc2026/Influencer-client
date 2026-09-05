@@ -1,4 +1,6 @@
+import { formatDateDDMMYYYY } from './format-date';
 import { getStatusLabel, getDeliverableStatus } from './status-label';
+import { formatInstagramHandle } from './er-calculator.utils';
 
 /**
  * The campaign performance report as data, independent of the file it is
@@ -41,13 +43,13 @@ export interface CampaignReportModel {
 const REPORT_TITLE = 'CAMPAIGN PERFORMANCE & POST-EVALUATION REPORT';
 
 function formatDay(value: string | Date | null | undefined): string {
-  return value ? new Date(value).toLocaleDateString('en-IN') : 'TBD';
+  return value ? formatDateDDMMYYYY(value) : 'TBD';
 }
 
 function socialHandle(mapper: { instagram?: string | null; youtube?: string | null }): string {
-  return mapper.instagram
-    ? `@${mapper.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}`
-    : mapper.youtube || '—';
+  // Stripping only the domain left Instagram's share parameters in the handle,
+  // and this feeds the exported PDF and Excel the client receives.
+  return mapper.instagram ? formatInstagramHandle(mapper.instagram) : mapper.youtube || '—';
 }
 
 function cleanFileBase(name: string): string {
@@ -209,9 +211,7 @@ export function buildCampaignReportModel(input: CampaignReportExportInput): Camp
     const brandStatusLabel =
       mapper.brandStatus !== undefined ? getStatusLabel('BRAND_STATUS', mapper.brandStatus) : '—';
 
-    const recordedDate = latestMetric
-      ? new Date(latestMetric.recordedFor).toLocaleDateString('en-IN')
-      : '—';
+    const recordedDate = latestMetric ? formatDateDDMMYYYY(latestMetric.recordedFor) : '—';
 
     for (const post of latestMetric?.posts ?? []) {
       const postEngagements =
@@ -294,7 +294,7 @@ export function buildCampaignReportModel(input: CampaignReportExportInput): Camp
         campaign.status ? getStatusLabel('CAMPAIGN_STATUS', Number(campaign.status)) : '—',
       ],
       ['Campaign Timeline', `${formatDay(campaign.startDate)} — ${formatDay(campaign.endDate)}`],
-      ['Report Generated Date', new Date().toLocaleDateString('en-IN')],
+      ['Report Generated Date', formatDateDDMMYYYY(new Date())],
     ],
     sections: [
       {
@@ -452,9 +452,7 @@ export function buildBrandCampaignReportModel(
     const brandStatusLabel =
       mapper.brandStatus !== undefined ? getStatusLabel('BRAND_STATUS', mapper.brandStatus) : '—';
 
-    const recordedDate = latestMetric
-      ? new Date(latestMetric.recordedFor).toLocaleDateString('en-IN')
-      : '—';
+    const recordedDate = latestMetric ? formatDateDDMMYYYY(latestMetric.recordedFor) : '—';
 
     for (const post of latestMetric?.posts ?? []) {
       const postEngagements =
@@ -543,7 +541,7 @@ export function buildBrandCampaignReportModel(
         campaign.status ? getStatusLabel('CAMPAIGN_STATUS', Number(campaign.status)) : '—',
       ],
       ['Campaign Timeline', `${formatDay(campaign.startDate)} — ${formatDay(campaign.endDate)}`],
-      ['Report Generated Date', new Date().toLocaleDateString('en-IN')],
+      ['Report Generated Date', formatDateDDMMYYYY(new Date())],
     ],
     sections: [
       {

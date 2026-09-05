@@ -273,10 +273,16 @@ export const LoginOrganism: React.FC = () => {
                 fullWidth
                 autoFocus
                 disabled={loading}
+                // Without this the browser and password managers never offer a
+                // saved address on the one field that gates the whole app.
+                autoComplete="email"
               />
 
               {emailError && (
                 <Box
+                  // Login failures were rendered as plain text, so a screen
+                  // reader user got no indication the attempt had failed.
+                  role="alert"
                   sx={{
                     padding: '10px 14px',
                     borderRadius: `${theme.customRadii.inner}px`,
@@ -352,6 +358,11 @@ export const LoginOrganism: React.FC = () => {
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
+                  // Six bare inputs announced as six unlabelled edit fields.
+                  // `one-time-code` on the first also lets the OS offer the
+                  // emailed code, and the paste handler spreads it across all six.
+                  aria-label={`Verification code digit ${idx + 1} of ${otp.length}`}
+                  autoComplete={idx === 0 ? 'one-time-code' : 'off'}
                   value={digit}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleOtpChange(idx, e.target.value)
@@ -386,7 +397,7 @@ export const LoginOrganism: React.FC = () => {
 
             {/* Inline Error and Attempts Remaining message */}
             {otpError && (
-              <Box sx={{ mb: 2, textAlign: 'center' }}>
+              <Box role="alert" sx={{ mb: 2, textAlign: 'center' }}>
                 <Typography
                   variant="body2"
                   sx={{ color: theme.palette.tokens.negative, fontWeight: 500 }}

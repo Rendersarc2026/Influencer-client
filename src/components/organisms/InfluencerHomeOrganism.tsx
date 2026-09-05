@@ -9,6 +9,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { DashboardLayout } from '@templates';
+import { branding } from '@config/branding';
 import { navConfig } from '@routes/navConfig';
 import { MetricCard, DataTable, DataTableColumn, FilterBar, SubmitRateDialog } from '@molecules';
 import { SectionHeading, StatusChip, MoneyText } from '@atoms';
@@ -175,7 +176,10 @@ export const InfluencerHomeOrganism: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Fetch Dashboard"
+      // The only hardcoded product name left in the component tree. `.env` is
+      // the single source of truth for branding, so a rebuild under a different
+      // VITE_APP_NAME left this one screen reading "Fetch Dashboard".
+      title={`${branding.name} Dashboard`}
       subtitle="Campaign assignments, commercial rate cards, and delivery milestones"
       navItems={navConfig.INFLUENCER}
       activePath={location.pathname}

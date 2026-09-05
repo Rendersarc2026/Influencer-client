@@ -80,6 +80,9 @@ export const TintCard: React.FC<TintCardProps> = ({
             {onKebabClick && (
               <IconButton
                 size="small"
+                // Icon-only button; `title` names the card it belongs to so the
+                // label distinguishes one metric card's menu from the next.
+                aria-label={title ? `Options for ${String(title)}` : 'Options'}
                 onClick={(e) => {
                   e.stopPropagation();
                   onKebabClick(e);

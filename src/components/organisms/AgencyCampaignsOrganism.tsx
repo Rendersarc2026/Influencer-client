@@ -23,7 +23,7 @@ import {
   usePillCode,
   useTableExport,
 } from '@hooks';
-import { ExcelColumnConfig } from '@utils';
+import { ExcelColumnConfig, formatDateDDMMYYYY } from '@utils';
 
 export const AgencyCampaignsOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -116,8 +116,8 @@ export const AgencyCampaignsOrganism: React.FC = () => {
       type: 'text',
       accessor: (row) => {
         if (!row.startDate && !row.endDate) return 'Flexible';
-        const start = row.startDate ? new Date(row.startDate).toLocaleDateString('en-IN') : 'Start';
-        const end = row.endDate ? new Date(row.endDate).toLocaleDateString('en-IN') : 'Open';
+        const start = row.startDate ? formatDateDDMMYYYY(row.startDate) : 'Start';
+        const end = row.endDate ? formatDateDDMMYYYY(row.endDate) : 'Open';
         return `${start} — ${end}`;
       },
     },

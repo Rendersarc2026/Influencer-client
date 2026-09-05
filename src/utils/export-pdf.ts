@@ -1,3 +1,4 @@
+import { formatDateDDMMYYYY } from './format-date';
 import {
   formatCellValueForExport,
   isSerialColumn,
@@ -298,7 +299,7 @@ export async function exportTableToPdf<T extends Record<string, unknown>>({
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   doc.text(
-    `${rows.length} ${rows.length === 1 ? 'record' : 'records'} - generated ${new Date().toLocaleDateString('en-IN')}`,
+    `${rows.length} ${rows.length === 1 ? 'record' : 'records'} - generated ${formatDateDDMMYYYY(new Date())}`,
     MARGIN,
     MARGIN + 24,
   );

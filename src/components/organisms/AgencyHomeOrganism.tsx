@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAgencyCampaigns, useAgencyDashboardSummary, agencyCampaignsQueryOptions } from '@api';
 import { CampaignResponse } from '@contracts';
 import { useAuth } from '@hooks';
-import { formatCurrency } from '@utils';
+import { formatCurrency, formatDateDDMMYYYY } from '@utils';
 
 export const AgencyHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -65,8 +65,8 @@ export const AgencyHomeOrganism: React.FC = () => {
       type: 'text',
       accessor: (row) => {
         if (!row.startDate && !row.endDate) return 'Ongoing';
-        const start = row.startDate ? new Date(row.startDate).toLocaleDateString('en-IN') : 'Start';
-        const end = row.endDate ? new Date(row.endDate).toLocaleDateString('en-IN') : 'Open';
+        const start = row.startDate ? formatDateDDMMYYYY(row.startDate) : 'Start';
+        const end = row.endDate ? formatDateDDMMYYYY(row.endDate) : 'Open';
         return `${start} - ${end}`;
       },
     },

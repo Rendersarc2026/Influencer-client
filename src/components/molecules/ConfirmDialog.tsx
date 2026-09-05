@@ -52,7 +52,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         },
       }}
     >
-      <DialogTitle sx={{ pb: 1 }}>
+      {/* `component="div"`: DialogTitle is an <h2> by default, which made the
+          styled heading below a heading nested inside a heading. */}
+      <DialogTitle component="div" sx={{ pb: 1 }}>
         <Typography variant="h2" sx={{ fontSize: '20px' }}>
           {title}
         </Typography>

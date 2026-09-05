@@ -179,6 +179,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             )}
             {filteredNotifications.length > 0 && (
               <IconButton
+                aria-label="Clear all notifications"
                 size="small"
                 onClick={() => setClearConfirmOpen(true)}
                 title="Clear all"

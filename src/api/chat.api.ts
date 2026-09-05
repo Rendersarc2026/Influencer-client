@@ -27,7 +27,17 @@ export function useChats(options?: UseChatsOptions) {
       return response.data;
     },
     enabled: options?.enabled ?? true,
-    staleTime: 30000,
+    // `DashboardLayout` holds this on every authenticated screen purely to sum
+    // unread counts for the sidebar badge, and the response is the whole
+    // unpaginated conversation list. A 30s staleness window plus refetch-on-focus
+    // meant re-fetching all of it on a timer against a database that costs the
+    // better part of a second per round trip.
+    //
+    // The socket already invalidates ['chats'] on `chat:updated` (see
+    // NotificationContext), so the list is refreshed exactly when it changes.
+    // Polling on top of that only duplicates work.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 }
 

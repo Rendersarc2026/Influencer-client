@@ -38,3 +38,21 @@ export * from './export-excel';
 export * from './export-pdf';
 export * from './er-calculator.utils';
 export * from './name-validation';
+export * from './format-date';
+
+/**
+ * Constrains a currency/decimal text input to what the API will accept: digits,
+ * a single decimal point, and at most two decimal places.
+ *
+ * The plain `replace(/[^0-9.]/g, '')` these fields used allowed "1.2.3" and
+ * unlimited decimals, so the server rejected the value with "At most 2 decimal
+ * places" only after the user had submitted.
+ */
+export function sanitizeDecimalInput(value: string, maxDecimals = 2): string {
+  const digitsAndDots = value.replace(/[^0-9.]/g, '');
+  const firstDot = digitsAndDots.indexOf('.');
+  if (firstDot === -1) return digitsAndDots;
+  const whole = digitsAndDots.slice(0, firstDot);
+  const fraction = digitsAndDots.slice(firstDot + 1).replace(/\./g, '');
+  return `${whole}.${fraction.slice(0, maxDecimals)}`;
+}

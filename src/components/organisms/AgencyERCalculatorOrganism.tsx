@@ -59,6 +59,7 @@ import {
   validateNumericInput,
   cleanInstagramHandle,
   formatInstagramHandle,
+  formatDateDDMMYYYY,
 } from '@utils';
 import type { AnalyzedPost, CalculateERResponse, InfluencerResponse } from '@contracts';
 
@@ -935,7 +936,12 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                     variant="caption"
                     sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
                   >
-                    Pre-Evaluation CPV = Reel Fee ÷ Committed Views (Median of 10 Reels)
+                    {/* The count is whatever the analysed set actually held —
+                        hardcoding "10 Reels" overstated the sample whenever the
+                        newest posts contained fewer reels, and this figure is
+                        what rates get quoted against. */}
+                    Pre-Evaluation CPV = Reel Fee ÷ Committed Views (median of{' '}
+                    {autoReelViews.length} {autoReelViews.length === 1 ? 'reel' : 'reels'})
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
                     Calculated CPV:{' '}
@@ -1205,7 +1211,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                         const isActive = activeKeys.has(key);
                         const postDate = new Date(post.takenAt);
                         const formattedDate = !isNaN(postDate.getTime())
-                          ? postDate.toLocaleDateString('en-IN')
+                          ? formatDateDDMMYYYY(postDate)
                           : post.takenAt;
                         const formattedTime = !isNaN(postDate.getTime())
                           ? postDate.toLocaleTimeString('en-IN', {

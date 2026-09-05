@@ -269,6 +269,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
         </Box>
 
         <IconButton
+          aria-label="Close details"
           onClick={onClose}
           size="small"
           sx={{

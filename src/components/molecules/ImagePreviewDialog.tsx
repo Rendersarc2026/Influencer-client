@@ -34,9 +34,11 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
   actions,
 }) => {
   const theme = useTheme();
-  const safeSrc = safeImageUrl(imageUrl);
-  const displaySrc =
-    safeSrc || (typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : '');
+  // No raw fallback: falling back to the untrusted value whenever the sanitiser
+  // refuses it turns the check into a no-op for precisely the inputs it exists
+  // to stop (see the note in `safe-url.ts`). An unsafe URL yields an empty
+  // string, and the guard below closes the dialog rather than rendering it.
+  const displaySrc = safeImageUrl(imageUrl) ?? '';
 
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -187,7 +189,7 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({
         }}
       >
         {/* Title / Subtitle Info Pill */}
-        {(title || subtitle) ? (
+        {title || subtitle ? (
           <Box
             sx={{
               pointerEvents: 'auto',

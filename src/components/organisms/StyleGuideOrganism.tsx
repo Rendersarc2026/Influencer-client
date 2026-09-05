@@ -231,13 +231,13 @@ export const StyleGuideOrganism: React.FC = () => {
       align: 'right',
       render: (_row) => (
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <IconButton size="small" onClick={() => {}}>
+          <IconButton size="small" aria-label="View" onClick={() => {}}>
             <VisibilityRoundedIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" onClick={() => {}}>
+          <IconButton size="small" aria-label="Edit" onClick={() => {}}>
             <EditRoundedIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" onClick={() => {}}>
+          <IconButton size="small" aria-label="More actions" onClick={() => {}}>
             <MoreHorizRoundedIcon fontSize="small" />
           </IconButton>
         </Box>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -45,6 +45,9 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
   onCancel,
 }) => {
   const theme = useTheme();
+  const baseId = useId();
+  const titleId = `${baseId}-title`;
+  const subtitleId = `${baseId}-subtitle`;
   const [comment, setComment] = useState(initialValue);
   const [touched, setTouched] = useState(false);
 
@@ -76,6 +79,11 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
+      // Point the dialog's name at the heading alone. Left to MUI it falls back
+      // to the DialogTitle element, whose text includes the subtitle, so a
+      // screen reader announced the whole paragraph as the dialog's name.
+      aria-labelledby={titleId}
+      aria-describedby={subtitle ? subtitleId : undefined}
       slotProps={{
         paper: {
           sx: {
@@ -90,12 +98,16 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
       }}
     >
       <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Typography variant="h2" sx={{ fontSize: '20px' }}>
+        {/* `component="div"`: DialogTitle renders an <h2> by default, so the
+            styled <h2> below was nesting a heading inside a heading — invalid
+            markup that React flagged on every open. */}
+        <DialogTitle component="div" sx={{ pb: 1 }}>
+          <Typography id={titleId} variant="h2" sx={{ fontSize: '20px' }}>
             {title}
           </Typography>
           {subtitle && (
             <Typography
+              id={subtitleId}
               variant="body2"
               sx={{ color: theme.palette.tokens.textSecondary, mt: '2px' }}
             >

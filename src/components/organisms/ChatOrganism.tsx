@@ -1502,6 +1502,7 @@ export const ChatOrganism: React.FC = () => {
                     endAdornment: searchFilter ? (
                       <InputAdornment position="end">
                         <IconButton
+                          aria-label="Clear search"
                           size="small"
                           onClick={() => setSearchFilter('')}
                           sx={{
@@ -1884,6 +1885,7 @@ export const ChatOrganism: React.FC = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
                     {isMobile && (
                       <IconButton
+                        aria-label="Back to conversations"
                         size="small"
                         onClick={handleCloseConversation}
                         sx={{
@@ -2157,6 +2159,7 @@ export const ChatOrganism: React.FC = () => {
                             {canEditMessage && !isEditing && (
                               <Tooltip title="Edit message" placement="left">
                                 <IconButton
+                                  aria-label="Edit message"
                                   className="message-edit-action"
                                   size="small"
                                   onClick={() => beginEditMessage(msg)}
@@ -2275,6 +2278,7 @@ export const ChatOrganism: React.FC = () => {
                                         the operating system's picker. */}
                                     <Tooltip title="Emoji">
                                       <IconButton
+                                        aria-label="Add emoji"
                                         size="small"
                                         onClick={(e) => setEditEmojiAnchorEl(e.currentTarget)}
                                         sx={{
@@ -2701,6 +2705,7 @@ export const ChatOrganism: React.FC = () => {
                       </Box>
 
                       <IconButton
+                        aria-label="Remove attachment"
                         size="small"
                         onClick={() => {
                           setAttachmentInput('');
@@ -2759,6 +2764,7 @@ export const ChatOrganism: React.FC = () => {
                         }}
                       />
                       <IconButton
+                        aria-label="Remove attachment link"
                         size="small"
                         onClick={() => {
                           setShowAttachmentField(false);
@@ -2804,6 +2810,7 @@ export const ChatOrganism: React.FC = () => {
                     {/* Direct Image Upload Button */}
                     <Tooltip title="Upload Screenshots / Images (select multiple)">
                       <IconButton
+                        aria-label="Attach a file"
                         size="small"
                         onClick={() => chatFileInputRef.current?.click()}
                         disabled={uploadingAttachment || sendMessageMutation.isPending}
@@ -2835,6 +2842,7 @@ export const ChatOrganism: React.FC = () => {
                     {/* Attach URL Button */}
                     <Tooltip title="Attach Link / URL">
                       <IconButton
+                        aria-label="Attach a link"
                         size="small"
                         onClick={() => setShowAttachmentField(!showAttachmentField)}
                         sx={{
@@ -2860,6 +2868,7 @@ export const ChatOrganism: React.FC = () => {
                     {/* Emoji & stickers */}
                     <Tooltip title="Emoji & stickers">
                       <IconButton
+                        aria-label="Add emoji"
                         size="small"
                         onClick={(e) => setEmojiAnchorEl(e.currentTarget)}
                         disabled={sendMessageMutation.isPending || uploadingAttachment}
@@ -2919,6 +2928,7 @@ export const ChatOrganism: React.FC = () => {
                     />
 
                     <IconButton
+                      aria-label="Send message"
                       type="submit"
                       disabled={
                         (!messageInput.trim() && !attachmentInput.trim()) ||

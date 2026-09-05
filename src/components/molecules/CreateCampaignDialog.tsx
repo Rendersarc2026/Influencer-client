@@ -266,8 +266,12 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setStartDate(val);
+                  // Moving the start past an already-chosen end clears the end
+                  // date. Doing that silently just greyed out the submit button
+                  // with no reason given, so say what happened.
                   if (endDate && val && endDate < val) {
                     setEndDate('');
+                    setError('End date was cleared because it fell before the new start date.');
                   }
                 }}
                 slotProps={{
@@ -281,7 +285,10 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                 label="End Date *"
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  if (error) setError('');
+                }}
                 slotProps={{
                   inputLabel: { shrink: true },
                   htmlInput: { min: startDate || todayStr },

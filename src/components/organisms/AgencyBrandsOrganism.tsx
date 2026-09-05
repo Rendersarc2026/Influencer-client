@@ -26,7 +26,7 @@ import {
 import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
 import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
-import { safeExternalUrl, safeImageUrl, ExcelColumnConfig } from '@utils';
+import { safeExternalUrl, safeImageUrl, ExcelColumnConfig, formatDateDDMMYYYY } from '@utils';
 
 interface BrandRowActionsProps {
   row: BrandResponse;
@@ -231,7 +231,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
       id: 'createdOn',
       header: 'Onboarded (DD/MM/YYYY)',
       type: 'date',
-      accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
+      accessor: (row) => formatDateDDMMYYYY(row.createdOn),
     },
     {
       id: 'actions',
@@ -335,7 +335,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
             ? `Industry: ${selectedBrand.industry || 'General Industry'} · ${selectedBrand.city || 'National'}`
             : undefined
         }
-        badge={selectedBrand?.isActive ? 'ACTIVE' : 'DEACTIVATED'}
+        badge={selectedBrand?.isActive ? 'Active' : 'Deactivated'}
         avatarText={selectedBrand?.name}
         avatarUrl={safeImageUrl(selectedBrand?.logoUrl)}
         highlights={

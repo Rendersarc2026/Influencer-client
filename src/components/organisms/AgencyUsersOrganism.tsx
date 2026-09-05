@@ -19,7 +19,7 @@ import { DataTable, DataTableColumn, FilterBar, ConfirmDialog, OverviewDrawer } 
 import { apiClient, useAgencyUsers, useSetUserBlocked } from '@api';
 import { UserResponse, UserStatusFilter, PaginatedResult } from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
-import { ExcelColumnConfig } from '@utils';
+import { ExcelColumnConfig, formatDateDDMMYYYY } from '@utils';
 
 interface UserRowActionsProps {
   row: UserResponse;
@@ -305,7 +305,7 @@ export const AgencyUsersOrganism: React.FC = () => {
       id: 'createdOn',
       header: 'Created Date (DD/MM/YYYY)',
       type: 'date',
-      accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
+      accessor: (row) => formatDateDDMMYYYY(row.createdOn),
     },
     {
       id: 'actions',
@@ -427,7 +427,7 @@ export const AgencyUsersOrganism: React.FC = () => {
         onClose={() => setSelectedUser(null)}
         title={selectedUser?.profile?.fullName || selectedUser?.email || 'User Account'}
         subtitle={`Role: ${selectedUser?.roleCode || 'USER'}`}
-        badge={selectedUser?.isActive ? 'ACTIVE' : 'DEACTIVATED'}
+        badge={selectedUser?.isActive ? 'Active' : 'Deactivated'}
         avatarText={selectedUser?.profile?.fullName || selectedUser?.email}
         avatarUrl={
           selectedUser?.profile?.avatarUrl || selectedUser?.influencer?.avatarUrl || undefined

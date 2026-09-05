@@ -25,7 +25,13 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText, DeltaBadge, StatusChip, StatusCategory, EmptyState, BusyOverlay } from '@atoms';
-import { safeImageUrl, exportTableToExcel, exportTableToPdf, ExcelColumnConfig } from '@utils';
+import {
+  safeImageUrl,
+  formatDateDDMMYYYY,
+  exportTableToExcel,
+  exportTableToPdf,
+  ExcelColumnConfig,
+} from '@utils';
 
 export type ColumnType =
   | 'text'
@@ -321,10 +327,12 @@ export function DataTable<T extends Record<string, unknown>>({
             : column.iconAccessor
               ? row[column.iconAccessor]
               : null;
+        // No `|| iconOrAvatar.trim()` fallback: that hands the raw value to
+        // `src` in exactly the case the sanitiser rejected it, which is the
+        // anti-pattern `safe-url.ts` documents. An unsafe or malformed URL
+        // renders no image rather than a request the check exists to prevent.
         const validImageUrl =
-          typeof iconOrAvatar === 'string' && iconOrAvatar.trim()
-            ? safeImageUrl(iconOrAvatar) || iconOrAvatar.trim()
-            : undefined;
+          typeof iconOrAvatar === 'string' ? safeImageUrl(iconOrAvatar) : undefined;
 
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -429,6 +437,18 @@ export function DataTable<T extends Record<string, unknown>>({
               ? { bg: theme.palette.tokens.negativeBg, color: theme.palette.tokens.negativeText }
               : { bg: theme.palette.tokens.fieldBg, color: theme.palette.tokens.textSecondary };
 
+        // Statuses that arrive as codes get their wording from StatusChip above.
+        // The ones that arrive as strings — `ACTIVE`, `DEACTIVATED` — were
+        // rendered verbatim, so brands, users and categories showed raw
+        // SCREAMING_SNAKE next to screens that read "Pending Submission".
+        const humanizedStatus = displayValue
+          .split(/[\s_]+/)
+          .filter(Boolean)
+          .map((word) =>
+            word === word.toUpperCase() ? word.charAt(0) + word.slice(1).toLowerCase() : word,
+          )
+          .join(' ');
+
         return (
           <Box
             component="span"
@@ -444,7 +464,7 @@ export function DataTable<T extends Record<string, unknown>>({
               fontSize: theme.typography.caption.fontSize,
             }}
           >
-            {displayValue}
+            {humanizedStatus}
           </Box>
         );
       }
@@ -454,6 +474,10 @@ export function DataTable<T extends Record<string, unknown>>({
         return (
           <IconButton
             size="small"
+            // Icon-only, so without a label it reaches assistive tech as an
+            // unnamed button — one per row.
+            aria-label={starred ? 'Remove star' : 'Add star'}
+            aria-pressed={starred}
             onClick={(e) => {
               e.stopPropagation();
               if (column.onStarClick) column.onStarClick(row, e);
@@ -490,18 +514,18 @@ export function DataTable<T extends Record<string, unknown>>({
         }
         let formattedDate = displayValue;
         if (value instanceof Date) {
-          formattedDate = value.toLocaleDateString('en-IN');
+          formattedDate = formatDateDDMMYYYY(value);
         } else if (typeof value === 'string') {
           if (value.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(value)) {
             const d = new Date(value);
             if (!isNaN(d.getTime())) {
-              formattedDate = d.toLocaleDateString('en-IN');
+              formattedDate = formatDateDDMMYYYY(d);
             }
           }
         } else if (typeof value === 'number') {
           const d = new Date(value);
           if (!isNaN(d.getTime())) {
-            formattedDate = d.toLocaleDateString('en-IN');
+            formattedDate = formatDateDDMMYYYY(d);
           }
         }
         return (

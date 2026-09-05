@@ -386,6 +386,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
           </Box>
         </Box>
         <IconButton
+          aria-label="Close"
           size="small"
           onClick={onClose}
           disabled={isSubmitting}
@@ -688,7 +689,9 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
                     }}
                   >
                     <ZoomInRoundedIcon sx={{ fontSize: 18 }} />
-                    <Typography sx={{ fontSize: '11px', fontWeight: 600 }}>Click to zoom</Typography>
+                    <Typography sx={{ fontSize: '11px', fontWeight: 600 }}>
+                      Click to zoom
+                    </Typography>
                   </Box>
 
                   {/* Badge top-left */}
@@ -713,6 +716,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
                   {/* Remove button top-right */}
                   {!isSubmitting && (
                     <IconButton
+                      aria-label="Remove screenshot"
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();

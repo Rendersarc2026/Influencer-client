@@ -13,6 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { MoneyText, SectionHeading } from '@atoms';
 import { AgencyMapperResponse, UpdatePreEvalRequest } from '@contracts';
+import { sanitizeDecimalInput } from '@utils';
 
 export interface EditPreEvalDialogProps {
   open: boolean;
@@ -162,7 +163,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 label="Pre-Eval ER %"
                 type="text"
                 value={preEvalEr}
-                onChange={(e) => setPreEvalEr(e.target.value.replace(/[^0-9.]/g, ''))}
+                onChange={(e) => setPreEvalEr(sanitizeDecimalInput(e.target.value))}
                 placeholder="e.g. 4.5"
                 helperText="Expected engagement rate percentage"
                 fullWidth

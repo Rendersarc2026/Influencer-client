@@ -61,8 +61,10 @@ import {
 import { useAuth, useDebouncedSearch, useToast, useViewFilters } from '@hooks';
 import {
   safeExternalUrl,
+  formatInstagramHandle,
   exportBrandCampaignPerformanceReport,
   exportBrandCampaignPerformanceReportPdf,
+  formatDateDDMMYYYY,
 } from '@utils';
 
 interface BrandRowActionsProps {
@@ -667,10 +669,11 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
                 variant="caption"
                 sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
               >
-                @
-                {row.instagram
-                  .replace(/^https?:\/\/(www\.)?instagram\.com\//, '')
-                  .replace(/\/$/, '')}
+                {/* Stripping only the domain left Instagram's own share
+                    parameters in the handle, so the brand saw
+                    "@name?utm_source=ig_web_button_share_sheet&igsh=…".
+                    `formatInstagramHandle` drops the query and hash too. */}
+                {formatInstagramHandle(row.instagram)}
               </Typography>
             )}
           </Box>
@@ -996,10 +999,8 @@ export const BrandCampaignDetailOrganism: React.FC<BrandCampaignDetailOrganismPr
               TIMELINE
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {campaign?.startDate
-                ? new Date(campaign.startDate).toLocaleDateString('en-IN')
-                : 'TBD'}{' '}
-              — {campaign?.endDate ? new Date(campaign.endDate).toLocaleDateString('en-IN') : 'TBD'}
+              {campaign?.startDate ? formatDateDDMMYYYY(campaign.startDate) : 'TBD'} —{' '}
+              {campaign?.endDate ? formatDateDDMMYYYY(campaign.endDate) : 'TBD'}
             </Typography>
           </Box>
           <Box>

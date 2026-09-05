@@ -87,6 +87,7 @@ import {
   exportCampaignPerformanceReport,
   exportCampaignPerformanceReportPdf,
   ExcelColumnConfig,
+  formatDateDDMMYYYY,
 } from '@utils';
 
 interface RowActionsProps {
@@ -521,8 +522,12 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
     brandStatus: BrandStatusCode.APPROVED,
   });
   const rosterSize = rosterCount?.total ?? 0;
-  const awaitingBrandApproval = rosterSize - (approvedCount?.total ?? 0);
-  const rosterFullyApproved = rosterSize > 0 && awaitingBrandApproval === 0;
+  // Everyone the brand has not approved yet. That includes assignments the
+  // brand has never seen — still waiting on the creator's quote or the agency's
+  // margin — so this is "not yet approved", not "sitting with the brand". The
+  // helper text below is worded accordingly.
+  const notYetBrandApproved = rosterSize - (approvedCount?.total ?? 0);
+  const rosterFullyApproved = rosterSize > 0 && notYetBrandApproved === 0;
 
   // Mutations
   const updateCampaignMutation = useUpdateCampaign();
@@ -1248,7 +1253,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                 <FormHelperText sx={{ fontSize: '11.5px', mx: 0, mt: 0.5 }}>
                   {rosterSize === 0
                     ? 'Assign an influencer before going live'
-                    : `${awaitingBrandApproval} of ${rosterSize} awaiting brand approval`}
+                    : `${notYetBrandApproved} of ${rosterSize} not yet approved by the brand`}
                 </FormHelperText>
               )}
             </FormControl>
@@ -1292,10 +1297,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               TIMELINE
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {campaign?.startDate
-                ? new Date(campaign.startDate).toLocaleDateString('en-IN')
-                : 'TBD'}{' '}
-              — {campaign?.endDate ? new Date(campaign.endDate).toLocaleDateString('en-IN') : 'TBD'}
+              {campaign?.startDate ? formatDateDDMMYYYY(campaign.startDate) : 'TBD'} —{' '}
+              {campaign?.endDate ? formatDateDDMMYYYY(campaign.endDate) : 'TBD'}
             </Typography>
           </Box>
           <Box>
@@ -1306,7 +1309,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
               INFLUENCERS ASSIGNED
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {mappers.length} Influencers
+              {mappers.length} {mappers.length === 1 ? 'Influencer' : 'Influencers'}
             </Typography>
           </Box>
         </Box>
@@ -1573,7 +1576,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
                       {
                         title: 'Workflow History & Comments',
                         fields: overviewDrawerMapper.approvalEvents.map((evt) => ({
-                          label: `${new Date(evt.createdOn).toLocaleDateString('en-IN')}: ${humanizeCode(ApprovalActionName[evt.action] || 'Action')}`,
+                          label: `${formatDateDDMMYYYY(evt.createdOn)}: ${humanizeCode(ApprovalActionName[evt.action] || 'Action')}`,
                           value: evt.comment || 'Status updated',
                           fullWidth: true,
                         })),
@@ -1641,7 +1644,9 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           },
         }}
       >
-        <DialogTitle sx={{ pb: 1 }}>
+        {/* `component="div"`: DialogTitle renders an <h2>, so the heading below
+            was nested inside one. */}
+        <DialogTitle component="div" sx={{ pb: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Select Influencer
           </Typography>

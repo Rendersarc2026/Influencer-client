@@ -11,6 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { SubmitRateRequest } from '@contracts';
+import { sanitizeDecimalInput } from '@utils';
 
 export interface SubmitRateDialogProps {
   open: boolean;
@@ -158,7 +159,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
               label="Your Commercial Rate (₹) *"
               type="text"
               value={rateInput}
-              onChange={(e) => setRateInput(e.target.value.replace(/[^0-9.]/g, ''))}
+              onChange={(e) => setRateInput(sanitizeDecimalInput(e.target.value))}
               placeholder="e.g. 75000"
               fullWidth
               disabled={loading}

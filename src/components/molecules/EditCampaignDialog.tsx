@@ -224,8 +224,11 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setStartDate(val);
+                  // Clearing the end date silently left the form unsubmittable
+                  // with no explanation; say what happened.
                   if (endDate && val && endDate < val) {
                     setEndDate('');
+                    setError('End date was cleared because it fell before the new start date.');
                   }
                 }}
                 slotProps={{
@@ -239,7 +242,10 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 label="End Date *"
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  if (error) setError('');
+                }}
                 slotProps={{
                   inputLabel: { shrink: true },
                   htmlInput: { min: startDate || todayStr },

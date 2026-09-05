@@ -441,6 +441,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                     </Typography>
                     {posts.length > 1 && (
                       <IconButton
+                        aria-label="Remove this post"
                         size="small"
                         onClick={() => handleRemovePost(idx)}
                         disabled={loading}

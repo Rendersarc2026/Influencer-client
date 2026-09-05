@@ -40,7 +40,12 @@ import {
 } from '@api';
 import { CategoryResponse, CategoryType, CategoryTypeCode, PaginatedResult } from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
-import { capitalizeWords, ExcelColumnConfig, validateCategoryName } from '@utils';
+import {
+  capitalizeWords,
+  ExcelColumnConfig,
+  validateCategoryName,
+  formatDateDDMMYYYY,
+} from '@utils';
 
 interface CategoryRowActionsProps {
   row: CategoryResponse;
@@ -452,7 +457,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
       id: 'createdOn',
       header: 'Created Date (DD/MM/YYYY)',
       type: 'date',
-      accessor: (row) => new Date(row.createdOn).toLocaleDateString('en-IN'),
+      accessor: (row) => formatDateDDMMYYYY(row.createdOn),
     },
     {
       id: 'actions',
