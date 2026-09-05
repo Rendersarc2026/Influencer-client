@@ -414,7 +414,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                   nameError ||
                   (duplicate
                     ? `${duplicate.name} is already one of your client brands.`
-                    : 'Public trading or legal name of the brand')
+                    : undefined)
                 }
                 sx={{ flex: 1 }}
               />
@@ -470,7 +470,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                   }
                 }}
                 error={Boolean(websiteError)}
-                helperText={websiteError || 'Official website link'}
+                helperText={websiteError || undefined}
                 placeholder="https://brand.com"
                 fullWidth
                 disabled={busy}
@@ -498,7 +498,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                     }
                   }}
                   error={Boolean(logoUrlError)}
-                  helperText={logoUrlError || 'Public image URL or upload directly to S3'}
+                  helperText={logoUrlError || undefined}
                   placeholder="https://brand.com/logo.png"
                   fullWidth
                   disabled={busy || uploadingLogo}
@@ -607,7 +607,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 }
               }}
               error={Boolean(phoneError)}
-              helperText={phoneError || 'Direct phone number for manager'}
+              helperText={phoneError || undefined}
               disabled={busy}
             />
 
@@ -635,7 +635,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                     }
                   }}
                   error={Boolean(emailError)}
-                  helperText={emailError || 'Brand manager will use this email address to log in'}
+                  helperText={emailError || undefined}
                   placeholder="e.g. manager@brand.com"
                   fullWidth
                   disabled={busy}
@@ -677,13 +677,13 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               <TextField
                 select
                 label="Account Status"
-                value={isActive ? 'ACTIVE' : 'ARCHIVED'}
+                value={isActive ? 'ACTIVE' : 'DEACTIVATED'}
                 onChange={(e) => setIsActive(e.target.value === 'ACTIVE')}
                 fullWidth
                 disabled={busy}
               >
                 <MenuItem value="ACTIVE">Active Account</MenuItem>
-                <MenuItem value="ARCHIVED">Archived / Inactive Account</MenuItem>
+                <MenuItem value="DEACTIVATED">Deactivated Account</MenuItem>
               </TextField>
             )}
 

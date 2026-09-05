@@ -41,7 +41,7 @@ export interface FiltersState {
 
 const initialViews: Record<PredefinedFilterViewKey, ViewFilterState> = {
   agencyUsers: { ...DEFAULT_VIEW_FILTER_STATE },
-  agencyCategories: { ...DEFAULT_VIEW_FILTER_STATE },
+  agencyCategories: { ...DEFAULT_VIEW_FILTER_STATE, selectedSelect: 'ACTIVE' },
   agencyLocations: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyCampaigns: { ...DEFAULT_VIEW_FILTER_STATE },
   agencyBrands: { ...DEFAULT_VIEW_FILTER_STATE },
@@ -61,7 +61,8 @@ const initialState: FiltersState = {
 
 function ensureViewState(state: FiltersState, view: string): ViewFilterState {
   if (!state.views[view]) {
-    state.views[view] = { ...DEFAULT_VIEW_FILTER_STATE };
+    const initial = initialViews[view as PredefinedFilterViewKey];
+    state.views[view] = initial ? { ...initial } : { ...DEFAULT_VIEW_FILTER_STATE };
   }
   return state.views[view];
 }
@@ -109,7 +110,8 @@ export const filterSlice = createSlice({
       viewState.page = 0;
     },
     resetViewFilter: (state, action: PayloadAction<{ view: FilterViewKey }>) => {
-      state.views[action.payload.view] = { ...DEFAULT_VIEW_FILTER_STATE };
+      const initial = initialViews[action.payload.view as PredefinedFilterViewKey];
+      state.views[action.payload.view] = initial ? { ...initial } : { ...DEFAULT_VIEW_FILTER_STATE };
     },
     resetAllFilters: (state) => {
       state.views = { ...initialViews };

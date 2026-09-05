@@ -225,7 +225,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
       id: 'status',
       header: 'Status',
       type: 'status',
-      accessor: (row) => (row.isActive ? 'ACTIVE' : 'ARCHIVED'),
+      accessor: (row) => (row.isActive ? 'ACTIVE' : 'DEACTIVATED'),
     },
     {
       id: 'createdOn',
@@ -335,7 +335,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
             ? `Industry: ${selectedBrand.industry || 'General Industry'} · ${selectedBrand.city || 'National'}`
             : undefined
         }
-        badge={selectedBrand?.isActive ? 'ACTIVE' : 'ARCHIVED'}
+        badge={selectedBrand?.isActive ? 'ACTIVE' : 'DEACTIVATED'}
         avatarText={selectedBrand?.name}
         avatarUrl={safeImageUrl(selectedBrand?.logoUrl)}
         highlights={
@@ -348,8 +348,8 @@ export const AgencyBrandsOrganism: React.FC = () => {
                 },
                 {
                   label: 'Account Status',
-                  value: selectedBrand.isActive ? 'Active' : 'Archived',
-                  tint: selectedBrand.isActive ? 'mint' : 'butter',
+                  value: selectedBrand.isActive ? 'Active' : 'Deactivated',
+                  tint: selectedBrand.isActive ? 'mint' : 'lavender',
                 },
               ]
             : []

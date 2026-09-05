@@ -144,7 +144,7 @@ const UserRowActions: React.FC<UserRowActionsProps> = ({
               <LockOpenRoundedIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText
-              primary="Unblock Account"
+              primary="Reactivate Account"
               primaryTypographyProps={{
                 fontSize: '13px',
                 fontWeight: 500,
@@ -176,7 +176,7 @@ const UserRowActions: React.FC<UserRowActionsProps> = ({
               <BlockRoundedIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText
-              primary={isSelf ? 'Cannot block own account' : 'Block Account'}
+              primary={isSelf ? 'Cannot deactivate own account' : 'Deactivate Account'}
               primaryTypographyProps={{
                 fontSize: '13px',
                 fontWeight: 500,
@@ -257,14 +257,14 @@ export const AgencyUsersOrganism: React.FC = () => {
     const { user: target, blocked } = pendingBlock;
     try {
       await setBlockedMutation.mutateAsync({ id: target.id, blocked });
-      showSuccess(blocked ? 'User account blocked.' : 'User account unblocked.');
+      showSuccess(blocked ? 'User account deactivated.' : 'User account reactivated.');
       setPendingBlock(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
         errorObj?.response?.data?.message ||
           errorObj?.message ||
-          `Failed to ${blocked ? 'block' : 'unblock'} user.`,
+          `Failed to ${blocked ? 'deactivate' : 'reactivate'} user.`,
       );
     }
   };
@@ -299,7 +299,7 @@ export const AgencyUsersOrganism: React.FC = () => {
       id: 'status',
       header: 'Status',
       type: 'status',
-      accessor: (row) => (row.isActive ? 'ACTIVE' : 'BLOCKED'),
+      accessor: (row) => (row.isActive ? 'ACTIVE' : 'DEACTIVATED'),
     },
     {
       id: 'createdOn',
@@ -405,16 +405,16 @@ export const AgencyUsersOrganism: React.FC = () => {
         />
       </Box>
 
-      {/* Confirm Block / Unblock */}
+      {/* Confirm Deactivate / Reactivate */}
       <ConfirmDialog
         open={Boolean(pendingBlock)}
-        title={pendingBlock?.blocked ? 'Block User?' : 'Unblock User?'}
+        title={pendingBlock?.blocked ? 'Deactivate User?' : 'Reactivate User?'}
         body={
           pendingBlock?.blocked
             ? 'This account will immediately lose access to every platform interface.'
             : 'This account will be able to sign in again immediately.'
         }
-        confirmText={pendingBlock?.blocked ? 'Block User' : 'Unblock User'}
+        confirmText={pendingBlock?.blocked ? 'Deactivate User' : 'Reactivate User'}
         variant={pendingBlock?.blocked ? 'destructive' : 'neutral'}
         loading={setBlockedMutation.isPending}
         onConfirm={handleConfirmBlock}
@@ -427,7 +427,7 @@ export const AgencyUsersOrganism: React.FC = () => {
         onClose={() => setSelectedUser(null)}
         title={selectedUser?.profile?.fullName || selectedUser?.email || 'User Account'}
         subtitle={`Role: ${selectedUser?.roleCode || 'USER'}`}
-        badge={selectedUser?.isActive ? 'ACTIVE' : 'BLOCKED'}
+        badge={selectedUser?.isActive ? 'ACTIVE' : 'DEACTIVATED'}
         avatarText={selectedUser?.profile?.fullName || selectedUser?.email}
         avatarUrl={
           selectedUser?.profile?.avatarUrl || selectedUser?.influencer?.avatarUrl || undefined
@@ -442,7 +442,7 @@ export const AgencyUsersOrganism: React.FC = () => {
                 },
                 {
                   label: 'Account Status',
-                  value: selectedUser.isActive ? 'Active' : 'Blocked',
+                  value: selectedUser.isActive ? 'Active' : 'Deactivated',
                   tint: selectedUser.isActive ? 'mint' : 'lavender',
                 },
               ]

@@ -232,14 +232,16 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const {
     search,
     setSearch,
-    activePill: statusFilter,
-    setActivePill: setStatusFilter,
+    selectedSelect,
+    setSelectedSelect,
     page,
     setPage,
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('agencyCategories');
   const debouncedSearch = useDebounce(search, 300);
+
+  const statusFilter = (selectedSelect || 'ACTIVE') as 'ACTIVE' | 'ARCHIVED' | 'ALL';
 
   const activeStatus =
     statusFilter === 'ACTIVE' ? 'ACTIVE' : statusFilter === 'ARCHIVED' ? 'ARCHIVED' : 'ALL';
@@ -256,23 +258,6 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     page: page + 1,
     limit: rowsPerPage,
   });
-
-  // Query counts for tabs
-  const { data: brandCountData } = useCategoryList({
-    type: CategoryTypeCode.BRAND,
-    status: 'ACTIVE',
-    page: 1,
-    limit: 1,
-  });
-  const { data: influencerCountData } = useCategoryList({
-    type: CategoryTypeCode.INFLUENCER,
-    status: 'ACTIVE',
-    page: 1,
-    limit: 1,
-  });
-
-  const brandTotal = brandCountData?.total ?? 0;
-  const influencerTotal = influencerCountData?.total ?? 0;
 
   const categories = categoriesData?.items || [];
   const totalCategories = categoriesData?.total ?? categories.length;
@@ -293,10 +278,10 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
-  const statusPillOptions = [
-    { id: 'ALL', label: 'All Statuses' },
-    { id: 'ACTIVE', label: 'Active' },
-    { id: 'ARCHIVED', label: 'Archived' },
+  const statusOptions = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'ARCHIVED', label: 'Archived' },
+    { value: 'ALL', label: 'All Statuses' },
   ];
 
   const handleOpenCreate = () => {
@@ -577,23 +562,6 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           >
             <StorefrontRoundedIcon fontSize="small" />
             <span>Brand Categories</span>
-            <Chip
-              size="small"
-              label={brandTotal}
-              sx={{
-                height: 20,
-                fontSize: '11px',
-                fontWeight: 700,
-                backgroundColor:
-                  activeTab === CategoryTypeCode.BRAND
-                    ? 'rgba(255,255,255,0.2)'
-                    : theme.palette.tokens.fieldBg,
-                color:
-                  activeTab === CategoryTypeCode.BRAND
-                    ? '#FFFFFF'
-                    : theme.palette.tokens.textPrimary,
-              }}
-            />
           </ButtonBase>
 
           <ButtonBase
@@ -635,34 +603,24 @@ export const AgencyCategoriesOrganism: React.FC = () => {
           >
             <PeopleAltRoundedIcon fontSize="small" />
             <span>Influencer Categories</span>
-            <Chip
-              size="small"
-              label={influencerTotal}
-              sx={{
-                height: 20,
-                fontSize: '11px',
-                fontWeight: 700,
-                backgroundColor:
-                  activeTab === CategoryTypeCode.INFLUENCER
-                    ? 'rgba(255,255,255,0.2)'
-                    : theme.palette.tokens.fieldBg,
-                color:
-                  activeTab === CategoryTypeCode.INFLUENCER
-                    ? '#FFFFFF'
-                    : theme.palette.tokens.textPrimary,
-              }}
-            />
           </ButtonBase>
         </Box>
 
-        {/* FilterBar with Search and Status Pills */}
+        {/* FilterBar with Search and Status Dropdown */}
         <FilterBar
           searchValue={search}
-          onSearchChange={setSearch}
+          onSearchChange={(val) => {
+            setSearch(val);
+            setPage(0);
+          }}
           searchPlaceholder="Search"
-          pills={statusPillOptions}
-          activePillId={statusFilter || 'ALL'}
-          onPillChange={setStatusFilter}
+          selectOptions={statusOptions}
+          selectedOption={statusFilter}
+          onSelectChange={(val) => {
+            setSelectedSelect(val);
+            setPage(0);
+          }}
+          selectLabel="Status"
           onExport={exportExcel}
           onExportPdf={exportPdf}
           isExporting={isExporting}

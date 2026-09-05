@@ -356,7 +356,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 );
               }}
               error={Boolean(nameError)}
-              helperText={nameError || 'Required: Influencer full legal or professional name'}
+              helperText={nameError || undefined}
               placeholder="e.g. Varsha, Neha Nazneen"
               fullWidth
               disabled={loading}
@@ -371,7 +371,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 else setPhoneError('');
               }}
               error={Boolean(phoneError)}
-              helperText={phoneError || 'Influencer direct contact number'}
+              helperText={phoneError || undefined}
               disabled={loading}
             />
 
@@ -387,7 +387,6 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                   {...params}
                   label="Influencer Niche / Category"
                   placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
-                  helperText="Influencer content niche / domain"
                   fullWidth
                 />
               )}
@@ -495,7 +494,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                   followersError ||
                   (followers && parseShorthandNumber(followers) !== null
                     ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers (${getTierInfo(selectedTier)?.label || ''} Tier)`
-                    : 'Format: 10k, 100k, 1m or select a tier above')
+                    : undefined)
                 }
                 fullWidth
                 disabled={loading}
@@ -529,7 +528,6 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                       ? 'Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter'
                       : ''
                   }
-                  helperText="Key geographical target regions where this influencer's audience is strongest (optional)"
                   fullWidth
                 />
               )}
@@ -553,7 +551,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 }}
                 placeholder="https://instagram.com/username"
                 error={Boolean(instagramError)}
-                helperText={instagramError || 'Full Instagram profile link'}
+                helperText={instagramError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -572,7 +570,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 }}
                 placeholder="https://youtube.com/@channel"
                 error={Boolean(youtubeError)}
-                helperText={youtubeError || 'Full YouTube channel link'}
+                helperText={youtubeError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -586,7 +584,6 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 value={avgCommercialMin}
                 onChange={(e) => setAvgCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 50000"
-                helperText="Baseline quote minimum"
                 fullWidth
                 disabled={loading}
               />
@@ -595,7 +592,6 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 value={avgCommercialMax}
                 onChange={(e) => setAvgCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 150000"
-                helperText="Baseline quote ceiling"
                 fullWidth
                 disabled={loading}
               />

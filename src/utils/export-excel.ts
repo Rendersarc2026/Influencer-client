@@ -203,7 +203,14 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
       return getStatusLabel('CAMPAIGN_STATUS', value);
     }
     if (typeof value === 'boolean') {
-      return value ? 'Active' : 'Inactive';
+      return value ? 'Active' : 'Deactivated';
+    }
+    if (typeof value === 'string') {
+      const upper = value.toUpperCase();
+      if (upper === 'ACTIVE') return 'Active';
+      if (upper === 'DEACTIVATED' || upper === 'BLOCKED' || upper === 'INACTIVE') {
+        return 'Deactivated';
+      }
     }
     if (value === null || value === undefined) return '—';
     return String(value);

@@ -416,6 +416,7 @@ export function DataTable<T extends Record<string, unknown>>({
           displayValue.toUpperCase().includes('REVISION');
         const isNegative =
           displayValue.toUpperCase() === 'BLOCKED' ||
+          displayValue.toUpperCase() === 'DEACTIVATED' ||
           displayValue.toUpperCase() === 'CANCELLED' ||
           displayValue.toUpperCase() === 'REJECTED' ||
           displayValue.toUpperCase() === 'ARCHIVED';

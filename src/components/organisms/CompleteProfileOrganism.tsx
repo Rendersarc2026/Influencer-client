@@ -517,7 +517,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                     value={contactPhone}
                     onChange={setContactPhone}
                     error={Boolean(fieldErrors.contactPhone)}
-                    helperText={fieldErrors.contactPhone || 'Manager phone line'}
+                    helperText={fieldErrors.contactPhone || undefined}
                     disabled={loading}
                   />
 
@@ -562,7 +562,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                         label="Brand Category / Industry"
                         placeholder="Select or enter industry"
                         error={Boolean(fieldErrors.industry)}
-                        helperText={fieldErrors.industry || 'Brand market domain'}
+                        helperText={fieldErrors.industry || undefined}
                         fullWidth
                         InputProps={{
                           ...params.InputProps,
@@ -662,7 +662,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                     value={instagram}
                     onChange={(e) => setInstagram(e.target.value)}
                     error={Boolean(fieldErrors.instagram)}
-                    helperText={fieldErrors.instagram || 'Full Instagram profile or handle'}
+                    helperText={fieldErrors.instagram || undefined}
                     fullWidth
                     disabled={loading}
                     InputProps={{
@@ -680,7 +680,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                     value={youtube}
                     onChange={(e) => setYoutube(e.target.value)}
                     error={Boolean(fieldErrors.youtube)}
-                    helperText={fieldErrors.youtube || 'Full YouTube channel link'}
+                    helperText={fieldErrors.youtube || undefined}
                     fullWidth
                     disabled={loading}
                     InputProps={{
@@ -714,7 +714,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                         label="Influencer Category"
                         placeholder="Select or enter category (e.g. Gaming & Esports)"
                         error={Boolean(fieldErrors.category)}
-                        helperText={fieldErrors.category || 'Creator niche / content domain'}
+                        helperText={fieldErrors.category || undefined}
                         fullWidth
                         InputProps={{
                           ...params.InputProps,
@@ -809,11 +809,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                             : ''
                         }
                         error={Boolean(fieldErrors.regions || fieldErrors.influencingRegions)}
-                        helperText={
-                          fieldErrors.regions ||
-                          fieldErrors.influencingRegions ||
-                          'Geographical regions or markets where your follower base is strongest'
-                        }
+                        helperText={fieldErrors.regions || fieldErrors.influencingRegions}
                         fullWidth
                       />
                     )}
@@ -854,7 +850,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                       fieldErrors.followers ||
                       (followers && parseShorthandNumber(followers) !== null
                         ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers`
-                        : 'Format: 10k, 100k, 1m')
+                        : undefined)
                     }
                     fullWidth
                     disabled={loading}
@@ -968,7 +964,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 error={Boolean(fieldErrors.bio)}
-                helperText={fieldErrors.bio || 'Appears on your public profile summary (optional)'}
+                helperText={fieldErrors.bio || undefined}
                 fullWidth
                 disabled={loading}
               />

@@ -256,6 +256,14 @@ export const components: Components<Theme> = {
         fontWeight: 500,
         color: tokens.colors.textPrimary,
         height: 'auto',
+        // Left to itself the placeholder is `currentColor` at 0.42 opacity — a
+        // washed-out near-black that reads as faint body text rather than as a
+        // hint. Toning it to the muted grey keeps it clearly separate from a
+        // value the user has actually typed.
+        '&::placeholder': {
+          color: tokens.colors.textSecondary,
+          opacity: 0.75,
+        },
         [theme.breakpoints.down('sm')]: {
           fontSize: tokens.typography.inputMobile.fontSize,
         },
@@ -272,15 +280,19 @@ export const components: Components<Theme> = {
   MuiInputLabel: {
     styleOverrides: {
       outlined: {
+        // Resting, the label sits inside the box standing in for a placeholder,
+        // so it stays muted. Shrunk, it is the field's heading — primary ink and
+        // bold, which is what gives a dense form a readable hierarchy.
         color: tokens.colors.textSecondary,
         fontSize: '14px',
-        fontWeight: 500,
+        fontWeight: 600,
         '&.MuiInputLabel-shrink': {
+          color: tokens.colors.textPrimary,
           backgroundColor: tokens.colors.surface,
           paddingLeft: '6px',
           paddingRight: '6px',
           borderRadius: '4px',
-          fontWeight: 600,
+          fontWeight: 700,
           zIndex: 1,
         },
         '&.Mui-focused': {
@@ -293,9 +305,10 @@ export const components: Components<Theme> = {
       filled: {
         color: tokens.colors.textSecondary,
         fontSize: '14px',
-        fontWeight: 500,
+        fontWeight: 600,
         '&.MuiInputLabel-shrink': {
-          fontWeight: 600,
+          color: tokens.colors.textPrimary,
+          fontWeight: 700,
         },
         '&.Mui-focused': {
           color: tokens.colors.accent,

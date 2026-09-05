@@ -358,7 +358,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 );
               }}
               error={Boolean(nameError)}
-              helperText={nameError || 'Required: Influencer full legal or professional name'}
+              helperText={nameError || undefined}
               placeholder="e.g. Riya Malhotra"
               fullWidth
               disabled={loading}
@@ -384,9 +384,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   }
                 }}
                 error={Boolean(emailError)}
-                helperText={
-                  emailError || 'Required: Influencer will use this email address to log in'
-                }
+                helperText={emailError || undefined}
                 placeholder="e.g. riya@gmail.com"
                 fullWidth
                 disabled={loading}
@@ -401,7 +399,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   else setPhoneError('');
                 }}
                 error={Boolean(phoneError)}
-                helperText={phoneError || 'Required: the influencer’s direct line'}
+                helperText={phoneError || undefined}
                 disabled={loading}
               />
             </Box>
@@ -419,7 +417,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   {...params}
                   label="Influencer Niche / Category"
                   placeholder="Select or enter category (e.g. Fashion & Lifestyle)"
-                  helperText="Influencer content niche / domain"
                   fullWidth
                 />
               )}
@@ -550,7 +547,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   followersError ||
                   (followers && parseShorthandNumber(followers) !== null
                     ? `${parseShorthandNumber(followers)?.toLocaleString('en-IN')} followers (${getTierInfo(selectedTier)?.label || ''} Tier)`
-                    : 'Format: 10k, 100k, 1m or select a tier above')
+                    : undefined)
                 }
                 fullWidth
                 disabled={loading}
@@ -584,7 +581,6 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                       ? 'Select or type regions (e.g. Kochi, Calicut, Malabar) and press Enter'
                       : ''
                   }
-                  helperText="Key geographical target regions where this influencer's audience is strongest (optional)"
                   fullWidth
                 />
               )}
@@ -608,7 +604,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 }}
                 placeholder="https://instagram.com/username"
                 error={Boolean(instagramError)}
-                helperText={instagramError || 'Full Instagram profile link'}
+                helperText={instagramError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -627,7 +623,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 }}
                 placeholder="https://youtube.com/@channel"
                 error={Boolean(youtubeError)}
-                helperText={youtubeError || 'Full YouTube channel link'}
+                helperText={youtubeError || undefined}
                 fullWidth
                 disabled={loading}
               />
