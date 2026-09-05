@@ -259,27 +259,24 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 item.type === 'RATE_REVISION_REQUESTED' ||
                 item.type === 'BRAND_REJECTED' ||
                 item.type === 'BRAND_CORRECTION_REQUESTED';
-              const isCampaign = CAMPAIGN_NOTIFICATION_TYPES.includes(item.type);
 
+              // Approval and correction keep their own colours; the campaign
+              // kinds that are neither fall through to the purple default.
               const iconBg = isMessage
                 ? theme.palette.tokens.accentBg
-                : isCampaign
-                  ? theme.palette.tokens.purpleBg
-                  : isApproval
-                    ? theme.palette.tokens.positiveBg
-                    : isCorrection
-                      ? theme.palette.tokens.negativeBg
-                      : theme.palette.tokens.purpleBg;
+                : isApproval
+                  ? theme.palette.tokens.positiveBg
+                  : isCorrection
+                    ? theme.palette.tokens.negativeBg
+                    : theme.palette.tokens.purpleBg;
 
               const iconColor = isMessage
                 ? theme.palette.tokens.accentText
-                : isCampaign
-                  ? theme.palette.tokens.purpleText
-                  : isApproval
-                    ? theme.palette.tokens.positiveText
-                    : isCorrection
-                      ? theme.palette.tokens.negativeText
-                      : theme.palette.tokens.purpleText;
+                : isApproval
+                  ? theme.palette.tokens.positiveText
+                  : isCorrection
+                    ? theme.palette.tokens.negativeText
+                    : theme.palette.tokens.purpleText;
 
               return (
                 <Box
