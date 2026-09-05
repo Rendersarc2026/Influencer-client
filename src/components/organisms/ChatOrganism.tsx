@@ -449,17 +449,6 @@ export const ChatOrganism: React.FC = () => {
     [chats],
   );
 
-  const hasAgencyChat = useMemo(
-    () =>
-      chats.some(
-        (c) =>
-          c.type === ChatTypeCode.AGENCY_BRAND ||
-          c.type === ChatTypeCode.AGENCY_INFLUENCER ||
-          Boolean(c.agencyUserId),
-      ),
-    [chats],
-  );
-
   // Deduplicated conversations list (merges any duplicate threads for the same participant)
   const uniqueChats = useMemo(() => {
     const map = new Map<string, ChatResponse>();
@@ -1420,12 +1409,6 @@ export const ChatOrganism: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: 1,
-                  // The pane is a fixed 340px and the contents are not: an
-                  // unread pill next to the wide "Message Agency" button
-                  // overflows it. Wrapping drops the button to its own line
-                  // instead of letting the two overlap.
-                  flexWrap: 'wrap',
-                  rowGap: 1,
                 }}
               >
                 <Box
@@ -1484,34 +1467,6 @@ export const ChatOrganism: React.FC = () => {
                     </Box>
                   )}
                 </Box>
-                {roleCode !== 'AGENCY' && !hasAgencyChat && !chatsLoading ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={
-                      createChatMutation.isPending ? (
-                        <CircularProgress size={14} color="inherit" />
-                      ) : (
-                        <ChatBubbleOutlineRoundedIcon fontSize="small" />
-                      )
-                    }
-                    onClick={handleStartAgencyChat}
-                    disabled={createChatMutation.isPending}
-                    sx={{
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      height: 32,
-                      px: 1.5,
-                      borderRadius: `${theme.customRadii.pill}px`,
-                      flexShrink: 0,
-                      whiteSpace: 'nowrap',
-                      ml: 'auto',
-                    }}
-                  >
-                    {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
-                  </Button>
-                ) : null}
               </Box>
 
               {/* Search conversations.
@@ -3010,27 +2965,8 @@ export const ChatOrganism: React.FC = () => {
                     chats.length === 0
                       ? roleCode === 'AGENCY'
                         ? 'Start a new conversation with a brand or influencer.'
-                        : 'Start a conversation with your agency account manager.'
+                        : 'Use Message Agency in the conversations list to start a thread.'
                       : 'Choose a thread from the list on the left to view messages and collaborate.'
-                  }
-                  action={
-                    roleCode !== 'AGENCY' && !hasAgencyChat && !chatsLoading ? (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={
-                          createChatMutation.isPending ? (
-                            <CircularProgress size={16} color="inherit" />
-                          ) : (
-                            <ChatBubbleOutlineRoundedIcon fontSize="small" />
-                          )
-                        }
-                        onClick={handleStartAgencyChat}
-                        disabled={createChatMutation.isPending}
-                      >
-                        {createChatMutation.isPending ? 'Connecting...' : 'Message Agency'}
-                      </Button>
-                    ) : undefined
                   }
                 />
               </Box>
