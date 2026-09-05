@@ -1,4 +1,4 @@
-import { AppNotification, NOTIFICATION_TYPES, NotificationType } from '@types';
+import { AppNotification, NOTIFICATION_TYPES, NotificationDraft, NotificationType } from '@types';
 
 const KNOWN_NOTIFICATION_TYPES = new Set<string>(NOTIFICATION_TYPES);
 
@@ -34,4 +34,39 @@ export function parseStoredNotifications(raw: string | null): AppNotification[] 
   } catch {
     return [];
   }
+}
+
+/**
+ * Reads an alert pushed over the socket.
+ *
+ * The server is trusted, but its notification kinds and this union are two
+ * separate lists that drift the moment one side ships ahead of the other. An
+ * unknown `type` accepted here would sit in the list styled as the fallback,
+ * survive into storage, and then vanish on the next reload when
+ * `parseStoredNotifications` refuses it — an alert that exists until you
+ * refresh. Rejecting it at the door keeps the two ends honest.
+ */
+export function parseNotificationDraft(value: unknown): NotificationDraft | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Record<string, unknown>;
+  if (!isNotificationType(candidate.type)) return null;
+  if (typeof candidate.title !== 'string' || typeof candidate.message !== 'string') return null;
+
+  return {
+    type: candidate.type,
+    title: candidate.title,
+    message: candidate.message,
+    // Only same-origin paths. An absolute or protocol-relative value would hand
+    // a pushed payload control of where a click navigates.
+    link:
+      typeof candidate.link === 'string' &&
+      candidate.link.startsWith('/') &&
+      !candidate.link.startsWith('//')
+        ? candidate.link
+        : undefined,
+    metadata:
+      typeof candidate.metadata === 'object' && candidate.metadata !== null
+        ? (candidate.metadata as AppNotification['metadata'])
+        : undefined,
+  };
 }

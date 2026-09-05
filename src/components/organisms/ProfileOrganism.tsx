@@ -354,6 +354,27 @@ export const ProfileOrganism: React.FC = () => {
     }
   };
 
+  /**
+   * Marks a save as refused and says so out loud.
+   *
+   * Every check below used to bail with `setFieldErrors` alone. This form is
+   * taller than the viewport, so the red text often landed off-screen — and it
+   * can land on a field the user never touched, since the agency and the
+   * Instagram sync both write into this row. Pressing Save then did nothing at
+   * all: no toast, no movement, the edited value still sitting in the box. The
+   * report that "my location edit does not stick" was exactly this — the
+   * request was never sent. The toast makes the refusal visible, and the
+   * message names the field so it can be found without hunting.
+   */
+  const failValidation = (errors: Record<string, string>): void => {
+    setFieldErrors(errors);
+    const firstMessage = Object.values(errors)[0];
+    if (firstMessage) {
+      setErrorMsg(firstMessage);
+      showError(firstMessage);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavedSuccess(false);
@@ -366,7 +387,7 @@ export const ProfileOrganism: React.FC = () => {
       max: 200,
     });
     if (fnErr) {
-      setFieldErrors({ fullName: fnErr, contactPerson: fnErr });
+      failValidation({ fullName: fnErr, contactPerson: fnErr });
       return;
     }
 
@@ -377,14 +398,14 @@ export const ProfileOrganism: React.FC = () => {
         max: 200,
       });
       if (dnErr) {
-        setFieldErrors({ displayName: dnErr, name: dnErr });
+        failValidation({ displayName: dnErr, name: dnErr });
         return;
       }
 
       if (contactPhone.trim()) {
         const pErr = validatePhoneNumber(contactPhone.trim());
         if (pErr) {
-          setFieldErrors({ contactPhone: pErr });
+          failValidation({ contactPhone: pErr });
           return;
         }
       }
@@ -392,7 +413,7 @@ export const ProfileOrganism: React.FC = () => {
       if (website.trim()) {
         const wErr = validateHttpUrl(website);
         if (wErr) {
-          setFieldErrors({ website: wErr });
+          failValidation({ website: wErr });
           return;
         }
       }
@@ -400,7 +421,7 @@ export const ProfileOrganism: React.FC = () => {
       if (logoUrl.trim()) {
         const lErr = validateHttpUrl(logoUrl);
         if (lErr) {
-          setFieldErrors({ logoUrl: lErr });
+          failValidation({ logoUrl: lErr });
           return;
         }
       }
@@ -426,7 +447,7 @@ export const ProfileOrganism: React.FC = () => {
             errors[String(field)] = err.message;
           }
         });
-        setFieldErrors(errors);
+        failValidation(errors);
         return;
       }
 
@@ -453,7 +474,7 @@ export const ProfileOrganism: React.FC = () => {
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        setFieldErrors({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
+        failValidation({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
         return;
       }
       parsedFollowers = parsed;
@@ -480,13 +501,21 @@ export const ProfileOrganism: React.FC = () => {
     };
 
     if (displayName.trim()) {
-      const dnErr = validatePersonName(displayName, {
+      // A public display name is a handle, not a legal name: `verum_varsha` is
+      // what the Instagram sync and the agency actually write into this column,
+      // and the server accepts it (`displayName` is `safeText(120)`).
+      // Validating it as a person name rejected the platform's own data, and
+      // because the refusal was silent it locked those creators out of saving
+      // *any* field — their location included. `validateBrandName` is the rule
+      // that matches a handle: at least one letter, no number-gibberish, and no
+      // character allowlist.
+      const dnErr = validateBrandName(displayName, {
         required: false,
         fieldLabel: 'Public Display Name',
         max: 120,
       });
       if (dnErr) {
-        setFieldErrors({ displayName: dnErr });
+        failValidation({ displayName: dnErr });
         return;
       }
     }
@@ -521,7 +550,7 @@ export const ProfileOrganism: React.FC = () => {
           errors[String(field)] = err.message;
         }
       });
-      setFieldErrors(errors);
+      failValidation(errors);
       return;
     }
 
@@ -1107,8 +1136,12 @@ export const ProfileOrganism: React.FC = () => {
                         const val = capitalizeWords(e.target.value);
                         setDisplayName(val);
                         if (fieldErrors.displayName) {
+                          // Handles, not legal names — digits and underscores
+                          // are legitimate here, and the digit check that used
+                          // to sit on this field rejected the very values the
+                          // Instagram sync writes into it.
                           const err = val.trim()
-                            ? validatePersonName(val, {
+                            ? validateBrandName(val, {
                                 required: false,
                                 fieldLabel: 'Public Display Name',
                                 max: 120,
@@ -1120,16 +1153,11 @@ export const ProfileOrganism: React.FC = () => {
                             else delete next.displayName;
                             return next;
                           });
-                        } else if (/[\d\p{N}]/u.test(val)) {
-                          setFieldErrors((prev) => ({
-                            ...prev,
-                            displayName: 'Numbers are not allowed in name',
-                          }));
                         }
                       }}
                       onBlur={(e) => {
                         const err = e.target.value.trim()
-                          ? validatePersonName(e.target.value, {
+                          ? validateBrandName(e.target.value, {
                               required: false,
                               fieldLabel: 'Public Display Name',
                               max: 120,

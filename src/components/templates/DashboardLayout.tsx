@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useMemo } from 'react';
+import React, { ReactNode, useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
@@ -6,7 +6,7 @@ import { SidebarRail, TopBar } from '@organisms';
 import { ConfirmDialog } from '@molecules';
 import { navConfig, NavItem } from '@routes/navConfig';
 import { useNavigation, useChats } from '@api';
-import { useAuth } from '@hooks';
+import { useAuth, useNotifications } from '@hooks';
 import { RoleCode } from '@contracts';
 
 export interface DashboardLayoutProps {
@@ -104,6 +104,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     [chats],
   );
 
+  const { unreadCampaignCount, markCampaignAlertsRead } = useNotifications();
+
+  // Standing on the campaigns list — or inside one of its rows — is the user
+  // reading the thing the badge points at, so it clears itself rather than
+  // waiting for the bell to be opened. Keyed on the count as well as the route
+  // so an alert that arrives while the list is already open clears too;
+  // `markCampaignAlertsRead` returns the list untouched when there is nothing
+  // unread, so the extra dependency cannot loop.
+  const isOnCampaigns = activePath.includes('/campaigns');
+  useEffect(() => {
+    if (isOnCampaigns && unreadCampaignCount > 0) {
+      markCampaignAlertsRead();
+    }
+  }, [isOnCampaigns, unreadCampaignCount, markCampaignAlertsRead]);
+
   const fallbackNavItems =
     navItems.length > 0
       ? navItems
@@ -127,6 +142,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       return {
         ...item,
         badge: totalUnreadMessages > 99 ? '99+' : totalUnreadMessages,
+      };
+    }
+    if (item.path.includes('/campaigns') && unreadCampaignCount > 0) {
+      return {
+        ...item,
+        badge: unreadCampaignCount > 99 ? '99+' : unreadCampaignCount,
       };
     }
     return item;

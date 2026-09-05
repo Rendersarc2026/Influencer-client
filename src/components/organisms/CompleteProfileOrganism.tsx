@@ -84,6 +84,20 @@ export const CompleteProfileOrganism: React.FC = () => {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  /**
+   * Marks the submit as refused and says so out loud, rather than setting red
+   * text on a field that may be scrolled out of view — or that the user never
+   * filled in, since this form opens pre-seeded from the row the agency created.
+   */
+  const failValidation = (errors: Record<string, string>): void => {
+    setFieldErrors(errors);
+    const firstMessage = Object.values(errors)[0];
+    if (firstMessage) {
+      setError(firstMessage);
+      showError(firstMessage);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -95,7 +109,7 @@ export const CompleteProfileOrganism: React.FC = () => {
       max: 120,
     });
     if (fnErr) {
-      setFieldErrors({ fullName: fnErr });
+      failValidation({ fullName: fnErr });
       return;
     }
 
@@ -106,17 +120,22 @@ export const CompleteProfileOrganism: React.FC = () => {
         max: 120,
       });
       if (dnErr) {
-        setFieldErrors({ displayName: dnErr });
+        failValidation({ displayName: dnErr });
         return;
       }
     } else if (displayName.trim()) {
-      const dnErr = validatePersonName(displayName, {
+      // A creator's display name is a handle, not a legal name, and this field
+      // arrives pre-filled with whatever the agency or the Instagram sync wrote
+      // — `verum_varsha`, say. Validating it as a person name rejected the
+      // platform's own data and, since nothing was shown, left the creator
+      // stuck on onboarding with a Continue button that did nothing.
+      const dnErr = validateBrandName(displayName, {
         required: false,
         fieldLabel: 'Display Name',
         max: 120,
       });
       if (dnErr) {
-        setFieldErrors({ displayName: dnErr });
+        failValidation({ displayName: dnErr });
         return;
       }
     }
@@ -132,7 +151,7 @@ export const CompleteProfileOrganism: React.FC = () => {
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        setFieldErrors({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
+        failValidation({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
         return;
       }
       parsedFollowers = parsed;
@@ -204,7 +223,7 @@ export const CompleteProfileOrganism: React.FC = () => {
           errors[String(field)] = err.message;
         }
       });
-      setFieldErrors(errors);
+      failValidation(errors);
       return;
     }
 
@@ -421,7 +440,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                             max: 120,
                           })
                         : val.trim()
-                          ? validatePersonName(val, {
+                          ? validateBrandName(val, {
                               required: false,
                               fieldLabel: 'Display Name',
                               max: 120,
@@ -443,7 +462,7 @@ export const CompleteProfileOrganism: React.FC = () => {
                           max: 120,
                         })
                       : e.target.value.trim()
-                        ? validatePersonName(e.target.value, {
+                        ? validateBrandName(e.target.value, {
                             required: false,
                             fieldLabel: 'Display Name',
                             max: 120,

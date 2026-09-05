@@ -4,11 +4,12 @@ import { NotificationContext } from './notification-context-def';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { playNotificationSound } from '../utils/sound.utils';
-import { parseStoredNotifications } from '../utils/notification.utils';
+import { parseNotificationDraft, parseStoredNotifications } from '../utils/notification.utils';
 import { connectSocket, disconnectSocket, getSocket } from '@api';
 import { MessageResponse } from '@contracts';
 import {
   AppNotification,
+  CAMPAIGN_NOTIFICATION_TYPES,
   NotificationContextType,
   NotificationDeliveryOptions,
   NotificationDraft,
@@ -61,11 +62,22 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Track unread count.
   //
-  // Messages only, matching what the notification panel lists. Counting stage
-  // and approval events too left the bell showing a number the panel had
-  // nothing to show for.
+  // Exactly what the notification panel lists: messages, plus the campaign
+  // alerts the panel now shows beside them. Counting every stage and approval
+  // event too left the bell showing a number the panel had nothing to show for,
+  // so the two are kept on one definition rather than two.
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read && n.type === 'MESSAGE').length,
+    () =>
+      notifications.filter(
+        (n) => !n.read && (n.type === 'MESSAGE' || CAMPAIGN_NOTIFICATION_TYPES.includes(n.type)),
+      ).length,
+    [notifications],
+  );
+
+  // The Campaigns rail badge, which counts only the campaign half.
+  const unreadCampaignCount = useMemo(
+    () =>
+      notifications.filter((n) => !n.read && CAMPAIGN_NOTIFICATION_TYPES.includes(n.type)).length,
     [notifications],
   );
 
@@ -108,6 +120,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const markAllAsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const markCampaignAlertsRead = useCallback(() => {
+    setNotifications((prev) => {
+      // Returning `prev` untouched when nothing is unread matters: this runs
+      // from an effect keyed on the route, and a fresh array every time would
+      // rewrite storage and re-render the rail on every navigation.
+      if (!prev.some((n) => !n.read && CAMPAIGN_NOTIFICATION_TYPES.includes(n.type))) return prev;
+      return prev.map((n) =>
+        CAMPAIGN_NOTIFICATION_TYPES.includes(n.type) ? { ...n, read: true } : n,
+      );
+    });
   }, []);
 
   const clearAll = useCallback(() => {
@@ -188,9 +212,20 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
     };
 
-    const handleDirectNotification = (draft: NotificationDraft) => {
-      if (draft) {
-        addNotification(draft);
+    const handleDirectNotification = (payload: unknown) => {
+      const draft = parseNotificationDraft(payload);
+      if (!draft) return;
+
+      addNotification(draft);
+
+      // A campaign alert says the creator's own campaign list just changed
+      // underneath them. Without this the alert lands on a table that still
+      // does not contain the campaign it is about, and stays that way until
+      // something else happens to refetch.
+      if (CAMPAIGN_NOTIFICATION_TYPES.includes(draft.type)) {
+        queryClient.invalidateQueries({ queryKey: ['influencer', 'campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['influencer', 'assignments'] });
+        queryClient.invalidateQueries({ queryKey: ['influencer', 'dashboard'] });
       }
     };
 
@@ -208,12 +243,23 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     () => ({
       notifications,
       unreadCount,
+      unreadCampaignCount,
       markAsRead,
       markAllAsRead,
+      markCampaignAlertsRead,
       clearAll,
       addNotification,
     }),
-    [notifications, unreadCount, markAsRead, markAllAsRead, clearAll, addNotification],
+    [
+      notifications,
+      unreadCount,
+      unreadCampaignCount,
+      markAsRead,
+      markAllAsRead,
+      markCampaignAlertsRead,
+      clearAll,
+      addNotification,
+    ],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

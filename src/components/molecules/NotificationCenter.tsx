@@ -17,7 +17,12 @@ import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import NotificationsOffOutlinedIcon from '@mui/icons-material/NotificationsOffOutlined';
 import { useTheme } from '@mui/material/styles';
 import { useNotifications } from '@hooks';
-import { AppNotification, NotificationCenterProps, NotificationType } from '@types';
+import {
+  AppNotification,
+  CAMPAIGN_NOTIFICATION_TYPES,
+  NotificationCenterProps,
+  NotificationType,
+} from '@types';
 
 export type { NotificationCenterProps };
 
@@ -36,7 +41,7 @@ const getNotificationIcon = (type: NotificationType): React.ReactElement => {
   ) {
     return <ErrorOutlineRoundedIcon sx={{ fontSize: '18px' }} />;
   }
-  if (type === 'CAMPAIGN_STATUS_CHANGED') {
+  if (type === 'CAMPAIGN_STATUS_CHANGED' || CAMPAIGN_NOTIFICATION_TYPES.includes(type)) {
     return <CampaignRoundedIcon sx={{ fontSize: '18px' }} />;
   }
   return <AssignmentRoundedIcon sx={{ fontSize: '18px' }} />;
@@ -68,11 +73,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
-  // Messages only. Stage and approval events already announce themselves as
-  // toasts when they happen; repeating them here buried the one thing this
-  // panel exists to surface — someone waiting on a reply.
+  // Messages, plus the campaign alerts. Stage and approval events already
+  // announce themselves as toasts when they happen; repeating them here buried
+  // the one thing this panel exists to surface — someone waiting on a reply.
+  // Being staffed on a campaign is the exception: a toast the creator was not
+  // looking at is the only trace of it otherwise, and it is the alert the
+  // Campaigns badge is pointing at.
   const filteredNotifications = useMemo(
-    () => notifications.filter((n) => n.type === 'MESSAGE'),
+    () =>
+      notifications.filter(
+        (n) => n.type === 'MESSAGE' || CAMPAIGN_NOTIFICATION_TYPES.includes(n.type),
+      ),
     [notifications],
   );
 
@@ -228,13 +239,13 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 <NotificationsOffOutlinedIcon sx={{ fontSize: '22px' }} />
               </Box>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                No messages
+                Nothing new
               </Typography>
               <Typography
                 variant="caption"
                 sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 240 }}
               >
-                You&apos;re all caught up! New messages will appear here.
+                You&apos;re all caught up! New messages and campaign updates will appear here.
               </Typography>
             </Box>
           ) : (
@@ -248,22 +259,27 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 item.type === 'RATE_REVISION_REQUESTED' ||
                 item.type === 'BRAND_REJECTED' ||
                 item.type === 'BRAND_CORRECTION_REQUESTED';
+              const isCampaign = CAMPAIGN_NOTIFICATION_TYPES.includes(item.type);
 
               const iconBg = isMessage
                 ? theme.palette.tokens.accentBg
-                : isApproval
-                  ? theme.palette.tokens.positiveBg
-                  : isCorrection
-                    ? theme.palette.tokens.negativeBg
-                    : theme.palette.tokens.purpleBg;
+                : isCampaign
+                  ? theme.palette.tokens.purpleBg
+                  : isApproval
+                    ? theme.palette.tokens.positiveBg
+                    : isCorrection
+                      ? theme.palette.tokens.negativeBg
+                      : theme.palette.tokens.purpleBg;
 
               const iconColor = isMessage
                 ? theme.palette.tokens.accentText
-                : isApproval
-                  ? theme.palette.tokens.positiveText
-                  : isCorrection
-                    ? theme.palette.tokens.negativeText
-                    : theme.palette.tokens.purpleText;
+                : isCampaign
+                  ? theme.palette.tokens.purpleText
+                  : isApproval
+                    ? theme.palette.tokens.positiveText
+                    : isCorrection
+                      ? theme.palette.tokens.negativeText
+                      : theme.palette.tokens.purpleText;
 
               return (
                 <Box

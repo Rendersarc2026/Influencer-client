@@ -21,9 +21,20 @@ export const NOTIFICATION_TYPES = [
   'PAYMENT_APPROVED',
   'PAYMENT_REJECTED',
   'CAMPAIGN_STATUS_CHANGED',
+  'CAMPAIGN_ASSIGNED',
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/**
+ * The kinds the Campaigns rail item badges, and the kinds the notification
+ * panel lists alongside messages.
+ *
+ * One list drives both, plus the bell's own count, so the number on the bell
+ * can never outrun what the panel has to show for it - the drift that put a
+ * count next to an empty list once already.
+ */
+export const CAMPAIGN_NOTIFICATION_TYPES: readonly NotificationType[] = ['CAMPAIGN_ASSIGNED'];
 
 /** Identifiers carried alongside an alert so the UI can deep-link and dedupe. */
 export interface NotificationMetadata {
@@ -62,8 +73,12 @@ export interface NotificationDeliveryOptions {
 export interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
+  /** Unread alerts of `CAMPAIGN_NOTIFICATION_TYPES` - the Campaigns rail badge. */
+  unreadCampaignCount: number;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  /** Clears the Campaigns badge once the user is actually looking at the list. */
+  markCampaignAlertsRead: () => void;
   clearAll: () => void;
   addNotification: (draft: NotificationDraft, options?: NotificationDeliveryOptions) => void;
 }
