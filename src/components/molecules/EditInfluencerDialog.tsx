@@ -470,13 +470,24 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
             <Box
               sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
             >
-              <TextField
-                label="Location"
+              <Autocomplete
+                freeSolo
+                forcePopupIcon
+                openOnFocus
+                options={locationOptions}
+                filterOptions={wordPrefixFilterOptions}
                 value={location}
-                onChange={(e) => setLocation(capitalizeWords(e.target.value))}
-                placeholder="e.g. Calicut, Kochi"
-                fullWidth
+                onInputChange={(_, newInputValue) => setLocation(capitalizeWords(newInputValue))}
+                onChange={(_, newValue) => setLocation(newValue ? capitalizeWords(newValue) : '')}
                 disabled={loading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Location"
+                    placeholder="Select or enter location (e.g. Calicut, Kochi)"
+                    fullWidth
+                  />
+                )}
               />
               <TextField
                 label="Followers"

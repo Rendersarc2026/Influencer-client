@@ -517,6 +517,8 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
             >
               <Autocomplete
                 freeSolo
+                forcePopupIcon
+                openOnFocus
                 options={locationOptions}
                 filterOptions={wordPrefixFilterOptions}
                 value={location}
