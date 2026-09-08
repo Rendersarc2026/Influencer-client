@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { NotificationContext } from './notification-context-def';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { playNotificationSound } from '../utils/sound.utils';
 import { parseNotificationDraft, parseStoredNotifications } from '../utils/notification.utils';
 import { connectSocket, disconnectSocket, getSocket } from '@api';
-import { MessageResponse } from '@contracts';
+import { ChatResponse, ChatTypeCode, MessageResponse } from '@contracts';
 import {
   AppNotification,
   CAMPAIGN_NOTIFICATION_TYPES,
@@ -14,6 +14,58 @@ import {
   NotificationDeliveryOptions,
   NotificationDraft,
 } from '@types';
+
+/**
+ * Who the message came from, for the notification title.
+ *
+ * `chat_updated` carries the raw message row, which names the sender only by
+ * id - so a message alert could say nothing but "New Message". The conversation
+ * list payload already names every participant, and this screen always holds
+ * it (the sidebar unread badge keeps `['chats']` alive on every authenticated
+ * screen), so the name is resolved from cache rather than bought with another
+ * round trip against a database that costs the better part of a second per hop.
+ *
+ * Falls back to the generic title when the chat has not been cached yet - a
+ * first message in a brand new thread, or a cold load where the alert beats the
+ * list. The invalidation fired just above will have the name in place by the
+ * next one.
+ */
+const senderFromChatCache = (
+  queryClient: QueryClient,
+  chatId: string,
+  senderId: string,
+): { name: string; role: string } | null => {
+  const chats: ChatResponse[] = [
+    ...(queryClient.getQueryData<ChatResponse[]>(['chats']) ?? []),
+    // The Messages screen reads a paginated list under its own key; whichever
+    // of the two is warm can answer, so both are searched.
+    ...queryClient
+      .getQueriesData<{ pages?: ChatResponse[][] }>({ queryKey: ['chats', 'infinite'] })
+      .flatMap(([, data]) => data?.pages?.flat() ?? []),
+  ];
+
+  const chat = chats.find((c) => c.id === chatId);
+  if (!chat) return null;
+
+  if (chat.influencerId === senderId && chat.influencerName) {
+    return { name: chat.influencerName, role: 'Creator' };
+  }
+  if (chat.brandUserId === senderId && chat.brandName) {
+    return { name: chat.brandName, role: 'Brand' };
+  }
+  if (chat.agencyUserId === senderId && chat.agencyName) {
+    return { name: chat.agencyName, role: 'Agency' };
+  }
+
+  // The sender is a participant the payload did not name. The chat type still
+  // says which side of the conversation they sit on, which beats saying nothing.
+  if (senderId !== chat.agencyUserId) {
+    return chat.type === ChatTypeCode.AGENCY_BRAND
+      ? { name: chat.brandName ?? 'Brand', role: 'Brand' }
+      : { name: chat.influencerName ?? 'Creator', role: 'Creator' };
+  }
+  return null;
+};
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
@@ -189,10 +241,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               ? `/influencer/chats?chatId=${encodedChatId}`
               : `/agency/chats?chatId=${encodedChatId}`;
 
+        // Named where the conversation list can say who sent it, so the alert
+        // reads "Sheethal Joseph - Creator" instead of an anonymous
+        // "New Message" that gives no reason to open it.
+        const sender = senderFromChatCache(queryClient, data.chatId, data.senderId);
+
         addNotification(
           {
             type: 'MESSAGE',
-            title: 'New Message',
+            title: sender ? `${sender.name} - ${sender.role}` : 'New Message',
             message: data.lastMessage?.body
               ? data.lastMessage.body.length > 60
                 ? `${data.lastMessage.body.slice(0, 60)}...`

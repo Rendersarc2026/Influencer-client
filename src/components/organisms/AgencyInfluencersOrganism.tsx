@@ -1028,17 +1028,6 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                   },
                 },
                 {
-                  label:
-                    syncingId === selectedInfluencer.id
-                      ? 'Syncing Instagram...'
-                      : 'Sync Instagram Data',
-                  variant: 'outlined',
-                  loading: syncingId === selectedInfluencer.id,
-                  onClick: () => {
-                    void handleRefetchInstagramDetails(selectedInfluencer);
-                  },
-                },
-                {
                   label: 'Edit Influencer',
                   variant: 'outlined',
                   onClick: () => {

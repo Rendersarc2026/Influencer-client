@@ -103,7 +103,12 @@ export const AgencyHomeOrganism: React.FC = () => {
       onLogout={logout}
     >
       {/* 1. Four Metric Cards */}
-      <Grid container spacing={{ xs: 1.5, sm: 2, md: 2.5 }} alignItems="stretch">
+      <Grid
+        container
+        spacing={{ xs: 1.5, sm: 2, md: 2.5 }}
+        alignItems="stretch"
+        sx={{ flexShrink: 0 }}
+      >
         <Grid size={{ xs: 6, sm: 6, md: 3 }}>
           <MetricCard
             tint="butter"
@@ -154,8 +159,16 @@ export const AgencyHomeOrganism: React.FC = () => {
       </Grid>
 
       {/* 2. Recent Campaigns DataTable */}
-      <Box>
+      {/*
+        Fills whatever the metric cards leave rather than standing at the
+        DataTable's default 420px, which is what left a band of empty page
+        under the card on tall screens. `minHeight: 0` lets this shrink below
+        its content so the rows scroll inside the card instead of pushing the
+        page into a second scrollbar.
+      */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <SectionHeading
+          sx={{ flexShrink: 0 }}
           title="Recent Campaigns"
           subtitle="Managed campaigns under active agency client brands"
           action={
@@ -181,6 +194,8 @@ export const AgencyHomeOrganism: React.FC = () => {
           }}
           loading={campaignsLoading}
           isFetching={campaignsFetching}
+          fillHeight
+          minHeight={0}
           exportFilename="recent_campaigns"
           exportSheetName="Campaigns"
           onExportAll={async () => {
