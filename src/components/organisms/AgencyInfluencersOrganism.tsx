@@ -17,6 +17,8 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
+import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
+import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -25,6 +27,7 @@ import {
   DataTable,
   DataTableColumn,
   FilterBar,
+  ConfirmDialog,
   CreateInfluencerDialog,
   EditInfluencerDialog,
   OverviewDrawer,
@@ -39,12 +42,14 @@ import {
   useLocations,
   useInfluencerEngagement,
   useSyncInstagramProfile,
+  useSetInfluencerBlocked,
 } from '@api';
 import {
   InfluencerResponse,
   CreateInfluencerRequest,
   UpdateInfluencerRequest,
   CategoryTypeCode,
+  UserStatusFilter,
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
@@ -63,6 +68,7 @@ interface InfluencerRowActionsProps {
   onCalculateER: (row: InfluencerResponse) => void;
   onEdit: (row: InfluencerResponse) => void;
   onMessage: (row: InfluencerResponse) => void;
+  onToggleBlock: (row: InfluencerResponse, blocked: boolean) => void;
 }
 
 const InfluencerRowActions: React.FC<InfluencerRowActionsProps> = ({
@@ -72,6 +78,7 @@ const InfluencerRowActions: React.FC<InfluencerRowActionsProps> = ({
   onCalculateER,
   onEdit,
   onMessage,
+  onToggleBlock,
 }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -255,6 +262,72 @@ const InfluencerRowActions: React.FC<InfluencerRowActionsProps> = ({
             primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
           />
         </MenuItem>
+
+        <Divider sx={{ my: 0.5 }} />
+
+        {!row.isActive ? (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onToggleBlock(row, false);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.positive,
+              '&:hover': { backgroundColor: 'rgba(34, 197, 94, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
+              <LockOpenRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Reactivate Account"
+              primaryTypographyProps={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: theme.palette.tokens.positive,
+              }}
+            />
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onToggleBlock(row, true);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.negative,
+              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+              <BlockRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Deactivate Account"
+              primaryTypographyProps={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: theme.palette.tokens.negative,
+              }}
+            />
+          </MenuItem>
+        )}
       </Menu>
     </Box>
   );
@@ -306,9 +379,15 @@ export const AgencyInfluencersOrganism: React.FC = () => {
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerResponse | null>(null);
   const { data: influencerEngagement } = useInfluencerEngagement(selectedInfluencer?.id);
   const [priceRangeFilter, setPriceRangeFilter] = useState<string>('');
+  /** The creator a deactivate/reactivate is being confirmed for, and which way. */
+  const [pendingBlock, setPendingBlock] = useState<{
+    influencer: InfluencerResponse;
+    blocked: boolean;
+  } | null>(null);
   const createInfluencerMutation = useCreateInfluencer();
   const updateInfluencerMutation = useUpdateInfluencer();
   const syncInstagramMutation = useSyncInstagramProfile();
+  const setBlockedMutation = useSetInfluencerBlocked();
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const {
@@ -318,12 +397,29 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     setActivePill: setCategoryFilter,
     selectedSelect: locationFilter,
     setSelectedSelect: setLocationFilter,
+    extraFilters,
+    setExtraFilter,
     page,
     setPage,
     rowsPerPage,
     setRowsPerPage,
   } = useViewFilters('agencyInfluencers');
   const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
+
+  // The single-select slots are taken by category and location, so account
+  // status rides in the view's extra filters — persisted the same way, and
+  // absent state means active-only, which is what the list has always shown.
+  const statusFilter = ((extraFilters?.status as string) || 'ACTIVE') as UserStatusFilter;
+  const setStatusFilter = (value: string) => {
+    setExtraFilter('status', value);
+    setPage(0);
+  };
+
+  const STATUS_OPTIONS = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Deactivated' },
+    { value: 'ALL', label: 'Active + Deactivated' },
+  ];
 
   const PRICE_RANGE_OPTIONS = useMemo(
     () => [
@@ -380,6 +476,9 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     search: debouncedSearch.trim() || undefined,
     categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     locations: selectedLocations.length > 0 ? selectedLocations : undefined,
+    // Omitted on ACTIVE: active-only is what the server already defaults to,
+    // so the key stays the one the rest of the app warms.
+    status: statusFilter === 'ACTIVE' ? undefined : statusFilter,
     minPrice,
     maxPrice,
     page: page + 1, // the API pages from 1, the table from 0
@@ -425,6 +524,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     setSearch('');
     setLocationFilter('');
     setPriceRangeFilter('');
+    setExtraFilter('status', 'ACTIVE');
     setPage(0);
   };
 
@@ -432,7 +532,8 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     selectedCategories.length > 0 ||
     selectedLocations.length > 0 ||
     search.trim() ||
-    priceRangeFilter,
+    priceRangeFilter ||
+    statusFilter !== 'ACTIVE',
   );
 
   // Narrowing the results while on a later page would otherwise land on a page
@@ -459,6 +560,24 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       showError(
         errorObj?.response?.data?.message || errorObj?.message || 'Failed to add influencer.',
+      );
+    }
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!pendingBlock) return;
+    const { influencer: target, blocked } = pendingBlock;
+    try {
+      await setBlockedMutation.mutateAsync({ id: target.id, blocked });
+      showSuccess(blocked ? 'Influencer account deactivated.' : 'Influencer account reactivated.');
+      setPendingBlock(null);
+      if (selectedInfluencer?.id === target.id) setSelectedInfluencer(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          `Failed to ${blocked ? 'deactivate' : 'reactivate'} influencer.`,
       );
     }
   };
@@ -594,6 +713,12 @@ export const AgencyInfluencersOrganism: React.FC = () => {
       ),
     },
     {
+      id: 'status',
+      header: 'Status',
+      type: 'status',
+      accessor: (row) => (row.isActive ? 'ACTIVE' : 'DEACTIVATED'),
+    },
+    {
       id: 'actions',
       header: 'Actions',
       type: 'actions',
@@ -606,6 +731,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           onCalculateER={(r) => navigate(`/agency/er-calculator?influencerId=${r.id}`)}
           onEdit={handleEditInfluencer}
           onMessage={(r) => navigate(`/agency/chats?participantId=${r.id}&type=INFLUENCER`)}
+          onToggleBlock={(r, blocked) => setPendingBlock({ influencer: r, blocked })}
         />
       ),
     },
@@ -617,6 +743,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
         search: debouncedSearch.trim() || undefined,
         categories: selectedCategories.length > 0 ? selectedCategories : undefined,
         locations: selectedLocations.length > 0 ? selectedLocations : undefined,
+        status: statusFilter === 'ACTIVE' ? undefined : statusFilter,
         minPrice,
         maxPrice,
       },
@@ -681,6 +808,10 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           selectedPriceRange={priceRangeFilter}
           onPriceRangeChange={goToFirstPage(setPriceRangeFilter)}
           priceRangeLabel="Commercials"
+          selectOptions={STATUS_OPTIONS}
+          selectedOption={statusFilter}
+          onSelectChange={setStatusFilter}
+          selectLabel="Account Status"
           hasActiveFilters={hasActiveFilters}
           onClearFilters={handleClearAllFilters}
           onExport={exportExcel}
@@ -759,6 +890,23 @@ export const AgencyInfluencersOrganism: React.FC = () => {
                 }}
               />
             )}
+            {statusFilter !== 'ACTIVE' && (
+              <Chip
+                label={
+                  STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label || String(statusFilter)
+                }
+                size="small"
+                onDelete={() => setStatusFilter('ACTIVE')}
+                sx={{
+                  height: 24,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                  color: theme.palette.tokens.textPrimary,
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                }}
+              />
+            )}
             {search.trim() && (
               <Chip
                 label={`Search: "${search.trim()}"`}
@@ -807,6 +955,22 @@ export const AgencyInfluencersOrganism: React.FC = () => {
           fillHeight
         />
       </Box>
+
+      {/* Confirm Deactivate / Reactivate */}
+      <ConfirmDialog
+        open={Boolean(pendingBlock)}
+        title={pendingBlock?.blocked ? 'Deactivate Influencer?' : 'Reactivate Influencer?'}
+        body={
+          pendingBlock?.blocked
+            ? 'This creator and their login immediately lose access to every platform interface.'
+            : 'This creator and their login will be able to sign in again immediately.'
+        }
+        confirmText={pendingBlock?.blocked ? 'Deactivate Influencer' : 'Reactivate Influencer'}
+        variant={pendingBlock?.blocked ? 'destructive' : 'neutral'}
+        loading={setBlockedMutation.isPending}
+        onConfirm={handleConfirmBlock}
+        onCancel={() => setPendingBlock(null)}
+      />
 
       <CreateInfluencerDialog
         open={createDialogOpen}

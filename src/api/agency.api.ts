@@ -111,8 +111,12 @@ export function useCampaignRollups() {
 
 /**
  * The logins in this agency's world: its own staff, its brands' managers and
- * the creators it represents. Shared with the boot-time prefetch, so the query
- * key and the fetcher cannot drift apart.
+ * the creators it represents.
+ *
+ * The screen that listed these is gone — managing an account now happens on the
+ * Brands and Influencers screens, against the row it belongs to. What is left
+ * reads the set as one flat list: the chat's participant picker, which has to
+ * offer brands and creators side by side.
  */
 function agencyUsersQueryOptions(params?: UserListQuery) {
   return {
@@ -135,25 +139,38 @@ export function useAgencyUsers(params?: UserListQuery, options?: { enabled?: boo
 }
 
 /**
- * Blocks or unblocks an account — the only write the agency has over one.
+ * Blocks or unblocks the login behind a brand or a creator — the only write the
+ * agency has over an account.
  *
- * A blocked account is `isActive: false`, which the list filters on, so the
- * whole namespace is invalidated rather than one page.
+ * Addressed by the row's own id, not the account's: the server resolves a brand
+ * or creator id to the login mapped to it and cascades the flag back onto the
+ * row, so the two cannot drift apart. A blocked account is `isActive: false`,
+ * which every one of these lists filters on, so the whole namespace is
+ * invalidated rather than one page.
  */
-export function useSetUserBlocked() {
+function useSetEntityBlocked(segment: 'brands' | 'influencers') {
   const queryClient = useQueryClient();
   return useMutation<UserResponse, Error, { id: string; blocked: boolean }>({
     mutationFn: async ({ id, blocked }) => {
-      const response = await apiClient.patch<UserResponse>(`/agency/users/${id}/blocked`, {
+      const response = await apiClient.patch<UserResponse>(`/agency/${segment}/${id}/blocked`, {
         blocked,
       });
       return response.data;
     },
     onSuccess: () => {
       invalidateEntity(queryClient, 'user');
-      queryClient.invalidateQueries({ queryKey: ['agency', 'users'] });
     },
   });
+}
+
+/** Deactivates or reactivates a brand, from the brands screen. */
+export function useSetBrandBlocked() {
+  return useSetEntityBlocked('brands');
+}
+
+/** Deactivates or reactivates a creator, from the influencers screen. */
+export function useSetInfluencerBlocked() {
+  return useSetEntityBlocked('influencers');
 }
 
 // -------------------------------------------------------------

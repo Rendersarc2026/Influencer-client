@@ -30,6 +30,12 @@ export const InfluencerResponseSchema = z.object({
   avgCommercialMin: z.number().nullable(),
   avgCommercialMax: z.number().nullable(),
   currency: z.string(),
+  /**
+   * Whether the creator — and the login provisioned alongside them — is live.
+   * The roster screen both shows and flips this, so it travels with the row
+   * rather than being looked up account by account.
+   */
+  isActive: z.boolean(),
 });
 export type InfluencerResponse = z.infer<typeof InfluencerResponseSchema>;
 

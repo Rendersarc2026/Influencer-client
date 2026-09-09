@@ -12,6 +12,8 @@ import Divider from '@mui/material/Divider';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
+import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { useTheme } from '@mui/material/styles';
 import { DashboardLayout } from '@templates';
@@ -20,11 +22,24 @@ import {
   DataTable,
   DataTableColumn,
   FilterBar,
+  ConfirmDialog,
   CreateBrandDialog,
   OverviewDrawer,
 } from '@molecules';
-import { apiClient, useAgencyBrands, useCreateBrand, useUpdateBrand } from '@api';
-import { BrandResponse, CreateBrandRequest, UpdateBrandRequest, PaginatedResult } from '@contracts';
+import {
+  apiClient,
+  useAgencyBrands,
+  useCreateBrand,
+  useUpdateBrand,
+  useSetBrandBlocked,
+} from '@api';
+import {
+  BrandResponse,
+  BrandStatusFilter,
+  CreateBrandRequest,
+  UpdateBrandRequest,
+  PaginatedResult,
+} from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
 import { safeExternalUrl, safeImageUrl, ExcelColumnConfig, formatDateDDMMYYYY } from '@utils';
 
@@ -32,9 +47,15 @@ interface BrandRowActionsProps {
   row: BrandResponse;
   onEdit: (row: BrandResponse) => void;
   onMessage: (row: BrandResponse) => void;
+  onToggleBlock: (row: BrandResponse, blocked: boolean) => void;
 }
 
-const BrandRowActions: React.FC<BrandRowActionsProps> = ({ row, onEdit, onMessage }) => {
+const BrandRowActions: React.FC<BrandRowActionsProps> = ({
+  row,
+  onEdit,
+  onMessage,
+  onToggleBlock,
+}) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -144,6 +165,72 @@ const BrandRowActions: React.FC<BrandRowActionsProps> = ({ row, onEdit, onMessag
             primaryTypographyProps={{ fontSize: '13px', fontWeight: 500 }}
           />
         </MenuItem>
+
+        <Divider sx={{ my: 0.5 }} />
+
+        {!row.isActive ? (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onToggleBlock(row, false);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.positive,
+              '&:hover': { backgroundColor: 'rgba(34, 197, 94, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.positive, minWidth: 'auto' }}>
+              <LockOpenRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Reactivate Account"
+              primaryTypographyProps={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: theme.palette.tokens.positive,
+              }}
+            />
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              handleClose();
+              onToggleBlock(row, true);
+            }}
+            sx={{
+              fontSize: '13px',
+              fontWeight: 500,
+              py: 0.85,
+              px: 1.25,
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              color: theme.palette.tokens.negative,
+              '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' },
+            }}
+          >
+            <ListItemIcon sx={{ color: theme.palette.tokens.negative, minWidth: 'auto' }}>
+              <BlockRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Deactivate Account"
+              primaryTypographyProps={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: theme.palette.tokens.negative,
+              }}
+            />
+          </MenuItem>
+        )}
       </Menu>
     </Box>
   );
@@ -162,16 +249,42 @@ export const AgencyBrandsOrganism: React.FC = () => {
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const { search, setSearch, page, setPage, rowsPerPage, setRowsPerPage } =
-    useViewFilters('agencyBrands');
+  const {
+    search,
+    setSearch,
+    selectedSelect,
+    setSelectedSelect,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+  } = useViewFilters('agencyBrands');
   const { debounced: debouncedSearch, pending: searchPending } = useDebouncedSearch(search, 300);
+
+  // Empty persisted state means nobody has touched the dropdown yet, which the
+  // list has always treated as active-only.
+  const statusFilter = (selectedSelect || 'ACTIVE') as BrandStatusFilter;
+
+  const statusOptions = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Deactivated' },
+    { value: 'ALL', label: 'Active + Deactivated' },
+  ];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [brandToEdit, setBrandToEdit] = useState<BrandResponse | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<BrandResponse | null>(null);
+  /** The brand a deactivate/reactivate is being confirmed for, and which way. */
+  const [pendingBlock, setPendingBlock] = useState<{
+    brand: BrandResponse;
+    blocked: boolean;
+  } | null>(null);
 
   const brandsQuery = useAgencyBrands({
     search: debouncedSearch.trim() || undefined,
+    // Omitted on ACTIVE so the key still hashes to the boot-prefetched entry —
+    // active-only is what the server already defaults to.
+    status: statusFilter === 'ACTIVE' ? undefined : statusFilter,
     page: page + 1,
     limit: rowsPerPage,
   });
@@ -181,6 +294,25 @@ export const AgencyBrandsOrganism: React.FC = () => {
 
   const createBrandMutation = useCreateBrand();
   const updateBrandMutation = useUpdateBrand();
+  const setBlockedMutation = useSetBrandBlocked();
+
+  const handleConfirmBlock = async () => {
+    if (!pendingBlock) return;
+    const { brand: target, blocked } = pendingBlock;
+    try {
+      await setBlockedMutation.mutateAsync({ id: target.id, blocked });
+      showSuccess(blocked ? 'Brand account deactivated.' : 'Brand account reactivated.');
+      setPendingBlock(null);
+      if (selectedBrand?.id === target.id) setSelectedBrand(null);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showError(
+        errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          `Failed to ${blocked ? 'deactivate' : 'reactivate'} brand.`,
+      );
+    }
+  };
 
   const handleOpenCreate = () => {
     setBrandToEdit(null);
@@ -243,6 +375,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
           row={row}
           onEdit={handleOpenEdit}
           onMessage={(r) => navigate(`/agency/chats?participantId=${r.id}&type=BRAND`)}
+          onToggleBlock={(r, blocked) => setPendingBlock({ brand: r, blocked })}
         />
       ),
     },
@@ -252,6 +385,7 @@ export const AgencyBrandsOrganism: React.FC = () => {
     const res = await apiClient.get<PaginatedResult<BrandResponse>>('/agency/brands', {
       params: {
         search: debouncedSearch.trim() || undefined,
+        status: statusFilter === 'ACTIVE' ? undefined : statusFilter,
       },
     });
     return res.data.items || [];
@@ -301,6 +435,13 @@ export const AgencyBrandsOrganism: React.FC = () => {
             setPage(0);
           }}
           searchPlaceholder="Search by brand name or industry"
+          selectOptions={statusOptions}
+          selectedOption={statusFilter}
+          onSelectChange={(sel) => {
+            setSelectedSelect(sel);
+            setPage(0);
+          }}
+          selectLabel="Account Status"
           onExport={exportExcel}
           onExportPdf={exportPdf}
           isExporting={isExporting}
@@ -324,6 +465,22 @@ export const AgencyBrandsOrganism: React.FC = () => {
           fillHeight
         />
       </Box>
+
+      {/* Confirm Deactivate / Reactivate */}
+      <ConfirmDialog
+        open={Boolean(pendingBlock)}
+        title={pendingBlock?.blocked ? 'Deactivate Brand?' : 'Reactivate Brand?'}
+        body={
+          pendingBlock?.blocked
+            ? 'This brand and its manager login immediately lose access to every platform interface.'
+            : 'This brand and its manager login will be able to sign in again immediately.'
+        }
+        confirmText={pendingBlock?.blocked ? 'Deactivate Brand' : 'Reactivate Brand'}
+        variant={pendingBlock?.blocked ? 'destructive' : 'neutral'}
+        loading={setBlockedMutation.isPending}
+        onConfirm={handleConfirmBlock}
+        onCancel={() => setPendingBlock(null)}
+      />
 
       {/* Brand Overview Drawer */}
       <OverviewDrawer
