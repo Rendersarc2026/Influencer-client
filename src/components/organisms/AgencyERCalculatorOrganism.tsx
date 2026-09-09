@@ -48,7 +48,7 @@ import {
   useInfiniteAgencyInfluencers,
   useAssignERToInfluencer,
 } from '@api';
-import { InfiniteAutocomplete } from '@molecules';
+import { InfiniteAutocomplete, ERCalculatorEmptyState } from '@molecules';
 import {
   safeUrl,
   safeImageUrl,
@@ -745,6 +745,44 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
           )}
         </Paper>
 
+        {/* Loading Indicator */}
+        {autoLoading && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 4, sm: 6 },
+              borderRadius: `${theme.customRadii.card}px`,
+              backgroundColor: theme.palette.tokens.surface,
+              border: `1px solid ${theme.palette.tokens.divider}`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              gap: 2,
+            }}
+          >
+            <CircularProgress
+              size={48}
+              thickness={4}
+              sx={{ color: theme.palette.tokens.accent }}
+            />
+            <Typography variant="h3" sx={{ fontWeight: 600 }}>
+              Analyzing Instagram Profile…
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: theme.palette.tokens.textSecondary, maxWidth: 460 }}
+            >
+              Connecting to Meta Graph API, fetching recent reels and posts, and computing verified
+              engagement rate metrics.
+            </Typography>
+          </Paper>
+        )}
+
+        {/* Empty State when no profile is analyzed yet */}
+        {!autoLoading && !autoResult && <ERCalculatorEmptyState />}
+
         {/* Results Section */}
         {autoResult && (
           <>
@@ -1310,20 +1348,49 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                                     {post.caption || <em>No caption</em>}
                                   </Typography>
                                   {safeUrl(post.permalink) && (
-                                    <Link
-                                      href={safeUrl(post.permalink)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      variant="caption"
+                                    <Box
                                       sx={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: 0.25,
+                                        gap: 1,
+                                        mt: 0.25,
                                       }}
                                     >
-                                      View post
-                                      <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
-                                    </Link>
+                                      <Link
+                                        href={safeUrl(post.permalink)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        variant="caption"
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 0.25,
+                                        }}
+                                      >
+                                        View post
+                                        <OpenInNewRoundedIcon sx={{ fontSize: 12 }} />
+                                      </Link>
+                                      <Tooltip title="Copy post link" arrow>
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (post.permalink) {
+                                              navigator.clipboard.writeText(post.permalink);
+                                              showSuccess('Post link copied to clipboard');
+                                            }
+                                          }}
+                                          sx={{
+                                            p: 0.25,
+                                            color: 'text.secondary',
+                                            '&:hover': { color: 'text.primary' },
+                                          }}
+                                          aria-label="Copy post link"
+                                        >
+                                          <ContentCopyRoundedIcon sx={{ fontSize: 13 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </Box>
                                   )}
 
                                   {isExcluded && (
