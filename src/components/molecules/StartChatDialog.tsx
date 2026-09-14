@@ -472,12 +472,6 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
                 )}
               />
             )}
-
-            {error && (
-              <Typography variant="body2" sx={{ color: theme.palette.tokens.negative }}>
-                {error}
-              </Typography>
-            )}
           </Box>
         </DialogContent>
 
@@ -485,14 +479,7 @@ export const StartChatDialog: React.FC<StartChatDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={
-              loading || (recipientType === 'INFLUENCER' ? !selectedInfluencer : !selectedBrand)
-            }
-            sx={{ minWidth: 140 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
             {loading ? (
               <CircularProgress size={20} color="inherit" />
             ) : isSelectedChatActive ? (

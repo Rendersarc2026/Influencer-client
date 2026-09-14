@@ -309,7 +309,7 @@ export const LoginOrganism: React.FC = () => {
                 type="submit"
                 variant="contained"
                 fullWidth
-                disabled={loading || !email.trim() || isEmailBlocked}
+                disabled={loading || isEmailBlocked}
                 sx={{ height: 48, fontSize: '15px', mt: 0.5 }}
               >
                 {loading ? (
@@ -420,7 +420,7 @@ export const LoginOrganism: React.FC = () => {
               type="submit"
               variant="contained"
               fullWidth
-              disabled={loading || otp.some((d) => !d) || isEmailBlocked || attemptsRemaining === 0}
+              disabled={loading || isEmailBlocked || attemptsRemaining === 0}
               sx={{ height: 48, fontSize: '15px', mb: 2 }}
             >
               {loading ? (

@@ -280,6 +280,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
+  const [descriptionError, setDescriptionError] = useState('');
   const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [pendingArchive, setPendingArchive] = useState<{
@@ -299,6 +300,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     setName('');
     setDescription('');
     setNameError('');
+    setDescriptionError('');
     setDialogOpen(true);
   };
 
@@ -308,29 +310,28 @@ export const AgencyCategoriesOrganism: React.FC = () => {
     setName(cat.name);
     setDescription(cat.description || '');
     setNameError('');
+    setDescriptionError('');
     setDialogOpen(true);
   };
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameError('');
-
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
     const trimmedName = name.trim();
+    const trimmedDesc = description.trim();
+
     const nErr = validateCategoryName(trimmedName, {
       required: true,
       fieldLabel: 'Category name',
       max: 100,
     });
-    if (nErr) {
-      setNameError(nErr);
-      return;
-    }
+    const dErr = trimmedDesc.length > 500 ? 'Description must be at most 500 characters' : '';
 
-    const trimmedDesc = description.trim();
-    if (trimmedDesc.length > 500) {
-      showError('Description must be at most 500 characters');
-      return;
-    }
+    setNameError(nErr);
+    setDescriptionError(dErr);
+
+    if (nErr || dErr) return;
 
     try {
       if (categoryToEdit) {
@@ -737,6 +738,13 @@ export const AgencyCategoriesOrganism: React.FC = () => {
                   }
                 }}
                 onBlur={(e) => {
+                  // Leaving a still-empty box is not an error yet — the dialog's
+                  // focus trap blurs this field on open, and the confirm button
+                  // is what reports a missing value.
+                  if (!e.target.value.trim()) {
+                    setNameError('');
+                    return;
+                  }
                   setNameError(
                     validateCategoryName(e.target.value, {
                       required: true,
@@ -764,12 +772,16 @@ export const AgencyCategoriesOrganism: React.FC = () => {
               <TextField
                 label="Description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (descriptionError) setDescriptionError('');
+                }}
                 placeholder="Optional explanation of what brands or influencers belong in this category..."
                 multiline
                 rows={3}
                 fullWidth
-                helperText="Optional description (up to 500 characters)"
+                error={Boolean(descriptionError)}
+                helperText={descriptionError || 'Optional description (up to 500 characters)'}
               />
             </Box>
           </DialogContent>
@@ -781,12 +793,7 @@ export const AgencyCategoriesOrganism: React.FC = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={
-                !name.trim() ||
-                Boolean(nameError) ||
-                createCategoryMutation.isPending ||
-                updateCategoryMutation.isPending
-              }
+              disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
               sx={{ minWidth: 120 }}
             >
               {createCategoryMutation.isPending || updateCategoryMutation.isPending ? (

@@ -37,6 +37,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
   const [committedViews, setCommittedViews] = useState('');
   const [reachFromRegion, setReachFromRegion] = useState('');
   const [brandFit, setBrandFit] = useState('');
+  const [preEvalErError, setPreEvalErError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
 
       setReachFromRegion(mapper.reachFromRegion || '');
       setBrandFit(mapper.brandFit || '');
+      setPreEvalErError('');
       setError('');
     }
   }, [open, mapper]);
@@ -78,12 +80,17 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
     e.preventDefault();
     if (!mapper) return;
 
-    if (preEvalEr && (isNaN(preEvalErNum) || preEvalErNum < 0 || preEvalErNum > 100)) {
-      setError('Engagement rate must be a valid percentage between 0 and 100');
-      return;
-    }
+    // Validated on submit so the message lands on the offending field itself,
+    // rather than the confirm button quietly going dead.
+    const erErr =
+      preEvalEr && (isNaN(preEvalErNum) || preEvalErNum < 0 || preEvalErNum > 100)
+        ? 'Engagement rate must be a valid percentage between 0 and 100'
+        : '';
 
+    setPreEvalErError(erErr);
     setError('');
+    if (erErr) return;
+
     const payload: UpdatePreEvalRequest = {
       deliverables: deliverables.trim() || null,
       preEvalEr: preEvalEr.trim() ? preEvalErNum : null,
@@ -163,9 +170,13 @@ export const EditPreEvalDialog: React.FC<EditPreEvalDialogProps> = ({
                 label="Pre-Eval ER %"
                 type="text"
                 value={preEvalEr}
-                onChange={(e) => setPreEvalEr(sanitizeDecimalInput(e.target.value))}
+                onChange={(e) => {
+                  setPreEvalEr(sanitizeDecimalInput(e.target.value));
+                  if (preEvalErError) setPreEvalErError('');
+                }}
                 placeholder="e.g. 4.5"
-                helperText="Expected engagement rate percentage"
+                error={Boolean(preEvalErError)}
+                helperText={preEvalErError || 'Expected engagement rate percentage'}
                 fullWidth
                 disabled={loading}
               />

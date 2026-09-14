@@ -40,6 +40,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
   const [rateInput, setRateInput] = useState<string>('');
   const [reachInput, setReachInput] = useState<string>('');
   const [note, setNote] = useState('');
+  const [rateError, setRateError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
       setRateInput(currentRate ? String(currentRate) : '');
       setReachInput('');
       setNote('');
+      setRateError('');
       setError('');
     }
   }, [open, currentRate]);
@@ -54,12 +56,16 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const rateNum = parseFloat(rateInput);
-    if (isNaN(rateNum) || rateNum <= 0) {
-      setError('Please enter a valid positive rate amount');
-      return;
-    }
+    const rErr = !rateInput.trim()
+      ? 'Commercial rate is required'
+      : isNaN(rateNum) || rateNum <= 0
+        ? 'Please enter a valid positive rate amount'
+        : '';
 
+    setRateError(rErr);
     setError('');
+    if (rErr) return;
+
     const noteParts: string[] = [];
     if (reachInput.trim()) {
       noteParts.push(`Reach from region: ${reachInput.trim()}`);
@@ -159,8 +165,13 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
               label="Your Commercial Rate (₹) *"
               type="text"
               value={rateInput}
-              onChange={(e) => setRateInput(sanitizeDecimalInput(e.target.value))}
+              onChange={(e) => {
+                setRateInput(sanitizeDecimalInput(e.target.value));
+                if (rateError) setRateError('');
+              }}
               placeholder="e.g. 75000"
+              error={Boolean(rateError)}
+              helperText={rateError || undefined}
               fullWidth
               disabled={loading}
             />
@@ -217,12 +228,7 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !rateInput}
-            sx={{ minWidth: 140 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Submit Rate'}
           </Button>
         </DialogActions>

@@ -560,7 +560,11 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
               p: 3,
               borderRadius: `${theme.customRadii.inner}px`,
               border: `2px dashed ${
-                isDragging ? theme.palette.tokens.accent : theme.palette.tokens.divider
+                error && files.length === 0
+                  ? theme.palette.tokens.negative
+                  : isDragging
+                    ? theme.palette.tokens.accent
+                    : theme.palette.tokens.divider
               }`,
               backgroundColor: isDragging
                 ? theme.palette.tokens.accentBg
@@ -837,7 +841,7 @@ export const SendProofScreenshotsDialog: React.FC<SendProofScreenshotsDialogProp
         <Button
           variant="contained"
           onClick={() => handleSubmit()}
-          disabled={files.length === 0 || isSubmitting}
+          disabled={isSubmitting}
           startIcon={
             isSubmitting ? (
               <CircularProgress size={16} color="inherit" />

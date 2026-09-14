@@ -104,15 +104,16 @@ export const CompleteProfileOrganism: React.FC = () => {
     setError('');
     setFieldErrors({});
 
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
+    const errors: Record<string, string> = {};
+
     const fnErr = validatePersonName(fullName, {
       required: true,
       fieldLabel: 'Full Name',
       max: 120,
     });
-    if (fnErr) {
-      failValidation({ fullName: fnErr });
-      return;
-    }
+    if (fnErr) errors.fullName = fnErr;
 
     if (isBrand) {
       const dnErr = validateBrandName(displayName, {
@@ -120,10 +121,7 @@ export const CompleteProfileOrganism: React.FC = () => {
         fieldLabel: 'Brand Display Name',
         max: 120,
       });
-      if (dnErr) {
-        failValidation({ displayName: dnErr });
-        return;
-      }
+      if (dnErr) errors.displayName = dnErr;
     } else if (displayName.trim()) {
       // A creator's display name is a handle, not a legal name, and this field
       // arrives pre-filled with whatever the agency or the Instagram sync wrote
@@ -135,10 +133,7 @@ export const CompleteProfileOrganism: React.FC = () => {
         fieldLabel: 'Display Name',
         max: 120,
       });
-      if (dnErr) {
-        failValidation({ displayName: dnErr });
-        return;
-      }
+      if (dnErr) errors.displayName = dnErr;
     }
 
     const normalizeUrl = (val: string): string | undefined => {
@@ -152,10 +147,15 @@ export const CompleteProfileOrganism: React.FC = () => {
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        failValidation({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
-        return;
+        errors.followers = 'Must be a valid positive number (e.g. 10k, 100k, 1m)';
+      } else {
+        parsedFollowers = parsed;
       }
-      parsedFollowers = parsed;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      failValidation(errors);
+      return;
     }
 
     const normalizeSocialUrl = (
@@ -216,15 +216,15 @@ export const CompleteProfileOrganism: React.FC = () => {
 
     const validation = UpdateProfileSchema.safeParse(payload);
     if (!validation.success) {
-      const errors: Record<string, string> = {};
+      const schemaErrors: Record<string, string> = {};
       validation.error.errors.forEach((err: z.ZodIssue) => {
         // Creator fields are nested under influencerDetail; key on the leaf.
         const field = err.path[err.path.length - 1];
         if (field !== undefined) {
-          errors[String(field)] = err.message;
+          schemaErrors[String(field)] = err.message;
         }
       });
-      failValidation(errors);
+      failValidation(schemaErrors);
       return;
     }
 
@@ -398,11 +398,15 @@ export const CompleteProfileOrganism: React.FC = () => {
                     }
                   }}
                   onBlur={(e) => {
-                    const err = validatePersonName(e.target.value, {
-                      required: true,
-                      fieldLabel: 'Full Name',
-                      max: 120,
-                    });
+                    // An empty box is left to the Continue button to report —
+                    // blurring a field the user never filled in is not an error.
+                    const err = e.target.value.trim()
+                      ? validatePersonName(e.target.value, {
+                          required: true,
+                          fieldLabel: 'Full Name',
+                          max: 120,
+                        })
+                      : '';
                     setFieldErrors((prev) => {
                       const next = { ...prev };
                       if (err) next.fullName = err;
@@ -456,19 +460,14 @@ export const CompleteProfileOrganism: React.FC = () => {
                     }
                   }}
                   onBlur={(e) => {
-                    const err = isBrand
-                      ? validateBrandName(e.target.value, {
-                          required: true,
-                          fieldLabel: 'Brand Display Name',
+                    // An empty box is left to the Continue button to report.
+                    const err = !e.target.value.trim()
+                      ? ''
+                      : validateBrandName(e.target.value, {
+                          required: false,
+                          fieldLabel: isBrand ? 'Brand Display Name' : 'Display Name',
                           max: 120,
-                        })
-                      : e.target.value.trim()
-                        ? validateBrandName(e.target.value, {
-                            required: false,
-                            fieldLabel: 'Display Name',
-                            max: 120,
-                          })
-                        : '';
+                        });
                     setFieldErrors((prev) => {
                       const next = { ...prev };
                       if (err) next.displayName = err;
@@ -1053,7 +1052,7 @@ export const CompleteProfileOrganism: React.FC = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={loading || !fullName.trim()}
+              disabled={loading}
               endIcon={loading ? undefined : <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />}
               sx={{
                 minWidth: { xs: '100%', sm: 190 },

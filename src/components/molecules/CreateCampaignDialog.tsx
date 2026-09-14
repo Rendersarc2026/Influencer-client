@@ -40,6 +40,9 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [nameError, setNameError] = useState('');
+  const [brandError, setBrandError] = useState('');
+  const [startDateError, setStartDateError] = useState('');
+  const [endDateError, setEndDateError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -53,40 +56,38 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
       setStartDate('');
       setEndDate('');
       setNameError('');
+      setBrandError('');
+      setStartDateError('');
+      setEndDateError('');
       setError('');
     }
   }, [open, defaultBrandId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameError('');
-    if (!brandId) {
-      setError('Please select a brand');
-      return;
-    }
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
+    const bErr = brandId ? '' : 'Please select a brand';
     const nErr = validateCampaignName(name, {
       required: true,
       fieldLabel: 'Campaign name',
       max: 200,
     });
-    if (nErr) {
-      setNameError(nErr);
-      return;
-    }
-    if (!startDate) {
-      setError('Start date is required');
-      return;
-    }
-    if (!endDate) {
-      setError('End date is required');
-      return;
-    }
-    if (new Date(endDate) < new Date(startDate)) {
-      setError('End date must be on or after start date');
-      return;
-    }
+    const sErr = startDate ? '' : 'Start date is required';
+    const eErr = !endDate
+      ? 'End date is required'
+      : startDate && new Date(endDate) < new Date(startDate)
+        ? 'End date must be on or after start date'
+        : '';
 
+    setBrandError(bErr);
+    setNameError(nErr);
+    setStartDateError(sErr);
+    setEndDateError(eErr);
     setError('');
+
+    if (bErr || nErr || sErr || eErr) return;
+
     const payload: CreateCampaignRequest = {
       brandId,
       name: name.trim(),
@@ -147,7 +148,10 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
             <Autocomplete<BrandResponse>
               options={brands}
               value={brands.find((b) => b.id === brandId) || null}
-              onChange={(_, val) => setBrandId(val ? val.id : '')}
+              onChange={(_, val) => {
+                setBrandId(val ? val.id : '');
+                if (brandError) setBrandError('');
+              }}
               getOptionLabel={(option) => option.name}
               isOptionEqualToValue={(option, val) => option.id === val.id}
               // Searches three fields, so it filters by hand rather than by
@@ -205,10 +209,12 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                   placeholder={
                     brands.length === 0 ? undefined : 'Search brand by name or contact...'
                   }
+                  error={Boolean(brandError)}
                   helperText={
-                    brands.length === 0
+                    brandError ||
+                    (brands.length === 0
                       ? 'No client brands yet — add one from the Brands page first'
-                      : undefined
+                      : undefined)
                   }
                   fullWidth
                 />
@@ -232,6 +238,13 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                 }
               }}
               onBlur={(e) => {
+                // Leaving a still-empty box is not an error yet — the dialog's
+                // focus trap blurs this field on open, and the confirm button is
+                // what reports a missing value. Only a filled-in value is checked.
+                if (!e.target.value.trim()) {
+                  setNameError('');
+                  return;
+                }
                 setNameError(
                   validateCampaignName(e.target.value, {
                     required: true,
@@ -266,6 +279,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setStartDate(val);
+                  if (startDateError) setStartDateError('');
                   // Moving the start past an already-chosen end clears the end
                   // date. Doing that silently just greyed out the submit button
                   // with no reason given, so say what happened.
@@ -278,6 +292,8 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                   inputLabel: { shrink: true },
                   htmlInput: { min: todayStr },
                 }}
+                error={Boolean(startDateError)}
+                helperText={startDateError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -288,11 +304,14 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
                 onChange={(e) => {
                   setEndDate(e.target.value);
                   if (error) setError('');
+                  if (endDateError) setEndDateError('');
                 }}
                 slotProps={{
                   inputLabel: { shrink: true },
                   htmlInput: { min: startDate || todayStr },
                 }}
+                error={Boolean(endDateError)}
+                helperText={endDateError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -321,12 +340,7 @@ export const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !brandId || !name.trim() || !startDate || !endDate}
-            sx={{ minWidth: 140 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Create Campaign'}
           </Button>
         </DialogActions>

@@ -303,6 +303,8 @@ export const AgencyLocationsOrganism: React.FC = () => {
   const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [tier, setTier] = useState('');
   const [nameError, setNameError] = useState('');
+  const [stateError, setStateError] = useState('');
+  const [tierError, setTierError] = useState('');
   const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [pendingArchive, setPendingArchive] = useState<{
@@ -345,6 +347,8 @@ export const AgencyLocationsOrganism: React.FC = () => {
     setCountry(DEFAULT_COUNTRY);
     setTier('');
     setNameError('');
+    setStateError('');
+    setTierError('');
     setDialogOpen(true);
   };
 
@@ -354,6 +358,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
     if (state && !isSubdivisionOf(nextCountry, state)) {
       setState('');
     }
+    setStateError('');
   };
 
   const handleOpenEdit = (loc: LocationResponse) => {
@@ -363,32 +368,37 @@ export const AgencyLocationsOrganism: React.FC = () => {
     setCountry(loc.country || DEFAULT_COUNTRY);
     setTier(loc.tier != null ? String(loc.tier) : '');
     setNameError('');
+    setStateError('');
+    setTierError('');
     setDialogOpen(true);
   };
 
   const handleSaveLocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameError('');
-
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
     const trimmedName = name.trim();
+    const trimmedState = state.trim();
+    const trimmedCountry = country.trim() || DEFAULT_COUNTRY;
+    const parsedTier = tier ? Number(tier) : undefined;
+
     const nErr = validateLocationName(trimmedName, {
       required: true,
       fieldLabel: 'Location name',
       max: 100,
     });
-    if (nErr) {
-      setNameError(nErr);
-      return;
-    }
+    const sErr = !trimmedState
+      ? 'State or region is required'
+      : !isSubdivisionOf(trimmedCountry, trimmedState)
+        ? `"${trimmedState}" is not a state or region of ${trimmedCountry}.`
+        : '';
+    const tErr = parsedTier ? '' : 'Tier is required';
 
-    const trimmedState = state.trim();
-    const trimmedCountry = country.trim() || DEFAULT_COUNTRY;
-    const parsedTier = tier ? Number(tier) : undefined;
+    setNameError(nErr);
+    setStateError(sErr);
+    setTierError(tErr);
 
-    if (trimmedState && !isSubdivisionOf(trimmedCountry, trimmedState)) {
-      showError(`"${trimmedState}" is not a state or region of ${trimmedCountry}.`);
-      return;
-    }
+    if (nErr || sErr || tErr) return;
 
     try {
       if (locationToEdit) {
@@ -689,6 +699,13 @@ export const AgencyLocationsOrganism: React.FC = () => {
                   }
                 }}
                 onBlur={(e) => {
+                  // Leaving a still-empty box is not an error yet — the dialog's
+                  // focus trap blurs this field on open, and the confirm button
+                  // is what reports a missing value.
+                  if (!e.target.value.trim()) {
+                    setNameError('');
+                    return;
+                  }
                   setNameError(
                     validateLocationName(e.target.value, {
                       required: true,
@@ -727,33 +744,45 @@ export const AgencyLocationsOrganism: React.FC = () => {
                 options={[...stateOptions]}
                 filterOptions={wordPrefixFilterOptions}
                 value={state || null}
-                onChange={(_, newValue) => setState(newValue || '')}
+                onChange={(_, newValue) => {
+                  setState(newValue || '');
+                  if (stateError) setStateError('');
+                }}
                 fullWidth
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="State / Region"
+                    label="State / Region *"
                     placeholder="Search states"
-                    helperText={`Optional. ${stateOptions.length} available in ${country || DEFAULT_COUNTRY}`}
+                    error={Boolean(stateError)}
+                    helperText={
+                      stateError ||
+                      `${stateOptions.length} available in ${country || DEFAULT_COUNTRY}`
+                    }
                   />
                 )}
               />
 
               <TextField
                 select
-                label="Tier"
+                label="Tier *"
                 value={tier}
-                onChange={(e) => setTier(e.target.value)}
+                onChange={(e) => {
+                  setTier(e.target.value);
+                  if (tierError) setTierError('');
+                }}
                 fullWidth
+                error={Boolean(tierError)}
                 helperText={
-                  tierIsLocked
+                  tierError ||
+                  (tierIsLocked
                     ? 'A tier can be changed but not removed once set'
-                    : 'Optional tier ranking used to group locations'
+                    : 'Tier ranking used to group locations')
                 }
               >
-                {/* The update endpoint accepts a tier of 1-5 or nothing at all,
-                    so an existing tier can be moved but never cleared. */}
-                <MenuItem value="" disabled={tierIsLocked}>
+                {/* Every location carries a tier, so the blank stays unselectable
+                    — it only exists to render the empty state of a new form. */}
+                <MenuItem value="" disabled>
                   No tier
                 </MenuItem>
                 {TIER_OPTIONS.map((t) => (
@@ -772,12 +801,7 @@ export const AgencyLocationsOrganism: React.FC = () => {
             <Button
               type="submit"
               variant="contained"
-              disabled={
-                !name.trim() ||
-                Boolean(nameError) ||
-                createLocationMutation.isPending ||
-                updateLocationMutation.isPending
-              }
+              disabled={createLocationMutation.isPending || updateLocationMutation.isPending}
               sx={{ minWidth: 120 }}
             >
               {createLocationMutation.isPending || updateLocationMutation.isPending ? (

@@ -188,6 +188,8 @@ export const AgencyERCalculatorOrganism: React.FC = () => {
   // Assign ER Modal Dialog State
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignDialogTargetId, setAssignDialogTargetId] = useState<string>('');
+  const [assignTargetError, setAssignTargetError] = useState('');
+  const [autoHandleError, setAutoHandleError] = useState('');
   const [assignTargetInfluencer, setAssignTargetInfluencer] = useState<InfluencerResponse | null>(
     null,
   );
@@ -396,7 +398,13 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
 
   const handleCalculateAuto = async (forceRefresh = false) => {
     const trimmed = autoHandle.trim();
-    if (!trimmed) return;
+    // Marked on the field rather than gating the button, so a click says what
+    // is missing instead of nothing happening.
+    if (!trimmed) {
+      setAutoHandleError('Instagram handle or profile URL is required');
+      return;
+    }
+    setAutoHandleError('');
 
     setAutoLoading(true);
     setAutoResult(null);
@@ -447,6 +455,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
         setAssignDialogTargetId('');
       }
     }
+    setAssignTargetError('');
     setAssignDialogOpen(true);
   };
 
@@ -455,9 +464,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
       targetIdOverride || assignTargetInfluencer?.id || selectedInfluencerId;
 
     if (!targetInfluencerId) {
-      openAssignDialog();
+      // Already inside the picker: say which field is missing rather than
+      // re-opening the dialog on top of itself.
+      if (assignDialogOpen) {
+        setAssignTargetError('Select the influencer this ER belongs to');
+      } else {
+        openAssignDialog();
+      }
       return;
     }
+    setAssignTargetError('');
 
     const erValue = liveMetrics.engagementRate;
     if (erValue <= 0) {
@@ -664,11 +680,16 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 <TextField
                   placeholder="Enter Instagram handle or URL (e.g. virat.kohli or https://instagram.com/...)"
                   value={autoHandle}
-                  onChange={(e) => setAutoHandle(e.target.value)}
+                  onChange={(e) => {
+                    setAutoHandle(e.target.value);
+                    if (autoHandleError) setAutoHandleError('');
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void handleCalculateAuto();
                   }}
                   size="small"
+                  error={Boolean(autoHandleError)}
+                  helperText={autoHandleError || undefined}
                   sx={{ flex: 1, minWidth: 260 }}
                   slotProps={{
                     input: {
@@ -704,7 +725,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                   <Button
                     variant="contained"
                     onClick={() => void handleCalculateAuto()}
-                    disabled={autoLoading || !autoHandle.trim()}
+                    disabled={autoLoading}
                     startIcon={
                       autoLoading ? (
                         <CircularProgress size={18} color="inherit" />
@@ -762,11 +783,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
               gap: 2,
             }}
           >
-            <CircularProgress
-              size={48}
-              thickness={4}
-              sx={{ color: theme.palette.tokens.accent }}
-            />
+            <CircularProgress size={48} thickness={4} sx={{ color: theme.palette.tokens.accent }} />
             <Typography variant="h3" sx={{ fontWeight: 600 }}>
               Analyzing Instagram Profile…
             </Typography>
@@ -1862,6 +1879,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 onChange={(_, newValue) => {
                   setAssignTargetInfluencer(newValue);
                   setAssignDialogTargetId(newValue?.id || '');
+                  if (assignTargetError) setAssignTargetError('');
                 }}
                 loading={assignLoading}
                 hasNextPage={assignHasNextPage}
@@ -1880,6 +1898,8 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
                 size="medium"
                 label="Target Influencer *"
                 placeholder="Search by name or Instagram handle..."
+                error={Boolean(assignTargetError)}
+                helperText={assignTargetError || undefined}
                 startAdornment={
                   <PeopleAltRoundedIcon
                     sx={{ color: theme.palette.tokens.textSecondary, fontSize: 20 }}
@@ -1971,9 +1991,7 @@ Formula: Pre-Eval CPV = Reel Fee ÷ Committed Views`;
           <Button
             variant="contained"
             onClick={() => void handleAssignToInfluencer(assignDialogTargetId)}
-            disabled={
-              !assignDialogTargetId || liveMetrics.engagementRate <= 0 || assignERMutation.isPending
-            }
+            disabled={assignERMutation.isPending}
             startIcon={
               assignERMutation.isPending ? (
                 <CircularProgress size={16} color="inherit" />

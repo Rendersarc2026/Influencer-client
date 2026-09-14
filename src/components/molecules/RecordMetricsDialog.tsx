@@ -46,6 +46,13 @@ type PostFieldKey = (typeof POST_FIELDS)[number]['key'];
 
 const EMPTY_POST: PostDraft = { url: '', likes: '', comments: '', shares: '', saves: '' };
 
+/** Per-row validation messages, mirroring `PostDraft` field for field. */
+type PostErrors = Record<keyof PostDraft, string>;
+
+const EMPTY_POST_ERRORS: PostErrors = { url: '', likes: '', comments: '', shares: '', saves: '' };
+
+const hasPostError = (row: PostErrors): boolean => Object.values(row).some(Boolean);
+
 /** A typed field's value, with blank read as zero and a bad value as null. */
 function readCount(raw: string): number | null {
   if (!raw.trim()) return 0;
@@ -69,6 +76,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   const [skipRate, setSkipRate] = useState<string>('');
   const [posts, setPosts] = useState<PostDraft[]>([{ ...EMPTY_POST }]);
   const [recordedFor, setRecordedFor] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [reachError, setReachError] = useState('');
+  const [impressionsError, setImpressionsError] = useState('');
+  const [totalViewsError, setTotalViewsError] = useState('');
+  const [skipRateError, setSkipRateError] = useState('');
+  const [recordedForError, setRecordedForError] = useState('');
+  const [postErrors, setPostErrors] = useState<PostErrors[]>([{ ...EMPTY_POST_ERRORS }]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -80,6 +93,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       setSkipRate('');
       setPosts([{ ...EMPTY_POST }]);
       setRecordedFor(new Date().toISOString().split('T')[0]);
+      setReachError('');
+      setImpressionsError('');
+      setTotalViewsError('');
+      setSkipRateError('');
+      setRecordedForError('');
+      setPostErrors([{ ...EMPTY_POST_ERRORS }]);
       setError('');
     }
   }, [open]);
@@ -105,21 +124,6 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       ? Number(((totals.engagements / reachValue) * 100).toFixed(2))
       : null;
 
-  const isPostsComplete =
-    posts.length > 0 &&
-    posts.every(
-      (post) =>
-        post.url.trim().length > 0 &&
-        post.likes.trim().length > 0 &&
-        parseShorthandNumber(post.likes) !== null &&
-        post.comments.trim().length > 0 &&
-        parseShorthandNumber(post.comments) !== null &&
-        post.shares.trim().length > 0 &&
-        parseShorthandNumber(post.shares) !== null &&
-        post.saves.trim().length > 0 &&
-        parseShorthandNumber(post.saves) !== null,
-    );
-
   const filledPostCount = posts.filter(
     (post) =>
       post.url.trim() &&
@@ -131,6 +135,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
 
   const handleAddPost = () => {
     setPosts((prev) => (prev.length < MAX_METRIC_POSTS ? [...prev, { ...EMPTY_POST }] : prev));
+    setPostErrors((prev) =>
+      prev.length < MAX_METRIC_POSTS ? [...prev, { ...EMPTY_POST_ERRORS }] : prev,
+    );
   };
 
   const handleRemovePost = (index: number) => {
@@ -138,10 +145,18 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       const next = prev.filter((_, i) => i !== index);
       return next.length > 0 ? next : [{ ...EMPTY_POST }];
     });
+    setPostErrors((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [{ ...EMPTY_POST_ERRORS }];
+    });
   };
 
   const handlePostChange = (index: number, field: keyof PostDraft, val: string) => {
     setPosts((prev) => prev.map((post, i) => (i === index ? { ...post, [field]: val } : post)));
+    // Clear that box's message as soon as it is being corrected.
+    setPostErrors((prev) =>
+      prev.map((row, i) => (i === index && row[field] ? { ...row, [field]: '' } : row)),
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,52 +166,45 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
     const totalViewsParsed = totalViews.trim() ? parseShorthandNumber(totalViews) : undefined;
     const skipRateParsed = skipRate.trim() ? parseFloat(skipRate) : undefined;
 
-    if (reach.trim() && (reachNum === null || reachNum === undefined || reachNum < 0)) {
-      setError('Please enter a valid positive Reach count (e.g. 10k, 100k, 1m)');
-      return;
-    }
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
+    const reachErr =
+      reach.trim() && (reachNum === null || reachNum === undefined || reachNum < 0)
+        ? 'Enter a valid positive Reach count (e.g. 10k, 100k, 1m)'
+        : '';
 
-    if (
+    const impressionsErr =
       impressions.trim() &&
       (impressionsParsed === null || impressionsParsed === undefined || impressionsParsed < 0)
-    ) {
-      setError('Please enter a valid Impressions count (e.g. 20k, 100k, 1m)');
-      return;
-    }
+        ? 'Enter a valid Impressions count (e.g. 20k, 100k, 1m)'
+        : '';
 
-    if (
+    const totalViewsErr =
       totalViews.trim() &&
       (totalViewsParsed === null || totalViewsParsed === undefined || totalViewsParsed < 0)
-    ) {
-      setError('Please enter a valid Total Views count (e.g. 50k, 500k)');
-      return;
-    }
+        ? 'Enter a valid Total Views count (e.g. 50k, 500k)'
+        : '';
 
-    if (
+    const skipRateErr =
       skipRate.trim() &&
       (skipRateParsed === undefined ||
         isNaN(skipRateParsed) ||
         skipRateParsed < 0 ||
         skipRateParsed > 100)
-    ) {
-      setError('Please enter a valid Skip Rate percentage between 0 and 100');
-      return;
-    }
+        ? 'Enter a Skip Rate percentage between 0 and 100'
+        : '';
+
+    const recordedForErr = recordedFor ? '' : 'Recorded date is required';
 
     const validPosts: RecordMetricPost[] = [];
-    for (let i = 0; i < posts.length; i++) {
-      const post = posts[i];
+    const nextPostErrors: PostErrors[] = posts.map((post) => {
+      const row: PostErrors = { ...EMPTY_POST_ERRORS };
       const url = post.url.trim();
-      const label = posts.length > 1 ? `Post #${i + 1}` : 'Post';
 
       if (!url) {
-        setError(`${label}: enter the post URL`);
-        return;
-      }
-
-      if (!/^https?:\/\//i.test(url)) {
-        setError(`${label}: URL must begin with http:// or https://`);
-        return;
+        row.url = 'Post URL is required';
+      } else if (!/^https?:\/\//i.test(url)) {
+        row.url = 'URL must begin with http:// or https://';
       }
 
       const values: Partial<Record<PostFieldKey, number>> = {};
@@ -204,37 +212,59 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         const raw = post[field.key];
         const cleanLabel = field.label.replace(' *', '');
         if (!raw.trim()) {
-          setError(`${label}: please enter ${cleanLabel} count (enter 0 if none)`);
-          return;
+          row[field.key] = `${cleanLabel} is required (enter 0 if none)`;
+          continue;
         }
         const parsed = parseShorthandNumber(raw);
         if (parsed === null || parsed < 0) {
-          setError(`${label}: please enter a valid ${cleanLabel} count (e.g. 0, 500, 5k)`);
-          return;
+          row[field.key] = `Enter a valid ${cleanLabel} count (e.g. 0, 500, 5k)`;
+          continue;
         }
         values[field.key] = parsed;
       }
 
-      validPosts.push({
-        postUrl: url,
-        likes: values.likes ?? 0,
-        comments: values.comments ?? 0,
-        shares: values.shares ?? 0,
-        saves: values.saves ?? 0,
-      });
+      if (!hasPostError(row)) {
+        validPosts.push({
+          postUrl: url,
+          likes: values.likes ?? 0,
+          comments: values.comments ?? 0,
+          shares: values.shares ?? 0,
+          saves: values.saves ?? 0,
+        });
+      }
+
+      return row;
+    });
+
+    const postsInvalid = nextPostErrors.some(hasPostError);
+
+    let formErr = '';
+    if (!postsInvalid && validPosts.length === 0) {
+      formErr = 'Add at least one post URL with its performance numbers';
+    } else if (!postsInvalid && reachNum && reachNum > 0 && totals.engagements > reachNum) {
+      formErr = 'Total engagements across the posts cannot exceed Reach';
     }
 
-    if (validPosts.length === 0) {
-      setError('Add at least one post URL with its performance numbers');
+    setReachError(reachErr);
+    setImpressionsError(impressionsErr);
+    setTotalViewsError(totalViewsErr);
+    setSkipRateError(skipRateErr);
+    setRecordedForError(recordedForErr);
+    setPostErrors(nextPostErrors);
+    setError(formErr);
+
+    if (
+      reachErr ||
+      impressionsErr ||
+      totalViewsErr ||
+      skipRateErr ||
+      recordedForErr ||
+      postsInvalid ||
+      formErr
+    ) {
       return;
     }
 
-    if (reachNum && reachNum > 0 && totals.engagements > reachNum) {
-      setError('Total engagements across the posts cannot exceed Reach');
-      return;
-    }
-
-    setError('');
     const data: RecordMetricRequest = {
       reach: reachNum ?? 0,
       impressions: impressionsParsed ?? undefined,
@@ -304,16 +334,21 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               <TextField
                 label="Post Eval - Reach (Unique)"
                 value={reach}
-                onChange={(e) => setReach(e.target.value.replace(/-/g, ''))}
+                onChange={(e) => {
+                  setReach(e.target.value.replace(/-/g, ''));
+                  if (reachError) setReachError('');
+                }}
                 onBlur={() => {
                   const parsed = parseShorthandNumber(reach);
                   if (parsed !== null) setReach(formatShorthandNumber(parsed));
                 }}
                 placeholder="e.g. 100k, 1m"
+                error={Boolean(reachError)}
                 helperText={
-                  reach && parseShorthandNumber(reach) !== null
+                  reachError ||
+                  (reach && parseShorthandNumber(reach) !== null
                     ? `${parseShorthandNumber(reach)?.toLocaleString('en-IN')} accounts`
-                    : 'Actual unique accounts reached - from post Insights screenshot'
+                    : 'Actual unique accounts reached - from post Insights screenshot')
                 }
                 fullWidth
                 disabled={loading}
@@ -322,16 +357,21 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               <TextField
                 label="Post Eval - Total Views"
                 value={totalViews}
-                onChange={(e) => setTotalViews(e.target.value.replace(/-/g, ''))}
+                onChange={(e) => {
+                  setTotalViews(e.target.value.replace(/-/g, ''));
+                  if (totalViewsError) setTotalViewsError('');
+                }}
                 onBlur={() => {
                   const parsed = parseShorthandNumber(totalViews);
                   if (parsed !== null) setTotalViews(formatShorthandNumber(parsed));
                 }}
                 placeholder="e.g. 150k, 500k"
+                error={Boolean(totalViewsError)}
                 helperText={
-                  totalViews && parseShorthandNumber(totalViews) !== null
+                  totalViewsError ||
+                  (totalViews && parseShorthandNumber(totalViews) !== null
                     ? `${parseShorthandNumber(totalViews)?.toLocaleString('en-IN')} views`
-                    : 'Actual views the post got - from post Insights screenshot'
+                    : 'Actual views the post got - from post Insights screenshot')
                 }
                 fullWidth
                 disabled={loading}
@@ -344,12 +384,17 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
               <TextField
                 label="Post Eval - Impressions"
                 value={impressions}
-                onChange={(e) => setImpressions(e.target.value.replace(/-/g, ''))}
+                onChange={(e) => {
+                  setImpressions(e.target.value.replace(/-/g, ''));
+                  if (impressionsError) setImpressionsError('');
+                }}
                 onBlur={() => {
                   const parsed = parseShorthandNumber(impressions);
                   if (parsed !== null) setImpressions(formatShorthandNumber(parsed));
                 }}
                 placeholder="e.g. 200k, 1.2m"
+                error={Boolean(impressionsError)}
+                helperText={impressionsError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -371,8 +416,13 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 label="Post Eval - Skip Rate %"
                 type="number"
                 value={skipRate}
-                onChange={(e) => setSkipRate(e.target.value)}
+                onChange={(e) => {
+                  setSkipRate(e.target.value);
+                  if (skipRateError) setSkipRateError('');
+                }}
                 placeholder="e.g. 12.5"
+                error={Boolean(skipRateError)}
+                helperText={skipRateError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -381,8 +431,13 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 label="Recorded Date *"
                 type="date"
                 value={recordedFor}
-                onChange={(e) => setRecordedFor(e.target.value)}
+                onChange={(e) => {
+                  setRecordedFor(e.target.value);
+                  if (recordedForError) setRecordedForError('');
+                }}
                 slotProps={{ inputLabel: { shrink: true } }}
+                error={Boolean(recordedForError)}
+                helperText={recordedForError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -462,6 +517,8 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                     onChange={(e) => handlePostChange(idx, 'url', e.target.value)}
                     placeholder="https://www.instagram.com/reel/..."
                     size="small"
+                    error={Boolean(postErrors[idx]?.url)}
+                    helperText={postErrors[idx]?.url || undefined}
                     fullWidth
                     disabled={loading}
                   />
@@ -489,6 +546,8 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                         }}
                         placeholder={field.placeholder}
                         size="small"
+                        error={Boolean(postErrors[idx]?.[field.key])}
+                        helperText={postErrors[idx]?.[field.key] || undefined}
                         fullWidth
                         disabled={loading}
                       />
@@ -558,12 +617,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !isPostsComplete}
-            sx={{ minWidth: 140 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Post-Eval Metrics'}
           </Button>
         </DialogActions>

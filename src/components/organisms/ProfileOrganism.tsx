@@ -382,14 +382,18 @@ export const ProfileOrganism: React.FC = () => {
     setErrorMsg('');
     setFieldErrors({});
 
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
+    const errors: Record<string, string> = {};
+
     const fnErr = validatePersonName(fullName, {
       required: true,
       fieldLabel: 'Full Legal Name',
       max: 200,
     });
     if (fnErr) {
-      failValidation({ fullName: fnErr, contactPerson: fnErr });
-      return;
+      errors.fullName = fnErr;
+      errors.contactPerson = fnErr;
     }
 
     if (isBrand) {
@@ -399,32 +403,28 @@ export const ProfileOrganism: React.FC = () => {
         max: 200,
       });
       if (dnErr) {
-        failValidation({ displayName: dnErr, name: dnErr });
-        return;
+        errors.displayName = dnErr;
+        errors.name = dnErr;
       }
 
       if (contactPhone.trim()) {
         const pErr = validatePhoneNumber(contactPhone.trim());
-        if (pErr) {
-          failValidation({ contactPhone: pErr });
-          return;
-        }
+        if (pErr) errors.contactPhone = pErr;
       }
 
       if (website.trim()) {
         const wErr = validateHttpUrl(website);
-        if (wErr) {
-          failValidation({ website: wErr });
-          return;
-        }
+        if (wErr) errors.website = wErr;
       }
 
       if (logoUrl.trim()) {
         const lErr = validateHttpUrl(logoUrl);
-        if (lErr) {
-          failValidation({ logoUrl: lErr });
-          return;
-        }
+        if (lErr) errors.logoUrl = lErr;
+      }
+
+      if (Object.keys(errors).length > 0) {
+        failValidation(errors);
+        return;
       }
 
       const brandPayload: UpdateBrandRequest = {
@@ -441,14 +441,14 @@ export const ProfileOrganism: React.FC = () => {
 
       const validation = UpdateBrandSchema.safeParse(brandPayload);
       if (!validation.success) {
-        const errors: Record<string, string> = {};
+        const schemaErrors: Record<string, string> = {};
         validation.error.errors.forEach((err: z.ZodIssue) => {
           const field = err.path[err.path.length - 1];
           if (field !== undefined) {
-            errors[String(field)] = err.message;
+            schemaErrors[String(field)] = err.message;
           }
         });
-        failValidation(errors);
+        failValidation(schemaErrors);
         return;
       }
 
@@ -475,10 +475,10 @@ export const ProfileOrganism: React.FC = () => {
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        failValidation({ followers: 'Must be a valid positive number (e.g. 10k, 100k, 1m)' });
-        return;
+        errors.followers = 'Must be a valid positive number (e.g. 10k, 100k, 1m)';
+      } else {
+        parsedFollowers = parsed;
       }
-      parsedFollowers = parsed;
     }
 
     const normalizeSocialUrl = (
@@ -515,10 +515,12 @@ export const ProfileOrganism: React.FC = () => {
         fieldLabel: 'Public Display Name',
         max: 120,
       });
-      if (dnErr) {
-        failValidation({ displayName: dnErr });
-        return;
-      }
+      if (dnErr) errors.displayName = dnErr;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      failValidation(errors);
+      return;
     }
 
     const payload: UpdateProfileRequest = {
@@ -544,14 +546,14 @@ export const ProfileOrganism: React.FC = () => {
 
     const validation = UpdateProfileSchema.safeParse(payload);
     if (!validation.success) {
-      const errors: Record<string, string> = {};
+      const schemaErrors: Record<string, string> = {};
       validation.error.errors.forEach((err: z.ZodIssue) => {
         const field = err.path[err.path.length - 1];
         if (field !== undefined) {
-          errors[String(field)] = err.message;
+          schemaErrors[String(field)] = err.message;
         }
       });
-      failValidation(errors);
+      failValidation(schemaErrors);
       return;
     }
 
@@ -869,11 +871,15 @@ export const ProfileOrganism: React.FC = () => {
                         }
                       }}
                       onBlur={(e) => {
-                        const err = validatePersonName(e.target.value, {
-                          required: true,
-                          fieldLabel: 'Full Legal Name',
-                          max: 200,
-                        });
+                        // An empty box is left to the Save button to report —
+                        // blurring a field the user never filled in is not an error.
+                        const err = e.target.value.trim()
+                          ? validatePersonName(e.target.value, {
+                              required: true,
+                              fieldLabel: 'Full Legal Name',
+                              max: 200,
+                            })
+                          : '';
                         setFieldErrors((prev) => {
                           const next = { ...prev };
                           if (err) {
@@ -920,11 +926,14 @@ export const ProfileOrganism: React.FC = () => {
                         }
                       }}
                       onBlur={(e) => {
-                        const err = validateBrandName(e.target.value, {
-                          required: true,
-                          fieldLabel: 'Brand Name',
-                          max: 200,
-                        });
+                        // An empty box is left to the Save button to report.
+                        const err = e.target.value.trim()
+                          ? validateBrandName(e.target.value, {
+                              required: true,
+                              fieldLabel: 'Brand Name',
+                              max: 200,
+                            })
+                          : '';
                         setFieldErrors((prev) => {
                           const next = { ...prev };
                           if (err) {
@@ -1113,11 +1122,14 @@ export const ProfileOrganism: React.FC = () => {
                         }
                       }}
                       onBlur={(e) => {
-                        const err = validatePersonName(e.target.value, {
-                          required: true,
-                          fieldLabel: 'Full Legal Name',
-                          max: 200,
-                        });
+                        // An empty box is left to the Save button to report.
+                        const err = e.target.value.trim()
+                          ? validatePersonName(e.target.value, {
+                              required: true,
+                              fieldLabel: 'Full Legal Name',
+                              max: 200,
+                            })
+                          : '';
                         setFieldErrors((prev) => {
                           const next = { ...prev };
                           if (err) next.fullName = err;
@@ -1435,7 +1447,7 @@ export const ProfileOrganism: React.FC = () => {
                   type="submit"
                   variant="contained"
                   startIcon={<SaveRoundedIcon fontSize="small" />}
-                  disabled={fieldsLocked || !fullName.trim() || (isBrand && !displayName.trim())}
+                  disabled={fieldsLocked}
                   sx={{ minWidth: 160, height: 44 }}
                 >
                   {fieldsLocked ? (

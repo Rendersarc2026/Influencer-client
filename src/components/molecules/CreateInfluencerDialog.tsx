@@ -178,88 +178,59 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
     setEmailError('');
     setPhoneError('');
     setFollowersError('');
+    setInstagramError('');
+    setYoutubeError('');
 
     const trimmedName = name.trim();
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPhone = contactPhone.trim();
 
-    let hasFieldErr = false;
-
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
     const nameErr = validatePersonName(trimmedName, {
       required: true,
       fieldLabel: 'Influencer name',
       max: 200,
     });
-    if (nameErr) {
-      setNameError(nameErr);
-      hasFieldErr = true;
-    }
 
-    if (!trimmedEmail) {
-      setEmailError('Email is required');
-      hasFieldErr = true;
-    } else {
-      const eErr = validateEmail(trimmedEmail);
-      if (eErr) {
-        setEmailError(eErr);
-        hasFieldErr = true;
-      }
-    }
+    const emailErr = !trimmedEmail ? 'Email is required' : validateEmail(trimmedEmail);
 
-    if (!trimmedPhone) {
-      setPhoneError('Phone number is required');
-      hasFieldErr = true;
-    } else {
-      const pErr = validatePhoneNumber(trimmedPhone);
-      if (pErr) {
-        setPhoneError(pErr);
-        hasFieldErr = true;
-      }
-    }
-
-    if (hasFieldErr) {
-      return;
-    }
+    const phoneErr = !trimmedPhone ? 'Phone number is required' : validatePhoneNumber(trimmedPhone);
 
     let parsedFollowers: number | undefined = undefined;
+    let followersErr = '';
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        setFollowersError('Must be a valid positive value (e.g. 10k, 100k, 1m)');
-        return;
+        followersErr = 'Must be a valid positive value (e.g. 10k, 100k, 1m)';
+      } else {
+        parsedFollowers = parsed;
       }
-      parsedFollowers = parsed;
     }
+
+    const igErr = instagram.trim() ? validateSocialUrl(instagram, 'Instagram Profile URL') : '';
+    const ytErr = youtube.trim() ? validateSocialUrl(youtube, 'YouTube Channel URL') : '';
 
     const min = avgCommercialMin ? Number(avgCommercialMin) : undefined;
     const max = avgCommercialMax ? Number(avgCommercialMax) : undefined;
+    let formErr = '';
     if (min !== undefined && min < 0) {
-      setError('Min commercial rate cannot be negative');
-      return;
-    }
-    if (max !== undefined && max < 0) {
-      setError('Max commercial rate cannot be negative');
-      return;
-    }
-    if (min !== undefined && max !== undefined && max < min) {
-      setError('Max commercial must be greater than or equal to min commercial');
-      return;
+      formErr = 'Min commercial rate cannot be negative';
+    } else if (max !== undefined && max < 0) {
+      formErr = 'Max commercial rate cannot be negative';
+    } else if (min !== undefined && max !== undefined && max < min) {
+      formErr = 'Max commercial must be greater than or equal to min commercial';
     }
 
-    if (instagram.trim()) {
-      const igErr = validateSocialUrl(instagram, 'Instagram Profile URL');
-      if (igErr) {
-        setInstagramError(igErr);
-        return;
-      }
-    }
-    if (youtube.trim()) {
-      const ytErr = validateSocialUrl(youtube, 'YouTube Channel URL');
-      if (ytErr) {
-        setYoutubeError(ytErr);
-        return;
-      }
-    }
+    setNameError(nameErr);
+    setEmailError(emailErr);
+    setPhoneError(phoneErr);
+    setFollowersError(followersErr);
+    setInstagramError(igErr);
+    setYoutubeError(ytErr);
+    setError(formErr);
+
+    if (nameErr || emailErr || phoneErr || followersErr || igErr || ytErr || formErr) return;
 
     const finalInstagram = instagram.trim()
       ? normalizeSocialUrl(instagram, 'instagram.com')
@@ -350,6 +321,13 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 }
               }}
               onBlur={(e) => {
+                // Leaving a still-empty box is not an error yet — the dialog's
+                // focus trap blurs this field on open, and the confirm button is
+                // what reports a missing value. Only a filled-in value is checked.
+                if (!e.target.value.trim()) {
+                  setNameError('');
+                  return;
+                }
                 setNameError(
                   validatePersonName(e.target.value, {
                     required: true,
@@ -377,12 +355,9 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                   }
                 }}
                 onBlur={(e) => {
+                  // An empty box is left to the confirm button to report.
                   const val = e.target.value.trim();
-                  if (!val) {
-                    setEmailError('Email is required');
-                  } else {
-                    setEmailError(validateEmail(val));
-                  }
+                  setEmailError(val ? validateEmail(val) : '');
                 }}
                 error={Boolean(emailError)}
                 helperText={emailError || undefined}
@@ -668,12 +643,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !name.trim() || !email.trim() || !contactPhone.trim()}
-            sx={{ minWidth: 120 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 120 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Add Influencer'}
           </Button>
         </DialogActions>

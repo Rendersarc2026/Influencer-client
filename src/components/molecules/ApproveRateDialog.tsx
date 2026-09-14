@@ -175,31 +175,30 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let hasErr = false;
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
+    const rErr = !rateInput.trim()
+      ? 'Influencer rate is required'
+      : !effectiveRate || effectiveRate <= 0
+        ? 'Please enter a valid positive influencer rate'
+        : '';
 
-    if (!effectiveRate || effectiveRate <= 0) {
-      setRateError('Please enter a valid positive influencer rate');
-      hasErr = true;
-    }
-
-    if (marginNum < 0 || isNaN(marginNum)) {
-      setMarginError('Margin cannot be negative');
-      hasErr = true;
-    }
-
-    // Catch the same condition on submit, not only on keystroke: the client
-    // rate box can still hold a figure below the influencer rate if the
-    // influencer rate was edited afterwards.
+    // The client rate box can still hold a figure below the influencer rate if
+    // the influencer rate was edited afterwards, so check it here too — not
+    // only on keystroke.
     const typedClientRate = parseFloat(clientRateInput);
-    if (!isNaN(typedClientRate) && typedClientRate < effectiveRate) {
-      setMarginError('Client rate cannot be below the influencer rate');
-      hasErr = true;
-    }
+    const mErr =
+      marginNum < 0 || isNaN(marginNum)
+        ? 'Margin cannot be negative'
+        : !isNaN(typedClientRate) && typedClientRate < effectiveRate
+          ? 'Client rate cannot be below the influencer rate'
+          : '';
 
-    if (hasErr) return;
+    setRateError(rErr);
+    setMarginError(mErr);
 
-    setRateError('');
-    setMarginError('');
+    if (rErr || mErr) return;
+
     await onApprove(mapperId, {
       margin: marginNum,
       influencerRate: effectiveRate,
@@ -441,12 +440,7 @@ export const ApproveRateDialog: React.FC<ApproveRateDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || isNaN(marginNum) || marginNum < 0 || effectiveRate <= 0}
-            sx={{ minWidth: 160 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 160 }}>
             {loading ? (
               <CircularProgress size={20} color="inherit" />
             ) : isAlreadyApproved ? (

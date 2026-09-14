@@ -217,74 +217,39 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     const trimmedEmail = contactEmail.trim().toLowerCase();
     const trimmedPhone = contactPhone.trim();
 
-    const bErr = validateBrandName(trimmedName, {
-      required: true,
-      fieldLabel: 'Brand name',
-      max: 200,
-    });
-    if (bErr) {
-      setNameError(bErr);
-      return;
-    }
-
-    if (duplicate) {
-      setNameError(`${duplicate.name} is already one of your client brands.`);
-      return;
-    }
+    // Every field is checked in one pass so a submit marks all of the offending
+    // fields red at once, rather than revealing them one failed click at a time.
+    const nErr =
+      validateBrandName(trimmedName, {
+        required: true,
+        fieldLabel: 'Brand name',
+        max: 200,
+      }) || (duplicate ? `${duplicate.name} is already one of your client brands.` : '');
 
     // Email is the brand manager's login and is fixed once the account exists,
     // so it is only entered — and only validated — on creation.
-    if (!isEdit) {
-      if (!trimmedEmail) {
-        setEmailError('Email is required');
-        return;
-      }
+    const eErr = isEdit ? '' : !trimmedEmail ? 'Email is required' : validateEmail(trimmedEmail);
 
-      const eErr = validateEmail(trimmedEmail);
-      if (eErr) {
-        setEmailError(eErr);
-        return;
-      }
-    }
+    const pErr = !trimmedPhone ? 'Phone number is required' : validatePhoneNumber(trimmedPhone);
 
-    if (!trimmedPhone) {
-      setPhoneError('Phone number is required');
-      return;
-    }
+    const wErr = website.trim() ? validateHttpUrl(website) : '';
+    const lErr = logoUrl.trim() ? validateHttpUrl(logoUrl) : '';
+    const cpErr = contactPerson.trim()
+      ? validatePersonName(contactPerson, {
+          required: false,
+          fieldLabel: 'Contact person name',
+          max: 200,
+        })
+      : '';
 
-    const pErr = validatePhoneNumber(trimmedPhone);
-    if (pErr) {
-      setPhoneError(pErr);
-      return;
-    }
+    setNameError(nErr);
+    setEmailError(eErr);
+    setPhoneError(pErr);
+    setWebsiteError(wErr);
+    setLogoUrlError(lErr);
+    setContactPersonError(cpErr);
 
-    if (website.trim()) {
-      const wErr = validateHttpUrl(website);
-      if (wErr) {
-        setWebsiteError(wErr);
-        return;
-      }
-    }
-
-    if (logoUrl.trim()) {
-      const lErr = validateHttpUrl(logoUrl);
-      if (lErr) {
-        setLogoUrlError(lErr);
-        return;
-      }
-    }
-
-    if (contactPerson.trim()) {
-      const cpErr = validatePersonName(contactPerson, {
-        required: false,
-        fieldLabel: 'Contact person name',
-        max: 200,
-      });
-      if (cpErr) {
-        setContactPersonError(cpErr);
-        return;
-      }
-    }
+    if (nErr || eErr || pErr || wErr || lErr || cpErr) return;
 
     const base = {
       name: trimmedName,
@@ -316,12 +281,9 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
     }
   };
 
-  const submitDisabled =
-    busy ||
-    !name.trim() ||
-    (!isEdit && !contactEmail.trim()) ||
-    !contactPhone.trim() ||
-    Boolean(duplicate);
+  // The confirm button stays clickable so a submit can reveal what is missing;
+  // `handleSubmit` marks every invalid field red instead of the button going dead.
+  const submitDisabled = busy;
 
   return (
     <Dialog
@@ -399,6 +361,13 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                   }
                 }}
                 onBlur={(e) => {
+                  // Leaving a still-empty box is not an error yet — the dialog's
+                  // focus trap blurs this field on open, and the confirm button
+                  // is what reports a missing value.
+                  if (!e.target.value.trim()) {
+                    setNameError('');
+                    return;
+                  }
                   setNameError(
                     validateBrandName(e.target.value, {
                       required: true,
@@ -630,11 +599,8 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                     }
                   }}
                   onBlur={() => {
-                    if (!contactEmail.trim()) {
-                      setEmailError('Email is required');
-                    } else {
-                      setEmailError(validateEmail(contactEmail));
-                    }
+                    // An empty box is left to the confirm button to report.
+                    setEmailError(contactEmail.trim() ? validateEmail(contactEmail) : '');
                   }}
                   error={Boolean(emailError)}
                   helperText={emailError || undefined}

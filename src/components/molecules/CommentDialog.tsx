@@ -195,7 +195,7 @@ export const CommentDialog: React.FC<CommentDialogProps> = ({
           <Button
             type="submit"
             variant={variant === 'destructive' ? 'contained' : 'dark'}
-            disabled={loading || !isValid}
+            disabled={loading}
             sx={
               variant === 'destructive'
                 ? {

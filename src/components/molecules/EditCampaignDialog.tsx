@@ -49,6 +49,8 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<CampaignStatus>(CampaignStatusCode.DRAFT);
   const [nameError, setNameError] = useState('');
+  const [startDateError, setStartDateError] = useState('');
+  const [endDateError, setEndDateError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -60,36 +62,35 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
       setEndDate(toDateInputValue(campaign.endDate));
       setStatus(campaign.status ?? CampaignStatusCode.DRAFT);
       setNameError('');
+      setStartDateError('');
+      setEndDateError('');
       setError('');
     }
   }, [open, campaign]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNameError('');
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
     const nErr = validateCampaignName(name, {
       required: true,
       fieldLabel: 'Campaign name',
       max: 200,
     });
-    if (nErr) {
-      setNameError(nErr);
-      return;
-    }
-    if (!startDate) {
-      setError('Start date is required');
-      return;
-    }
-    if (!endDate) {
-      setError('End date is required');
-      return;
-    }
-    if (new Date(endDate) < new Date(startDate)) {
-      setError('End date must be on or after start date');
-      return;
-    }
+    const sErr = startDate ? '' : 'Start date is required';
+    const eErr = !endDate
+      ? 'End date is required'
+      : startDate && new Date(endDate) < new Date(startDate)
+        ? 'End date must be on or after start date'
+        : '';
 
+    setNameError(nErr);
+    setStartDateError(sErr);
+    setEndDateError(eErr);
     setError('');
+
+    if (nErr || sErr || eErr) return;
+
     const payload: UpdateCampaignRequest = {
       name: name.trim(),
       description: description.trim() || null,
@@ -172,6 +173,13 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 }
               }}
               onBlur={(e) => {
+                // Leaving a still-empty box is not an error yet — the dialog's
+                // focus trap blurs this field on open, and the confirm button is
+                // what reports a missing value. Only a filled-in value is checked.
+                if (!e.target.value.trim()) {
+                  setNameError('');
+                  return;
+                }
                 setNameError(
                   validateCampaignName(e.target.value, {
                     required: true,
@@ -224,6 +232,7 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setStartDate(val);
+                  if (startDateError) setStartDateError('');
                   // Clearing the end date silently left the form unsubmittable
                   // with no explanation; say what happened.
                   if (endDate && val && endDate < val) {
@@ -235,6 +244,8 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                   inputLabel: { shrink: true },
                   htmlInput: { min: minStartDate },
                 }}
+                error={Boolean(startDateError)}
+                helperText={startDateError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -245,11 +256,14 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
                 onChange={(e) => {
                   setEndDate(e.target.value);
                   if (error) setError('');
+                  if (endDateError) setEndDateError('');
                 }}
                 slotProps={{
                   inputLabel: { shrink: true },
                   htmlInput: { min: startDate || todayStr },
                 }}
+                error={Boolean(endDateError)}
+                helperText={endDateError || undefined}
                 fullWidth
                 disabled={loading}
               />
@@ -278,12 +292,7 @@ export const EditCampaignDialog: React.FC<EditCampaignDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !name.trim() || !startDate || !endDate}
-            sx={{ minWidth: 140 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>

@@ -171,78 +171,63 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
     setYoutubeError('');
 
     const trimmedName = name.trim();
-    let hasFieldErr = false;
+    const trimmedPhone = contactPhone.trim();
 
+    // One validation pass over every field, so a submit marks all of the
+    // offending fields red at once instead of one per failed click.
     const nameErr = validatePersonName(trimmedName, {
       required: true,
       fieldLabel: 'Influencer name',
       max: 200,
     });
-    if (nameErr) {
-      setNameError(nameErr);
-      hasFieldErr = true;
-    }
 
-    const trimmedPhone = contactPhone.trim();
-    if (trimmedPhone) {
-      const pErr = validatePhoneNumber(trimmedPhone);
-      if (pErr) {
-        setPhoneError(pErr);
-        hasFieldErr = true;
-      }
-    }
-
-    if (hasFieldErr) {
-      return;
-    }
+    const phoneErr = trimmedPhone ? validatePhoneNumber(trimmedPhone) : '';
 
     let parsedFollowers: number | undefined = undefined;
+    let followersErr = '';
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
       if (parsed === null || parsed < 0) {
-        setFollowersError('Must be a valid positive number (e.g. 10k, 100k, 1m)');
-        return;
+        followersErr = 'Must be a valid positive number (e.g. 10k, 100k, 1m)';
+      } else {
+        parsedFollowers = parsed;
       }
-      parsedFollowers = parsed;
     }
+
+    const igErr = instagram.trim() ? validateSocialUrl(instagram, 'Instagram Profile URL') : '';
+    const ytErr = youtube.trim() ? validateSocialUrl(youtube, 'YouTube Channel URL') : '';
 
     let min: number | undefined = undefined;
     let max: number | undefined = undefined;
+    let formErr = '';
     if (avgCommercialMin.trim()) {
       const parsedMin = Number(avgCommercialMin.replace(/,/g, ''));
       if (isNaN(parsedMin) || parsedMin < 0) {
-        setError('Minimum rate must be a valid positive number.');
-        return;
+        formErr = 'Minimum rate must be a valid positive number.';
+      } else {
+        min = parsedMin;
       }
-      min = parsedMin;
     }
-    if (avgCommercialMax.trim()) {
+    if (!formErr && avgCommercialMax.trim()) {
       const parsedMax = Number(avgCommercialMax.replace(/,/g, ''));
       if (isNaN(parsedMax) || parsedMax < 0) {
-        setError('Maximum rate must be a valid positive number.');
-        return;
+        formErr = 'Maximum rate must be a valid positive number.';
+      } else {
+        max = parsedMax;
       }
-      max = parsedMax;
     }
-    if (min !== undefined && max !== undefined && max < min) {
-      setError('Maximum indicative rate cannot be less than minimum indicative rate.');
-      return;
+    if (!formErr && min !== undefined && max !== undefined && max < min) {
+      formErr = 'Maximum indicative rate cannot be less than minimum indicative rate.';
     }
 
-    if (instagram.trim()) {
-      const igErr = validateSocialUrl(instagram, 'Instagram Profile URL');
-      if (igErr) {
-        setInstagramError(igErr);
-        return;
-      }
-    }
-    if (youtube.trim()) {
-      const ytErr = validateSocialUrl(youtube, 'YouTube Channel URL');
-      if (ytErr) {
-        setYoutubeError(ytErr);
-        return;
-      }
-    }
+    setNameError(nameErr);
+    setPhoneError(phoneErr);
+    setFollowersError(followersErr);
+    setInstagramError(igErr);
+    setYoutubeError(ytErr);
+    setError(formErr);
+
+    if (nameErr || phoneErr || followersErr || igErr || ytErr || formErr) return;
 
     const finalInstagram = instagram.trim()
       ? normalizeSocialUrl(instagram, 'instagram.com')
@@ -348,6 +333,13 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
                 }
               }}
               onBlur={(e) => {
+                // Leaving a still-empty box is not an error yet — the dialog's
+                // focus trap blurs this field on open, and the confirm button is
+                // what reports a missing value. Only a filled-in value is checked.
+                if (!e.target.value.trim()) {
+                  setNameError('');
+                  return;
+                }
                 setNameError(
                   validatePersonName(e.target.value, {
                     required: true,
@@ -617,12 +609,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !name.trim()}
-            sx={{ minWidth: 120 }}
-          >
+          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 120 }}>
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
           </Button>
         </DialogActions>
