@@ -153,8 +153,9 @@ export const BrandHomeOrganism: React.FC = () => {
       </Grid>
 
       {/* 2. Action Items & Campaigns DataTable */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <SectionHeading
+          sx={{ flexShrink: 0 }}
           title="Campaigns Needing Review"
           subtitle="Review influencer proposals and approved rates from your agency partner"
           action={
@@ -181,6 +182,8 @@ export const BrandHomeOrganism: React.FC = () => {
           }}
           loading={campaignsLoading}
           isFetching={campaignsFetching}
+          fillHeight
+          minHeight={0}
           exportFilename="campaigns_needing_review"
           exportSheetName="Campaigns"
           onExportAll={async () => {

@@ -251,8 +251,9 @@ export const InfluencerHomeOrganism: React.FC = () => {
       </Grid>
 
       {/* 2. Current Campaign Assignments Section */}
-      <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <SectionHeading
+          sx={{ flexShrink: 0 }}
           title="Current Campaign Assignments"
           subtitle="Submit your commercial rate and track agency approval status"
         />
@@ -282,6 +283,8 @@ export const InfluencerHomeOrganism: React.FC = () => {
           }}
           loading={isTableLoading}
           isFetching={isFetching || searchPending}
+          fillHeight
+          minHeight={0}
           exportFilename="current_campaign_assignments"
           exportSheetName="Assignments"
           onExportAll={handleExportAll}
