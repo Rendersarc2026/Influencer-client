@@ -61,6 +61,7 @@ import {
   useSubmitForBrandReview,
   useRevertApproval,
   useRecordMetric,
+  useMapperMetric,
   useRemoveInfluencerFromCampaign,
   useUpdateCampaign,
   useUpdatePreEval,
@@ -550,6 +551,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const [revertDialogMapper, setRevertDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [preEvalDialogMapper, setPreEvalDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [metricsDialogMapper, setMetricsDialogMapper] = useState<AgencyMapperResponse | null>(null);
+  // Read only while the dialog is open — one round trip for the assignment being
+  // edited, rather than one per roster row just to label a menu item.
+  const { data: existingMetric, isLoading: existingMetricLoading } = useMapperMetric(
+    metricsDialogMapper?.id,
+  );
   const [selectInfluencerForMetricsOpen, setSelectInfluencerForMetricsOpen] = useState(false);
   const [deleteDialogMapper, setDeleteDialogMapper] = useState<AgencyMapperResponse | null>(null);
   const [editCampaignOpen, setEditCampaignOpen] = useState(false);
@@ -675,7 +681,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
   const handleRecordMetric = async (mapperId: string, data: RecordMetricRequest) => {
     try {
       await recordMetricMutation.mutateAsync({ mapperId, data });
-      showSuccess('Deliverable metrics recorded successfully.');
+      showSuccess(
+        existingMetric
+          ? 'Deliverable metrics updated successfully.'
+          : 'Deliverable metrics recorded successfully.',
+      );
       setMetricsDialogMapper(null);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -1768,6 +1778,8 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
           open={Boolean(metricsDialogMapper)}
           mapperId={metricsDialogMapper.id}
           influencerName={metricsDialogMapper.influencerName}
+          existingMetric={existingMetric ?? null}
+          metricLoading={existingMetricLoading}
           loading={recordMetricMutation.isPending}
           onSubmit={handleRecordMetric}
           onClose={() => setMetricsDialogMapper(null)}

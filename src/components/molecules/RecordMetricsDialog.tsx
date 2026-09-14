@@ -13,13 +13,29 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
-import { RecordMetricRequest, RecordMetricPost, MAX_METRIC_POSTS } from '@contracts';
+import {
+  RecordMetricRequest,
+  RecordMetricPost,
+  MetricResponse,
+  MAX_METRIC_POSTS,
+} from '@contracts';
 import { parseShorthandNumber, formatShorthandNumber } from '@utils';
 
 export interface RecordMetricsDialogProps {
   open: boolean;
   mapperId: string;
   influencerName?: string;
+  /**
+   * The post-evaluation already on file for this assignment, if any.
+   *
+   * The server keeps one record per assignment and a second save overwrites it,
+   * so re-opening this dialog is an edit, not a second entry. Passing the
+   * existing record is what makes that visible: the boxes arrive filled in and
+   * the wording says "Edit" rather than inviting a duplicate.
+   */
+  existingMetric?: MetricResponse | null;
+  /** The existing record is still being read, so the form is not seeded yet. */
+  metricLoading?: boolean;
   loading?: boolean;
   onSubmit: (mapperId: string, data: RecordMetricRequest) => Promise<void> | void;
   onClose: () => void;
@@ -60,10 +76,24 @@ function readCount(raw: string): number | null {
   return parsed !== null && parsed >= 0 ? parsed : null;
 }
 
+/** A stored count back into the box it was typed into, in shorthand. */
+const toCountInput = (value: number | null | undefined): string =>
+  value === null || value === undefined ? '' : formatShorthandNumber(value);
+
+/** A stored date back into a `type="date"` value. */
+const toDateInput = (value: Date | string | null | undefined): string => {
+  if (!value) return new Date().toISOString().split('T')[0];
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
+  return date.toISOString().split('T')[0];
+};
+
 export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   open,
   mapperId,
   influencerName,
+  existingMetric = null,
+  metricLoading = false,
   loading = false,
   onSubmit,
   onClose,
@@ -84,24 +114,49 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   const [postErrors, setPostErrors] = useState<PostErrors[]>([{ ...EMPTY_POST_ERRORS }]);
   const [error, setError] = useState('');
 
+  // Seeded from the record on file when there is one, so re-opening shows what
+  // was entered rather than an empty form inviting a duplicate. Depends on the
+  // record too: it arrives a round trip after the dialog opens.
   useEffect(() => {
-    if (open) {
-      setReach('');
-      setImpressions('');
-      setTotalViews('');
-      setWatchTime('');
-      setSkipRate('');
-      setPosts([{ ...EMPTY_POST }]);
-      setRecordedFor(new Date().toISOString().split('T')[0]);
-      setReachError('');
-      setImpressionsError('');
-      setTotalViewsError('');
-      setSkipRateError('');
-      setRecordedForError('');
-      setPostErrors([{ ...EMPTY_POST_ERRORS }]);
-      setError('');
-    }
-  }, [open]);
+    if (!open) return;
+
+    const seededPosts: PostDraft[] = (existingMetric?.posts ?? []).map((post) => ({
+      url: post.postUrl || '',
+      likes: toCountInput(post.likes),
+      comments: toCountInput(post.comments),
+      shares: toCountInput(post.shares),
+      saves: toCountInput(post.saves),
+    }));
+
+    setReach(toCountInput(existingMetric?.reach));
+    setImpressions(toCountInput(existingMetric?.impressions));
+    setTotalViews(toCountInput(existingMetric?.totalViews));
+    setWatchTime(existingMetric?.watchTime || '');
+    setSkipRate(
+      existingMetric?.skipRate === null || existingMetric?.skipRate === undefined
+        ? ''
+        : String(existingMetric.skipRate),
+    );
+    setPosts(seededPosts.length > 0 ? seededPosts : [{ ...EMPTY_POST }]);
+    setRecordedFor(
+      existingMetric
+        ? toDateInput(existingMetric.recordedFor)
+        : new Date().toISOString().split('T')[0],
+    );
+    setReachError('');
+    setImpressionsError('');
+    setTotalViewsError('');
+    setSkipRateError('');
+    setRecordedForError('');
+    setPostErrors(
+      seededPosts.length > 0
+        ? seededPosts.map(() => ({ ...EMPTY_POST_ERRORS }))
+        : [{ ...EMPTY_POST_ERRORS }],
+    );
+    setError('');
+  }, [open, existingMetric]);
+
+  const isEdit = Boolean(existingMetric);
 
   // The summary is the breakdown: every engagement figure below is the sum of
   // what was entered per post, so the totals can never disagree with the posts
@@ -309,10 +364,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       >
         <DialogTitle sx={{ pb: 0, pt: 1, px: 1, flexShrink: 0 }}>
           <SectionHeading
-            title="Record Post-Evaluation Performance"
+            title={
+              isEdit ? 'Edit Post-Evaluation Performance' : 'Record Post-Evaluation Performance'
+            }
             subtitle={
               influencerName
-                ? `Deliverable Insights for: ${influencerName}`
+                ? `${isEdit ? 'Editing the recorded insights for' : 'Deliverable Insights for'}: ${influencerName}`
                 : 'Enter verified post insights from social media analytics'
             }
             mb={0}
@@ -617,8 +674,19 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           <Button variant="outlined" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" disabled={loading} sx={{ minWidth: 140 }}>
-            {loading ? <CircularProgress size={20} color="inherit" /> : 'Save Post-Eval Metrics'}
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || metricLoading}
+            sx={{ minWidth: 140 }}
+          >
+            {loading || metricLoading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : isEdit ? (
+              'Update Post-Eval Metrics'
+            ) : (
+              'Save Post-Eval Metrics'
+            )}
           </Button>
         </DialogActions>
       </form>

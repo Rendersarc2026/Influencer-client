@@ -698,6 +698,25 @@ export function useRevertApproval(campaignId?: string) {
 // 5. Metrics Recording & Viewing
 // -------------------------------------------------------------
 
+/**
+ * The post-evaluation already recorded for one assignment, if any.
+ *
+ * Read only when the record dialog opens, never per roster row: this is one
+ * round trip to a remote database, and a table of ten creators would pay it ten
+ * times over for a label. The server keeps a single active metric per mapper,
+ * so the first entry is the record — the list shape is the endpoint's.
+ */
+export function useMapperMetric(mapperId?: string) {
+  return useQuery<MetricResponse | null>({
+    queryKey: ['agency', 'mappers', mapperId, 'metrics'],
+    queryFn: async () => {
+      const response = await apiClient.get<MetricResponse[]>(`/agency/mappers/${mapperId}/metrics`);
+      return response.data?.[0] ?? null;
+    },
+    enabled: Boolean(mapperId),
+  });
+}
+
 export function useRecordMetric(campaignId?: string) {
   const queryClient = useQueryClient();
   return useMutation<MetricResponse, Error, { mapperId: string; data: RecordMetricRequest }>({

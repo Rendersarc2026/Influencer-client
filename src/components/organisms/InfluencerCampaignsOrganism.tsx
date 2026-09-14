@@ -180,24 +180,22 @@ export const InfluencerCampaignsOrganism: React.FC = () => {
         />
 
         {/* Campaigns Table */}
-        <Box sx={{ flex: 1, minHeight: 0 }}>
-          <DataTable<CampaignResponse>
-            columns={columns}
-            rows={campaigns}
-            totalRows={totalCampaigns}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setPage}
-            onRowsPerPageChange={(limit) => {
-              setRowsPerPage(limit);
-              setPage(0);
-            }}
-            loading={isLoading}
-            isFetching={isFetching || searchPending}
-            fillHeight
-            onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
-          />
-        </Box>
+        <DataTable<CampaignResponse>
+          columns={columns}
+          rows={campaigns}
+          totalRows={totalCampaigns}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(limit) => {
+            setRowsPerPage(limit);
+            setPage(0);
+          }}
+          loading={isLoading}
+          isFetching={isFetching || searchPending}
+          fillHeight
+          onRowClick={(row) => navigate(`/influencer/campaigns/${row.id}`)}
+        />
       </Box>
     </DashboardLayout>
   );
