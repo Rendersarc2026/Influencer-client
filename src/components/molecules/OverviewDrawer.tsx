@@ -12,7 +12,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import { useTheme } from '@mui/material/styles';
-import { StatusChip, StatusCategory, MoneyText } from '@atoms';
+import { StatusChip, StatusCategory, StatusPerspective, MoneyText } from '@atoms';
 import { useToast } from '@hooks';
 import { safeImageUrl, safeExternalUrl } from '@utils';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
@@ -71,6 +71,8 @@ export interface OverviewDrawerProps {
   /** A node is rendered as-is; a code renders as a chip and needs `badgeCategory`. */
   badge?: ReactNode | number;
   badgeCategory?: StatusCategory;
+  /** Whose side of the workflow this drawer speaks for; see `StatusChip`. */
+  statusPerspective?: StatusPerspective;
   avatarText?: string;
   avatarUrl?: string;
   avatarIcon?: ReactNode;
@@ -87,6 +89,7 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
   title,
   subtitle,
   badgeCategory,
+  statusPerspective,
   badge,
   avatarText,
   avatarUrl,
@@ -247,7 +250,11 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
               {badge !== undefined &&
                 badge !== null &&
                 (typeof badge === 'number' && badgeCategory ? (
-                  <StatusChip category={badgeCategory} code={badge} />
+                  <StatusChip
+                    category={badgeCategory}
+                    code={badge}
+                    perspective={statusPerspective}
+                  />
                 ) : (
                   badge
                 ))}
@@ -456,7 +463,11 @@ export const OverviewDrawer: React.FC<OverviewDrawerProps> = ({
                       }}
                     >
                       {field.isStatus && field.statusCategory && typeof field.value === 'number' ? (
-                        <StatusChip category={field.statusCategory} code={field.value} />
+                        <StatusChip
+                          category={field.statusCategory}
+                          code={field.value}
+                          perspective={statusPerspective}
+                        />
                       ) : field.isMoney ? (
                         <MoneyText
                           amount={

@@ -207,7 +207,9 @@ export function buildCampaignReportModel(input: CampaignReportExportInput): Camp
     totalSaves += mapperSaves;
 
     const rateStatusLabel =
-      mapper.rateStatus !== undefined ? getStatusLabel('RATE_STATUS', mapper.rateStatus) : '—';
+      mapper.rateStatus !== undefined
+        ? getStatusLabel('RATE_STATUS', mapper.rateStatus, 'AGENCY')
+        : '—';
     const brandStatusLabel =
       mapper.brandStatus !== undefined ? getStatusLabel('BRAND_STATUS', mapper.brandStatus) : '—';
 

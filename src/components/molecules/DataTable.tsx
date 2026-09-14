@@ -24,7 +24,15 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import { useTheme } from '@mui/material/styles';
-import { MoneyText, DeltaBadge, StatusChip, StatusCategory, EmptyState, BusyOverlay } from '@atoms';
+import {
+  MoneyText,
+  DeltaBadge,
+  StatusChip,
+  StatusCategory,
+  StatusPerspective,
+  EmptyState,
+  BusyOverlay,
+} from '@atoms';
 import {
   safeImageUrl,
   formatDateDDMMYYYY,
@@ -56,6 +64,8 @@ export interface DataTableColumn<T> {
   subAccessor?: keyof T | ((row: T) => unknown);
   iconAccessor?: keyof T | ((row: T) => ReactNode | string);
   statusCategory?: StatusCategory;
+  /** Whose wording a rate status carries in this table; see `StatusChip`. */
+  statusPerspective?: StatusPerspective;
   render?: (row: T, index: number) => ReactNode;
   onStarClick?: (row: T, e: React.MouseEvent) => void;
   isStarred?: (row: T) => boolean;
@@ -414,7 +424,9 @@ export function DataTable<T extends Record<string, unknown>>({
                   : undefined);
 
         if (category && typeof value === 'number') {
-          return <StatusChip category={category} code={value} />;
+          return (
+            <StatusChip category={category} code={value} perspective={column.statusPerspective} />
+          );
         }
 
         const isPositive =

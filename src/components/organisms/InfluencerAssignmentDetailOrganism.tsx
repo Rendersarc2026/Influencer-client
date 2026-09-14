@@ -114,7 +114,11 @@ export const InfluencerAssignmentDetailOrganism: React.FC = () => {
               >
                 <Typography variant="h2">Campaign Deliverables Brief</Typography>
                 {assignment?.rateStatus && (
-                  <StatusChip category="RATE_STATUS" code={assignment.rateStatus} />
+                  <StatusChip
+                    category="RATE_STATUS"
+                    code={assignment.rateStatus}
+                    perspective="INFLUENCER"
+                  />
                 )}
               </Box>
               <Typography variant="body2" sx={{ color: theme.palette.tokens.textSecondary }}>

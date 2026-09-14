@@ -1,13 +1,26 @@
 import React from 'react';
 import Chip from '@mui/material/Chip';
 import { useTheme } from '@mui/material/styles';
-import { StatusCategory, STATUS_CONFIG, StatusConfig, StatusTone } from '@utils';
+import {
+  StatusCategory,
+  StatusPerspective,
+  getStatusConfig,
+  StatusConfig,
+  StatusTone,
+} from '@utils';
 
-export type { StatusCategory };
+export type { StatusCategory, StatusPerspective };
 
 export interface StatusChipProps {
   category: StatusCategory;
   code: number | null | undefined;
+  /**
+   * Who is reading this chip. A rate status describes the creator's side and the
+   * agency's side of the same step, so the wording follows the screen it sits on
+   * — "Pending Approval" on the agency roster is "Under Review" to the creator.
+   * Every other category reads the same to everyone and can leave this unset.
+   */
+  perspective?: StatusPerspective;
   size?: 'small' | 'medium';
   className?: string;
 }
@@ -15,6 +28,7 @@ export interface StatusChipProps {
 export const StatusChip: React.FC<StatusChipProps> = ({
   category,
   code,
+  perspective,
   size = 'small',
   className,
 }) => {
@@ -30,10 +44,10 @@ export const StatusChip: React.FC<StatusChipProps> = ({
 
   // An unset or out-of-range code should still render something a human can act
   // on, rather than an empty chip that looks like a layout bug.
-  const config: StatusConfig =
-    code !== null && code !== undefined && STATUS_CONFIG[category][code]
-      ? STATUS_CONFIG[category][code]
-      : { label: code === null || code === undefined ? '—' : `Unknown (${code})`, tone: 'neutral' };
+  const config: StatusConfig = getStatusConfig(category, code, perspective) ?? {
+    label: code === null || code === undefined ? '—' : `Unknown (${code})`,
+    tone: 'neutral',
+  };
 
   const palette = tones[config.tone];
 

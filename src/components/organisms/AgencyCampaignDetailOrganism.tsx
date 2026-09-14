@@ -993,8 +993,11 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
       type: 'custom',
       accessor: 'rateStatus',
       statusCategory: 'RATE_STATUS',
+      // Carried on the column so the Excel/PDF export words it the same way the
+      // table does — it is fed this same column list.
+      statusPerspective: 'AGENCY',
       render: (row: AgencyMapperResponse) => (
-        <StatusChip category="RATE_STATUS" code={row.rateStatus} />
+        <StatusChip category="RATE_STATUS" code={row.rateStatus} perspective="AGENCY" />
       ),
     },
     {
@@ -1423,6 +1426,7 @@ export const AgencyCampaignDetailOrganism: React.FC<AgencyCampaignDetailOrganism
         }
         badge={overviewDrawerMapper ? overviewDrawerMapper.rateStatus : undefined}
         badgeCategory="RATE_STATUS"
+        statusPerspective="AGENCY"
         avatarText={overviewDrawerMapper?.influencerName}
         highlights={
           overviewDrawerMapper

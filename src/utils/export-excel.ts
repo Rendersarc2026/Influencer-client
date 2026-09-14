@@ -1,5 +1,10 @@
 import { formatDateDDMMYYYY } from './format-date';
-import { StatusCategory, getStatusLabel, getDeliverableStatus } from './status-label';
+import {
+  StatusCategory,
+  StatusPerspective,
+  getStatusLabel,
+  getDeliverableStatus,
+} from './status-label';
 import {
   buildCampaignReportModel,
   buildBrandCampaignReportModel,
@@ -25,6 +30,8 @@ export interface ExcelColumnConfig<T = Record<string, unknown>> {
   accessor?: keyof T | ((row: T) => unknown);
   subAccessor?: keyof T | ((row: T) => unknown);
   statusCategory?: StatusCategory;
+  /** Whose wording a rate status carries in this export; see `StatusChip`. */
+  statusPerspective?: StatusPerspective;
   width?: number;
 }
 
@@ -189,10 +196,10 @@ export function formatCellValueForExport<T extends Record<string, unknown>>(
 
   if (col.type === 'status' || col.id.toLowerCase().endsWith('status')) {
     if (col.statusCategory && typeof value === 'number') {
-      return getStatusLabel(col.statusCategory, value);
+      return getStatusLabel(col.statusCategory, value, col.statusPerspective);
     }
     if (col.id === 'rateStatus' && typeof value === 'number') {
-      return getStatusLabel('RATE_STATUS', value);
+      return getStatusLabel('RATE_STATUS', value, col.statusPerspective);
     }
     if (col.id === 'brandStatus' && typeof value === 'number') {
       return getStatusLabel('BRAND_STATUS', value);

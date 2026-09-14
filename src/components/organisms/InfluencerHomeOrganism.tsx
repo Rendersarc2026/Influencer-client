@@ -22,6 +22,7 @@ import {
 import {
   InfluencerMapperResponse,
   SubmitRateRequest,
+  RateStatusCode,
   RateStatusEnum,
   PaginatedResult,
 } from '@contracts';
@@ -33,7 +34,7 @@ import {
   useViewFilters,
   usePillCode,
 } from '@hooks';
-import { formatCurrency } from '@utils';
+import { formatCurrency, getStatusLabel } from '@utils';
 
 export const InfluencerHomeOrganism: React.FC = () => {
   const navigate = useNavigate();
@@ -81,10 +82,18 @@ export const InfluencerHomeOrganism: React.FC = () => {
   // also restores REVISION_REQUESTED, which the hardcoded list omitted — a
   // creator whose rate was sent back had no way to filter for it.
   const filterPills = useEnumPills('RATE_STATUS', 'All Briefs', {
-    PENDING_SUBMISSION: 'Action Required',
-    SUBMITTED: 'Under Review',
-    REVISION_REQUESTED: 'Needs Revision',
-    AGENCY_APPROVED: 'Approved',
+    PENDING_SUBMISSION: getStatusLabel(
+      'RATE_STATUS',
+      RateStatusCode.PENDING_SUBMISSION,
+      'INFLUENCER',
+    ),
+    SUBMITTED: getStatusLabel('RATE_STATUS', RateStatusCode.SUBMITTED, 'INFLUENCER'),
+    REVISION_REQUESTED: getStatusLabel(
+      'RATE_STATUS',
+      RateStatusCode.REVISION_REQUESTED,
+      'INFLUENCER',
+    ),
+    AGENCY_APPROVED: getStatusLabel('RATE_STATUS', RateStatusCode.AGENCY_APPROVED, 'INFLUENCER'),
   });
 
   const handleSubmitRate = async (mapperId: string, data: SubmitRateRequest) => {
@@ -120,7 +129,9 @@ export const InfluencerHomeOrganism: React.FC = () => {
       type: 'custom',
       accessor: 'rateStatus',
       statusCategory: 'RATE_STATUS',
-      render: (row) => <StatusChip category="RATE_STATUS" code={row.rateStatus} />,
+      render: (row) => (
+        <StatusChip category="RATE_STATUS" code={row.rateStatus} perspective="INFLUENCER" />
+      ),
     },
     {
       id: 'influencerRate',
