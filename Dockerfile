@@ -19,15 +19,17 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
-# Stage 2: Serve with Caddy
-FROM caddy:2-alpine
+# Stage 2: Serve with nginx
+FROM nginx:alpine
 
-# Copy custom Caddy configuration
-COPY Caddyfile /etc/caddy/Caddyfile
+# Replace the default site; the headers snippet sits outside conf.d because
+# every file there is loaded into the http context.
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 # Copy build artifacts
-COPY --from=builder /app/dist /usr/share/caddy
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+CMD ["nginx", "-g", "daemon off;"]
