@@ -501,7 +501,11 @@ export const ProfileOrganism: React.FC = () => {
       return `https://${trimmed}`;
     };
 
-    if (displayName.trim()) {
+    // Creators have no display name field: nothing on the platform shows
+    // `influencer.display_name` (every listing, chat and report reads `name`),
+    // so the form neither validates nor sends it and the stored value is left
+    // alone. For an agency the same field is the agency's own name.
+    if (!isInfluencer && displayName.trim()) {
       // A public display name is a handle, not a legal name: `verum_varsha` is
       // what the Instagram sync and the agency actually write into this column,
       // and the server accepts it (`displayName` is `safeText(120)`).
@@ -525,7 +529,7 @@ export const ProfileOrganism: React.FC = () => {
 
     const payload: UpdateProfileRequest = {
       fullName: fullName.trim(),
-      displayName: displayName.trim() || undefined,
+      displayName: isInfluencer ? undefined : displayName.trim() || undefined,
       bio: bio.trim() || undefined,
       ...(isInfluencer
         ? {
@@ -1143,20 +1147,37 @@ export const ProfileOrganism: React.FC = () => {
                       disabled={fieldsLocked}
                     />
 
-                    <TextField
-                      label="Public Display Name"
-                      value={displayName}
-                      placeholder="e.g. Alex Influencer"
-                      onChange={(e) => {
-                        const val = capitalizeWords(e.target.value);
-                        setDisplayName(val);
-                        if (fieldErrors.displayName) {
-                          // Handles, not legal names — digits and underscores
-                          // are legitimate here, and the digit check that used
-                          // to sit on this field rejected the very values the
-                          // Instagram sync writes into it.
-                          const err = val.trim()
-                            ? validateBrandName(val, {
+                    {!isInfluencer && (
+                      <TextField
+                        label="Public Display Name"
+                        value={displayName}
+                        placeholder="e.g. Alex Influencer"
+                        onChange={(e) => {
+                          const val = capitalizeWords(e.target.value);
+                          setDisplayName(val);
+                          if (fieldErrors.displayName) {
+                            // Handles, not legal names — digits and underscores
+                            // are legitimate here, and the digit check that used
+                            // to sit on this field rejected the very values the
+                            // Instagram sync writes into it.
+                            const err = val.trim()
+                              ? validateBrandName(val, {
+                                  required: false,
+                                  fieldLabel: 'Public Display Name',
+                                  max: 120,
+                                })
+                              : '';
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              if (err) next.displayName = err;
+                              else delete next.displayName;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const err = e.target.value.trim()
+                            ? validateBrandName(e.target.value, {
                                 required: false,
                                 fieldLabel: 'Public Display Name',
                                 max: 120,
@@ -1168,28 +1189,13 @@ export const ProfileOrganism: React.FC = () => {
                             else delete next.displayName;
                             return next;
                           });
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const err = e.target.value.trim()
-                          ? validateBrandName(e.target.value, {
-                              required: false,
-                              fieldLabel: 'Public Display Name',
-                              max: 120,
-                            })
-                          : '';
-                        setFieldErrors((prev) => {
-                          const next = { ...prev };
-                          if (err) next.displayName = err;
-                          else delete next.displayName;
-                          return next;
-                        });
-                      }}
-                      error={Boolean(fieldErrors.displayName)}
-                      helperText={fieldErrors.displayName || undefined}
-                      fullWidth
-                      disabled={fieldsLocked}
-                    />
+                        }}
+                        error={Boolean(fieldErrors.displayName)}
+                        helperText={fieldErrors.displayName || undefined}
+                        fullWidth
+                        disabled={fieldsLocked}
+                      />
+                    )}
                   </Box>
 
                   <TextField

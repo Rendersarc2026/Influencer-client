@@ -122,7 +122,7 @@ export const CompleteProfileOrganism: React.FC = () => {
         max: 120,
       });
       if (dnErr) errors.displayName = dnErr;
-    } else if (displayName.trim()) {
+    } else if (!isInfluencer && displayName.trim()) {
       // A creator's display name is a handle, not a legal name, and this field
       // arrives pre-filled with whatever the agency or the Instagram sync wrote
       // — `verum_varsha`, say. Validating it as a person name rejected the
@@ -180,7 +180,8 @@ export const CompleteProfileOrganism: React.FC = () => {
 
     const payload = {
       fullName: fullName.trim(),
-      displayName: displayName.trim() || undefined,
+      // Creators are not asked for one: nothing on the platform displays it.
+      displayName: isInfluencer ? undefined : displayName.trim() || undefined,
       bio: bio.trim() || undefined,
       city: city.trim() || undefined,
       ...(isBrand
@@ -370,7 +371,11 @@ export const CompleteProfileOrganism: React.FC = () => {
               </Box>
 
               <Box
-                sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: isInfluencer ? '1fr' : { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 2,
+                }}
               >
                 <TextField
                   label="Full Name *"
@@ -430,65 +435,67 @@ export const CompleteProfileOrganism: React.FC = () => {
                   }}
                 />
 
-                <TextField
-                  label={isBrand ? 'Brand Display Name *' : 'Display Name'}
-                  value={displayName}
-                  placeholder={isBrand ? 'e.g. Jos Alukkas' : 'e.g. Alex Influencer'}
-                  onChange={(e) => {
-                    const val = capitalizeWords(e.target.value);
-                    setDisplayName(val);
-                    if (fieldErrors.displayName) {
-                      const err = isBrand
-                        ? validateBrandName(val, {
-                            required: true,
-                            fieldLabel: 'Brand Display Name',
-                            max: 120,
-                          })
-                        : val.trim()
+                {!isInfluencer && (
+                  <TextField
+                    label={isBrand ? 'Brand Display Name *' : 'Display Name'}
+                    value={displayName}
+                    placeholder={isBrand ? 'e.g. Jos Alukkas' : 'e.g. Alex Influencer'}
+                    onChange={(e) => {
+                      const val = capitalizeWords(e.target.value);
+                      setDisplayName(val);
+                      if (fieldErrors.displayName) {
+                        const err = isBrand
                           ? validateBrandName(val, {
-                              required: false,
-                              fieldLabel: 'Display Name',
+                              required: true,
+                              fieldLabel: 'Brand Display Name',
                               max: 120,
                             })
-                          : '';
+                          : val.trim()
+                            ? validateBrandName(val, {
+                                required: false,
+                                fieldLabel: 'Display Name',
+                                max: 120,
+                              })
+                            : '';
+                        setFieldErrors((prev) => {
+                          const next = { ...prev };
+                          if (err) next.displayName = err;
+                          else delete next.displayName;
+                          return next;
+                        });
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // An empty box is left to the Continue button to report.
+                      const err = !e.target.value.trim()
+                        ? ''
+                        : validateBrandName(e.target.value, {
+                            required: false,
+                            fieldLabel: isBrand ? 'Brand Display Name' : 'Display Name',
+                            max: 120,
+                          });
                       setFieldErrors((prev) => {
                         const next = { ...prev };
                         if (err) next.displayName = err;
                         else delete next.displayName;
                         return next;
                       });
-                    }
-                  }}
-                  onBlur={(e) => {
-                    // An empty box is left to the Continue button to report.
-                    const err = !e.target.value.trim()
-                      ? ''
-                      : validateBrandName(e.target.value, {
-                          required: false,
-                          fieldLabel: isBrand ? 'Brand Display Name' : 'Display Name',
-                          max: 120,
-                        });
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      if (err) next.displayName = err;
-                      else delete next.displayName;
-                      return next;
-                    });
-                  }}
-                  error={Boolean(fieldErrors.displayName)}
-                  helperText={fieldErrors.displayName || undefined}
-                  fullWidth
-                  disabled={loading}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <AlternateEmailRoundedIcon
-                          sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }}
-                        />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                    }}
+                    error={Boolean(fieldErrors.displayName)}
+                    helperText={fieldErrors.displayName || undefined}
+                    fullWidth
+                    disabled={loading}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <AlternateEmailRoundedIcon
+                            sx={{ fontSize: 18, color: theme.palette.tokens.textSecondary }}
+                          />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
               </Box>
             </Box>
 
