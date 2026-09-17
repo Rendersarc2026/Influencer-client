@@ -22,6 +22,7 @@ export const NOTIFICATION_TYPES = [
   'PAYMENT_REJECTED',
   'CAMPAIGN_STATUS_CHANGED',
   'CAMPAIGN_ASSIGNED',
+  'CAMPAIGN_CREATED',
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -36,13 +37,15 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
  *
  * These are the events that hand someone a job to do on a campaign: a creator
  * staffed on one, a creator asked to revise their rate, an agency told a rate
- * has come in. Anything the recipient only needs to know about, rather than act
- * on, stays a toast and is deliberately absent here.
+ * has come in, a brand told a campaign has been opened under it. Anything the
+ * recipient only needs to know about, rather than act on, stays a toast and is
+ * deliberately absent here.
  */
 export const CAMPAIGN_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'CAMPAIGN_ASSIGNED',
   'RATE_REVISION_REQUESTED',
   'RATE_SUBMITTED',
+  'CAMPAIGN_CREATED',
 ];
 
 /** Identifiers carried alongside an alert so the UI can deep-link and dedupe. */
