@@ -123,11 +123,8 @@ export const CompleteProfileOrganism: React.FC = () => {
       });
       if (dnErr) errors.displayName = dnErr;
     } else if (!isInfluencer && displayName.trim()) {
-      // A creator's display name is a handle, not a legal name, and this field
-      // arrives pre-filled with whatever the agency or the Instagram sync wrote
-      // — `verum_varsha`, say. Validating it as a person name rejected the
-      // platform's own data and, since nothing was shown, left the creator
-      // stuck on onboarding with a Continue button that did nothing.
+      // Creators are not asked for a display name. For anyone else it is an
+      // organisation name, so it is checked as one rather than as a person's.
       const dnErr = validateBrandName(displayName, {
         required: false,
         fieldLabel: 'Display Name',

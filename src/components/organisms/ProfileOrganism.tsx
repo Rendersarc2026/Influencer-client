@@ -501,19 +501,11 @@ export const ProfileOrganism: React.FC = () => {
       return `https://${trimmed}`;
     };
 
-    // Creators have no display name field: nothing on the platform shows
-    // `influencer.display_name` (every listing, chat and report reads `name`),
-    // so the form neither validates nor sends it and the stored value is left
-    // alone. For an agency the same field is the agency's own name.
+    // Creators have no display name: every listing, chat and report names them
+    // by `name`, so the field is not shown and nothing is sent. For an agency
+    // this field is the agency's own name, which is an organisation name rather
+    // than a person's — hence `validateBrandName`, not `validatePersonName`.
     if (!isInfluencer && displayName.trim()) {
-      // A public display name is a handle, not a legal name: `verum_varsha` is
-      // what the Instagram sync and the agency actually write into this column,
-      // and the server accepts it (`displayName` is `safeText(120)`).
-      // Validating it as a person name rejected the platform's own data, and
-      // because the refusal was silent it locked those creators out of saving
-      // *any* field — their location included. `validateBrandName` is the rule
-      // that matches a handle: at least one letter, no number-gibberish, and no
-      // character allowlist.
       const dnErr = validateBrandName(displayName, {
         required: false,
         fieldLabel: 'Public Display Name',
@@ -1156,10 +1148,8 @@ export const ProfileOrganism: React.FC = () => {
                           const val = capitalizeWords(e.target.value);
                           setDisplayName(val);
                           if (fieldErrors.displayName) {
-                            // Handles, not legal names — digits and underscores
-                            // are legitimate here, and the digit check that used
-                            // to sit on this field rejected the very values the
-                            // Instagram sync writes into it.
+                            // An organisation name, not a person's — digits are
+                            // legitimate here.
                             const err = val.trim()
                               ? validateBrandName(val, {
                                   required: false,
