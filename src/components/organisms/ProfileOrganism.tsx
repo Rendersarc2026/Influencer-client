@@ -241,6 +241,7 @@ export const ProfileOrganism: React.FC = () => {
     user?.influencer?.regions ?? null,
     user?.influencer?.influencingRegions ?? null,
     user?.influencer?.category ?? null,
+    user?.influencer?.contactPhone ?? null,
     user?.influencer?.instagram ?? null,
     user?.influencer?.youtube ?? null,
     user?.influencer?.followers ?? null,
@@ -294,6 +295,10 @@ export const ProfileOrganism: React.FC = () => {
         setCity(detail.location || '');
         setRegions(detail.regions || detail.influencingRegions || []);
         setCategory(detail.category || '');
+        // The agency enters the creator's number when it enters the creator, so
+        // the creator row is the source of truth; `user.phone` only covers a
+        // login that predates a detail row.
+        setContactPhone(detail.contactPhone || user?.phone || '');
         setInstagram(detail.instagram || '');
         setYoutube(detail.youtube || '');
         setFollowers(detail.followers ? formatShorthandNumber(detail.followers) : '');
@@ -471,6 +476,11 @@ export const ProfileOrganism: React.FC = () => {
       return;
     }
 
+    if (contactPhone.trim()) {
+      const pErr = validatePhoneNumber(contactPhone.trim());
+      if (pErr) errors.contactPhone = pErr;
+    }
+
     let parsedFollowers: number | undefined = undefined;
     if (followers.trim()) {
       const parsed = parseShorthandNumber(followers);
@@ -530,6 +540,7 @@ export const ProfileOrganism: React.FC = () => {
               regions: regions.length > 0 ? regions : undefined,
               influencingRegions: regions.length > 0 ? regions : undefined,
               category: category.trim() || undefined,
+              contactPhone: contactPhone.trim() || undefined,
               instagram: normalizeSocialUrl(instagram, 'instagram.com'),
               youtube: normalizeSocialUrl(youtube, 'youtube.com'),
               followers: parsedFollowers,
@@ -1188,12 +1199,40 @@ export const ProfileOrganism: React.FC = () => {
                     )}
                   </Box>
 
-                  <TextField
-                    label="Account Email (Read-Only)"
-                    value={user?.email || ''}
-                    disabled
-                    fullWidth
-                  />
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <TextField
+                      label="Account Email (Read-Only)"
+                      value={user?.email || ''}
+                      disabled
+                      fullWidth
+                      sx={{ flex: 1 }}
+                    />
+
+                    {/* The email is fixed at provisioning; the number is not, and
+                        a creator whose phone changes had no way to say so. */}
+                    {isInfluencer && (
+                      <PhoneField
+                        label="Mobile Number"
+                        value={contactPhone}
+                        onChange={(next) => {
+                          setContactPhone(next);
+                          if (fieldErrors.contactPhone) {
+                            setFieldErrors((prev) => {
+                              const nextErrors = { ...prev };
+                              delete nextErrors.contactPhone;
+                              return nextErrors;
+                            });
+                          }
+                        }}
+                        error={Boolean(fieldErrors.contactPhone)}
+                        helperText={
+                          fieldErrors.contactPhone || 'Direct line for campaign coordination'
+                        }
+                        disabled={fieldsLocked}
+                        sx={{ flex: 1 }}
+                      />
+                    )}
+                  </Box>
 
                   {isInfluencer && (
                     <>
