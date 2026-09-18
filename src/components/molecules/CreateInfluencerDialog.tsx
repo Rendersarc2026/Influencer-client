@@ -614,7 +614,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
               sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
             >
               <TextField
-                label="Indicative Rate — Min (₹)"
+                label="Commercial Rate — Min (₹)"
                 value={avgCommercialMin}
                 onChange={(e) => setAvgCommercialMin(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 5000"
@@ -622,7 +622,7 @@ export const CreateInfluencerDialog: React.FC<CreateInfluencerDialogProps> = ({
                 disabled={loading}
               />
               <TextField
-                label="Indicative Rate — Max (₹)"
+                label="Commercial Rate — Max (₹)"
                 value={avgCommercialMax}
                 onChange={(e) => setAvgCommercialMax(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 15000"
