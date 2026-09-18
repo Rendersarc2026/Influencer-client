@@ -15,7 +15,7 @@ import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
 import { PhoneField } from './PhoneField';
 import { useCategories, useLocations } from '@api';
-import { InfluencerResponse, UpdateInfluencerRequest, CategoryTypeCode } from '@contracts';
+import { InfluencerResponse, AgencyUpdateInfluencerRequest, CategoryTypeCode } from '@contracts';
 import {
   capitalizeWords,
   parseShorthandNumber,
@@ -33,7 +33,7 @@ export interface EditInfluencerDialogProps {
   open: boolean;
   influencer: InfluencerResponse | null;
   loading?: boolean;
-  onSubmit: (data: UpdateInfluencerRequest) => Promise<void> | void;
+  onSubmit: (data: AgencyUpdateInfluencerRequest) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -57,6 +57,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
   const [location, setLocation] = useState('');
   const [regions, setRegions] = useState<string[]>([]);
   const [followers, setFollowers] = useState('');
+  const [email, setEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [instagram, setInstagram] = useState('');
   const [youtube, setYoutube] = useState('');
@@ -64,10 +65,20 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
   const [avgCommercialMax, setAvgCommercialMax] = useState('');
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [followersError, setFollowersError] = useState('');
   const [instagramError, setInstagramError] = useState('');
   const [youtubeError, setYoutubeError] = useState('');
+
+  const validateEmail = (val: string): string => {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return 'Must be a valid email address (e.g. riya@gmail.com)';
+    }
+    return '';
+  };
 
   const normalizeSocialUrl = (val: string, domain: 'instagram.com' | 'youtube.com'): string => {
     const trimmed = val.trim();
@@ -113,6 +124,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
       const fVal = influencer.followers ? formatShorthandNumber(influencer.followers) : '';
       setFollowers(fVal);
       setSelectedTier(influencer.followers ? getInfluencerTier(influencer.followers) : null);
+      setEmail(influencer.email || '');
       setContactPhone(influencer.contactPhone || '');
       setInstagram(influencer.instagram || '');
       setYoutube(influencer.youtube || '');
@@ -120,6 +132,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
       setAvgCommercialMax(influencer.avgCommercialMax ? String(influencer.avgCommercialMax) : '');
       setError('');
       setNameError('');
+      setEmailError('');
       setPhoneError('');
       setFollowersError('');
       setInstagramError('');
@@ -165,12 +178,17 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
     e.preventDefault();
     setError('');
     setNameError('');
+    setEmailError('');
     setPhoneError('');
     setFollowersError('');
     setInstagramError('');
     setYoutubeError('');
 
     const trimmedName = name.trim();
+    // Lowercased and trimmed here because the server's `email` primitive runs
+    // its format check before trimming, so a pasted address with a stray space
+    // would be rejected rather than cleaned up.
+    const trimmedEmail = email.trim().toLowerCase();
     const trimmedPhone = contactPhone.trim();
 
     // One validation pass over every field, so a submit marks all of the
@@ -181,6 +199,7 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
       max: 200,
     });
 
+    const emailErr = trimmedEmail ? validateEmail(trimmedEmail) : '';
     const phoneErr = trimmedPhone ? validatePhoneNumber(trimmedPhone) : '';
 
     let parsedFollowers: number | undefined = undefined;
@@ -221,21 +240,28 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
     }
 
     setNameError(nameErr);
+    setEmailError(emailErr);
     setPhoneError(phoneErr);
     setFollowersError(followersErr);
     setInstagramError(igErr);
     setYoutubeError(ytErr);
     setError(formErr);
 
-    if (nameErr || phoneErr || followersErr || igErr || ytErr || formErr) return;
+    if (nameErr || emailErr || phoneErr || followersErr || igErr || ytErr || formErr) return;
 
     const finalInstagram = instagram.trim()
       ? normalizeSocialUrl(instagram, 'instagram.com')
       : undefined;
     const finalYoutube = youtube.trim() ? normalizeSocialUrl(youtube, 'youtube.com') : undefined;
 
-    const payload: UpdateInfluencerRequest = {
+    const payload: AgencyUpdateInfluencerRequest = {
       name: trimmedName,
+      // Only sent when it actually changed: this rewrites the creator's login,
+      // and an unchanged address should not clear their email verification.
+      email:
+        trimmedEmail && trimmedEmail !== (influencer?.email || '').toLowerCase()
+          ? trimmedEmail
+          : undefined,
       category: category.trim() || undefined,
       location: location.trim() || undefined,
       regions: regions.length > 0 ? regions : [],
@@ -254,6 +280,9 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const msg =
         errorObj?.response?.data?.message || errorObj?.message || 'Failed to update influencer.';
+      if (msg.toLowerCase().includes('email')) {
+        setEmailError(msg);
+      }
       setError(msg);
     }
   };
@@ -351,6 +380,36 @@ export const EditInfluencerDialog: React.FC<EditInfluencerDialogProps> = ({
               error={Boolean(nameError)}
               helperText={nameError || undefined}
               placeholder="e.g. Varsha, Neha Nazneen"
+              fullWidth
+              disabled={loading}
+            />
+
+            {/* The creator's login. The agency provisions it when it enters
+                them, so the agency is also the only party that can correct a
+                typo in it — nobody else, including the creator, can edit this
+                address from their own screens. */}
+            <TextField
+              label="Login / Contact Email"
+              value={email}
+              onChange={(e) => {
+                const val = e.target.value;
+                setEmail(val);
+                if (val.trim()) {
+                  setEmailError(validateEmail(val));
+                } else {
+                  setEmailError('');
+                }
+              }}
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                setEmailError(val ? validateEmail(val) : '');
+              }}
+              error={Boolean(emailError)}
+              helperText={
+                emailError ||
+                'Changing this changes the address this creator signs in with'
+              }
+              placeholder="e.g. riya@gmail.com"
               fullWidth
               disabled={loading}
             />

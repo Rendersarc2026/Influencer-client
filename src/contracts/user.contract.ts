@@ -79,35 +79,74 @@ export const CreateInfluencerSchema = z
   );
 export type CreateInfluencerRequest = z.infer<typeof CreateInfluencerSchema>;
 
+/** The creator fields any caller may edit. Shared by both schemas below. */
+const influencerUpdateFields = {
+  name: personName(200).optional(),
+  category: safeText(120).optional(),
+  location: safeText(120).optional(),
+  regions: regionsArray,
+  influencingRegions: regionsArray,
+  followers: count.optional(),
+  contactPhone: phone.optional(),
+  alternatePhone: phone.optional(),
+  instagram: httpUrl.optional(),
+  youtube: httpUrl.optional(),
+  avgCommercialMin: money.optional(),
+  avgCommercialMax: money.optional(),
+};
+
+// A range whose ceiling sits below its floor is not a range. The same rule is
+// enforced by a CHECK constraint, so a bad pair cannot reach the table even if
+// it bypasses this schema.
+const commercialRangeIsOrdered = (d: {
+  avgCommercialMin?: number;
+  avgCommercialMax?: number;
+}): boolean =>
+  d.avgCommercialMin === undefined ||
+  d.avgCommercialMax === undefined ||
+  d.avgCommercialMax >= d.avgCommercialMin;
+
+const commercialRangeError = {
+  message: 'avgCommercialMax must be greater than or equal to avgCommercialMin',
+  path: ['avgCommercialMax'] as (string | number)[],
+};
+
 export const UpdateInfluencerSchema = z
   .object({
-    name: personName(200).optional(),
-    category: safeText(120).optional(),
-    location: safeText(120).optional(),
-    regions: regionsArray,
-    influencingRegions: regionsArray,
-    followers: count.optional(),
-    contactPhone: phone.optional(),
-    alternatePhone: phone.optional(),
-    instagram: httpUrl.optional(),
-    youtube: httpUrl.optional(),
-    avgCommercialMin: money.optional(),
-    avgCommercialMax: money.optional(),
+    ...influencerUpdateFields,
+    /**
+     * A creator's email is their login. They cannot change it themselves — the
+     * credential and the row it authenticates would drift apart — and neither
+     * can anyone reaching this schema through /users/profile. Only the agency
+     * that represents them may, through `AgencyUpdateInfluencerSchema`. A
+     * payload that carries it here is rejected rather than quietly ignored.
+     */
+    email: z
+      .undefined({
+        invalid_type_error:
+          'A login email can only be changed by the agency that represents this creator.',
+      })
+      .optional(),
   })
-  // A range whose ceiling sits below its floor is not a range. The same rule is
-  // enforced by a CHECK constraint, so a bad pair cannot reach the table even if
-  // it bypasses this schema.
-  .refine(
-    (d) =>
-      d.avgCommercialMin === undefined ||
-      d.avgCommercialMax === undefined ||
-      d.avgCommercialMax >= d.avgCommercialMin,
-    {
-      message: 'avgCommercialMax must be greater than or equal to avgCommercialMin',
-      path: ['avgCommercialMax'],
-    },
-  );
+  .refine(commercialRangeIsOrdered, commercialRangeError);
 export type UpdateInfluencerRequest = z.infer<typeof UpdateInfluencerSchema>;
+
+/**
+ * The agency's own edit of a creator it represents.
+ *
+ * Identical to `UpdateInfluencerSchema` but for `email`, which is the creator's
+ * login. The agency provisions that login when it enters the creator (see
+ * `CreateInfluencerSchema`), so it is also the only party that can correct a
+ * typo in it. This schema is mounted on the agency routes alone; every other
+ * path to a creator row uses the schema above, which rejects the field.
+ */
+export const AgencyUpdateInfluencerSchema = z
+  .object({
+    ...influencerUpdateFields,
+    email: email.optional(),
+  })
+  .refine(commercialRangeIsOrdered, commercialRangeError);
+export type AgencyUpdateInfluencerRequest = z.infer<typeof AgencyUpdateInfluencerSchema>;
 
 /**
  * One payload for both tables. Splitting this into two endpoints would cost two

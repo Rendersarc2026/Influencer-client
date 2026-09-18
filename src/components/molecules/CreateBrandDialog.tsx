@@ -21,7 +21,7 @@ import { PhoneField } from './PhoneField';
 import { useCategories, useLocations, uploadImage } from '@api';
 import {
   CreateBrandRequest,
-  UpdateBrandRequest,
+  AgencyUpdateBrandRequest,
   BrandResponse,
   CategoryTypeCode,
 } from '@contracts';
@@ -45,7 +45,7 @@ export interface CreateBrandDialogProps {
   existingBrands?: Array<BrandResponse>;
   loading?: boolean;
   onSubmit: (
-    data: CreateBrandRequest | UpdateBrandRequest,
+    data: CreateBrandRequest | AgencyUpdateBrandRequest,
     brandId?: string,
   ) => Promise<void> | void;
   onClose: () => void;
@@ -263,10 +263,12 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
       bio: bio.trim() || undefined,
     };
 
-    // The contact email is the brand manager's login: collected only at
-    // creation, never sent on an edit — the server rejects it there too.
-    const payload: CreateBrandRequest | UpdateBrandRequest = isEdit
-      ? { ...base, isActive }
+    // The contact email is the brand manager's login. The owning agency may
+    // correct it, so an edit sends it — but only when it changed, so an
+    // unrelated save does not clear the manager's email verification.
+    const emailChanged = trimmedEmail !== normalize(brandToEdit?.contactEmail);
+    const payload: CreateBrandRequest | AgencyUpdateBrandRequest = isEdit
+      ? { ...base, isActive, ...(emailChanged ? { contactEmail: trimmedEmail } : {}) }
       : { ...base, contactEmail: trimmedEmail };
 
     try {
@@ -583,33 +585,37 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
             />
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              {/* The contact email doubles as the brand manager's login and is
-                  fixed once the account exists, so it is only collected when the
-                  brand is created — never shown on the edit form. */}
-              {!isEdit && (
-                <TextField
-                  label="Login / Contact Email *"
-                  value={contactEmail}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setContactEmail(val);
-                    if (emailError) {
-                      if (!val.trim()) setEmailError('Email is required');
-                      else setEmailError(validateEmail(val));
-                    }
-                  }}
-                  onBlur={() => {
-                    // An empty box is left to the confirm button to report.
-                    setEmailError(contactEmail.trim() ? validateEmail(contactEmail) : '');
-                  }}
-                  error={Boolean(emailError)}
-                  helperText={emailError || undefined}
-                  placeholder="e.g. manager@brand.com"
-                  fullWidth
-                  disabled={busy}
-                  sx={{ flex: 1 }}
-                />
-              )}
+              {/* The contact email doubles as the brand manager's login. This
+                  screen belongs to the agency that owns the brand, which is the
+                  only party allowed to correct it — the manager cannot change it
+                  from their own profile. */}
+              <TextField
+                label="Login / Contact Email *"
+                value={contactEmail}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setContactEmail(val);
+                  if (emailError) {
+                    if (!val.trim()) setEmailError('Email is required');
+                    else setEmailError(validateEmail(val));
+                  }
+                }}
+                onBlur={() => {
+                  // An empty box is left to the confirm button to report.
+                  setEmailError(contactEmail.trim() ? validateEmail(contactEmail) : '');
+                }}
+                error={Boolean(emailError)}
+                helperText={
+                  emailError ||
+                  (isEdit
+                    ? 'Changing this changes the address this brand signs in with'
+                    : undefined)
+                }
+                placeholder="e.g. manager@brand.com"
+                fullWidth
+                disabled={busy}
+                sx={{ flex: 1 }}
+              />
 
               <Autocomplete
                 freeSolo

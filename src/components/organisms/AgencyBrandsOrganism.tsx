@@ -37,7 +37,7 @@ import {
   BrandResponse,
   BrandStatusFilter,
   CreateBrandRequest,
-  UpdateBrandRequest,
+  AgencyUpdateBrandRequest,
   PaginatedResult,
 } from '@contracts';
 import { useAuth, useDebouncedSearch, useToast, useViewFilters, useTableExport } from '@hooks';
@@ -325,12 +325,15 @@ export const AgencyBrandsOrganism: React.FC = () => {
   };
 
   const handleDialogSubmit = async (
-    data: CreateBrandRequest | UpdateBrandRequest,
+    data: CreateBrandRequest | AgencyUpdateBrandRequest,
     brandId?: string,
   ) => {
     try {
       if (brandId) {
-        await updateBrandMutation.mutateAsync({ id: brandId, data: data as UpdateBrandRequest });
+        await updateBrandMutation.mutateAsync({
+          id: brandId,
+          data: data as AgencyUpdateBrandRequest,
+        });
         showSuccess('Brand updated successfully.');
       } else {
         await createBrandMutation.mutateAsync(data as CreateBrandRequest);

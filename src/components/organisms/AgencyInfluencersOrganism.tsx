@@ -47,7 +47,7 @@ import {
 import {
   InfluencerResponse,
   CreateInfluencerRequest,
-  UpdateInfluencerRequest,
+  AgencyUpdateInfluencerRequest,
   CategoryTypeCode,
   UserStatusFilter,
   PaginatedResult,
@@ -587,7 +587,7 @@ export const AgencyInfluencersOrganism: React.FC = () => {
     setEditDialogOpen(true);
   };
 
-  const handleUpdateInfluencer = async (data: UpdateInfluencerRequest) => {
+  const handleUpdateInfluencer = async (data: AgencyUpdateInfluencerRequest) => {
     if (!editingInfluencer) return;
     try {
       await updateInfluencerMutation.mutateAsync({ id: editingInfluencer.id, data });

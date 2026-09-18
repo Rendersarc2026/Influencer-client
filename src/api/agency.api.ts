@@ -11,7 +11,7 @@ import {
   BrandResponse,
   BrandListQuery,
   CreateBrandRequest,
-  UpdateBrandRequest,
+  AgencyUpdateBrandRequest,
   CampaignResponse,
   CampaignListQuery,
   CreateCampaignRequest,
@@ -27,7 +27,7 @@ import {
   InfluencerResponse,
   InfluencerListQuery,
   CreateInfluencerRequest,
-  UpdateInfluencerRequest,
+  AgencyUpdateInfluencerRequest,
   UserResponse,
   UserListQuery,
   PaginatedResult,
@@ -273,7 +273,7 @@ export function useCreateBrand() {
 
 export function useUpdateBrand() {
   const queryClient = useQueryClient();
-  return useMutation<BrandResponse, Error, { id: string; data: UpdateBrandRequest }>({
+  return useMutation<BrandResponse, Error, { id: string; data: AgencyUpdateBrandRequest }>({
     mutationFn: async ({ id, data }) => {
       const response = await apiClient.patch<BrandResponse>(`/agency/brands/${id}`, data);
       return response.data;
@@ -458,7 +458,7 @@ export function useCreateInfluencer() {
 
 export function useUpdateInfluencer() {
   const queryClient = useQueryClient();
-  return useMutation<InfluencerResponse, Error, { id: string; data: UpdateInfluencerRequest }>({
+  return useMutation<InfluencerResponse, Error, { id: string; data: AgencyUpdateInfluencerRequest }>({
     mutationFn: async ({ id, data }) => {
       const response = await apiClient.patch<InfluencerResponse>(`/agency/influencers/${id}`, data);
       return response.data;

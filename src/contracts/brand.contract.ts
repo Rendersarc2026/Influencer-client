@@ -58,26 +58,49 @@ export type CreateBrandRequest = z.infer<typeof CreateBrandSchema>;
  * that carries it — e.g. one crafted past the UI — is rejected rather than
  * silently dropped, so the caller gets a clear 400.
  */
-export const UpdateBrandSchema = z.object({
+/** The brand fields any caller may edit. Shared by both schemas below. */
+const brandUpdateFields = {
   name: safeText(200).optional(),
   industry: safeText(120).optional(),
   contactPerson: personName(200).optional(),
   contactPhone: phone.optional(),
   alternatePhone: phone.optional(),
-  contactEmail: z
-    .undefined({
-      invalid_type_error:
-        "A brand's login email is set when the account is created and cannot be changed.",
-    })
-    .optional(),
   website: httpUrl.optional(),
   address: safeText(400).optional(),
   city: safeText(120).optional(),
   logoUrl: httpUrl.optional(),
   bio: safeMultilineText(2000).optional(),
   isActive: z.boolean().optional(),
+};
+
+export const UpdateBrandSchema = z.object({
+  ...brandUpdateFields,
+  contactEmail: z
+    .undefined({
+      invalid_type_error:
+        "A brand's login email can only be changed by the agency that owns the brand.",
+    })
+    .optional(),
 });
 export type UpdateBrandRequest = z.infer<typeof UpdateBrandSchema>;
+
+/**
+ * The owning agency's own edit of one of its brands.
+ *
+ * Identical to `UpdateBrandSchema` but for `contactEmail`, which doubles as the
+ * brand manager's login. The agency provisions that login when it creates the
+ * brand (see `AgencyBrandUseCases.create`), so it is also the only party that
+ * can correct a typo in it — and the use case moves the brand row and the
+ * credential together, which is what kept this field immutable before.
+ *
+ * Mounted on the agency brand routes alone; `/brand/profile`, which a brand
+ * manager reaches for themselves, uses the schema above and rejects the field.
+ */
+export const AgencyUpdateBrandSchema = z.object({
+  ...brandUpdateFields,
+  contactEmail: email.optional(),
+});
+export type AgencyUpdateBrandRequest = z.infer<typeof AgencyUpdateBrandSchema>;
 
 export const BrandStatusFilterSchema = z.preprocess((val) => {
   if (val === undefined || val === null || val === '') return undefined;
