@@ -25,6 +25,7 @@ export const InfluencerResponseSchema = z.object({
   influencingRegions: z.array(z.string()).optional(),
   followers: z.number().nullable(),
   contactPhone: z.string().nullable(),
+  alternatePhone: z.string().nullable(),
   instagram: z.string().nullable(),
   youtube: z.string().nullable(),
   avgCommercialMin: z.number().nullable(),
@@ -57,6 +58,9 @@ export const CreateInfluencerSchema = z
     influencingRegions: regionsArray,
     followers: count.optional(),
     contactPhone: phone,
+    /** A second number for the same creator. Optional, and never used to
+     *  provision the login — that is `contactPhone`'s job. */
+    alternatePhone: phone.optional(),
     instagram: httpUrl.optional(),
     youtube: httpUrl.optional(),
     avgCommercialMin: money.optional(),
@@ -84,6 +88,7 @@ export const UpdateInfluencerSchema = z
     influencingRegions: regionsArray,
     followers: count.optional(),
     contactPhone: phone.optional(),
+    alternatePhone: phone.optional(),
     instagram: httpUrl.optional(),
     youtube: httpUrl.optional(),
     avgCommercialMin: money.optional(),
@@ -123,6 +128,11 @@ export const UpdateProfileSchema = z.object({
   address: safeText(400).optional(),
   city: safeText(120).optional(),
   contactPhone: phone.optional(),
+  /**
+   * A creator's second number. Accepted at the top level for the same reason
+   * `contactPhone` is — the form sends both alongside the identity fields.
+   */
+  alternatePhone: phone.optional(),
   /**
    * A login email is set once, when the account is provisioned, and is not
    * self-editable — the org row and the user's credentials would drift apart.

@@ -90,6 +90,7 @@ export const ProfileOrganism: React.FC = () => {
   const [displayName, setDisplayName] = useState(user?.profile?.displayName || '');
   const [brandCategory, setBrandCategory] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [alternatePhone, setAlternatePhone] = useState('');
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [address, setAddress] = useState('');
@@ -242,6 +243,7 @@ export const ProfileOrganism: React.FC = () => {
     user?.influencer?.influencingRegions ?? null,
     user?.influencer?.category ?? null,
     user?.influencer?.contactPhone ?? null,
+    user?.influencer?.alternatePhone ?? null,
     user?.influencer?.instagram ?? null,
     user?.influencer?.youtube ?? null,
     user?.influencer?.followers ?? null,
@@ -276,6 +278,7 @@ export const ProfileOrganism: React.FC = () => {
       setDisplayName(brandData.name || user?.profile?.displayName || '');
       setBrandCategory(brandData.industry || '');
       setContactPhone(brandData.contactPhone || user?.phone || '');
+      setAlternatePhone(brandData.alternatePhone || '');
       setWebsite(brandData.website || '');
       setCity(brandData.city || '');
       setAddress(brandData.address || '');
@@ -299,6 +302,7 @@ export const ProfileOrganism: React.FC = () => {
         // the creator row is the source of truth; `user.phone` only covers a
         // login that predates a detail row.
         setContactPhone(detail.contactPhone || user?.phone || '');
+        setAlternatePhone(detail.alternatePhone || '');
         setInstagram(detail.instagram || '');
         setYoutube(detail.youtube || '');
         setFollowers(detail.followers ? formatShorthandNumber(detail.followers) : '');
@@ -417,6 +421,11 @@ export const ProfileOrganism: React.FC = () => {
         if (pErr) errors.contactPhone = pErr;
       }
 
+      if (alternatePhone.trim()) {
+        const apErr = validatePhoneNumber(alternatePhone.trim());
+        if (apErr) errors.alternatePhone = apErr;
+      }
+
       if (website.trim()) {
         const wErr = validateHttpUrl(website);
         if (wErr) errors.website = wErr;
@@ -437,6 +446,7 @@ export const ProfileOrganism: React.FC = () => {
         contactPerson: fullName.trim(),
         industry: brandCategory.trim() || undefined,
         contactPhone: contactPhone.trim() || undefined,
+        alternatePhone: alternatePhone.trim() || undefined,
         website: normalizeUrl(website),
         city: city.trim() || undefined,
         address: address.trim() || undefined,
@@ -479,6 +489,11 @@ export const ProfileOrganism: React.FC = () => {
     if (contactPhone.trim()) {
       const pErr = validatePhoneNumber(contactPhone.trim());
       if (pErr) errors.contactPhone = pErr;
+    }
+
+    if (alternatePhone.trim()) {
+      const apErr = validatePhoneNumber(alternatePhone.trim());
+      if (apErr) errors.alternatePhone = apErr;
     }
 
     let parsedFollowers: number | undefined = undefined;
@@ -541,6 +556,7 @@ export const ProfileOrganism: React.FC = () => {
               influencingRegions: regions.length > 0 ? regions : undefined,
               category: category.trim() || undefined,
               contactPhone: contactPhone.trim() || undefined,
+              alternatePhone: alternatePhone.trim() || undefined,
               instagram: normalizeSocialUrl(instagram, 'instagram.com'),
               youtube: normalizeSocialUrl(youtube, 'youtube.com'),
               followers: parsedFollowers,
@@ -961,15 +977,16 @@ export const ProfileOrganism: React.FC = () => {
                     />
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                    <TextField
-                      label="Account Email (Read-Only)"
-                      value={brandData?.contactEmail || user?.email || ''}
-                      disabled
-                      fullWidth
-                      sx={{ flex: 1 }}
-                    />
+                  <TextField
+                    label="Account Email (Read-Only)"
+                    value={brandData?.contactEmail || user?.email || ''}
+                    disabled
+                    fullWidth
+                  />
 
+                  {/* Both numbers share a row: they are the same kind of field
+                      and reading them together is how they are used. */}
+                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                     <PhoneField
                       label="Contact Phone"
                       value={contactPhone}
@@ -986,6 +1003,27 @@ export const ProfileOrganism: React.FC = () => {
                       error={Boolean(fieldErrors.contactPhone)}
                       helperText={
                         fieldErrors.contactPhone || 'Direct phone line for campaign coordination'
+                      }
+                      disabled={fieldsLocked}
+                      sx={{ flex: 1 }}
+                    />
+
+                    <PhoneField
+                      label="Alternate Phone (Optional)"
+                      value={alternatePhone}
+                      onChange={(next) => {
+                        setAlternatePhone(next);
+                        if (fieldErrors.alternatePhone) {
+                          setFieldErrors((prev) => {
+                            const nextErrors = { ...prev };
+                            delete nextErrors.alternatePhone;
+                            return nextErrors;
+                          });
+                        }
+                      }}
+                      error={Boolean(fieldErrors.alternatePhone)}
+                      helperText={
+                        fieldErrors.alternatePhone || 'A second number — switchboard or backup'
                       }
                       disabled={fieldsLocked}
                       sx={{ flex: 1 }}
@@ -1199,18 +1237,20 @@ export const ProfileOrganism: React.FC = () => {
                     )}
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-                    <TextField
-                      label="Account Email (Read-Only)"
-                      value={user?.email || ''}
-                      disabled
-                      fullWidth
-                      sx={{ flex: 1 }}
-                    />
+                  <TextField
+                    label="Account Email (Read-Only)"
+                    value={user?.email || ''}
+                    disabled
+                    fullWidth
+                  />
 
-                    {/* The email is fixed at provisioning; the number is not, and
-                        a creator whose phone changes had no way to say so. */}
-                    {isInfluencer && (
+                  {/* The email is fixed at provisioning; the numbers are not, and
+                      a creator whose phone changes had no way to say so. Both
+                      share a row — same kind of field, read together. */}
+                  {isInfluencer && (
+                    <Box
+                      sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}
+                    >
                       <PhoneField
                         label="Mobile Number"
                         value={contactPhone}
@@ -1231,8 +1271,29 @@ export const ProfileOrganism: React.FC = () => {
                         disabled={fieldsLocked}
                         sx={{ flex: 1 }}
                       />
-                    )}
-                  </Box>
+
+                      <PhoneField
+                        label="Alternate Mobile Number (Optional)"
+                        value={alternatePhone}
+                        onChange={(next) => {
+                          setAlternatePhone(next);
+                          if (fieldErrors.alternatePhone) {
+                            setFieldErrors((prev) => {
+                              const nextErrors = { ...prev };
+                              delete nextErrors.alternatePhone;
+                              return nextErrors;
+                            });
+                          }
+                        }}
+                        error={Boolean(fieldErrors.alternatePhone)}
+                        helperText={
+                          fieldErrors.alternatePhone || 'A second number — manager or backup'
+                        }
+                        disabled={fieldsLocked}
+                        sx={{ flex: 1 }}
+                      />
+                    </Box>
+                  )}
 
                   {isInfluencer && (
                     <>

@@ -9,6 +9,7 @@ export const BrandResponseSchema = z.object({
   industry: z.string().nullable(),
   contactPerson: z.string().nullable(),
   contactPhone: z.string().nullable(),
+  alternatePhone: z.string().nullable(),
   contactEmail: z.string().nullable(),
   website: z.string().nullable(),
   address: z.string().nullable(),
@@ -36,6 +37,9 @@ export const CreateBrandSchema = z.object({
    * and an account with no way to reach its owner is not worth creating.
    */
   contactPhone: phone,
+  /** A second number for the same brand. Optional, and never used to
+   *  provision the login — that is `contactPhone`'s job. */
+  alternatePhone: phone.optional(),
   contactEmail: email,
   website: httpUrl.optional(),
   address: safeText(400).optional(),
@@ -59,6 +63,7 @@ export const UpdateBrandSchema = z.object({
   industry: safeText(120).optional(),
   contactPerson: personName(200).optional(),
   contactPhone: phone.optional(),
+  alternatePhone: phone.optional(),
   contactEmail: z
     .undefined({
       invalid_type_error:
