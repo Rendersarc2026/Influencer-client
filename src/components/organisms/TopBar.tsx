@@ -38,6 +38,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSearchClick,
   onNotificationsClick,
   onProfileClick,
+  onReportBugClick,
   onLogoutClick,
   onMenuClick,
   onRefresh,
@@ -384,7 +385,12 @@ export const TopBar: React.FC<TopBarProps> = ({
           </IconButton>
         </Tooltip>
 
-        <UserMenu user={user} onProfileClick={onProfileClick} onLogoutClick={onLogoutClick} />
+        <UserMenu
+          user={user}
+          onProfileClick={onProfileClick}
+          onReportBugClick={onReportBugClick}
+          onLogoutClick={onLogoutClick}
+        />
 
         <NotificationCenter
           anchorEl={notificationAnchor}

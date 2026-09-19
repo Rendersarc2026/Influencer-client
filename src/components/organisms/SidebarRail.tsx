@@ -16,6 +16,7 @@ import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded';
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined';
 import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
 import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
 import CalculateRoundedIcon from '@mui/icons-material/CalculateRounded';
@@ -31,6 +32,8 @@ export interface SidebarRailProps {
   activePath?: string;
   onNavigate?: (path: string) => void;
   onLogout?: () => void;
+  /** Opens the bug report / feedback dialog. */
+  onReportBug?: () => void;
   loading?: boolean;
   className?: string;
   mobileOpen?: boolean;
@@ -99,6 +102,7 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
   items = [],
   onNavigate,
   onLogout,
+  onReportBug,
   loading = false,
   className,
   mobileOpen = false,
@@ -230,6 +234,66 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
     </Box>
   );
 
+  /**
+   * Closes the drawer before running the action, exactly as logout does: on
+   * mobile the dialog would otherwise open behind the open drawer.
+   */
+  const handleSupportAction = (action?: () => void) => {
+    if (onMobileClose) {
+      onMobileClose();
+    }
+    if (action) {
+      action();
+    }
+  };
+
+  /**
+   * One entry above Log Out, not two: the dialog it opens carries the
+   * Bug / Feedback toggle, so a second rail row bought nothing but height.
+   */
+  const renderSupportButton = () => (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        flexShrink: 0,
+        pt: 1,
+      }}
+    >
+      <ButtonBase
+        onClick={() => handleSupportAction(onReportBug)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          gap: 1.5,
+          width: '100%',
+          height: 44,
+          px: 1.5,
+          borderRadius: `${theme.customRadii.inner}px`,
+          backgroundColor: 'transparent',
+          color: theme.palette.tokens.textSecondary,
+          transition: 'all 0.15s ease',
+          // The rail is dark in both the desktop and the drawer variant, so
+          // this matches the nav items rather than the app surface.
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            color: '#FFFFFF',
+          },
+        }}
+      >
+        <FeedbackOutlinedIcon fontSize="small" />
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, fontSize: '14px', color: 'inherit', whiteSpace: 'nowrap' }}
+        >
+          Feedback
+        </Typography>
+      </ButtonBase>
+    </Box>
+  );
+
   const renderLogoutButton = () => (
     <Box
       sx={{
@@ -343,6 +407,9 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
         {/* Navigation List */}
         {renderNavList()}
 
+        {/* Report a Bug / Feedback */}
+        {renderSupportButton()}
+
         {/* Logout */}
         {renderLogoutButton()}
       </Box>
@@ -451,6 +518,9 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
 
         {/* Navigation List */}
         {renderNavList()}
+
+        {/* Report a Bug / Feedback */}
+        {renderSupportButton()}
 
         {/* Logout */}
         {renderLogoutButton()}

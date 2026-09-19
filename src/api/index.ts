@@ -11,4 +11,5 @@ export * from './location.api';
 export * from './navigation.api';
 export * from './socket.client';
 export * from './upload.api';
+export * from './feedback.api';
 export * from './invalidate';

@@ -22,5 +22,6 @@ export * from './geography';
 export * from './location.contract';
 export * from './er-calculator.contract';
 export * from './upload.contract';
+export * from './feedback.contract';
 
 

@@ -28,6 +28,9 @@ export const EnumCategory = {
   CHAT_TYPE: 'CHAT_TYPE',
   APPROVAL_ACTION: 'APPROVAL_ACTION',
   CATEGORY_TYPE: 'CATEGORY_TYPE',
+  FEEDBACK_TYPE: 'FEEDBACK_TYPE',
+  FEEDBACK_SEVERITY: 'FEEDBACK_SEVERITY',
+  FEEDBACK_STATUS: 'FEEDBACK_STATUS',
 } as const;
 export type EnumCategory = (typeof EnumCategory)[keyof typeof EnumCategory];
 
@@ -147,6 +150,48 @@ export const CategoryTypeEnum = z.nativeEnum(CategoryTypeCode);
 export const CategoryTypeName = nameLookup(CategoryTypeCode);
 
 // -------------------------------------------------------------
+// Feedback — bug reports and product feedback
+// -------------------------------------------------------------
+
+/**
+ * The two things the report dialog submits. They share one table because they
+ * share every field but severity, and a developer triaging them wants one list.
+ */
+export const FeedbackTypeCode = {
+  BUG: 1,
+  FEEDBACK: 2,
+} as const;
+export type FeedbackType = (typeof FeedbackTypeCode)[keyof typeof FeedbackTypeCode];
+export const FeedbackTypeEnum = z.nativeEnum(FeedbackTypeCode);
+export const FeedbackTypeName = nameLookup(FeedbackTypeCode);
+
+/** How badly a bug hurts. Reported by the user, so treated as a hint, not a fact. */
+export const FeedbackSeverityCode = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  CRITICAL: 4,
+} as const;
+export type FeedbackSeverity = (typeof FeedbackSeverityCode)[keyof typeof FeedbackSeverityCode];
+export const FeedbackSeverityEnum = z.nativeEnum(FeedbackSeverityCode);
+export const FeedbackSeverityName = nameLookup(FeedbackSeverityCode);
+
+/**
+ * Triage state. Nothing in the API writes it — reports are read and worked
+ * through directly in the database — but the column is coded like every other
+ * status so what a developer sets there still means one agreed thing.
+ */
+export const FeedbackStatusCode = {
+  NEW: 1,
+  IN_REVIEW: 2,
+  RESOLVED: 3,
+  WONT_FIX: 4,
+} as const;
+export type FeedbackStatus = (typeof FeedbackStatusCode)[keyof typeof FeedbackStatusCode];
+export const FeedbackStatusEnum = z.nativeEnum(FeedbackStatusCode);
+export const FeedbackStatusName = nameLookup(FeedbackStatusCode);
+
+// -------------------------------------------------------------
 // Role
 // -------------------------------------------------------------
 
@@ -215,4 +260,7 @@ export const ENUM_CODE_REGISTRY: Readonly<Record<EnumCategory, Readonly<Record<s
     CHAT_TYPE: ChatTypeCode,
     APPROVAL_ACTION: ApprovalActionCode,
     CATEGORY_TYPE: CategoryTypeCode,
+    FEEDBACK_TYPE: FeedbackTypeCode,
+    FEEDBACK_SEVERITY: FeedbackSeverityCode,
+    FEEDBACK_STATUS: FeedbackStatusCode,
   });

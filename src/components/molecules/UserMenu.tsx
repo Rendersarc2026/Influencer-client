@@ -9,6 +9,7 @@ import Divider from '@mui/material/Divider';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
+import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined';
 import { useTheme } from '@mui/material/styles';
 import { safeImageUrl } from '@utils';
 
@@ -20,6 +21,8 @@ export interface UserMenuProps {
     avatarUrl?: string;
   };
   onProfileClick?: () => void;
+  /** Opens the bug report / feedback dialog. */
+  onReportBugClick?: () => void;
   onLogoutClick?: () => void;
   className?: string;
 }
@@ -27,11 +30,29 @@ export interface UserMenuProps {
 export const UserMenu: React.FC<UserMenuProps> = ({
   user,
   onProfileClick,
+  onReportBugClick,
   onLogoutClick,
   className,
 }) => {
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  /** One style for every neutral item in the menu, so they cannot drift apart. */
+  const menuItemSx = {
+    fontSize: '13.5px',
+    fontWeight: 500,
+    py: 1,
+    px: 1.5,
+    borderRadius: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.25,
+    color: theme.palette.tokens.textPrimary,
+    transition: 'all 0.15s ease',
+    '&:hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    },
+  };
   const open = Boolean(anchorEl);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -234,26 +255,29 @@ export const UserMenu: React.FC<UserMenuProps> = ({
             handleClose();
             if (onProfileClick) onProfileClick();
           }}
-          sx={{
-            fontSize: '13.5px',
-            fontWeight: 500,
-            py: 1,
-            px: 1.5,
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            color: theme.palette.tokens.textPrimary,
-            transition: 'all 0.15s ease',
-            '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-            },
-          }}
+          sx={menuItemSx}
         >
           <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
             <PersonOutlineRoundedIcon fontSize="small" />
           </ListItemIcon>
           Profile
+        </MenuItem>
+
+        <Divider sx={{ my: 0.75, borderColor: 'rgba(0, 0, 0, 0.06)' }} />
+
+        {/* One entry, directly above Logout: the dialog carries the
+            Bug / Feedback toggle. */}
+        <MenuItem
+          onClick={() => {
+            handleClose();
+            if (onReportBugClick) onReportBugClick();
+          }}
+          sx={menuItemSx}
+        >
+          <ListItemIcon sx={{ color: theme.palette.tokens.textSecondary, minWidth: 'auto' }}>
+            <FeedbackOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Feedback
         </MenuItem>
 
         <Divider sx={{ my: 0.75, borderColor: 'rgba(0, 0, 0, 0.06)' }} />

@@ -32,6 +32,8 @@ export interface TopBarProps {
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
   onProfileClick?: () => void;
+  /** Opens the bug report / feedback dialog. */
+  onReportBugClick?: () => void;
   onLogoutClick?: () => void;
   onMenuClick?: () => void;
   /** Triggers data refresh. Defaults to invalidating active React Query queries. */

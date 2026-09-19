@@ -10,6 +10,7 @@ export * from './ConfirmDialog';
 export * from './PhoneField';
 export * from './EmojiPicker';
 export * from './CommentDialog';
+export * from './FeedbackDialog';
 export * from './ApproveRateDialog';
 export * from './EditPreEvalDialog';
 export * from './RecordMetricsDialog';

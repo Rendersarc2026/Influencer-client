@@ -3,11 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 import { SidebarRail, TopBar } from '@organisms';
-import { ConfirmDialog } from '@molecules';
+import { ConfirmDialog, FeedbackDialog } from '@molecules';
 import { navConfig, NavItem } from '@routes/navConfig';
 import { useNavigation, useChats } from '@api';
 import { useAuth, useNotifications } from '@hooks';
-import { RoleCode } from '@contracts';
+import { RoleCode, FeedbackType, FeedbackTypeCode } from '@contracts';
 
 export interface DashboardLayoutProps {
   title: string;
@@ -94,6 +94,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { data: dbNavItems, isLoading: isNavLoading } = useNavigation(activeRoleCode);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  /**
+   * The report dialog lives here rather than in the rail or the user menu
+   * because both of them open it, and it must outlive the menu that closed
+   * itself on the way.
+   */
+  const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
 
   const effectiveNavigate = onNavigate ?? ((path: string) => navigate(path));
   const effectiveLogout = onLogout ?? authLogout;
@@ -190,6 +196,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         activePath={activePath}
         onNavigate={effectiveNavigate}
         onLogout={handleLogoutClick}
+        onReportBug={() => setFeedbackType(FeedbackTypeCode.FEEDBACK)}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
       />
@@ -225,6 +232,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onSearchClick={onSearchClick}
           onNotificationsClick={onNotificationsClick}
           onProfileClick={() => effectiveNavigate('/profile')}
+          onReportBugClick={() => setFeedbackType(FeedbackTypeCode.FEEDBACK)}
           onLogoutClick={handleLogoutClick}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
@@ -255,6 +263,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {children}
         </Box>
       </Box>
+
+      {/* Bug report / feedback. Kept mounted only while open so each report
+          starts from a clean form. */}
+      {feedbackType !== null && (
+        <FeedbackDialog
+          open
+          initialType={feedbackType}
+          onClose={() => setFeedbackType(null)}
+        />
+      )}
 
       {/* Logout Confirmation Dialog */}
       <ConfirmDialog
