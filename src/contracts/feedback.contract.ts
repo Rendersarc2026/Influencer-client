@@ -25,8 +25,12 @@ const reportBase = {
    * capped and validated like anything else that arrives from outside.
    */
   pageUrl: safeText(500).optional(),
-  /** Uploaded through `/reports/attachment` first; this carries the returned URL. */
-  screenshotUrl: httpUrl.optional(),
+  /**
+   * Screenshots, uploaded through `/reports/attachment` first; this carries the
+   * returned URLs. Capped at five: past that it is a screen recording, and the
+   * row is a report, not an album.
+   */
+  screenshotUrls: z.array(httpUrl).max(5, 'At most 5 screenshots').optional(),
 };
 
 /**

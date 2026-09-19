@@ -8,7 +8,6 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -16,7 +15,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import AddPhotoAlternateRoundedIcon from '@mui/icons-material/AddPhotoAlternateRounded';
-import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { useTheme } from '@mui/material/styles';
 import { FeedbackTypeCode, FeedbackType } from '@contracts';
 import { submitBugReport, submitFeedback, uploadReportAttachment } from '@api';
@@ -26,6 +25,8 @@ const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 4000;
 const DESCRIPTION_MIN = 10;
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+/** Matches the contract's ceiling. Past this it is a screen recording, not a report. */
+const MAX_SCREENSHOTS = 5;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 /**
@@ -79,7 +80,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   const [type, setType] = useState<FeedbackType>(initialType);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [screenshots, setScreenshots] = useState<File[]>([]);
   /**
    * Errors appear once someone has tried to send, not before.
    *
@@ -98,10 +99,18 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     setType(initialType);
     setTitle('');
     setDescription('');
-    setScreenshot(null);
+    setScreenshots([]);
     setSubmitAttempted(false);
     setSubmitting(false);
   }, [open, initialType]);
+
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    const urls = screenshots.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [screenshots]);
 
   const copy = COPY[type];
   const isBug = type === FeedbackTypeCode.BUG;
@@ -111,21 +120,46 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   const descriptionValid =
     trimmedDescription.length >= DESCRIPTION_MIN && trimmedDescription.length <= DESCRIPTION_MAX;
 
-  const handlePickScreenshot = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handlePickScreenshots = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(event.target.files ?? []);
     // Clear the input so picking the same file twice still fires a change.
     event.target.value = '';
-    if (!file) return;
+    if (picked.length === 0) return;
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
-      showError('Attach a JPEG, PNG, WEBP or GIF image.');
-      return;
+    const accepted: File[] = [];
+    let rejectedType = false;
+    let rejectedSize = false;
+
+    for (const file of picked) {
+      if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+        rejectedType = true;
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        rejectedSize = true;
+        continue;
+      }
+      // Same name and size twice is the same screenshot picked twice.
+      const isDuplicate = [...screenshots, ...accepted].some(
+        (existing) => existing.name === file.name && existing.size === file.size,
+      );
+      if (!isDuplicate) accepted.push(file);
     }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      showError('Screenshot must be smaller than 5MB.');
-      return;
+
+    if (rejectedType) showError('Attach JPEG, PNG, WEBP or GIF images.');
+    if (rejectedSize) showError('Each screenshot must be smaller than 5MB.');
+
+    const room = MAX_SCREENSHOTS - screenshots.length;
+    if (accepted.length > room) {
+      showError(`You can attach up to ${MAX_SCREENSHOTS} screenshots.`);
     }
-    setScreenshot(file);
+    if (room <= 0) return;
+
+    setScreenshots((current) => [...current, ...accepted.slice(0, room)]);
+  };
+
+  const removeScreenshot = (index: number) => {
+    setScreenshots((current) => current.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -137,11 +171,12 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     try {
       // Uploaded first: the report carries the URL, so a failed upload must not
       // leave a report pointing at nothing.
-      let screenshotUrl: string | undefined;
-      if (screenshot) {
-        const uploaded = await uploadReportAttachment(screenshot);
-        screenshotUrl = uploaded.url;
-      }
+      // Uploaded together: the report carries the URLs, so a failed upload must
+      // not leave a report pointing at nothing.
+      const uploaded = await Promise.all(
+        screenshots.map((file) => uploadReportAttachment(file)),
+      );
+      const screenshotUrls = uploaded.map((result) => result.url);
 
       const common = {
         title: trimmedTitle,
@@ -149,7 +184,7 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         // Where they were when they hit the problem, which is the one detail
         // nobody remembers to include.
         pageUrl: `${location.pathname}${location.search}`,
-        screenshotUrl,
+        screenshotUrls,
       };
 
       // Two tables, two endpoints.
@@ -275,36 +310,93 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
             disabled={submitting}
           />
 
-          <Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               accept={ALLOWED_MIME_TYPES.join(',')}
-              onChange={handlePickScreenshot}
+              onChange={handlePickScreenshots}
               style={{ display: 'none' }}
             />
-            {screenshot ? (
-              <Chip
-                label={screenshot.name}
-                onDelete={submitting ? undefined : () => setScreenshot(null)}
-                deleteIcon={
-                  <IconButton size="small" component="span" aria-label="Remove screenshot">
-                    <DeleteOutlineRoundedIcon fontSize="small" />
-                  </IconButton>
-                }
-                sx={{ maxWidth: '100%' }}
-              />
-            ) : (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddPhotoAlternateRoundedIcon />}
-                onClick={() => fileInputRef.current?.click()}
-                disabled={submitting}
-                sx={{ textTransform: 'none' }}
+
+            {screenshots.map((file, index) => (
+              <Box
+                key={`${file.name}-${file.size}-${index}`}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.25,
+                  p: 0.75,
+                  pr: 0.5,
+                  borderRadius: '10px',
+                  border: `1px solid ${theme.palette.tokens.divider}`,
+                  backgroundColor: theme.palette.tokens.fieldBg,
+                }}
               >
-                Attach a screenshot (optional)
-              </Button>
+                {previewUrls[index] && (
+                  <Box
+                    component="img"
+                    src={previewUrls[index]}
+                    alt=""
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      flexShrink: 0,
+                      borderRadius: '8px',
+                      objectFit: 'cover',
+                      border: `1px solid ${theme.palette.tokens.divider}`,
+                    }}
+                  />
+                )}
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      color: theme.palette.tokens.textPrimary,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {file.name}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: theme.palette.tokens.textSecondary, fontSize: '11.5px' }}
+                  >
+                    {Math.max(1, Math.round(file.size / 1024))} KB
+                  </Typography>
+                </Box>
+                <IconButton
+                  size="small"
+                  aria-label={`Remove ${file.name}`}
+                  onClick={() => removeScreenshot(index)}
+                  disabled={submitting}
+                  sx={{ color: theme.palette.tokens.textSecondary, flexShrink: 0 }}
+                >
+                  <CloseRoundedIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+
+            {screenshots.length < MAX_SCREENSHOTS && (
+              <Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddPhotoAlternateRoundedIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={submitting}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {screenshots.length === 0
+                    ? 'Attach screenshots (optional)'
+                    : 'Add another screenshot'}
+                </Button>
+              </Box>
             )}
           </Box>
 
