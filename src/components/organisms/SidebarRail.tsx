@@ -390,6 +390,17 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
             >
               {branding.name}
             </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: theme.palette.tokens.textSecondary,
+                fontSize: '11px',
+                fontWeight: 500,
+                display: 'block',
+              }}
+            >
+              Workspace
+            </Typography>
           </Box>
         </Box>
 
@@ -475,6 +486,17 @@ export const SidebarRail: React.FC<SidebarRailProps> = ({
                 }}
               >
                 {branding.name}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.tokens.textSecondary,
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  display: 'block',
+                }}
+              >
+                Workspace
               </Typography>
             </Box>
           </Box>
