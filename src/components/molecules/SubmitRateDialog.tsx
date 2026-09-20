@@ -38,7 +38,6 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
 }) => {
   const theme = useTheme();
   const [rateInput, setRateInput] = useState<string>('');
-  const [reachInput, setReachInput] = useState<string>('');
   const [note, setNote] = useState('');
   const [rateError, setRateError] = useState('');
   const [error, setError] = useState('');
@@ -46,7 +45,6 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
   useEffect(() => {
     if (open) {
       setRateInput(currentRate ? String(currentRate) : '');
-      setReachInput('');
       setNote('');
       setRateError('');
       setError('');
@@ -66,17 +64,9 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
     setError('');
     if (rErr) return;
 
-    const noteParts: string[] = [];
-    if (reachInput.trim()) {
-      noteParts.push(`Reach from region: ${reachInput.trim()}`);
-    }
-    if (note.trim()) {
-      noteParts.push(note.trim());
-    }
-
     const data: SubmitRateRequest = {
       influencerRate: rateNum,
-      note: noteParts.length > 0 ? noteParts.join(' · ') : undefined,
+      note: note.trim() || undefined,
     };
 
     await onSubmit(mapperId, data);
@@ -175,35 +165,6 @@ export const SubmitRateDialog: React.FC<SubmitRateDialogProps> = ({
               fullWidth
               disabled={loading}
             />
-
-            <TextField
-              label="Reach from Target Region (Optional)"
-              type="text"
-              value={reachInput}
-              onChange={(e) => setReachInput(e.target.value)}
-              placeholder="e.g. 75% or 45,000"
-              helperText="% or number of your audience based in the target region (from Insights > Audience > Locations)"
-              fullWidth
-              disabled={loading}
-            />
-
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: `${theme.customRadii.inner}px`,
-                backgroundColor: theme.palette.tokens.fieldBg,
-                border: `1px solid ${theme.palette.tokens.divider}`,
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{ color: theme.palette.tokens.textSecondary, display: 'block' }}
-              >
-                📸 <strong>Audience Verification:</strong> Send your{' '}
-                <strong>Insights &gt; Audience &gt; Locations</strong> screenshot to the agency
-                partner in chat to confirm your reach.
-              </Typography>
-            </Box>
 
             <TextField
               label="Notes / Delivery Terms (Optional)"
