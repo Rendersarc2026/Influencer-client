@@ -534,57 +534,6 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               Contact & Location Details
             </Typography>
 
-            <TextField
-              label="Contact Person"
-              value={contactPerson}
-              onChange={(e) => {
-                const val = capitalizeWords(e.target.value);
-                setContactPerson(val);
-                if (contactPersonError) {
-                  setContactPersonError(
-                    validatePersonName(val, {
-                      required: false,
-                      fieldLabel: 'Contact person name',
-                      max: 200,
-                    }),
-                  );
-                } else if (/[\d\p{N}]/u.test(val)) {
-                  setContactPersonError('Numbers are not allowed in name');
-                }
-              }}
-              onBlur={(e) => {
-                setContactPersonError(
-                  validatePersonName(e.target.value, {
-                    required: false,
-                    fieldLabel: 'Contact person name',
-                    max: 200,
-                  }),
-                );
-              }}
-              placeholder="e.g. Varghese Alukkas"
-              fullWidth
-              disabled={busy}
-              error={Boolean(contactPersonError)}
-              helperText={contactPersonError || undefined}
-            />
-
-            <PhoneField
-              label="Contact Phone"
-              required
-              value={contactPhone}
-              onChange={(next) => {
-                setContactPhone(next);
-                if (phoneError) {
-                  if (!next.trim()) setPhoneError('Phone number is required');
-                  else setPhoneError(validatePhoneNumber(next));
-                }
-              }}
-              error={Boolean(phoneError)}
-              helperText={phoneError || undefined}
-              disabled={busy}
-            />
-
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               {/* The contact email doubles as the brand manager's login. This
                   screen belongs to the agency that owns the brand, which is the
                   only party allowed to correct it — the manager cannot change it
@@ -614,6 +563,57 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 placeholder="e.g. manager@brand.com"
                 fullWidth
                 disabled={busy}
+              />
+
+              <PhoneField
+                label="Contact Phone"
+                required
+                value={contactPhone}
+                onChange={(next) => {
+                  setContactPhone(next);
+                  if (phoneError) {
+                    if (!next.trim()) setPhoneError('Phone number is required');
+                    else setPhoneError(validatePhoneNumber(next));
+                  }
+                }}
+                error={Boolean(phoneError)}
+                helperText={phoneError || undefined}
+                disabled={busy}
+              />
+
+            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <TextField
+                label="Contact Person"
+                value={contactPerson}
+                onChange={(e) => {
+                  const val = capitalizeWords(e.target.value);
+                  setContactPerson(val);
+                  if (contactPersonError) {
+                    setContactPersonError(
+                      validatePersonName(val, {
+                        required: false,
+                        fieldLabel: 'Contact person name',
+                        max: 200,
+                      }),
+                    );
+                  } else if (/[\d\p{N}]/u.test(val)) {
+                    setContactPersonError('Numbers are not allowed in name');
+                  }
+                }}
+                onBlur={(e) => {
+                  setContactPersonError(
+                    validatePersonName(e.target.value, {
+                      required: false,
+                      fieldLabel: 'Contact person name',
+                      max: 200,
+                    }),
+                  );
+                }}
+                placeholder="e.g. Varghese Alukkas"
+                fullWidth
+                disabled={busy}
+                error={Boolean(contactPersonError)}
+                helperText={contactPersonError || undefined}
                 sx={{ flex: 1 }}
               />
 
