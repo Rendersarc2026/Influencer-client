@@ -34,6 +34,28 @@ import {
   wordPrefixFilterOptions,
 } from '@utils';
 
+/** Uppercase label that opens each group of fields in the dialog. */
+const FieldGroupLabel: React.FC<{ children: React.ReactNode; first?: boolean }> = ({
+  children,
+  first,
+}) => {
+  const theme = useTheme();
+  return (
+    <Typography
+      variant="caption"
+      sx={{
+        color: theme.palette.tokens.textSecondary,
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        mt: first ? 0 : 1,
+      }}
+    >
+      {children}
+    </Typography>
+  );
+};
+
 export interface CreateBrandDialogProps {
   open: boolean;
   brandToEdit?: BrandResponse | null;
@@ -332,18 +354,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            {/* Section: Brand Information */}
-            <Typography
-              variant="caption"
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
-              Brand Information
-            </Typography>
+            <FieldGroupLabel first>Brand Identity</FieldGroupLabel>
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <TextField
@@ -428,6 +439,55 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
                 </Typography>
               </Box>
             )}
+
+            <FieldGroupLabel>Account Access</FieldGroupLabel>
+
+            {/* The contact email doubles as the brand manager's login. This
+                screen belongs to the agency that owns the brand, which is the
+                only party allowed to correct it — the manager cannot change it
+                from their own profile. */}
+            <TextField
+              label="Login / Contact Email *"
+              value={contactEmail}
+              onChange={(e) => {
+                const val = e.target.value;
+                setContactEmail(val);
+                if (emailError) {
+                  if (!val.trim()) setEmailError('Email is required');
+                  else setEmailError(validateEmail(val));
+                }
+              }}
+              onBlur={() => {
+                // An empty box is left to the confirm button to report.
+                setEmailError(contactEmail.trim() ? validateEmail(contactEmail) : '');
+              }}
+              error={Boolean(emailError)}
+              helperText={
+                emailError ||
+                (isEdit ? 'Changing this changes the address this brand signs in with' : undefined)
+              }
+              placeholder="e.g. manager@brand.com"
+              fullWidth
+              disabled={busy}
+            />
+
+            <PhoneField
+              label="Contact Phone"
+              required
+              value={contactPhone}
+              onChange={(next) => {
+                setContactPhone(next);
+                if (phoneError) {
+                  if (!next.trim()) setPhoneError('Phone number is required');
+                  else setPhoneError(validatePhoneNumber(next));
+                }
+              }}
+              error={Boolean(phoneError)}
+              helperText={phoneError || undefined}
+              disabled={busy}
+            />
+
+            <FieldGroupLabel>Brand Profile</FieldGroupLabel>
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <TextField
@@ -520,66 +580,7 @@ export const CreateBrandDialog: React.FC<CreateBrandDialogProps> = ({
               disabled={busy}
             />
 
-            {/* Section: Contact & Location Details */}
-            <Typography
-              variant="caption"
-              sx={{
-                color: theme.palette.tokens.textSecondary,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                mt: 1,
-              }}
-            >
-              Contact & Location Details
-            </Typography>
-
-              {/* The contact email doubles as the brand manager's login. This
-                  screen belongs to the agency that owns the brand, which is the
-                  only party allowed to correct it — the manager cannot change it
-                  from their own profile. */}
-              <TextField
-                label="Login / Contact Email *"
-                value={contactEmail}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setContactEmail(val);
-                  if (emailError) {
-                    if (!val.trim()) setEmailError('Email is required');
-                    else setEmailError(validateEmail(val));
-                  }
-                }}
-                onBlur={() => {
-                  // An empty box is left to the confirm button to report.
-                  setEmailError(contactEmail.trim() ? validateEmail(contactEmail) : '');
-                }}
-                error={Boolean(emailError)}
-                helperText={
-                  emailError ||
-                  (isEdit
-                    ? 'Changing this changes the address this brand signs in with'
-                    : undefined)
-                }
-                placeholder="e.g. manager@brand.com"
-                fullWidth
-                disabled={busy}
-              />
-
-              <PhoneField
-                label="Contact Phone"
-                required
-                value={contactPhone}
-                onChange={(next) => {
-                  setContactPhone(next);
-                  if (phoneError) {
-                    if (!next.trim()) setPhoneError('Phone number is required');
-                    else setPhoneError(validatePhoneNumber(next));
-                  }
-                }}
-                error={Boolean(phoneError)}
-                helperText={phoneError || undefined}
-                disabled={busy}
-              />
+            <FieldGroupLabel>Contact &amp; Location Details</FieldGroupLabel>
 
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
               <TextField
