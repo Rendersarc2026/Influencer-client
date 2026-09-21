@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -100,6 +100,11 @@ interface PostFetch {
   url: string;
   /** Which boxes this dialog filled, and may therefore refill. */
   autoFilled: { likes: boolean; comments: boolean };
+  /**
+   * This post's play count, kept so Total Views can be the sum across every
+   * post that was read. Null for a still, and for a row never looked up.
+   */
+  views: number | null;
 }
 
 const EMPTY_POST_FETCH: PostFetch = {
@@ -107,6 +112,7 @@ const EMPTY_POST_FETCH: PostFetch = {
   message: '',
   url: '',
   autoFilled: { likes: false, comments: false },
+  views: null,
 };
 
 /** How the fetched post is described back to the agency, so a wrong link shows. */
@@ -168,6 +174,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   const [recordedForError, setRecordedForError] = useState('');
   const [postErrors, setPostErrors] = useState<PostErrors[]>([{ ...EMPTY_POST_ERRORS }]);
   const [postFetches, setPostFetches] = useState<PostFetch[]>([{ ...EMPTY_POST_FETCH }]);
+  /**
+   * Total Views currently holds the sum of the fetched posts rather than a
+   * typed figure, so a later lookup may update it. Cleared the moment the
+   * agency types in the box themselves.
+   */
+  const [totalViewsAutoFilled, setTotalViewsAutoFilled] = useState(false);
   const [error, setError] = useState('');
 
   const lookupPostInsights = useLookupPostInsights();
@@ -218,10 +230,57 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         ? seededPosts.map(() => ({ ...EMPTY_POST_FETCH }))
         : [{ ...EMPTY_POST_FETCH }],
     );
+    setTotalViewsAutoFilled(false);
+    lastOfferedViewsRef.current = null;
     setError('');
   }, [open, existingMetric]);
 
   const isEdit = Boolean(existingMetric);
+
+  /**
+   * Total Views across every post that was read from Instagram.
+   *
+   * The only headline figure the API can supply. Reach, impressions, watch time
+   * and skip rate are owner-only Insights — Instagram publishes none of them for
+   * an account we hold no token for — so those four stay hand-entered from the
+   * creator's screenshot rather than being approximated from views.
+   *
+   * Null while nothing has been read, which is different from a post that
+   * genuinely has no play count: a still contributes nothing to the sum but
+   * does not suppress it.
+   */
+  const fetchedViewsTotal = useMemo(() => {
+    const counted = postFetches.filter((fetch) => fetch.views !== null);
+    if (counted.length === 0) return null;
+    return counted.reduce((sum, fetch) => sum + (fetch.views ?? 0), 0);
+  }, [postFetches]);
+
+  /** The last sum offered to the box, so re-renders do not re-offer it. */
+  const lastOfferedViewsRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (fetchedViewsTotal === null) {
+      // The last post that had been read was removed, so the derived figure has
+      // no source left. Leaving it behind would show a total for posts that are
+      // no longer on the record.
+      if (totalViewsAutoFilled) {
+        lastOfferedViewsRef.current = null;
+        setTotalViews('');
+        setTotalViewsAutoFilled(false);
+      }
+      return;
+    }
+    if (lastOfferedViewsRef.current === fetchedViewsTotal) return;
+    lastOfferedViewsRef.current = fetchedViewsTotal;
+
+    // A figure the agency typed is theirs — they may have added story views,
+    // which Instagram does not expose here at all.
+    if (totalViews.trim() && !totalViewsAutoFilled) return;
+
+    setTotalViews(String(fetchedViewsTotal));
+    setTotalViewsAutoFilled(true);
+    setTotalViewsError('');
+  }, [fetchedViewsTotal, totalViews, totalViewsAutoFilled]);
 
   // The summary is the breakdown: every engagement figure below is the sum of
   // what was entered per post, so the totals can never disagree with the posts
@@ -382,6 +441,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
           likes: likesFilled || current.autoFilled.likes,
           comments: fillComments || current.autoFilled.comments,
         },
+        views: insights.views,
       });
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -579,8 +639,8 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                   if (reachError) setReachError('');
                 }}
                 onBlur={() => {
-                  const parsed = parseShorthandNumber(reach);
-                  if (parsed !== null) setReach(formatShorthandNumber(parsed));
+                  const shorthand = losslessShorthand(reach);
+                  if (shorthand !== null) setReach(shorthand);
                 }}
                 placeholder="e.g. 100k, 1m"
                 error={Boolean(reachError)}
@@ -599,19 +659,24 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 value={totalViews}
                 onChange={(e) => {
                   setTotalViews(e.target.value.replace(/-/g, ''));
+                  // Typing over the derived sum claims the box: later lookups
+                  // leave it alone, because story views only ever arrive by hand.
+                  setTotalViewsAutoFilled(false);
                   if (totalViewsError) setTotalViewsError('');
                 }}
                 onBlur={() => {
-                  const parsed = parseShorthandNumber(totalViews);
-                  if (parsed !== null) setTotalViews(formatShorthandNumber(parsed));
+                  const shorthand = losslessShorthand(totalViews);
+                  if (shorthand !== null) setTotalViews(shorthand);
                 }}
                 placeholder="e.g. 150k, 500k"
                 error={Boolean(totalViewsError)}
                 helperText={
                   totalViewsError ||
-                  (totalViews && parseShorthandNumber(totalViews) !== null
-                    ? `${parseShorthandNumber(totalViews)?.toLocaleString('en-IN')} views`
-                    : 'Actual views the post got - from post Insights screenshot')
+                  (totalViewsAutoFilled && fetchedViewsTotal !== null
+                    ? `${fetchedViewsTotal.toLocaleString('en-IN')} views across the posts read from Instagram - add story views by hand`
+                    : totalViews && parseShorthandNumber(totalViews) !== null
+                      ? `${parseShorthandNumber(totalViews)?.toLocaleString('en-IN')} views`
+                      : 'Actual views the post got - from post Insights screenshot')
                 }
                 fullWidth
                 disabled={loading}
@@ -629,12 +694,14 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                   if (impressionsError) setImpressionsError('');
                 }}
                 onBlur={() => {
-                  const parsed = parseShorthandNumber(impressions);
-                  if (parsed !== null) setImpressions(formatShorthandNumber(parsed));
+                  const shorthand = losslessShorthand(impressions);
+                  if (shorthand !== null) setImpressions(shorthand);
                 }}
                 placeholder="e.g. 200k, 1.2m"
                 error={Boolean(impressionsError)}
-                helperText={impressionsError || undefined}
+                helperText={
+                  impressionsError || 'Not published by Instagram - from post Insights screenshot'
+                }
                 fullWidth
                 disabled={loading}
               />
