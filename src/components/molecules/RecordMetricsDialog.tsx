@@ -440,9 +440,11 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
    *
    * The agency does not add posts one at a time — they finish a campaign with a
    * handful of links sitting together in a chat or a sheet. `target` is the row
-   * that takes the first link, or null to append the batch to the end. The
-   * lookups run one after another rather than all at once, so a batch of ten
-   * does not arrive at Meta as ten simultaneous calls.
+   * that takes the first link, or null to append the batch to the end.
+   *
+   * Every link is read at once. Each is its own Graph call either way, so
+   * queueing them bought nothing but a wait — and each row reports its own
+   * result, so they can land in any order.
    */
   const addUrls = (target: number | null, urls: string[]) => {
     // An existing row that takes the first link is one row that need not be made.
@@ -492,13 +494,13 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
         : '',
     );
 
-    void (async () => {
-      for (let offset = 0; offset < accepted.length; offset += 1) {
-        // Every row but a re-paste of the same link was just cleared, so the
-        // lookup writes into it rather than deferring to what used to be there.
-        await runLookup(base + offset, offset > 0 || !samePost, accepted[offset]);
-      }
-    })();
+    // Every row but a re-paste of the same link was just cleared, so the lookup
+    // writes into it rather than deferring to what used to be there. Each call
+    // updates its own row through a functional state update, so concurrent
+    // results do not overwrite one another.
+    void Promise.all(
+      accepted.map((url, offset) => runLookup(base + offset, offset > 0 || !samePost, url)),
+    );
   };
 
   /** Links pasted straight into a row's URL box, which needs no button. */
