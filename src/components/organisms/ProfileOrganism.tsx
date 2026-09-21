@@ -526,6 +526,19 @@ export const ProfileOrganism: React.FC = () => {
       return `https://${trimmed}`;
     };
 
+    // Creators have no display name: every listing, chat and report names them
+    // by `name`, so the field is not shown and nothing is sent. For an agency
+    // this field is the agency's own name, which is an organisation name rather
+    // than a person's — hence `validateBrandName`, not `validatePersonName`.
+    if (!isInfluencer && displayName.trim()) {
+      const dnErr = validateBrandName(displayName, {
+        required: false,
+        fieldLabel: 'Public Display Name',
+        max: 120,
+      });
+      if (dnErr) errors.displayName = dnErr;
+    }
+
     if (Object.keys(errors).length > 0) {
       failValidation(errors);
       return;
@@ -533,6 +546,7 @@ export const ProfileOrganism: React.FC = () => {
 
     const payload: UpdateProfileRequest = {
       fullName: fullName.trim(),
+      displayName: isInfluencer ? undefined : displayName.trim() || undefined,
       bio: bio.trim() || undefined,
       ...(isInfluencer
         ? {
@@ -1173,6 +1187,54 @@ export const ProfileOrganism: React.FC = () => {
                       fullWidth
                       disabled={fieldsLocked}
                     />
+
+                    {!isInfluencer && (
+                      <TextField
+                        label="Public Display Name"
+                        value={displayName}
+                        placeholder="e.g. Alex Influencer"
+                        onChange={(e) => {
+                          const val = capitalizeWords(e.target.value);
+                          setDisplayName(val);
+                          if (fieldErrors.displayName) {
+                            // An organisation name, not a person's — digits are
+                            // legitimate here.
+                            const err = val.trim()
+                              ? validateBrandName(val, {
+                                  required: false,
+                                  fieldLabel: 'Public Display Name',
+                                  max: 120,
+                                })
+                              : '';
+                            setFieldErrors((prev) => {
+                              const next = { ...prev };
+                              if (err) next.displayName = err;
+                              else delete next.displayName;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const err = e.target.value.trim()
+                            ? validateBrandName(e.target.value, {
+                                required: false,
+                                fieldLabel: 'Public Display Name',
+                                max: 120,
+                              })
+                            : '';
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            if (err) next.displayName = err;
+                            else delete next.displayName;
+                            return next;
+                          });
+                        }}
+                        error={Boolean(fieldErrors.displayName)}
+                        helperText={fieldErrors.displayName || undefined}
+                        fullWidth
+                        disabled={fieldsLocked}
+                      />
+                    )}
                   </Box>
 
                   <TextField
