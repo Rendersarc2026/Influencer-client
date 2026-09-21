@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import ContentPasteRoundedIcon from '@mui/icons-material/ContentPasteRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import { useTheme } from '@mui/material/styles';
@@ -53,12 +54,20 @@ interface PostDraft {
   saves: string;
 }
 
-/** The engagement components captured for every post. */
+/**
+ * The engagement components captured for every post.
+ *
+ * Only the two Instagram publishes are required. Shares and saves are
+ * owner-only Insights that nothing can fill in automatically, so demanding
+ * them blocked a save on numbers the agency may simply not have been sent —
+ * and the easy way out of that is a typed 0, which reads as a measured zero
+ * and is worse than an honest blank.
+ */
 const POST_FIELDS = [
-  { key: 'likes', label: 'Likes *', placeholder: 'e.g. 5k' },
-  { key: 'comments', label: 'Comments *', placeholder: 'e.g. 320' },
-  { key: 'shares', label: 'Shares *', placeholder: 'e.g. 180' },
-  { key: 'saves', label: 'Saves *', placeholder: 'e.g. 90' },
+  { key: 'likes', label: 'Likes', placeholder: 'e.g. 5k', required: true },
+  { key: 'comments', label: 'Comments', placeholder: 'e.g. 320', required: true },
+  { key: 'shares', label: 'Shares', placeholder: 'From Insights', required: false },
+  { key: 'saves', label: 'Saves', placeholder: 'From Insights', required: false },
 ] as const;
 
 type PostFieldKey = (typeof POST_FIELDS)[number]['key'];
@@ -79,6 +88,10 @@ function readCount(raw: string): number | null {
   return parsed !== null && parsed >= 0 ? parsed : null;
 }
 
+/** A computed total, or an em dash for a component no post recorded. */
+const formatTotal = (value: number | null): string =>
+  value === null ? '—' : value.toLocaleString('en-IN');
+
 /** A stored count back into the box it was typed into, in shorthand. */
 const toCountInput = (value: number | null | undefined): string =>
   value === null || value === undefined ? '' : formatShorthandNumber(value);
@@ -90,6 +103,33 @@ const toCountInput = (value: number | null | undefined): string =>
  */
 const INSTAGRAM_POST_URL =
   /^https?:\/\/(?:www\.)?instagram\.com\/(?:[A-Za-z0-9._]+\/)?(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i;
+
+/** The shortcode inside a post URL, which is what makes two links the same post. */
+function shortcodeOf(url: string): string | null {
+  return /\/(?:p|reel|reels|tv)\/([^/?#]+)/.exec(url)?.[1] ?? null;
+}
+
+/**
+ * Every distinct Instagram post link in a block of pasted text.
+ *
+ * The agency copies a run of links out of a chat or a sheet, so they arrive
+ * separated by newlines, spaces or commas and often carry different tracking
+ * parameters on the same post. Duplicates are dropped by shortcode rather than
+ * by string, since `/p/ABC/?img_index=1` and `/p/ABC/` are one post.
+ */
+function splitPastedUrls(text: string): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const token of text.split(/[\s,;]+/)) {
+    const url = token.trim();
+    if (!INSTAGRAM_POST_URL.test(url)) continue;
+    const shortcode = shortcodeOf(url);
+    if (!shortcode || seen.has(shortcode)) continue;
+    seen.add(shortcode);
+    urls.push(url);
+  }
+  return urls;
+}
 
 /** How one post row's Instagram lookup is going. */
 interface PostFetch {
@@ -180,6 +220,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
    * agency types in the box themselves.
    */
   const [totalViewsAutoFilled, setTotalViewsAutoFilled] = useState(false);
+  /** The paste-several-links panel, and the block of text sitting in it. */
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
   const [error, setError] = useState('');
 
   const lookupPostInsights = useLookupPostInsights();
@@ -232,10 +275,15 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
     );
     setTotalViewsAutoFilled(false);
     lastOfferedViewsRef.current = null;
+    setBulkOpen(false);
+    setBulkText('');
     setError('');
   }, [open, existingMetric]);
 
   const isEdit = Boolean(existingMetric);
+
+  /** The distinct post links found in the paste panel, as it is typed into. */
+  const bulkUrls = useMemo(() => splitPastedUrls(bulkText), [bulkText]);
 
   /**
    * Total Views across every post that was read from Instagram.
@@ -286,15 +334,26 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   // what was entered per post, so the totals can never disagree with the posts
   // they came from. The server derives the same sums from the same payload.
   const totals = useMemo(() => {
-    const sum = (key: PostFieldKey) =>
-      posts.reduce((acc, post) => acc + (readCount(post[key]) ?? 0), 0);
+    // Null when no post carried the component at all, so an untouched Shares
+    // box reads as "not recorded" rather than as a measured zero.
+    const sum = (key: PostFieldKey): number | null => {
+      const entered = posts.filter((post) => post[key].trim());
+      if (entered.length === 0) return null;
+      return entered.reduce((acc, post) => acc + (readCount(post[key]) ?? 0), 0);
+    };
 
     const likes = sum('likes');
     const comments = sum('comments');
     const shares = sum('shares');
     const saves = sum('saves');
 
-    return { likes, comments, shares, saves, engagements: likes + comments + shares + saves };
+    return {
+      likes,
+      comments,
+      shares,
+      saves,
+      engagements: (likes ?? 0) + (comments ?? 0) + (shares ?? 0) + (saves ?? 0),
+    };
   }, [posts]);
 
   const reachValue = parseShorthandNumber(reach);
@@ -304,12 +363,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       : null;
 
   const filledPostCount = posts.filter(
-    (post) =>
-      post.url.trim() &&
-      post.likes.trim() &&
-      post.comments.trim() &&
-      post.shares.trim() &&
-      post.saves.trim(),
+    (post) => post.url.trim() && post.likes.trim() && post.comments.trim(),
   ).length;
 
   const handleAddPost = () => {
@@ -373,6 +427,97 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   };
 
   /**
+   * Takes a paste of one or more post links and gives each one its own row.
+   *
+   * The agency does not add posts one at a time — they finish a campaign with a
+   * handful of links sitting together in a chat or a sheet. Pasting the lot into
+   * any URL box fills that row and opens a row per remaining link, then reads
+   * them one after another rather than all at once, so a batch of ten does not
+   * arrive at Meta as ten simultaneous calls.
+   */
+  /**
+   * Puts a batch of links into rows and reads each one.
+   *
+   * The agency does not add posts one at a time — they finish a campaign with a
+   * handful of links sitting together in a chat or a sheet. `target` is the row
+   * that takes the first link, or null to append the batch to the end. The
+   * lookups run one after another rather than all at once, so a batch of ten
+   * does not arrive at Meta as ten simultaneous calls.
+   */
+  const addUrls = (target: number | null, urls: string[]) => {
+    // An existing row that takes the first link is one row that need not be made.
+    const room = MAX_METRIC_POSTS - posts.length + (target === null ? 0 : 1);
+    const accepted = urls.slice(0, Math.max(room, 0));
+
+    if (accepted.length === 0) {
+      setError(`A post-evaluation covers at most ${MAX_METRIC_POSTS} posts.`);
+      return;
+    }
+
+    // Re-pasting the same link is someone tidying a URL, not swapping the post,
+    // so that row keeps the numbers already against it. A different post means
+    // the numbers on the row belong to something else and are cleared: a failed
+    // lookup must never leave the previous post's counts under a new link.
+    const samePost =
+      target !== null && shortcodeOf(accepted[0]) === shortcodeOf(posts[target]?.url ?? '');
+    const extras = target === null ? accepted : accepted.slice(1);
+    const base = target ?? posts.length;
+    const insertAt = target === null ? posts.length : target + 1;
+
+    const nextPosts = [...posts];
+    if (target !== null) {
+      nextPosts[target] = samePost
+        ? { ...(nextPosts[target] ?? EMPTY_POST), url: accepted[0] }
+        : { ...EMPTY_POST, url: accepted[0] };
+    }
+    nextPosts.splice(insertAt, 0, ...extras.map((url) => ({ ...EMPTY_POST, url })));
+    setPosts(nextPosts);
+
+    setPostErrors((rows) => {
+      const next = [...rows];
+      if (target !== null) next[target] = { ...EMPTY_POST_ERRORS };
+      next.splice(insertAt, 0, ...extras.map(() => ({ ...EMPTY_POST_ERRORS })));
+      return next;
+    });
+    setPostFetches((rows) => {
+      const next = [...rows];
+      if (target !== null && !samePost) next[target] = { ...EMPTY_POST_FETCH };
+      next.splice(insertAt, 0, ...extras.map(() => ({ ...EMPTY_POST_FETCH })));
+      return next;
+    });
+
+    setError(
+      accepted.length < urls.length
+        ? `Added ${accepted.length} of the ${urls.length} links — a post-evaluation covers at most ${MAX_METRIC_POSTS} posts.`
+        : '',
+    );
+
+    void (async () => {
+      for (let offset = 0; offset < accepted.length; offset += 1) {
+        // Every row but a re-paste of the same link was just cleared, so the
+        // lookup writes into it rather than deferring to what used to be there.
+        await runLookup(base + offset, offset > 0 || !samePost, accepted[offset]);
+      }
+    })();
+  };
+
+  /** Links pasted straight into a row's URL box, which needs no button. */
+  const handleUrlPaste = (index: number, event: React.ClipboardEvent<HTMLDivElement>) => {
+    const urls = splitPastedUrls(event.clipboardData?.getData('text') ?? '');
+    if (urls.length === 0) return; // not links: let the ordinary paste happen
+    event.preventDefault();
+    addUrls(index, urls);
+  };
+
+  /** The batch from the paste panel lands in the first free row, else at the end. */
+  const handleAddPastedLinks = () => {
+    const firstEmpty = posts.findIndex((post) => !post.url.trim());
+    addUrls(firstEmpty === -1 ? null : firstEmpty, bulkUrls);
+    setBulkText('');
+    setBulkOpen(false);
+  };
+
+  /**
    * Reads Instagram's own like and comment counts for one pasted post.
    *
    * Only two of the four boxes can be filled. Shares and saves are private
@@ -385,17 +530,21 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
    * filled by a previous lookup, while pressing refresh deliberately takes
    * Instagram's numbers over whatever is in the boxes.
    */
-  const runLookup = async (index: number, force: boolean) => {
-    const url = (posts[index]?.url ?? '').trim();
+  const runLookup = async (index: number, force: boolean, urlOverride?: string) => {
+    // A pasted batch knows its own URLs before React has re-rendered the rows
+    // holding them, so the caller may name the URL instead of it being read
+    // back out of state.
+    const url = (urlOverride ?? posts[index]?.url ?? '').trim();
     if (!INSTAGRAM_POST_URL.test(url)) return;
 
+    const draft = posts[index] ?? EMPTY_POST;
     const current = postFetches[index] ?? EMPTY_POST_FETCH;
     // Tabbing back out of an unchanged box is not a new question.
     if (!force && current.url === url && current.status !== 'idle') return;
     if (current.status === 'loading') return;
 
-    const fillLikes = force || !posts[index].likes.trim() || current.autoFilled.likes;
-    const fillComments = force || !posts[index].comments.trim() || current.autoFilled.comments;
+    const fillLikes = force || !draft.likes.trim() || current.autoFilled.likes;
+    const fillComments = force || !draft.comments.trim() || current.autoFilled.comments;
 
     setPostFetch(index, { ...current, status: 'loading', message: '', url });
 
@@ -508,26 +657,31 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       const values: Partial<Record<PostFieldKey, number>> = {};
       for (const field of POST_FIELDS) {
         const raw = post[field.key];
-        const cleanLabel = field.label.replace(' *', '');
         if (!raw.trim()) {
-          row[field.key] = `${cleanLabel} is required (enter 0 if none)`;
+          if (field.required) {
+            row[field.key] = `${field.label} is required (enter 0 if none)`;
+          }
           continue;
         }
         const parsed = parseShorthandNumber(raw);
         if (parsed === null || parsed < 0) {
-          row[field.key] = `Enter a valid ${cleanLabel} count (e.g. 0, 500, 5k)`;
+          row[field.key] = `Enter a valid ${field.label} count (e.g. 0, 500, 5k)`;
           continue;
         }
         values[field.key] = parsed;
       }
 
       if (!hasPostError(row)) {
+        // A blank shares or saves box is left out of the payload rather than
+        // sent as 0: the server keeps the component null when no post carried
+        // one, so a report can say "not recorded" instead of claiming nobody
+        // shared the post.
         validPosts.push({
           postUrl: url,
           likes: values.likes ?? 0,
           comments: values.comments ?? 0,
-          shares: values.shares ?? 0,
-          saves: values.saves ?? 0,
+          shares: values.shares,
+          saves: values.saves,
         });
       }
 
@@ -764,22 +918,95 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 >
                   Published Posts ({filledPostCount}/{MAX_METRIC_POSTS})
                 </Typography>
-                <Button
-                  size="small"
-                  startIcon={<AddRoundedIcon fontSize="small" />}
-                  onClick={handleAddPost}
-                  disabled={loading || posts.length >= MAX_METRIC_POSTS}
-                  sx={{ fontWeight: 600, textTransform: 'none', py: 0.25, px: 1 }}
-                >
-                  {posts.length >= MAX_METRIC_POSTS ? 'Max 10 Posts' : 'Add Post'}
-                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Button
+                    size="small"
+                    startIcon={<ContentPasteRoundedIcon fontSize="small" />}
+                    onClick={() => setBulkOpen((prev) => !prev)}
+                    disabled={loading || posts.length >= MAX_METRIC_POSTS}
+                    sx={{ fontWeight: 600, textTransform: 'none', py: 0.25, px: 1 }}
+                  >
+                    Paste Links
+                  </Button>
+                  <Button
+                    size="small"
+                    startIcon={<AddRoundedIcon fontSize="small" />}
+                    onClick={handleAddPost}
+                    disabled={loading || posts.length >= MAX_METRIC_POSTS}
+                    sx={{ fontWeight: 600, textTransform: 'none', py: 0.25, px: 1 }}
+                  >
+                    {posts.length >= MAX_METRIC_POSTS ? 'Max 10 Posts' : 'Add Post'}
+                  </Button>
+                </Box>
               </Box>
 
               <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
-                Paste a post URL and Instagram&apos;s own Likes and Comments are filled in for you.
-                Shares and Saves are private Insights that only the creator can see — take those
-                from their Insights screenshot.
+                Instagram&apos;s own Likes and Comments are filled in from the post URL. Shares and
+                Saves are private Insights only the creator can see — take those from their Insights
+                screenshot, or leave them blank.
               </Typography>
+
+              {/* Several links at once, for the run of URLs a finished campaign
+                  leaves sitting in a chat or a sheet. */}
+              {bulkOpen && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.5,
+                    padding: 2,
+                    border: `1px solid ${theme.palette.tokens.divider}`,
+                    borderRadius: `${theme.customRadii.inner}px`,
+                  }}
+                >
+                  <TextField
+                    label="Paste post links"
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    placeholder={
+                      'https://www.instagram.com/reel/...\nhttps://www.instagram.com/p/...'
+                    }
+                    multiline
+                    minRows={3}
+                    maxRows={8}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    disabled={loading}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{ flex: 1, color: theme.palette.tokens.textSecondary }}
+                    >
+                      {bulkUrls.length === 0
+                        ? 'One link per line, or separated by commas. Duplicates are ignored.'
+                        : `${bulkUrls.length} post ${bulkUrls.length === 1 ? 'link' : 'links'} found`}
+                    </Typography>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setBulkText('');
+                        setBulkOpen(false);
+                      }}
+                      disabled={loading}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={handleAddPastedLinks}
+                      disabled={loading || bulkUrls.length === 0}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      {bulkUrls.length > 1 ? `Add ${bulkUrls.length} Posts` : 'Add Post'}
+                    </Button>
+                  </Box>
+                </Box>
+              )}
 
               {posts.map((post, idx) => (
                 <Box
@@ -829,6 +1056,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                     <TextField
                       value={post.url}
                       onChange={(e) => handlePostChange(idx, 'url', e.target.value)}
+                      onPaste={(e) => handleUrlPaste(idx, e)}
                       // The lookup runs on blur rather than on every keystroke:
                       // each one spends a call against Meta's hourly allowance.
                       onBlur={() => void runLookup(idx, false)}
@@ -889,6 +1117,7 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                       <TextField
                         key={field.key}
                         label={field.label}
+                        required={field.required}
                         value={post[field.key]}
                         onChange={(e) =>
                           handlePostChange(idx, field.key, e.target.value.replace(/-/g, ''))
@@ -943,10 +1172,10 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 }}
               >
                 <TotalTile label="Engagements" value={totals.engagements.toLocaleString('en-IN')} />
-                <TotalTile label="Likes" value={totals.likes.toLocaleString('en-IN')} />
-                <TotalTile label="Comments" value={totals.comments.toLocaleString('en-IN')} />
-                <TotalTile label="Shares" value={totals.shares.toLocaleString('en-IN')} />
-                <TotalTile label="Saves" value={totals.saves.toLocaleString('en-IN')} />
+                <TotalTile label="Likes" value={formatTotal(totals.likes)} />
+                <TotalTile label="Comments" value={formatTotal(totals.comments)} />
+                <TotalTile label="Shares" value={formatTotal(totals.shares)} />
+                <TotalTile label="Saves" value={formatTotal(totals.saves)} />
                 <TotalTile
                   label="Post-Eval ER%"
                   value={erPercent !== null ? `${erPercent}%` : '—'}
