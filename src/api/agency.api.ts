@@ -24,6 +24,7 @@ import {
   RecordMetricRequest,
   UpdatePreEvalRequest,
   MetricResponse,
+  PostInsightsResponse,
   InfluencerResponse,
   InfluencerListQuery,
   CreateInfluencerRequest,
@@ -458,7 +459,11 @@ export function useCreateInfluencer() {
 
 export function useUpdateInfluencer() {
   const queryClient = useQueryClient();
-  return useMutation<InfluencerResponse, Error, { id: string; data: AgencyUpdateInfluencerRequest }>({
+  return useMutation<
+    InfluencerResponse,
+    Error,
+    { id: string; data: AgencyUpdateInfluencerRequest }
+  >({
     mutationFn: async ({ id, data }) => {
       const response = await apiClient.patch<InfluencerResponse>(`/agency/influencers/${id}`, data);
       return response.data;
@@ -737,6 +742,29 @@ export function useRecordMetric(campaignId?: string) {
           queryKey: ['agency', 'campaigns', campaignId, 'influencers'],
         });
       }
+    },
+  });
+}
+
+/**
+ * Instagram's own like and comment counts for one published post.
+ *
+ * A mutation rather than a query even though it reads: it is triggered by the
+ * agency pasting a URL, each call spends one of a 200/hour Meta allowance, and
+ * nothing should re-run it on a window focus or a cache expiry.
+ *
+ * Only two of the four engagement boxes come back. Shares and saves are
+ * owner-only Instagram Insights, invisible to any token the agency holds for a
+ * creator it represents, so they stay hand-entered — see PostInsightsResponse.
+ */
+export function useLookupPostInsights() {
+  return useMutation<PostInsightsResponse, Error, { mapperId: string; url: string }>({
+    mutationFn: async ({ mapperId, url }) => {
+      const response = await apiClient.get<PostInsightsResponse>(
+        `/agency/mappers/${mapperId}/post-insights`,
+        { params: { url } },
+      );
+      return response.data;
     },
   });
 }

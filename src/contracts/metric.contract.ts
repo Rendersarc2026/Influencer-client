@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { count, httpUrl, httpUrls, safeText } from './primitives';
+import { InstagramMediaKindEnum } from './er-calculator.contract';
 
 /**
  * The per-post engagement breakdown behind a post-evaluation record.
@@ -123,10 +124,7 @@ export const RecordMetricRequestSchema = z
     },
   )
   .refine(
-    (d) =>
-      d.reach === undefined ||
-      d.reach === 0 ||
-      metricPostEngagements(d.posts) <= d.reach,
+    (d) => d.reach === undefined || d.reach === 0 || metricPostEngagements(d.posts) <= d.reach,
     {
       message: 'Engagements across all posts cannot exceed reach',
       path: ['posts'],
@@ -157,3 +155,44 @@ export function metricPostEngagements(
 ): number {
   return (posts ?? []).reduce((sum, post) => sum + metricPostEngagement(post), 0);
 }
+
+/**
+ * Look up one published post by its URL: `?url=https://www.instagram.com/reel/...`.
+ *
+ * The creator is not a parameter. The post belongs to whoever the assignment is
+ * for, and the server already knows that from `:mapperId` — taking a handle
+ * from the caller would let an agency user read any creator's media through an
+ * endpoint scoped to their own campaign.
+ */
+export const PostInsightsQuerySchema = z.object({
+  url: httpUrl,
+});
+export type PostInsightsQuery = z.infer<typeof PostInsightsQuerySchema>;
+
+/**
+ * The public engagement counts Instagram will disclose for a post published by
+ * an account we hold no token for.
+ *
+ * Shares and saves are deliberately absent, and no caller should synthesize
+ * them. Meta exposes both only through `/{ig-media-id}/insights`, which
+ * requires a token for the publishing account; a creator the agency merely
+ * represents has issued no such token. They remain hand-entered from the
+ * Insights screenshot the creator sends, which is the only place they exist.
+ */
+export const PostInsightsResponseSchema = z.object({
+  /** The handle the post was matched against — the assignment's creator. */
+  instagramHandle: z.string(),
+  shortcode: z.string(),
+  permalink: z.string().nullable(),
+  thumbnailUrl: z.string().nullable(),
+  caption: z.string().nullable(),
+  mediaKind: InstagramMediaKindEnum,
+  /** ISO 8601, or null when Meta omitted the timestamp. */
+  takenAt: z.string().nullable(),
+  /** Null when the creator hides like counts; the box stays for hand entry. */
+  likes: z.number().int().nonnegative().nullable(),
+  comments: z.number().int().nonnegative(),
+  views: z.number().int().nonnegative().nullable(),
+  fetchedAt: z.string(),
+});
+export type PostInsightsResponse = z.infer<typeof PostInsightsResponseSchema>;

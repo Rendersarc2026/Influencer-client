@@ -11,15 +11,18 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import { useTheme } from '@mui/material/styles';
 import { SectionHeading } from '@atoms';
+import { useLookupPostInsights } from '@api';
 import {
   RecordMetricRequest,
   RecordMetricPost,
   MetricResponse,
+  PostInsightsResponse,
   MAX_METRIC_POSTS,
 } from '@contracts';
-import { parseShorthandNumber, formatShorthandNumber } from '@utils';
+import { parseShorthandNumber, formatShorthandNumber, formatDateDDMMYYYY } from '@utils';
 
 export interface RecordMetricsDialogProps {
   open: boolean;
@@ -80,6 +83,58 @@ function readCount(raw: string): number | null {
 const toCountInput = (value: number | null | undefined): string =>
   value === null || value === undefined ? '' : formatShorthandNumber(value);
 
+/**
+ * Instagram post and reel permalinks, in both shapes Instagram hands out:
+ * `/p/{code}/` and `/{username}/reel/{code}/`. Anything else is not worth a
+ * round trip — the server rejects it for the same reason.
+ */
+const INSTAGRAM_POST_URL =
+  /^https?:\/\/(?:www\.)?instagram\.com\/(?:[A-Za-z0-9._]+\/)?(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i;
+
+/** How one post row's Instagram lookup is going. */
+interface PostFetch {
+  status: 'idle' | 'loading' | 'done' | 'error';
+  message: string;
+  /** The URL the last attempt was for, so leaving an unchanged box alone
+   *  does not spend another call against Meta's hourly allowance. */
+  url: string;
+  /** Which boxes this dialog filled, and may therefore refill. */
+  autoFilled: { likes: boolean; comments: boolean };
+}
+
+const EMPTY_POST_FETCH: PostFetch = {
+  status: 'idle',
+  message: '',
+  url: '',
+  autoFilled: { likes: false, comments: false },
+};
+
+/** How the fetched post is described back to the agency, so a wrong link shows. */
+function describeFetchedPost(insights: PostInsightsResponse): string {
+  const kind =
+    insights.mediaKind.charAt(0) + insights.mediaKind.slice(1).toLowerCase().replace('_', ' ');
+  const parts = [`@${insights.instagramHandle}`, kind];
+  if (insights.takenAt) parts.push(formatDateDDMMYYYY(insights.takenAt));
+  if (insights.views !== null) parts.push(`${insights.views.toLocaleString('en-IN')} views`);
+  return parts.join(' · ');
+}
+
+/**
+ * Shorthand only where it survives the round trip.
+ *
+ * The boxes reformat on blur so "5000" settles as "5k", but that pass runs over
+ * fetched counts too, and `formatShorthandNumber(12437)` is "12.44k", which
+ * parses back as 12,440. An exact figure read off Instagram must not be rounded
+ * by the act of tabbing past it, so the reformat is skipped unless it is
+ * lossless.
+ */
+function losslessShorthand(raw: string): string | null {
+  const parsed = parseShorthandNumber(raw);
+  if (parsed === null) return null;
+  const formatted = formatShorthandNumber(parsed);
+  return parseShorthandNumber(formatted) === parsed ? formatted : null;
+}
+
 /** A stored date back into a `type="date"` value. */
 const toDateInput = (value: Date | string | null | undefined): string => {
   if (!value) return new Date().toISOString().split('T')[0];
@@ -112,7 +167,10 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
   const [skipRateError, setSkipRateError] = useState('');
   const [recordedForError, setRecordedForError] = useState('');
   const [postErrors, setPostErrors] = useState<PostErrors[]>([{ ...EMPTY_POST_ERRORS }]);
+  const [postFetches, setPostFetches] = useState<PostFetch[]>([{ ...EMPTY_POST_FETCH }]);
   const [error, setError] = useState('');
+
+  const lookupPostInsights = useLookupPostInsights();
 
   // Seeded from the record on file when there is one, so re-opening shows what
   // was entered rather than an empty form inviting a duplicate. Depends on the
@@ -152,6 +210,13 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       seededPosts.length > 0
         ? seededPosts.map(() => ({ ...EMPTY_POST_ERRORS }))
         : [{ ...EMPTY_POST_ERRORS }],
+    );
+    // A seeded row's numbers came off a saved record, so they count as
+    // hand-entered: reopening the dialog must not overwrite them from Instagram.
+    setPostFetches(
+      seededPosts.length > 0
+        ? seededPosts.map(() => ({ ...EMPTY_POST_FETCH }))
+        : [{ ...EMPTY_POST_FETCH }],
     );
     setError('');
   }, [open, existingMetric]);
@@ -193,6 +258,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
     setPostErrors((prev) =>
       prev.length < MAX_METRIC_POSTS ? [...prev, { ...EMPTY_POST_ERRORS }] : prev,
     );
+    setPostFetches((prev) =>
+      prev.length < MAX_METRIC_POSTS ? [...prev, { ...EMPTY_POST_FETCH }] : prev,
+    );
   };
 
   const handleRemovePost = (index: number) => {
@@ -204,6 +272,10 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
       const next = prev.filter((_, i) => i !== index);
       return next.length > 0 ? next : [{ ...EMPTY_POST_ERRORS }];
     });
+    setPostFetches((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [{ ...EMPTY_POST_FETCH }];
+    });
   };
 
   const handlePostChange = (index: number, field: keyof PostDraft, val: string) => {
@@ -212,6 +284,117 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
     setPostErrors((prev) =>
       prev.map((row, i) => (i === index && row[field] ? { ...row, [field]: '' } : row)),
     );
+    setPostFetches((prev) =>
+      prev.map((row, i) => {
+        if (i !== index) return row;
+        // Typing over a fetched count claims it: the next lookup leaves it alone.
+        if (field === 'likes' || field === 'comments') {
+          return { ...row, autoFilled: { ...row.autoFilled, [field]: false } };
+        }
+        // A different URL makes the previous result stale, message and all.
+        if (field === 'url' && val.trim() !== row.url) {
+          return { ...row, status: 'idle', message: '' };
+        }
+        return row;
+      }),
+    );
+  };
+
+  /**
+   * The shorthand tidy-up on blur. Separate from handlePostChange because that
+   * one reads an edit as the agency claiming the box back from Instagram, and
+   * reformatting 12000 as "12k" is not an edit.
+   */
+  const reformatPostField = (index: number, field: PostFieldKey, val: string) => {
+    setPosts((prev) => prev.map((post, i) => (i === index ? { ...post, [field]: val } : post)));
+  };
+
+  const setPostFetch = (index: number, next: PostFetch) => {
+    setPostFetches((prev) => prev.map((row, i) => (i === index ? next : row)));
+  };
+
+  /**
+   * Reads Instagram's own like and comment counts for one pasted post.
+   *
+   * Only two of the four boxes can be filled. Shares and saves are private
+   * Instagram Insights, readable only with a token for the account that
+   * published the post, which the agency does not hold for a creator it
+   * represents — so those stay hand-entered from the Insights screenshot
+   * rather than being guessed at here.
+   *
+   * `force` is the refresh button: a blur fills only what is empty or was
+   * filled by a previous lookup, while pressing refresh deliberately takes
+   * Instagram's numbers over whatever is in the boxes.
+   */
+  const runLookup = async (index: number, force: boolean) => {
+    const url = (posts[index]?.url ?? '').trim();
+    if (!INSTAGRAM_POST_URL.test(url)) return;
+
+    const current = postFetches[index] ?? EMPTY_POST_FETCH;
+    // Tabbing back out of an unchanged box is not a new question.
+    if (!force && current.url === url && current.status !== 'idle') return;
+    if (current.status === 'loading') return;
+
+    const fillLikes = force || !posts[index].likes.trim() || current.autoFilled.likes;
+    const fillComments = force || !posts[index].comments.trim() || current.autoFilled.comments;
+
+    setPostFetch(index, { ...current, status: 'loading', message: '', url });
+
+    try {
+      const insights = await lookupPostInsights.mutateAsync({ mapperId, url });
+
+      // Written as plain digits, never shorthand: these are exact counts and
+      // "12.44k" would round 12,437 away.
+      const likesFilled = fillLikes && insights.likes !== null;
+      setPosts((prev) =>
+        prev.map((post, i) =>
+          i === index
+            ? {
+                ...post,
+                likes: likesFilled ? String(insights.likes) : post.likes,
+                comments: fillComments ? String(insights.comments) : post.comments,
+              }
+            : post,
+        ),
+      );
+      setPostErrors((prev) =>
+        prev.map((row, i) =>
+          i === index
+            ? {
+                ...row,
+                url: '',
+                likes: likesFilled ? '' : row.likes,
+                comments: fillComments ? '' : row.comments,
+              }
+            : row,
+        ),
+      );
+
+      const notes = [describeFetchedPost(insights)];
+      if (insights.likes === null) {
+        notes.push('this creator hides like counts, so Likes stays manual');
+      }
+      setPostFetch(index, {
+        status: 'done',
+        message: notes.join(' — '),
+        url,
+        autoFilled: {
+          likes: likesFilled || current.autoFilled.likes,
+          comments: fillComments || current.autoFilled.comments,
+        },
+      });
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      setPostFetch(index, {
+        ...current,
+        status: 'error',
+        url,
+        message:
+          errorObj?.response?.data?.message ||
+          errorObj?.message ||
+          'Instagram could not be read for this post. Enter the numbers by hand.',
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -525,6 +708,12 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                 </Button>
               </Box>
 
+              <Typography variant="caption" sx={{ color: theme.palette.tokens.textSecondary }}>
+                Paste a post URL and Instagram&apos;s own Likes and Comments are filled in for you.
+                Shares and Saves are private Insights that only the creator can see — take those
+                from their Insights screenshot.
+              </Typography>
+
               {posts.map((post, idx) => (
                 <Box
                   key={idx}
@@ -569,16 +758,58 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                     )}
                   </Box>
 
-                  <TextField
-                    value={post.url}
-                    onChange={(e) => handlePostChange(idx, 'url', e.target.value)}
-                    placeholder="https://www.instagram.com/reel/..."
-                    size="small"
-                    error={Boolean(postErrors[idx]?.url)}
-                    helperText={postErrors[idx]?.url || undefined}
-                    fullWidth
-                    disabled={loading}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <TextField
+                      value={post.url}
+                      onChange={(e) => handlePostChange(idx, 'url', e.target.value)}
+                      // The lookup runs on blur rather than on every keystroke:
+                      // each one spends a call against Meta's hourly allowance.
+                      onBlur={() => void runLookup(idx, false)}
+                      placeholder="https://www.instagram.com/reel/..."
+                      size="small"
+                      error={Boolean(postErrors[idx]?.url)}
+                      helperText={postErrors[idx]?.url || undefined}
+                      fullWidth
+                      disabled={loading}
+                    />
+                    <IconButton
+                      aria-label="Fetch likes and comments from Instagram"
+                      title="Fetch likes and comments from Instagram"
+                      size="small"
+                      onClick={() => void runLookup(idx, true)}
+                      disabled={
+                        loading ||
+                        postFetches[idx]?.status === 'loading' ||
+                        !INSTAGRAM_POST_URL.test(post.url.trim())
+                      }
+                      sx={{ color: theme.palette.tokens.textSecondary, mt: 0.5 }}
+                    >
+                      {postFetches[idx]?.status === 'loading' ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <RefreshRoundedIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                  </Box>
+
+                  {postFetches[idx]?.status === 'loading' && (
+                    <Typography
+                      variant="caption"
+                      sx={{ color: theme.palette.tokens.textSecondary }}
+                    >
+                      Reading this post from Instagram…
+                    </Typography>
+                  )}
+                  {postFetches[idx]?.status === 'done' && (
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.positiveText }}>
+                      {postFetches[idx]?.message}
+                    </Typography>
+                  )}
+                  {postFetches[idx]?.status === 'error' && (
+                    <Typography variant="caption" sx={{ color: theme.palette.tokens.negativeText }}>
+                      {postFetches[idx]?.message}
+                    </Typography>
+                  )}
 
                   <Box
                     sx={{
@@ -596,9 +827,9 @@ export const RecordMetricsDialog: React.FC<RecordMetricsDialogProps> = ({
                           handlePostChange(idx, field.key, e.target.value.replace(/-/g, ''))
                         }
                         onBlur={() => {
-                          const parsed = parseShorthandNumber(post[field.key]);
-                          if (parsed !== null) {
-                            handlePostChange(idx, field.key, formatShorthandNumber(parsed));
+                          const shorthand = losslessShorthand(post[field.key]);
+                          if (shorthand !== null) {
+                            reformatPostField(idx, field.key, shorthand);
                           }
                         }}
                         placeholder={field.placeholder}

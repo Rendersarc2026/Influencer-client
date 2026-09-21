@@ -12,12 +12,16 @@ export const CalculateERRequestSchema = z.object({
 });
 export type CalculateERRequest = z.infer<typeof CalculateERRequestSchema>;
 
+/** What kind of media a post is, as the Instagram normalizer classifies it. */
+export const InstagramMediaKindEnum = z.enum(['REEL', 'VIDEO', 'CAROUSEL', 'IMAGE']);
+export type InstagramMediaKind = z.infer<typeof InstagramMediaKindEnum>;
+
 export const AnalyzedPostSchema = z.object({
   shortcode: z.string().nullable(),
   permalink: z.string().nullable(),
   thumbnailUrl: z.string().nullable(),
   caption: z.string().nullable(),
-  mediaKind: z.enum(['REEL', 'VIDEO', 'CAROUSEL', 'IMAGE']),
+  mediaKind: InstagramMediaKindEnum,
   takenAt: z.string(),
   likes: z.number(),
   comments: z.number(),
